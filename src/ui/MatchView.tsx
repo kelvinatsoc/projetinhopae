@@ -4,6 +4,7 @@
 // inteira com image-rendering: pixelated, então fica nítido em qualquer tela.
 // A animação roda fora do React (requestAnimationFrame + refs) e usa Math.random: nunca mexe no
 // gerador do mundo, então o resultado da partida é exatamente o mesmo com ou sem o campo.
+import { kitsOf, type Kit } from "./Kit";
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
@@ -88,7 +89,15 @@ function kitsClash(a: KitColors, b: KitColors): boolean {
 }
 
 /** Uniforme titular a partir das cores do clube (o escudo dá uma dica do padrão da camisa). */
+/** Uniforme real (Wikipedia) convertido para as cores do campinho. */
+function realKit(k: Kit): KitColors {
+  const shirt = k.shirt ?? k.b;
+  return { ...kitFrom(shirt, k.sh, k.so), sleeve: k.la };
+}
+
 function homeKitOf(club: Club): KitColors {
+  const real = kitsOf(club.id)[0];
+  if (real) return realKit(real);
   const [c0, c1, c2] = club.colors;
   const white = lum(c0) > 0.9;
   if (club.crest === "hoops" && !white) return kitFrom(c0, c1 === c0 ? "#f2f2f2" : "#f2f2f2", c0, "hoops", c1);
@@ -105,6 +114,7 @@ export function sideColors(sim: MatchSim): SideColors {
   const home = homeKitOf(sim.sides[0].club);
   const [a0, a1, a2] = sim.sides[1].club.colors;
   const candidates: KitColors[] = [
+    ...kitsOf(sim.sides[1].club.id).map(realKit),
     homeKitOf(sim.sides[1].club),
     kitFrom(a1, a0, a1),
     kitFrom("#f4f4f4", a0, "#f4f4f4"),
