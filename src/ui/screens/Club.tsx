@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LEGENDS, TIER_NAMES } from "../../data/legends";
 import { COMP_META } from "../../engine/competitions";
+import { estadualTitles } from "../../engine/estaduais";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
 import { clubStrength, squadOf } from "../../engine/lineup";
 import { POS_ORDER } from "../../engine/positions";
@@ -108,7 +109,7 @@ export function ClubInfoScreen({ id }: { id: string }) {
         <div className="stat-box"><b>{c.trophies.length}</b><span>títulos (jogo)</span></div>
       </div>
       {c.trophies.length > 0 && (
-        <div className="card small">🏆 {c.trophies.slice(-8).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}</div>
+        <div className="card small">{estadualTitles(c) > 0 && <div>🏅 Estaduais: {estadualTitles(c)}</div>}🏆 {c.trophies.slice(-8).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}</div>
       )}
       <div className="card flat" style={{ padding: "2px 10px" }}>
         <div className="list">

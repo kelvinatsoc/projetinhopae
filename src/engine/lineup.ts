@@ -29,17 +29,36 @@ export function autoLineup(w: World, club: Club, compId?: string, formation = cl
   const slots = FORMATIONS[formation] ?? FORMATIONS["4-3-3"];
   let pool = squadOf(w, club).filter((p) => isAvailable(p, compId));
   if (pool.length < 14) pool = squadOf(w, club, true).filter((p) => isAvailable(p, compId));
-  const pairs: { s: number; p: Player; score: number }[] = [];
-  slots.forEach((slot, s) => {
-    for (const p of pool) pairs.push({ s, p, score: selectScore(p, slot.pos, rotate) });
+  // nota de cada jogador por posição, calculada uma vez só (formações repetem posições)
+  const n = pool.length;
+  const byPos = new Map<string, Float64Array>();
+  const rows = slots.map((slot) => {
+    let scores = byPos.get(slot.pos);
+    if (!scores) {
+      scores = new Float64Array(n);
+      for (let i = 0; i < n; i++) scores[i] = selectScore(pool[i], slot.pos, rotate);
+      byPos.set(slot.pos, scores);
+    }
+    return scores;
   });
-  pairs.sort((a, b) => b.score - a.score);
+  // guloso: a cada passo, o melhor par (vaga, jogador) livre; empate fica com a primeira vaga/jogador
+  // (equivale a ordenar todos os pares por nota e percorrer, mas sem alocar a lista)
   const starters: (number | null)[] = slots.map(() => null);
   const used = new Set<number>();
-  for (const { s, p } of pairs) {
-    if (starters[s] !== null || used.has(p.id)) continue;
-    starters[s] = p.id;
-    used.add(p.id);
+  const taken = new Uint8Array(n);
+  for (let step = 0; step < slots.length; step++) {
+    let best = -Infinity, bs = -1, bi = -1;
+    for (let s = 0; s < slots.length; s++) {
+      if (starters[s] !== null) continue;
+      const row = rows[s];
+      for (let i = 0; i < n; i++) {
+        if (!taken[i] && row[i] > best) { best = row[i]; bs = s; bi = i; }
+      }
+    }
+    if (bs < 0) break;
+    starters[bs] = pool[bi].id;
+    for (let i = 0; i < n; i++) if (pool[i].id === pool[bi].id) taken[i] = 1;
+    used.add(pool[bi].id);
   }
   const bench = pickBench(pool.filter((p) => !used.has(p.id)));
   // capitão: o mais famoso/experiente; quem é Líder ganha preferência
