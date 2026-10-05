@@ -72,16 +72,16 @@ LEGEND_TITLES = {
     "kaka": "Kaká", "socrates": "Sócrates (footballer)", "rivellino": "Roberto Rivellino",
     "roberto-carlos": "Roberto Carlos (footballer)", "cafu": "Cafu", "jairzinho": "Jairzinho",
     "didi": "Didi (footballer, born 1928)", "leonidas": "Leônidas da Silva", "zizinho": "Zizinho",
-    "falcao": "Paulo Roberto Falcão", "nilton-santos": "Nílton Santos (footballer, born 1925)",
+    "falcao": "Paulo Roberto Falcão", "nilton-santos": "Nílton Santos",
     "carlos-alberto": "Carlos Alberto Torres", "tostao": "Tostão", "gerson": "Gérson",
     "djalma-santos": "Djalma Santos", "bebeto": "Bebeto", "adriano": "Adriano (footballer, born February 1982)",
-    "ademir": "Ademir (footballer, born 1922)", "careca": "Careca", "reinaldo": "Reinaldo (footballer, born 1957)",
+    "ademir": "Ademir de Menezes", "careca": "Careca", "reinaldo": "Reinaldo (footballer, born 1957)",
     "friedenreich": "Arthur Friedenreich", "junior": "Júnior (footballer, born 1954)",
     "marcelo": "Marcelo (footballer, born 1988)", "juninho-pernambucano": "Juninho Pernambucano",
     "domingos-da-guia": "Domingos da Guia", "aldair": "Aldair", "lucio": "Lúcio", "cerezo": "Toninho Cerezo",
     "dunga": "Dunga", "mauro-silva": "Mauro Silva", "alex": "Alex (footballer, born 1977)",
     "ze-roberto": "Zé Roberto", "fred": "Fred (footballer, born 1983)", "taffarel": "Cláudio Taffarel",
-    "gylmar": "Gylmar dos Santos Neves", "julio-cesar": "Júlio César (footballer, born 1979)",
+    "gylmar": "Gylmar dos Santos Neves", "julio-cesar": "Júlio César (football goalkeeper, born 1979)",
     "marcos": "Marcos (footballer, born 1973)", "dida": "Dida (footballer, born 1973)",
     "rogerio-ceni": "Rogério Ceni", "maradona": "Diego Maradona", "di-stefano": "Alfredo Di Stéfano",
     "batistuta": "Gabriel Batistuta", "riquelme": "Juan Román Riquelme", "kempes": "Mario Kempes",
@@ -95,7 +95,7 @@ LEGEND_TITLES = {
     "van-basten": "Marco van Basten", "yashin": "Lev Yashin", "gerd-muller": "Gerd Müller",
     "george-best": "George Best", "maldini": "Paolo Maldini", "baggio": "Roberto Baggio",
     "henry": "Thierry Henry", "gullit": "Ruud Gullit", "baresi": "Franco Baresi",
-    "matthaus": "Lothar Matthäus", "figo": "Luís Figo", "iniesta": "Andrés Iniesta", "xavi": "Xavi",
+    "matthaus": "Lothar Matthäus", "figo": "Luís Figo", "iniesta": "Andrés Iniesta", "xavi": "Xavi (footballer, born 1980)",
     "buffon": "Gianluigi Buffon", "ibrahimovic": "Zlatan Ibrahimović", "pirlo": "Andrea Pirlo",
     "totti": "Francesco Totti", "shevchenko": "Andriy Shevchenko", "hugo-sanchez": "Hugo Sánchez",
     "charlton": "Bobby Charlton", "kahn": "Oliver Kahn", "casillas": "Iker Casillas",
@@ -335,7 +335,8 @@ SELECT ?item (GROUP_CONCAT(DISTINCT STR(?occ); separator="|") AS ?occs)
        (SAMPLE(?cat) AS ?cat1) (SAMPLE(?en) AS ?en1) (SAMPLE(?pt) AS ?pt1)
        (SAMPLE(?lpt) AS ?lpt1) (SAMPLE(?len) AS ?len1) WHERE {
   VALUES ?item { %s }
-  OPTIONAL { ?item wdt:P106 ?occ }
+  OPTIONAL { ?item p:P106 ?os . ?os ps:P106 ?occ .
+             FILTER NOT EXISTS { ?os wikibase:rank wikibase:DeprecatedRank } }
   OPTIONAL { ?item wdt:P569 ?dob }
   OPTIONAL { ?item wdt:P18 ?img }
   OPTIONAL { ?item wdt:P373 ?cat }
@@ -469,7 +470,11 @@ def phase_validate(st):
 def phase_pageimg(st):
     ents = st["entities"]
     pim = st["pageimg"]  # QID -> {"pt": file|None, "en": file|None}
+    media = st["media"]
     qids = set(st["players"].values()) | set(st["legends"].values())
+    # só quem não tem P18 ou cujo P18 não serviu (a imagem do artigo quase sempre é o próprio P18)
+    qids = {q for q in qids if not (ents.get(q) or {}).get("p18")
+            or (q in media and media[q].get("status") not in ("ok", "nonfree"))}
     for wiki, api in (("pt", PT_API), ("en", EN_API)):
         want = {}
         for q in qids:
@@ -478,10 +483,12 @@ def phase_pageimg(st):
             if t and wiki not in pim.get(q, {}):
                 want[t] = q
         print(f"imagens dos artigos {wiki}: {len(want)} títulos")
-        res = query_titles(api, list(want))
-        for t, q in want.items():
-            pim.setdefault(q, {})[wiki] = (res.get(t) or {}).get("image")
-        save(STATE, st)
+        for batch in chunks(sorted(want), 50):
+            res = query_titles(api, batch)
+            for t in batch:
+                if t in res:
+                    pim.setdefault(want[t], {})[wiki] = res[t].get("image")
+            save(STATE, st)
 
 
 # ------------------------------------------------------------------ etapa 5: lendas

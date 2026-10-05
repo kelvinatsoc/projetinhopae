@@ -63,11 +63,21 @@ QUERIES = [
     '"São Paulo FC" OR "Santos FC" OR "Sport Club Internacional" OR "EC Bahia" OR Vitória OR "Sport Recife" OR Athletico OR Coritiba OR Fortaleza OR Ceará',
     '"Boca Juniors" OR "River Plate" OR Peñarol OR "Nacional" OR "Colo-Colo" OR "Racing Club" OR Independiente OR "San Lorenzo" OR Olimpia OR "Cerro Porteño"',
     '"Alianza Lima" OR Universitario OR Millonarios OR "Atlético Nacional" OR "Barcelona SC" OR "LDU" OR "Club Nacional de Football"',
+    # segunda rodada: outras línguas (arquivos de efeitos sonoros holandeses, alemães, franceses...)
+    'voetbal OR voetbalwedstrijd OR voetbalstadion OR juichen OR doelpunt OR supporters',
+    'Trillerpfeife OR Schiedsrichterpfeife OR Schiedsrichter OR sifflet OR fischietto OR scheidsrechter OR "pea whistle" OR Thunderer',
+    'spectateurs OR "Stade de France" OR Meinau OR "chant des supporters" OR "RC Strasbourg" OR stade',
+    'Fangesang OR Fangesänge OR Stadion OR Fußballspiel OR Fußball OR Fankurve OR Torjubel',
+    'tifosi OR stadio OR curva OR coro OR partita OR calcio',
+    'intitle:WWS',
+    'intitle:hino OR intitle:himno',
 ]
 DEEPCATS = [
     "Sounds of association football", "Audio files of association football", "Football chants",
     "Crowd sounds", "Sounds of crowds", "Audio files of crowds", "Whistles", "Sound effects of sports",
     "Audio files of stadiums", "Association football songs", "Cheering", "Applause",
+    "Football club anthems", "Anthems of association football clubs", "Sports chants",
+    "Sound recordings of sports", "Audio files of sports",
 ]
 MAX_DEPTH = 1  # para categorymembers (quando deepcat falhar)
 

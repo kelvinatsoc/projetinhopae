@@ -1,0 +1,986 @@
+{
+ "kits/kit_body.svg": {
+  "author": "Denniss and others",
+  "file": "Kit body.svg",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body.svg"
+ },
+ "kits/kit_body_atleticomg26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body atleticomg26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_atleticomg26a.png"
+ },
+ "kits/kit_body_atleticomg26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body atleticomg26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_atleticomg26h.png"
+ },
+ "kits/kit_body_atleticomg26t.png": {
+  "author": "JonasBR",
+  "file": "Kit body atleticomg26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_atleticomg26t.png"
+ },
+ "kits/kit_body_boca2627h.png": {
+  "author": "BocaJuniors00",
+  "file": "Kit body boca2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_boca2627h.png"
+ },
+ "kits/kit_body_bocajuniors2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body bocajuniors2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_bocajuniors2627a.png"
+ },
+ "kits/kit_body_bocajuniors26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body bocajuniors26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_bocajuniors26t.png"
+ },
+ "kits/kit_body_botafogo2627a.png": {
+  "author": "JonasBR",
+  "file": "Kit body botafogo2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_botafogo2627a.png"
+ },
+ "kits/kit_body_botafogo2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit body botafogo2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_botafogo2627h.png"
+ },
+ "kits/kit_body_botafogo2627t.png": {
+  "author": "Bruno-ban",
+  "file": "Kit body botafogo2627t.png",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_botafogo2627t.png"
+ },
+ "kits/kit_body_corinthians2627a.png": {
+  "author": "El chivista 197207",
+  "file": "Kit body corinthians2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_corinthians2627a.png"
+ },
+ "kits/kit_body_corinthians2627h.png": {
+  "author": "El chivista 197207",
+  "file": "Kit body corinthians2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_corinthians2627h.png"
+ },
+ "kits/kit_body_corinthians2627t.png": {
+  "author": "JonasBR",
+  "file": "Kit body corinthians2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_corinthians2627t.png"
+ },
+ "kits/kit_body_cruzeiro2627t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body cruzeiro2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_cruzeiro2627t.png"
+ },
+ "kits/kit_body_cruzeiro26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body cruzeiro26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_cruzeiro26a.png"
+ },
+ "kits/kit_body_cruzeiro26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body cruzeiro26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_cruzeiro26h.png"
+ },
+ "kits/kit_body_flamengo26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body flamengo26a.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_flamengo26a.png"
+ },
+ "kits/kit_body_flamengo26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body flamengo26h.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_flamengo26h.png"
+ },
+ "kits/kit_body_flamengo26t.png": {
+  "author": "Irypixel",
+  "file": "Kit body flamengo26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_flamengo26t.png"
+ },
+ "kits/kit_body_gremio26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body gremio26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_gremio26a.png"
+ },
+ "kits/kit_body_gremio26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body gremio26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_gremio26h.png"
+ },
+ "kits/kit_body_gremio26t.png": {
+  "author": "Irypixel",
+  "file": "Kit body gremio26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_gremio26t.png"
+ },
+ "kits/kit_body_inter26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body inter26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_inter26a.png"
+ },
+ "kits/kit_body_inter26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body inter26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_inter26h.png"
+ },
+ "kits/kit_body_inter26t.png": {
+  "author": "JonasBR",
+  "file": "Kit body inter26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_inter26t.png"
+ },
+ "kits/kit_body_palmeiras26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body palmeiras26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_palmeiras26a.png"
+ },
+ "kits/kit_body_palmeiras26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body palmeiras26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_palmeiras26h.png"
+ },
+ "kits/kit_body_palmeiras26t.png": {
+  "author": "Irypixel",
+  "file": "Kit body palmeiras26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_palmeiras26t.png"
+ },
+ "kits/kit_body_riverplate2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body riverplate2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_riverplate2627a.png"
+ },
+ "kits/kit_body_riverplate2627h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body riverplate2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_riverplate2627h.png"
+ },
+ "kits/kit_body_riverplate26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit body riverplate26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_riverplate26t.png"
+ },
+ "kits/kit_body_santos26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body santos26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_santos26a.png"
+ },
+ "kits/kit_body_santos26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body santos26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_santos26h.png"
+ },
+ "kits/kit_body_santos26t.png": {
+  "author": "JonasBR",
+  "file": "Kit body santos26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_santos26t.png"
+ },
+ "kits/kit_body_spfc26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body spfc26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_spfc26a.png"
+ },
+ "kits/kit_body_spfc26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body spfc26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_spfc26h.png"
+ },
+ "kits/kit_body_spfc26t.png": {
+  "author": "Irypixel",
+  "file": "Kit body spfc26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_spfc26t.png"
+ },
+ "kits/kit_body_vasco26a.png": {
+  "author": "JonasBR",
+  "file": "Kit body vasco26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_vasco26a.png"
+ },
+ "kits/kit_body_vasco26h.png": {
+  "author": "JonasBR",
+  "file": "Kit body vasco26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_vasco26h.png"
+ },
+ "kits/kit_body_vasco26t.png": {
+  "author": "JonasBR",
+  "file": "Kit body vasco26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_body_vasco26t.png"
+ },
+ "kits/kit_left_arm.svg": {
+  "author": "Yarl • PL",
+  "file": "Kit left arm.svg",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm.svg"
+ },
+ "kits/kit_left_arm_atleticomg26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm atleticomg26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_atleticomg26a.png"
+ },
+ "kits/kit_left_arm_atleticomg26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm atleticomg26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_atleticomg26h.png"
+ },
+ "kits/kit_left_arm_atleticomg26t.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm atleticomg26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_atleticomg26t.png"
+ },
+ "kits/kit_left_arm_boca2627h.png": {
+  "author": "BocaJuniors00",
+  "file": "Kit left arm boca2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_boca2627h.png"
+ },
+ "kits/kit_left_arm_bocajuniors2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm bocajuniors2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_bocajuniors2627a.png"
+ },
+ "kits/kit_left_arm_bocajuniors26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm bocajuniors26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_bocajuniors26t.png"
+ },
+ "kits/kit_left_arm_botafogo2627a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm botafogo2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_botafogo2627a.png"
+ },
+ "kits/kit_left_arm_botafogo2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm botafogo2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_botafogo2627h.png"
+ },
+ "kits/kit_left_arm_botafogo2627t.png": {
+  "author": "Bruno-ban",
+  "file": "Kit left arm botafogo2627t.png",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_botafogo2627t.png"
+ },
+ "kits/kit_left_arm_corinthians2627a.png": {
+  "author": "El chivista 197207",
+  "file": "Kit left arm corinthians2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_corinthians2627a.png"
+ },
+ "kits/kit_left_arm_corinthians2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm corinthians2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_corinthians2627h.png"
+ },
+ "kits/kit_left_arm_corinthians2627t.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm corinthians2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_corinthians2627t.png"
+ },
+ "kits/kit_left_arm_cruzeiro2627t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm cruzeiro2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_cruzeiro2627t.png"
+ },
+ "kits/kit_left_arm_cruzeiro26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm cruzeiro26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_cruzeiro26a.png"
+ },
+ "kits/kit_left_arm_cruzeiro26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm cruzeiro26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_cruzeiro26h.png"
+ },
+ "kits/kit_left_arm_flamengo26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm flamengo26a.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_flamengo26a.png"
+ },
+ "kits/kit_left_arm_flamengo26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm flamengo26h.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_flamengo26h.png"
+ },
+ "kits/kit_left_arm_flamengo26t.png": {
+  "author": "Irypixel",
+  "file": "Kit left arm flamengo26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_flamengo26t.png"
+ },
+ "kits/kit_left_arm_gremio26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm gremio26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_gremio26a.png"
+ },
+ "kits/kit_left_arm_gremio26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm gremio26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_gremio26h.png"
+ },
+ "kits/kit_left_arm_gremio26t.png": {
+  "author": "Irypixel",
+  "file": "Kit left arm gremio26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_gremio26t.png"
+ },
+ "kits/kit_left_arm_inter26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm inter26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_inter26a.png"
+ },
+ "kits/kit_left_arm_inter26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm inter26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_inter26h.png"
+ },
+ "kits/kit_left_arm_inter26t.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm inter26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_inter26t.png"
+ },
+ "kits/kit_left_arm_palmeiras26t.png": {
+  "author": "Irypixel",
+  "file": "Kit left arm palmeiras26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_palmeiras26t.png"
+ },
+ "kits/kit_left_arm_riverplate2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm riverplate2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_riverplate2627a.png"
+ },
+ "kits/kit_left_arm_riverplate2627h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm riverplate2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_riverplate2627h.png"
+ },
+ "kits/kit_left_arm_riverplate26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit left arm riverplate26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_riverplate26t.png"
+ },
+ "kits/kit_left_arm_santos26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm santos26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_santos26a.png"
+ },
+ "kits/kit_left_arm_santos26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm santos26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_santos26h.png"
+ },
+ "kits/kit_left_arm_santos26t.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm santos26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_santos26t.png"
+ },
+ "kits/kit_left_arm_spfc26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm spfc26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_spfc26a.png"
+ },
+ "kits/kit_left_arm_spfc26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm spfc26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_spfc26h.png"
+ },
+ "kits/kit_left_arm_spfc26t.png": {
+  "author": "Irypixel",
+  "file": "Kit left arm spfc26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_spfc26t.png"
+ },
+ "kits/kit_left_arm_vasco26a.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm vasco26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_vasco26a.png"
+ },
+ "kits/kit_left_arm_vasco26h.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm vasco26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_vasco26h.png"
+ },
+ "kits/kit_left_arm_vasco26t.png": {
+  "author": "JonasBR",
+  "file": "Kit left arm vasco26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_left_arm_vasco26t.png"
+ },
+ "kits/kit_right_arm.svg": {
+  "author": "desconhecido",
+  "file": "Kit right arm.svg",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm.svg"
+ },
+ "kits/kit_right_arm_atleticomg26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm atleticomg26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_atleticomg26a.png"
+ },
+ "kits/kit_right_arm_atleticomg26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm atleticomg26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_atleticomg26h.png"
+ },
+ "kits/kit_right_arm_atleticomg26t.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm atleticomg26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_atleticomg26t.png"
+ },
+ "kits/kit_right_arm_boca2627h.png": {
+  "author": "BocaJuniors00",
+  "file": "Kit right arm boca2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_boca2627h.png"
+ },
+ "kits/kit_right_arm_bocajuniors2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm bocajuniors2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_bocajuniors2627a.png"
+ },
+ "kits/kit_right_arm_bocajuniors26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm bocajuniors26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_bocajuniors26t.png"
+ },
+ "kits/kit_right_arm_botafogo2627a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm botafogo2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_botafogo2627a.png"
+ },
+ "kits/kit_right_arm_botafogo2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm botafogo2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_botafogo2627h.png"
+ },
+ "kits/kit_right_arm_botafogo2627t.png": {
+  "author": "Bruno-ban",
+  "file": "Kit right arm botafogo2627t.png",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_botafogo2627t.png"
+ },
+ "kits/kit_right_arm_corinthians2627a.png": {
+  "author": "El chivista 197207",
+  "file": "Kit right arm corinthians2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_corinthians2627a.png"
+ },
+ "kits/kit_right_arm_corinthians2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm corinthians2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_corinthians2627h.png"
+ },
+ "kits/kit_right_arm_corinthians2627t.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm corinthians2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_corinthians2627t.png"
+ },
+ "kits/kit_right_arm_cruzeiro2627t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm cruzeiro2627t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_cruzeiro2627t.png"
+ },
+ "kits/kit_right_arm_flamengo26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm flamengo26a.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_flamengo26a.png"
+ },
+ "kits/kit_right_arm_flamengo26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm flamengo26h.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_flamengo26h.png"
+ },
+ "kits/kit_right_arm_flamengo26t.png": {
+  "author": "Irypixel",
+  "file": "Kit right arm flamengo26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_flamengo26t.png"
+ },
+ "kits/kit_right_arm_gremio26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm gremio26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_gremio26a.png"
+ },
+ "kits/kit_right_arm_gremio26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm gremio26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_gremio26h.png"
+ },
+ "kits/kit_right_arm_gremio26t.png": {
+  "author": "Irypixel",
+  "file": "Kit right arm gremio26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_gremio26t.png"
+ },
+ "kits/kit_right_arm_inter26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm inter26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_inter26a.png"
+ },
+ "kits/kit_right_arm_inter26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm inter26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_inter26h.png"
+ },
+ "kits/kit_right_arm_inter26t.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm inter26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_inter26t.png"
+ },
+ "kits/kit_right_arm_palmeiras26t.png": {
+  "author": "Irypixel",
+  "file": "Kit right arm palmeiras26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_palmeiras26t.png"
+ },
+ "kits/kit_right_arm_riverplate2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm riverplate2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_riverplate2627a.png"
+ },
+ "kits/kit_right_arm_riverplate2627h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm riverplate2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_riverplate2627h.png"
+ },
+ "kits/kit_right_arm_riverplate26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit right arm riverplate26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_riverplate26t.png"
+ },
+ "kits/kit_right_arm_santos26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm santos26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_santos26a.png"
+ },
+ "kits/kit_right_arm_santos26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm santos26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_santos26h.png"
+ },
+ "kits/kit_right_arm_santos26t.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm santos26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_santos26t.png"
+ },
+ "kits/kit_right_arm_spfc26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm spfc26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_spfc26a.png"
+ },
+ "kits/kit_right_arm_spfc26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm spfc26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_spfc26h.png"
+ },
+ "kits/kit_right_arm_spfc26t.png": {
+  "author": "Irypixel",
+  "file": "Kit right arm spfc26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_spfc26t.png"
+ },
+ "kits/kit_right_arm_vasco26a.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm vasco26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_vasco26a.png"
+ },
+ "kits/kit_right_arm_vasco26h.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm vasco26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_vasco26h.png"
+ },
+ "kits/kit_right_arm_vasco26t.png": {
+  "author": "JonasBR",
+  "file": "Kit right arm vasco26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_right_arm_vasco26t.png"
+ },
+ "kits/kit_shorts.svg": {
+  "author": "desconhecido",
+  "file": "Kit shorts.svg",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts.svg"
+ },
+ "kits/kit_shorts_atleticomg26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts atleticomg26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_atleticomg26h.png"
+ },
+ "kits/kit_shorts_atleticomg26t.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts atleticomg26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_atleticomg26t.png"
+ },
+ "kits/kit_shorts_bel26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts bel26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_bel26a.png"
+ },
+ "kits/kit_shorts_boca2627h.png": {
+  "author": "BocaJuniors00",
+  "file": "Kit shorts boca2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_boca2627h.png"
+ },
+ "kits/kit_shorts_bocajuniors2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts bocajuniors2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_bocajuniors2627a.png"
+ },
+ "kits/kit_shorts_bocajuniors26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts bocajuniors26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_bocajuniors26t.png"
+ },
+ "kits/kit_shorts_corinthians2627h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts corinthians2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_corinthians2627h.png"
+ },
+ "kits/kit_shorts_flamengo26a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts flamengo26a.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_flamengo26a.png"
+ },
+ "kits/kit_shorts_flamengo26h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts flamengo26h.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_flamengo26h.png"
+ },
+ "kits/kit_shorts_gremio26a.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts gremio26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_gremio26a.png"
+ },
+ "kits/kit_shorts_gremio26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts gremio26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_gremio26h.png"
+ },
+ "kits/kit_shorts_gremio26t.png": {
+  "author": "Irypixel",
+  "file": "Kit shorts gremio26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_gremio26t.png"
+ },
+ "kits/kit_shorts_inter26a.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts inter26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_inter26a.png"
+ },
+ "kits/kit_shorts_inter26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts inter26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_inter26h.png"
+ },
+ "kits/kit_shorts_inter26t.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts inter26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_inter26t.png"
+ },
+ "kits/kit_shorts_nikevapor5w.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts nikevapor5w.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_nikevapor5w.png"
+ },
+ "kits/kit_shorts_palmeiras26a.png": {
+  "author": "Eduzs",
+  "file": "Kit shorts palmeiras26a.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_palmeiras26a.png"
+ },
+ "kits/kit_shorts_palmeiras26h.png": {
+  "author": "Eduzs",
+  "file": "Kit shorts palmeiras26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_palmeiras26h.png"
+ },
+ "kits/kit_shorts_riverplate2627h.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts riverplate2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_riverplate2627h.png"
+ },
+ "kits/kit_shorts_riverplate26t.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts riverplate26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_riverplate26t.png"
+ },
+ "kits/kit_shorts_santos26a.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts santos26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_santos26a.png"
+ },
+ "kits/kit_shorts_santos26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts santos26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_santos26h.png"
+ },
+ "kits/kit_shorts_spfc26a.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts spfc26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_spfc26a.png"
+ },
+ "kits/kit_shorts_spfc26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts spfc26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_spfc26h.png"
+ },
+ "kits/kit_shorts_spfc26t.png": {
+  "author": "Irypixel",
+  "file": "Kit shorts spfc26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_spfc26t.png"
+ },
+ "kits/kit_shorts_unionberlin2627a.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit shorts unionberlin2627a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_unionberlin2627a.png"
+ },
+ "kits/kit_shorts_vasco26a.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts vasco26a.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_vasco26a.png"
+ },
+ "kits/kit_shorts_vasco26h.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts vasco26h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_vasco26h.png"
+ },
+ "kits/kit_shorts_vasco26t.png": {
+  "author": "JonasBR",
+  "file": "Kit shorts vasco26t.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_shorts_vasco26t.png"
+ },
+ "kits/kit_socks_adidasblackl.png": {
+  "author": "Eduzs",
+  "file": "Kit socks adidasblackl.png",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_adidasblackl.png"
+ },
+ "kits/kit_socks_adidaswhitel.png": {
+  "author": "Eduzs",
+  "file": "Kit socks adidaswhitel.png",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_adidaswhitel.png"
+ },
+ "kits/kit_socks_atleticomg26tl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks atleticomg26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_atleticomg26tl.png"
+ },
+ "kits/kit_socks_boca2627h.png": {
+  "author": "BocaJuniors00",
+  "file": "Kit socks boca2627h.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_boca2627h.png"
+ },
+ "kits/kit_socks_bocajuniors26tl.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit socks bocajuniors26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_bocajuniors26tl.png"
+ },
+ "kits/kit_socks_botafogo2627hl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks botafogo2627hl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_botafogo2627hl.png"
+ },
+ "kits/kit_socks_botafogo2627tl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks botafogo2627tl.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_botafogo2627tl.png"
+ },
+ "kits/kit_socks_flamengo26hl.png": {
+  "author": "Eduzs",
+  "file": "Kit socks flamengo26hl.png",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_flamengo26hl.png"
+ },
+ "kits/kit_socks_gremio26h2l.png": {
+  "author": "JonasBR",
+  "file": "Kit socks gremio26h2l.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_gremio26h2l.png"
+ },
+ "kits/kit_socks_gremio26hl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks gremio26hl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_gremio26hl.png"
+ },
+ "kits/kit_socks_gremio26tl.png": {
+  "author": "Irypixel",
+  "file": "Kit socks gremio26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_gremio26tl.png"
+ },
+ "kits/kit_socks_long.svg": {
+  "author": "User:Chandler from the English Wikipedia.",
+  "file": "Kit socks long.svg",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_long.svg"
+ },
+ "kits/kit_socks_riverplate2627hl.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit socks riverplate2627hl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_riverplate2627hl.png"
+ },
+ "kits/kit_socks_riverplate26tl.png": {
+  "author": "WikipedyjniAK",
+  "file": "Kit socks riverplate26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_riverplate26tl.png"
+ },
+ "kits/kit_socks_spfc26al.png": {
+  "author": "JonasBR",
+  "file": "Kit socks spfc26al.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_spfc26al.png"
+ },
+ "kits/kit_socks_spfc26hl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks spfc26hl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_spfc26hl.png"
+ },
+ "kits/kit_socks_spfc26tl.png": {
+  "author": "Irypixel",
+  "file": "Kit socks spfc26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_spfc26tl.png"
+ },
+ "kits/kit_socks_vasco26al.png": {
+  "author": "JonasBR",
+  "file": "Kit socks vasco26al.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_vasco26al.png"
+ },
+ "kits/kit_socks_vasco26hl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks vasco26hl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_vasco26hl.png"
+ },
+ "kits/kit_socks_vasco26tl.png": {
+  "author": "JonasBR",
+  "file": "Kit socks vasco26tl.png",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Kit_socks_vasco26tl.png"
+ }
+}

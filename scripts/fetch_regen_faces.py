@@ -16,8 +16,14 @@ Etapas (subcomandos):
             de rejeição) com conjuntos de prompts; grava scores.json.
   sheets    folhas de contato (aceitos/rejeitados por balde) para conferência
             visual em /tmp/claude-0/qa/.
-  build     recorta (cabeça e ombros), reduz para 160x160 WebP em
-            public/media/regens/<n>.webp e escreve src/data/regenFaces.json.
+  sweep     folha ordenada por um score (ex.: "sweep glasses --lo .2 --hi .6
+            --male") para escolher limiares.
+  build     recorta (rosto inteiro, para o avatar redondo), reduz para 160x160
+            WebP em public/media/regens/<n>.webp e escreve src/data/regenFaces.json.
+
+Fluxo completo:
+  timeout 540 python3 scripts/fetch_regen_faces.py download   (repetir)
+  python3 scripts/fetch_regen_faces.py embed && ... classify && ... sheets && ... build
 
 Dependências: pip install torch --index-url https://download.pytorch.org/whl/cpu
               pip install open_clip_torch pillow numpy requests
@@ -222,7 +228,9 @@ REJECTS = {
     "notphoto": (["a painting", "a drawing", "a cartoon", "a 3D render", "a doll"],
                  ["a photograph", "a real photo of a person"]),
     "occluded": (["a person covering their face with a hand", "a person holding a microphone",
-                  "a person wearing headphones", "a person with something in front of their face"], NEUTRAL),
+                  "a person wearing headphones", "a person with something in front of their face",
+                  "a person resting their chin on their hand", "a person with a hand touching their face"],
+                 NEUTRAL),
 }
 
 
@@ -327,7 +335,8 @@ def cmd_classify(args):
 # ----------------------------------------------------------------- seleção ---
 
 MIN_MALE, MIN_MALE2 = 0.97, 0.93
-REJ_MAX = {"glasses": 0.25, "hat": 0.5, "multi": 0.5, "makeup": 0.5, "artifact": 0.5,
+MIN_MALE_LOGIT = 8.0  # logit(male) + logit(male2): corta os andróginos da faixa limítrofe
+REJ_MAX = {"glasses": 0.25, "hat": 0.6, "multi": 0.3, "makeup": 0.5, "artifact": 0.5,
            "tilt": 0.4, "notphoto": 0.5, "occluded": 0.5}
 MAX_CHILD = 0.25
 MAX_OLD = 0.25  # P(middle) + P(old)
@@ -349,9 +358,16 @@ def age_bucket(sc) -> str:
 
 
 
+def male_logit(sc) -> float:
+    import math
+
+    lg = lambda p: math.log(min(p, 0.9999) / (1 - min(p, 0.9999)))  # noqa: E731
+    return lg(sc["male"]) + lg(sc["male2"])
+
+
 def judge(sc) -> tuple[bool, str]:
     """(aceito?, motivo) para um rosto."""
-    if sc["male"] < MIN_MALE or sc["male2"] < MIN_MALE2:
+    if sc["male"] < MIN_MALE or sc["male2"] < MIN_MALE2 or male_logit(sc) < MIN_MALE_LOGIT:
         return False, "gender"
     for k, lim in REJ_MAX.items():
         if sc["rej"][k] > lim:
@@ -366,8 +382,19 @@ def judge(sc) -> tuple[bool, str]:
     return True, "ok"
 
 
+# O StyleGAN do site quase não gera negros (truncamento puxa para a média do
+# FFHQ), e o CLIP joga pardos escuros em "medium". Quem fica em "medium" mas
+# com fatia relevante de "dark" vai para "dark" (afro-brasileiros de pele mais
+# clara também são lidos como negros no jogo).
+DARK_SHARE = 0.02
+
+
 def skin_of(sc) -> str:
-    return max(sc["skin"], key=sc["skin"].get)
+    sk = sc["skin"]
+    best = max(sk, key=sk.get)
+    if best == "medium" and sk["dark"] / (sk["dark"] + sk["medium"]) >= DARK_SHARE:
+        return "dark"
+    return best
 
 
 def load_scores():

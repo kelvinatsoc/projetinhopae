@@ -60,7 +60,11 @@ COMPS = {
 }
 
 # Títulos da Wikipedia em inglês que mudaram em relação ao catálogo
-TITLE_OVERRIDES = {"amazonas": "Amazonas Futebol Clube"}
+TITLE_OVERRIDES = {
+    "amazonas": "Amazonas Futebol Clube",
+    # o catálogo aponta o Barra de Teresópolis (RJ); o clube do jogo é o de Balneário Camboriú (SC)
+    "barra-sc": "Barra Futebol Clube (SC)",
+}
 
 # Correções manuais depois da conferência visual.
 # Escudo: clubId -> (arquivo, "commons" | "en")
@@ -166,6 +170,45 @@ def raw_path(wiki, name, width):
     return os.path.join(RAWDIR, h + ".bin")
 
 
+def thumb_urls(files, width, wiki="commons"):
+    """URLs diretas das miniaturas (ou do original, se for menor), 50 arquivos por requisição.
+    Evita o redirecionamento de Special:FilePath e a segunda tentativa sem miniatura."""
+    api = wm.COMMONS_API if wiki == "commons" else EN_API
+    out = {}
+    for batch in chunks(sorted(set(files)), 50):
+        r = wm.api(api, {"action": "query", "titles": "|".join("File:" + f for f in batch),
+                         "prop": "imageinfo", "iiprop": "url|size|mime", "iiurlwidth": str(width)})
+        if not r:
+            continue
+        q = r.get("query", {})
+        norm = {x["to"]: x["from"] for x in q.get("normalized", [])}
+        for pg in q.get("pages", []):
+            orig = norm.get(pg["title"], pg["title"]).split(":", 1)[1]
+            ii = (pg.get("imageinfo") or [{}])[0]
+            url = ii.get("thumburl") or ii.get("url")
+            if ii.get("mime") == "image/svg+xml" and not ii.get("thumburl"):
+                url = None
+            out[orig] = url
+    return out
+
+
+def fetch_url(name, width, wiki, url):
+    """Baixa a URL direta (com o mesmo cache de fetch_raw)."""
+    p = raw_path(wiki, name, width)
+    if os.path.exists(p) and os.path.getsize(p) > 0:
+        with open(p, "rb") as f:
+            return f.read()
+    if not url:
+        return fetch_raw(name, width, wiki)
+    r = wm.get(url)
+    if r is None or r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/"):
+        return fetch_raw(name, width, wiki)
+    os.makedirs(RAWDIR, exist_ok=True)
+    with open(p, "wb") as f:
+        f.write(r.content)
+    return r.content
+
+
 def fetch_raw(name, width, wiki="commons"):
     """Baixa (com cache) um arquivo da Wikimedia. wiki: "commons" ou "en".
     Tenta a miniatura na largura pedida e, se não der (raster menor que a largura), o original."""
@@ -252,19 +295,79 @@ def safe_name(title):
     return re.sub(r"[^\w\-]+", "_", title)
 
 
+def prefetch_texts(api, items):
+    """Baixa de uma vez (50 títulos por requisição) os wikitexts ainda fora do cache.
+    items: [(título, nome_do_cache)] no mesmo formato de wiki_text()."""
+    todo = [(t, n) for t, n in items if t and not os.path.exists(os.path.join(RAWDIR, n + ".txt"))]
+    os.makedirs(RAWDIR, exist_ok=True)
+    for batch in chunks(todo, 50):
+        r = wm.api(api, {"action": "query", "titles": "|".join(t for t, _ in batch), "redirects": 1,
+                         "prop": "revisions", "rvprop": "content", "rvslots": "main"})
+        if not r:
+            continue
+        q = r.get("query", {})
+        norm = {x["from"]: x["to"] for x in q.get("normalized", [])}
+        redir = {x["from"]: x["to"] for x in q.get("redirects", [])}
+        pages = {p["title"]: p for p in q.get("pages", [])}
+        for t0, name in batch:
+            t = norm.get(t0, t0)
+            t = redir.get(t, t)
+            p = pages.get(t)
+            if p is None:
+                continue  # resposta incompleta: tenta de novo depois
+            try:
+                txt = p["revisions"][0]["slots"]["main"]["content"]
+            except (KeyError, IndexError):
+                txt = ""
+            with open(os.path.join(RAWDIR, name + ".txt"), "w", encoding="utf-8") as f:
+                f.write(txt)
+
+
+def pt_title_cached(title):
+    path = os.path.join(CACHE, "pt", safe_name(title) + ".txt")
+    return os.path.exists(path) and os.path.getsize(path) > 0
+
+
+def prefetch_club_texts(db):
+    """Artigos pt dos clubes, predefinições de infobox pt e artigos en ausentes, em lote."""
+    clubs = db["clubs"]
+    prefetch_texts(PT_API, [(v.get("ptTitle"), "pt_" + safe_name(v["ptTitle"]))
+                            for v in clubs.values() if v.get("ptTitle") and not pt_title_cached(v["ptTitle"])])
+    tpl = []
+    for v in clubs.values():
+        t = v.get("ptTitle")
+        if not t:
+            continue
+        txt = pt_text_base(t)
+        if not field_raw(txt, ["imagem", "img", "alcunhas"]):
+            m = re.search(r"\{\{\s*(Info/[^}|\n]+?)\s*\}\}", txt)
+            if m and m.group(1).strip().lower() not in ("info/clube de futebol", "info/futebol/clube"):
+                name = "Predefinição:" + m.group(1).strip()
+                tpl.append((name, "pt_" + safe_name(name)))
+    prefetch_texts(PT_API, tpl)
+    en = []
+    for c in ALL_CLUBS:
+        if c["id"] in TITLE_OVERRIDES or not os.path.exists(os.path.join(CACHE, "wikitext", c["id"] + ".txt")):
+            en.append((clubs[c["id"]].get("enTitle"), "en_" + c["id"]))
+    prefetch_texts(EN_API, en)
+
+
+def pt_text_base(title):
+    path = os.path.join(CACHE, "pt", safe_name(title) + ".txt")
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    return wiki_text(PT_API, title, "pt_" + safe_name(title))
+
+
 def pt_text(title):
     """Wikitext em português: usa scripts/cache/pt/ (fetch_pt_positions.py) ou baixa.
     Se a infobox estiver numa predefinição própria ({{Info/Sport Club Corinthians Paulista}}),
     acrescenta o texto dela."""
     if not title:
         return ""
-    path = os.path.join(CACHE, "pt", safe_name(title) + ".txt")
-    if os.path.exists(path) and os.path.getsize(path) > 0:
-        with open(path, encoding="utf-8") as f:
-            txt = f.read()
-    else:
-        txt = wiki_text(PT_API, title, "pt_" + safe_name(title))
-    if not field_raw(txt, ["imagem", "alcunhas"]):
+    txt = pt_text_base(title)
+    if not field_raw(txt, ["imagem", "img", "alcunhas"]):
         m = re.search(r"\{\{\s*(Info/[^}|\n]+?)\s*\}\}", txt)
         if m and m.group(1).strip().lower() not in ("info/clube de futebol", "info/futebol/clube"):
             name = "Predefinição:" + m.group(1).strip()
@@ -274,7 +377,7 @@ def pt_text(title):
 
 def en_text(cid, title):
     path = os.path.join(CACHE, "wikitext", cid + ".txt")
-    if os.path.exists(path) and os.path.getsize(path) > 0:
+    if cid not in TITLE_OVERRIDES and os.path.exists(path) and os.path.getsize(path) > 0:
         with open(path, encoding="utf-8") as f:
             return f.read()
     return wiki_text(EN_API, title, "en_" + cid)
@@ -302,7 +405,8 @@ def page_qids(api, titles):
 # ---------------------------------------------------------------- etapa 1: QIDs
 def resolve(db):
     clubs = db.setdefault("clubs", {})
-    todo = [c for c in ALL_CLUBS if not clubs.get(c["id"], {}).get("qid")]
+    todo = [c for c in ALL_CLUBS if not clubs.get(c["id"], {}).get("qid")
+            or (c["id"] in TITLE_OVERRIDES and clubs[c["id"]].get("enTitle") != TITLE_OVERRIDES[c["id"]])]
     print(f"resolve: {len(todo)} clubes sem QID")
     for batch in chunks(todo, 50):
         titles = [TITLE_OVERRIDES.get(c["id"], c["wiki"]) for c in batch]
@@ -473,15 +577,18 @@ def clean_nick_list(v, english=False):
     v = re.sub(r"<!--.*?-->", "", v, flags=re.S)
     v = re.sub(r"\{\{\s*(?:efn|refn|ref|citation needed|cn|sfn|nota|nota de rodapé)[^{}]*\}\}", "", v, flags=re.I)
     v = re.sub(r"\{\{\s*(?:small|pequeno|nowrap|lang\|[a-z-]+)\|([^{}]*)\}\}", r"\1", v, flags=re.I)
-    v = re.sub(r"\{\{\s*(?:plainlist|plain list|unbulleted list|ubl|flatlist|lista simples)\s*\|?", "", v, flags=re.I)
+    v = re.sub(r"\{\{\s*(?:plainlist|plain list|unbulleted list|ubl|flatlist|lista simples|collapsible list|"
+               r"lista expansível)\s*\|?", "", v, flags=re.I)
+    v = re.sub(r"\b(?:title|titulo|título)\s*=[^|]*\|", "", v, flags=re.I)
+    v = re.sub(r"''\s+''", ",", v)  # ''Apelido1'' ''Apelido2
     v = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]", r"\1", v)
-    v = re.sub(r"<br\s*/?\s*>|\n|\*|;|•|\|", ",", v, flags=re.I)
+    v = re.sub(r"<br\s*/?\s*>?|\n|\*|;|•|\|", ",", v, flags=re.I)
     v = re.sub(r"\{\{|\}\}", ",", v)
     v = re.sub(r"<[^>]+>", "", v)
     v = re.sub(r"\([^)]*\)|\[[^\]]*\]", "", v)  # glosas/traduções entre parênteses
     v = v.replace("''", "").replace('"', "").replace("“", "").replace("”", "").replace("«", "").replace("»", "")
     out = []
-    for part in re.split(r",| / ", v):
+    for part in re.split(r",| / | ou ", v):
         p = re.sub(r"\s+", " ", html.unescape(part)).strip(" .:-–—'")
         if not p or len(p) > 32 or "=" in p or "http" in p:
             continue
@@ -496,6 +603,7 @@ def clean_nick_list(v, english=False):
 def info_stage(db):
     """Fundação (ano) e apelidos de cada clube, para build_database.py."""
     clubs = db["clubs"]
+    prefetch_club_texts(db)
     for c in ALL_CLUBS:
         cid = c["id"]
         v = clubs[cid]
@@ -548,11 +656,12 @@ def crest_candidates(db):
     """Define o arquivo de escudo de cada clube:
     P154 atual > imagem da infobox pt (Commons) > imagem da infobox en (Commons ou local) > P154 antigo."""
     clubs = db["clubs"]
+    prefetch_club_texts(db)
     en_files, pt_files = set(), set()
     for c in ALL_CLUBS:
         v = clubs.setdefault(c["id"], {})
         v["enInfobox"] = infobox_field(en_text(c["id"], v.get("enTitle")), ["image", "logo", "clubcrest", "crest"])
-        v["ptInfobox"] = infobox_field(pt_text(v.get("ptTitle")), ["imagem", "escudo", "logo"])
+        v["ptInfobox"] = infobox_field(pt_text(v.get("ptTitle")), ["imagem", "img", "escudo", "logo"])
         if v["enInfobox"]:
             en_files.add(v["enInfobox"])
         if v["ptInfobox"]:
@@ -653,6 +762,15 @@ def crests(db, force=False):
     crest_candidates(db)
     clubs = db["clubs"]
     ok, miss = 0, []
+    todo = {"commons": set(), "en": set()}
+    for c in ALL_CLUBS:
+        v, out = clubs[c["id"]], os.path.join(MEDIA, "crests", c["id"] + ".webp")
+        cr = v.get("crest")
+        if cr and (force or not os.path.exists(out) or v.get("crestDone") != f"{cr['wiki']}|{cr['file']}") \
+                and not os.path.exists(raw_path(cr["wiki"], cr["file"], 500 if cr["wiki"] == "commons" else 250)):
+            todo[cr["wiki"]].add(cr["file"])
+    urls = {"commons": thumb_urls(todo["commons"], 500, "commons") if todo["commons"] else {},
+            "en": thumb_urls(todo["en"], 250, "en") if todo["en"] else {}}
     for c in ALL_CLUBS:
         v = clubs[c["id"]]
         out = os.path.join(MEDIA, "crests", c["id"] + ".webp")
@@ -665,7 +783,7 @@ def crests(db, force=False):
             ok += 1
             continue
         width = 500 if cr["wiki"] == "commons" else 250
-        data = fetch_raw(cr["file"], width, cr["wiki"])
+        data = fetch_url(cr["file"], width, cr["wiki"], urls[cr["wiki"]].get(cr["file"]))
         if not data or not to_logo_webp(data, out):
             print(f"  falhou: {c['id']} {cr}")
             miss.append(c["id"])
@@ -719,6 +837,33 @@ def venue_article_image(v):
     return None
 
 
+BAD_PHOTO = re.compile(r"map|mapa|plan|planta|logo|escudo|ingresso|ticket|placa|plaque|maquete|projeto|"
+                       r"render|vesti[aá]rio|banheiro|locker|svg|seat|cadeira|bilhete|entrada_?de|"
+                       r"diagram|croqui|desenho|drawing|camisa|shirt|jersey|trof|troph", re.I)
+GOOD_PHOTO = re.compile(r"a[eé]rea|aerial|vista|panor|view|fachada|facade|exterior|est[aá]dio|stadium|estadio", re.I)
+
+
+def category_image(cat):
+    """Melhor candidata a foto do estádio na categoria do Commons (P373): JPG grande, paisagem,
+    sem cara de mapa/planta/ingresso. A conferência visual decide se fica."""
+    if not cat:
+        return None
+    r = wm.api(wm.COMMONS_API, {"action": "query", "generator": "categorymembers",
+                                "gcmtitle": "Category:" + cat, "gcmtype": "file", "gcmlimit": "100",
+                                "prop": "imageinfo", "iiprop": "size|mime"})
+    best, best_score = None, 0
+    for p in (r or {}).get("query", {}).get("pages", []):
+        ii = (p.get("imageinfo") or [{}])[0]
+        name = p["title"].split(":", 1)[1]
+        w, h = ii.get("width") or 0, ii.get("height") or 1
+        if ii.get("mime") != "image/jpeg" or w < 1000 or not (1.25 <= w / h <= 2.6) or BAD_PHOTO.search(name):
+            continue
+        score = 1 + (2 if GOOD_PHOTO.search(name) else 0) + min(w, 4000) / 4000
+        if score > best_score:
+            best, best_score = name, score
+    return best
+
+
 def stadiums(db, force=False):
     clubs, venues = db["clubs"], db.setdefault("venues", {})
     need = sorted({clubs[c["id"]].get("venue") for c in ALL_CLUBS if clubs[c["id"]].get("venue")})
@@ -736,6 +881,10 @@ def stadiums(db, force=False):
                 img = None
             if not img:
                 img = venue_article_image(v)
+            if not img:
+                if "catImage" not in v:
+                    v["catImage"] = category_image(v.get("p373"))
+                img = v["catImage"]
         v["image"] = img
         out = os.path.join(MEDIA, "stadiums", q + ".webp")
         if not img:

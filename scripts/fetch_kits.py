@@ -62,6 +62,8 @@ EN_COLOR = {"la": "leftarm", "b": "body", "ra": "rightarm", "sh": "shorts", "so"
 PT_COLOR = {"la": "braçoesquerdo", "b": "corpo", "ra": "braçodireito", "sh": "calções", "so": "meias"}
 PT_SKIN = {"la": "skin_be", "b": "skin", "ra": "skin_bd", "sh": "skin_calção", "so": "skin_meia"}
 KIT_NAMES = ("Titular", "Reserva", "Terceiro")
+QA_CLUBS = ("flamengo", "palmeiras", "corinthians", "sao-paulo", "santos", "gremio", "internacional",
+            "atletico-mg", "vasco", "botafogo", "boca-juniors", "river-plate")
 # artigos do catálogo que apontam para outro clube homônimo
 TITLE_FIX = {"barra-sc": "Barra Futebol Clube (SC)"}
 
@@ -416,7 +418,9 @@ def query_info(api: str, names: list, info: dict, repo: str, path: str | None = 
             if p.get("missing") and not ii or not ii:
                 info.setdefault(orig, {"exists": False})
                 continue
-            md = ii.get("extmetadata", {})
+            md = ii.get("extmetadata") or {}
+            if not isinstance(md, dict):  # a API devolve [] quando não há metadados
+                md = {}
             info[orig] = {
                 "exists": True, "repo": repo, "title": p["title"][5:],
                 "url": ii.get("url"), "w": ii.get("width"), "h": ii.get("height"), "mime": ii.get("mime"),
@@ -483,19 +487,32 @@ def download(specs: dict | None = None):
     names = local_names(inf)
     os.makedirs(MEDIA, exist_ok=True)
     need = [n for n in needed_files(specs) if n in names]
-    todo = [n for n in need if not os.path.exists(os.path.join(MEDIA, names[n]))]
-    print(f"download: {len(todo)} de {len(need)} arquivos")
     failed = load(work("failed.json"), {})
+    todo = [n for n in need if not os.path.exists(os.path.join(MEDIA, names[n])) and failed.get(n, 0) < 3]
+    # prioridade: contornos, clubes da conferência visual, depois a ordem do catálogo
+    order = {title_key(v): -1 for v in OVERLAYS.values()}
+    clubs = [c for c in QA_CLUBS] + [c["id"] for c in ALL_CLUBS]
+    ch = chosen(specs)
+    for i, cid in enumerate(clubs):
+        for k in ch.get(cid, []):
+            for x in PARTS:
+                if k["p" + x]:
+                    order.setdefault(pattern_file(x, k["p" + x]), i)
+    todo.sort(key=lambda n: (order.get(n, 9999), n))
+    print(f"download: {len(todo)} de {len(need)} arquivos")
     for i, n in enumerate(todo):
         meta = inf[n]
         wiki = "en.wikipedia.org" if meta.get("repo") == "en" else "commons.wikimedia.org"
         data = wm.download(meta.get("title") or n, wiki=wiki)
         if not valid_file(data, names[n]):
             failed[n] = failed.get(n, 0) + 1
+            save(work("failed.json"), failed)
             print(f"  falhou: {n}")
             continue
-        with open(os.path.join(MEDIA, names[n]), "wb") as f:
+        dst = os.path.join(MEDIA, names[n])
+        with open(dst + ".tmp", "wb") as f:
             f.write(data)
+        os.replace(dst + ".tmp", dst)
         failed.pop(n, None)
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(todo)}")
@@ -503,3 +520,255 @@ def download(specs: dict | None = None):
     save(work("failed.json"), failed)
     have = sum(1 for n in need if os.path.exists(os.path.join(MEDIA, names[n])))
     print(f"download: {have}/{len(need)} arquivos em {MEDIA}")
+
+
+# ---------------------------------------------------------------- etapa 4: kits.json e créditos
+BOXES = {"la": (0, 0, 31, 59), "b": (31, 0, 38, 59), "ra": (69, 0, 31, 59), "sh": (0, 59, 100, 36), "so": (0, 95, 100, 40)}
+
+
+def club_colors(cid: str) -> list:
+    db = load(os.path.join(ROOT, "src", "data", "database.json"), {})
+    for c in db.get("clubs", []):
+        if c.get("id") == cid and c.get("colors"):
+            return c["colors"]
+    cat = next((c for c in ALL_CLUBS if c["id"] == cid), {})
+    return cat.get("colors") or ["#FFFFFF", "#111111"]
+
+
+def synth_kit(colors: list) -> dict:
+    c0 = norm_color(colors[0]) or "#FFFFFF"
+    c1 = norm_color(colors[1]) if len(colors) > 1 else None
+    c1 = c1 or ("#111111" if c0 != "#111111" else "#FFFFFF")
+    return {"name": "Titular", "la": c0, "b": c0, "ra": c0, "sh": c1, "so": c0, "synthetic": True}
+
+
+def _paste_pattern(img, path: str, box):
+    """Cola o padrão como o SVG do jogo: canto superior esquerdo, escala "meet" (normalmente 1:1)."""
+    from PIL import Image
+    x, y, w, h = box
+    try:
+        pat = Image.open(path).convert("RGBA")
+    except OSError:
+        return
+    sc = min(w / pat.width, h / pat.height)
+    if abs(sc - 1) > 1e-6:
+        pat = pat.resize((max(1, round(pat.width * sc)), max(1, round(pat.height * sc))), Image.LANCZOS)
+    img.alpha_composite(pat, (x, y))
+
+
+_MASKS = {}
+
+
+def shirt_mask():
+    """Pixels dentro do desenho da camisa (fora dele os contornos da Wikipedia pintam de branco).
+    Polígonos tirados de "Kit left arm.svg", "Kit body.svg" e "Kit right arm.svg"."""
+    if "shirt" in _MASKS:
+        return _MASKS["shirt"]
+    from PIL import Image, ImageDraw
+    m = Image.new("L", (100, 59), 0)
+    d = ImageDraw.Draw(m)
+    d.polygon([(30.5, 5.5), (12, 24), (25, 37), (30.5, 31.5)], fill=255)  # manga esquerda
+    d.polygon([(69.5, 5.5), (88, 24), (75, 37), (69.5, 31.5)], fill=255)  # manga direita
+    d.polygon([(31, 5.5), (41, 5.5), (45, 7.3), (50, 8.5), (55, 7.3), (59, 5.5), (69, 5.5),
+               (69, 58.5), (31, 58.5)], fill=255)  # corpo (com a gola)
+    _MASKS["shirt"] = m
+    return m
+
+
+def shirt_color(kit: dict) -> str:
+    """Cor predominante da camisa já com os padrões (o que se vê de longe em campo)."""
+    from PIL import Image
+    img = Image.new("RGBA", (100, 59), (255, 255, 255, 255))
+    for x in ("la", "b", "ra"):
+        bx, by, bw, bh = BOXES[x]
+        img.paste(Image.new("RGBA", (bw, bh), kit[x]), (bx, by))
+        if kit.get("p" + x):
+            _paste_pattern(img, os.path.join(MEDIA, kit["p" + x]), BOXES[x])
+    mask = shirt_mask()
+    buckets = {}
+    px, mk = img.load(), mask.load()
+    for yy in range(59):
+        for xx in range(100):
+            if not mk[xx, yy]:
+                continue
+            r, g, b, _ = px[xx, yy]
+            key = (r // 40, g // 40, b // 40)
+            acc = buckets.setdefault(key, [0, 0, 0, 0])
+            acc[0] += r
+            acc[1] += g
+            acc[2] += b
+            acc[3] += 1
+    r, g, b, n = max(buckets.values(), key=lambda a: a[3])
+    return "#%02X%02X%02X" % (round(r / n), round(g / n), round(b / n))
+
+
+def build(specs: dict | None = None):
+    specs = specs or load(work("specs.json"), None) or parse()
+    inf = load(work("info.json"), {})
+    names = local_names(inf)
+    have = {n: names[n] for n in names if os.path.exists(os.path.join(MEDIA, names[n]))}
+    out, used = {}, set()
+    stats = {"patterns": 0, "colors": 0, "synthetic": 0, "kits": 0, "dropped": set()}
+    for c in ALL_CLUBS:
+        cid = c["id"]
+        sp = specs.get(cid, {})
+        kits = []
+        for slot, k in enumerate(sp.get(sp.get("src", "en"), []) or []):
+            if not k or slot >= 3:
+                continue
+            e = {"name": KIT_NAMES[slot]}
+            for x in PARTS:
+                # cor vazia na Wikipedia = fundo branco da infobox aparecendo
+                e[x] = k[x] or "#FFFFFF"
+            for x in PARTS:
+                pat = k["p" + x]
+                if not pat:
+                    continue
+                fn = pattern_file(x, pat)
+                if fn in have:
+                    e["p" + x] = have[fn]
+                    used.add(fn)
+                else:
+                    stats["dropped"].add(fn)
+            if e in kits:
+                continue
+            kits.append(e)
+        if not kits:
+            kits = [synth_kit(club_colors(cid))]
+            stats["synthetic"] += 1
+        elif any(any(k.get("p" + x) for x in PARTS) for k in kits):
+            stats["patterns"] += 1
+        else:
+            stats["colors"] += 1
+        for k in kits:
+            k["shirt"] = shirt_color(k)
+        stats["kits"] += len(kits)
+        out[cid] = kits
+    for ov in OVERLAYS.values():
+        if title_key(ov) in have:
+            used.add(title_key(ov))
+        else:
+            print(f"  AVISO: contorno ausente: {ov}")
+    # kits.json compacto (uma linha por clube)
+    os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+    lines = [f" {json.dumps(cid)}: {json.dumps(out[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in out]
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
+        f.write("{\n" + ",\n".join(lines) + "\n}\n")
+    # créditos de cada arquivo publicado
+    cred = {}
+    for n in sorted(used):
+        m = inf[n]
+        title = m.get("title") or n
+        base = "https://en.wikipedia.org/wiki/File:" if m.get("repo") == "en" else "https://commons.wikimedia.org/wiki/File:"
+        cred[f"kits/{have[n]}"] = {"file": title, "author": m.get("author") or "desconhecido",
+                                   "license": m.get("license") or "ver página do arquivo",
+                                   "url": m.get("desc") or base + wm.norm_file(title)}
+    save(CREDITS, cred)
+    # remove arquivos que não são mais usados
+    keep = {have[n] for n in used} | {"credits.json"}
+    if all(n in inf for n in needed_files(specs)):
+        for f in os.listdir(MEDIA):
+            if f not in keep and not f.endswith(".tmp"):
+                os.remove(os.path.join(MEDIA, f))
+    print(f"build: {len(out)} clubes, {stats['kits']} uniformes; com padrões={stats['patterns']} "
+          f"só cores={stats['colors']} sintéticos={stats['synthetic']}; arquivos={len(used)}; "
+          f"padrões sem arquivo={len(stats['dropped'])}")
+    return out
+
+
+# ---------------------------------------------------------------- conferência visual
+QA_DIR = "/tmp/claude-0/qa"
+SVG_PARTS = (("la", 0, 0, 31, 59, "kit_left_arm.svg", "M-1-1V60H30.5V31.5L25,37 12,24 30.5,5.5h2V-1"),
+             ("b", 31, 0, 38, 59, "kit_body.svg", "M-2-1V60H39V58.5H-1V5.5H10c9,4 9,4 18,0H39V-1"),
+             ("ra", 69, 0, 31, 59, "kit_right_arm.svg", "M-1-1V5.5H.5L19,24 6,37 .5,31.5V60H32V-1"),
+             ("sh", 0, 59, 100, 36, "kit_shorts.svg", "m-2-2v40h104V-2zm33,0H69l5,37.5H54l-4-13-4,13H26z"),
+             ("so", 0, 95, 100, 40, "kit_socks_long.svg",
+              "M-3-3V43H31.5L29.5,9.5H44.5V43H55.5V9.5H70.5L68.5,43H103V-3z"))
+_qa_id = [0]
+
+
+def _svg(kit: dict, width: int) -> str:
+    """Mesma marcação do KitView (src/ui/Kit.tsx), com caminhos absolutos."""
+    base = "file://" + MEDIA + "/"
+    _qa_id[0] += 1
+    mid = f"kitqa{_qa_id[0]}"
+    m = [f'<mask id="{mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="135">']
+    g = []
+    for part, x, y, w, h, ov, edge in SVG_PARTS:
+        m.append(f'<svg x="{x}" y="{y}" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><rect width="{w}" '
+                 f'height="{h}" fill="#fff"/><path d="{edge}" fill="#000" stroke="#fff" stroke-linejoin="round"/></svg>')
+        g.append(f'<g><rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{kit[part]}"/>')
+        if kit.get("p" + part):
+            g.append(f'<image href="{base}{kit["p" + part]}" x="{x}" y="{y}" width="{w}" height="{h}" '
+                     f'preserveAspectRatio="xMinYMin meet"/>')
+        g.append(f'<image href="{base}{ov}" x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="none"/></g>')
+    m.append("</mask>")
+    return (f'<svg class="kit" width="{width}" height="{width * 135 / 100:g}" viewBox="0 0 100 135" role="img">'
+            f'<defs>{"".join(m)}</defs><g mask="url(#{mid})">' + "".join(g) + "</g></svg>")
+
+
+def _wiki_html(kit: dict) -> str:
+    """Réplica da predefinição Football kit (divs + imagens em tamanho natural)."""
+    base = "file://" + MEDIA + "/"
+    out = ['<div style="width:100px;margin:0 auto;padding:0;"><div style="position:relative;width:100px;'
+           'height:135px;margin:0 auto;padding:0;">']
+    for part, x, y, w, h, ov, _ in SVG_PARTS:
+        img = f'<img src="{base}{kit["p" + part]}" style="vertical-align:top">' if kit.get("p" + part) else ""
+        out.append(f'<div style="position:absolute;left:{x}px;top:{y}px;width:{w}px;height:{h}px;'
+                   f'background-color:{kit[part]};">{img}</div>')
+        out.append(f'<div style="position:absolute;left:{x}px;top:{y}px;width:{w}px;height:{h}px;">'
+                   f'<img src="{base}{ov}" style="vertical-align:top"></div>')
+    out.append("</div></div>")
+    return "".join(out)
+
+
+def qa(clubs=None):
+    data = load(OUT_JSON, {})
+    clubs = clubs or list(QA_CLUBS)
+    rows = []
+    for cid in clubs:
+        cells = []
+        for k in data.get(cid, []):
+            cells.append(f'<td><div class="t">{html.escape(k["name"])}{" (sint.)" if k.get("synthetic") else ""}</div>'
+                         f'<div class="pair"><div>{_wiki_html(k)}<small>wiki</small></div>'
+                         f'<div>{_svg(k, 100)}<small>svg 100</small></div>'
+                         f'<div class="dark">{_svg(k, 64)}<small>64</small></div></div>'
+                         f'<div class="sw" style="background:{k.get("shirt", k["b"])}"></div></td>')
+        rows.append(f'<tr><th>{html.escape(cid)}</th>{"".join(cells)}</tr>')
+    page = ("<!doctype html><meta charset=utf-8><style>body{font:12px sans-serif;background:#fff;margin:8px}"
+            "td,th{border:1px solid #ccc;padding:4px;vertical-align:top}.pair{display:flex;gap:6px;align-items:flex-start}"
+            ".pair>div{text-align:center}.dark{background:#1d2b25;padding:4px}.dark small{color:#ccc}"
+            "small{display:block;color:#666}.sw{height:6px;margin-top:2px}.t{font-weight:bold}</style>"
+            f"<table>{''.join(rows)}</table>")
+    os.makedirs(QA_DIR, exist_ok=True)
+    path = os.path.join(QA_DIR, "kits.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(page)
+    print(f"qa: {path}")
+    return path
+
+
+# ---------------------------------------------------------------- linha de comando
+def main(argv):
+    stages = argv or ["parse", "info", "download", "build"]
+    specs = None
+    for st in stages:
+        if st == "parse":
+            specs = parse()
+        elif st == "info":
+            info(specs)
+        elif st == "download":
+            download(specs)
+        elif st == "build":
+            build(specs)
+        elif st == "qa":
+            qa([a for a in argv if a not in ("parse", "info", "download", "build", "qa")] or None)
+            break
+        else:
+            print(f"etapa desconhecida: {st}")
+            return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
