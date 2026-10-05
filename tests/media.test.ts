@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
 import { LEGEND_BY_ID } from "../src/data/legends";
-import { playerImageUrl, registerMedia, type RegenFace } from "../src/engine/media";
+import { playerImageUrl, registerMedia, sportsdbUrl, type RegenFace } from "../src/engine/media";
 import { createWorld, migrateWorld, SAVE_VERSION, type Database } from "../src/engine/world";
 import { spawnLegend, youthIntake } from "../src/engine/youth";
 
@@ -50,5 +50,21 @@ describe("mídia real", () => {
     expect(Object.values(w.players).filter((p) => !p.real && !p.legend).every((p) => p.img?.startsWith("r"))).toBe(true);
     const dbLogos = (db as Database).clubs.filter((c) => c.logo).length;
     expect(Object.values(w.clubs).filter((c) => c.logo).length).toBe(dbLogos);
+  });
+});
+
+describe("fotos do TheSportsDB", () => {
+  it("migrateWorld tira rosto de IA de jogador real e aplica a foto do TheSportsDB", () => {
+    const dp = (db as Database).players.find((x) => x.c === "sao-paulo")!;
+    registerMedia({ regenFaces: FACES, sportsdb: { [`${dp.n}|${dp.b}`]: "cutout/teste.png" } });
+    const w = createWorld(db as Database, { managerName: "T", clubId: "sao-paulo", seed: 3 });
+    const p = Object.values(w.players).find((x) => x.real && x.name === dp.n && x.born === dp.b)!;
+    expect(sportsdbUrl(p)).toBe("https://r2.thesportsdb.com/images/media/player/cutout/teste.png/small");
+    p.img = "r5";
+    delete p.ext;
+    migrateWorld(w, db as Database);
+    expect(p.img?.startsWith("r")).not.toBe(true);
+    expect(p.ext).toBe("cutout/teste.png");
+    registerMedia({ sportsdb: {} });
   });
 });

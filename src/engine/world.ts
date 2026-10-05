@@ -11,7 +11,7 @@ import { repairWorld } from "./integrity";
 import { migrateSetPieces } from "./setpieces";
 import { migrateSponsors } from "./sponsors";
 import { addNews } from "./news";
-import { assignRegenFace, legendImage } from "./media";
+import { assignRegenFace, legendImage, sportsdbPath } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
 import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } from "./rng";
 import { initialEntrants, startSeason } from "./season";
@@ -108,6 +108,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
       initPlayerExtras(w, p);
     }
     if (dp.img && dp.q) p.img = dp.q;
+    p.ext = sportsdbPath(dp.n, dp.b);
     p.clubId = club.id;
     club.players.push(p.id);
     const foreignMult = club.country === "BRA" ? 1 : 0.5;
@@ -188,7 +189,11 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
     if (p.legend) {
       p.img ??= legendImage(p.legend);
     } else if (p.real) {
+      // jogador real nunca usa rosto de IA (saves antigos podiam ter herdado um "r…")
+      if (p.img?.startsWith("r")) delete p.img;
       if (!p.img) p.img = photos.get(`${p.name}|${p.born}`);
+      const ext = sportsdbPath(p.name, p.born);
+      if (ext) p.ext = ext; else delete p.ext;
     } else {
       assignRegenFace(w, p);
     }

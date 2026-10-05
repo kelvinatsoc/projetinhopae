@@ -113,6 +113,7 @@ export interface Player {
   yel: Record<string, number>; // amarelos acumulados por competição
   face: Face;
   photo?: string; // foto personalizada (URL ou dataURL)
+  ext?: string; // foto do TheSportsDB (caminho na CDN, ver media.ts sportsdbUrl), carregada online
   img?: string; // foto empacotada: "Q123" (jogador real, media/players) ou "r45" (rosto de regen, media/regens)
   legend?: string; // id da lenda, se for uma lenda renascida
   real?: boolean; // jogador real (dados da Wikipedia)

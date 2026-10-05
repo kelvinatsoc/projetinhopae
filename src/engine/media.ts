@@ -9,10 +9,12 @@ export type FaceSkin = "light" | "medium" | "dark" | "asian";
 export interface RegenFace { id: number; age: FaceAge; skin: FaceSkin }
 
 let faces: RegenFace[] = [];
+let sportsdb: Record<string, string> = {};
 let buckets = new Map<string, number[]>();
 let legendImages: Record<string, string> = {};
 
-export function registerMedia(m: { regenFaces?: RegenFace[]; legends?: Record<string, string> }) {
+export function registerMedia(m: { regenFaces?: RegenFace[]; legends?: Record<string, string>; sportsdb?: Record<string, string> }) {
+  if (m.sportsdb) sportsdb = m.sportsdb;
   if (m.regenFaces) {
     faces = m.regenFaces;
     buckets = new Map();
@@ -81,6 +83,16 @@ export function assignRegenFace(w: World, p: Player) {
 function pickPool(key: string): number[] | undefined {
   const list = buckets.get(key);
   return list && list.length >= 6 ? list : undefined;
+}
+
+/** Foto do TheSportsDB (só URL; carregada da CDN em tempo de execução) por "nome|ano". */
+export function sportsdbPath(name: string, born: number | undefined): string | undefined {
+  return sportsdb[`${name}|${born}`];
+}
+
+/** URL da variante pequena (/small, ~40 KB) da foto do TheSportsDB. */
+export function sportsdbUrl(p: Pick<Player, "ext">): string | null {
+  return p.ext ? `https://r2.thesportsdb.com/images/media/player/${p.ext}/small` : null;
 }
 
 /** Caminho da foto empacotada do jogador dentro de media/ (ex.: "players/Q1.webp"), se houver. */

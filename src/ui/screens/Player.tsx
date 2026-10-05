@@ -433,6 +433,7 @@ function PhotoCredit({ p }: { p: Player }) {
     loadCredits().then((c) => { if (alive) setCredit(c[`players/${real}.webp`] ?? null); });
     return () => { alive = false; };
   }, [real]);
+  if (!p.photo && p.ext) return <div className="tiny mt8" style={{ opacity: 0.7 }}>📷 Foto: TheSportsDB.com</div>;
   if (!p.photo && p.img?.startsWith("r")) return <div className="tiny mt8" style={{ opacity: 0.7 }}>Rosto gerado por IA (pessoa que não existe).</div>;
   if (!real || !credit) return null;
   return (

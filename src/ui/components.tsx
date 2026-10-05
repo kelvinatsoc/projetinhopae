@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { formatMoney } from "../engine/finance";
-import { playerImagePath } from "../engine/media";
+import { playerImagePath, sportsdbUrl } from "../engine/media";
 import { age } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
 import type { Club, Player, Pos } from "../engine/types";
@@ -115,19 +115,20 @@ export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
 
 // ---------------------------------------------------------------- avatar
 /**
- * Foto do jogador: foto do usuário > foto real empacotada (Wikimedia Commons) > rosto realista
- * de regen. Jogador real sem foto livre aparece como silhueta com a camisa do clube (como nos apps
+ * Foto do jogador: foto do usuário > foto do TheSportsDB (online, conferida com o clube atual) >
+ * foto real empacotada (Wikimedia Commons, às vezes com a camisa de um clube antigo) > rosto realista
+ * de regen. Se uma imagem falhar (ex.: sem internet), passa para a próxima. Jogador real sem foto livre aparece como silhueta com a camisa do clube (como nos apps
  * oficiais), a não ser que o usuário prefira rostos ilustrados.
  */
 export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club | null; season: number; size?: number }) {
-  const [broken, setBroken] = useState<string | null>(null);
-  const bundled = mediaUrlOrNull(p.photo ? null : playerImagePath(p));
-  const src = p.photo ?? bundled;
-  const cls = `avatar${p.legend ? " legend" : ""}`;
-  if (src && broken !== src) {
+  const [broken, setBroken] = useState<string[]>([]);
+  const cands = p.photo ? [p.photo] : [sportsdbUrl(p), mediaUrlOrNull(playerImagePath(p))];
+  const src = cands.find((u): u is string => !!u && !broken.includes(u));
+  const cls = `avatar${p.legend ? " legend" : ""}${src && src === sportsdbUrl(p) ? " ext" : ""}`;
+  if (src) {
     return (
       <div className={cls} style={{ width: size, height: size }}>
-        <img src={src} alt={p.name} loading="lazy" decoding="async" draggable={false} onError={() => setBroken(src)} />
+        <img key={src} src={src} alt={p.name} loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => setBroken((b) => [...b, src])} />
       </div>
     );
   }

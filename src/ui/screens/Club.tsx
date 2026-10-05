@@ -358,6 +358,7 @@ export function CreditsScreen() {
       <div className="card small">
         <p>Elencos, estádios e datas: <b>Wikipedia</b> (CC BY-SA) e <b>Wikidata</b> (CC0).</p>
         <p className="mt8">Fotos de jogadores e estádios: <b>Wikimedia Commons</b>, com licenças livres. Cada autor está listado abaixo.</p>
+        <p className="mt8">Fotos: <b>TheSportsDB.com</b> (carregadas da internet quando há conexão).</p>
         <p className="mt8">Rostos dos jogadores criados pelo jogo (regens): pessoas que não existem, geradas por IA (StyleGAN, thispersondoesnotexist.com).</p>
         <p className="mt8">Escudos, logos e uniformes são marcas dos respectivos clubes e entidades. Este é um projeto pessoal, sem fins lucrativos.</p>
       </div>

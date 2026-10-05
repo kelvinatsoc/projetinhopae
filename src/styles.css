@@ -203,6 +203,7 @@ h3 { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spa
 .avatar { flex: none; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 30%, #2c4a3b, #13241b); position: relative; }
 .avatar svg, .avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .avatar.legend { box-shadow: 0 0 0 2px var(--legend), 0 0 12px rgba(255, 207, 63, 0.5); }
+.avatar.ext img { object-position: 50% 0; }
 .crest { flex: none; display: block; }
 .crest img { width: 100%; height: 100%; object-fit: contain; }
 

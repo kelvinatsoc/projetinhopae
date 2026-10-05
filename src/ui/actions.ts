@@ -10,7 +10,7 @@ import { getWorld, push, replace, resetNav, setWorld, toast, update } from "../s
 let dbPromise: Promise<Database> | null = null;
 
 // índices da mídia empacotada (rostos dos regens, fotos das lendas); glob não quebra se faltar arquivo
-const mediaIndex = import.meta.glob<{ default: unknown }>(["../data/regenFaces.json", "../data/media.json"]);
+const mediaIndex = import.meta.glob<{ default: unknown }>(["../data/regenFaces.json", "../data/media.json", "../data/sportsdbPhotos.json"]);
 
 async function loadMediaIndex() {
   const load = async <T,>(path: string): Promise<T | null> => {
@@ -22,11 +22,12 @@ async function loadMediaIndex() {
       return null;
     }
   };
-  const [faces, media] = await Promise.all([
+  const [faces, media, sportsdb] = await Promise.all([
     load<{ faces: RegenFace[] }>("../data/regenFaces.json"),
     load<{ legends?: Record<string, string> }>("../data/media.json"),
+    load<Record<string, string>>("../data/sportsdbPhotos.json"),
   ]);
-  registerMedia({ regenFaces: faces?.faces, legends: media?.legends });
+  registerMedia({ regenFaces: faces?.faces, legends: media?.legends, sportsdb: sportsdb ?? undefined });
 }
 
 /** O banco de dados (elencos reais + índice de mídia) só é carregado quando o usuário abre ou cria um jogo. */
