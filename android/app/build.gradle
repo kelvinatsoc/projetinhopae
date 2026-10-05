@@ -1,5 +1,25 @@
 apply plugin: 'com.android.application'
 
+// ---------------------------------------------------------------- assinatura
+// A chave fixa do APK NUNCA fica no repositório. Ela vem (se existir) de variáveis de
+// ambiente (GitHub Actions) ou de propriedades do Gradle (~/.gradle/gradle.properties):
+//   LENDAS_KEYSTORE_FILE, LENDAS_KEYSTORE_PASSWORD, LENDAS_KEY_ALIAS, LENDAS_KEY_PASSWORD
+// Sem elas, o APK "release" é assinado com a chave de depuração do computador: instala
+// normalmente, mas atualizar por cima de um APK assinado com outra chave exige desinstalar
+// (e isso apaga os jogos salvos). Detalhes em ANDROID.md.
+def lendasProp = { String nome ->
+    def valor = System.getenv(nome)
+    if (!valor && project.hasProperty(nome)) valor = project.property(nome)
+    return valor ? valor.toString() : null
+}
+def lendasKeystorePath = lendasProp('LENDAS_KEYSTORE_FILE')
+def lendasKeystore = lendasKeystorePath ? rootProject.file(lendasKeystorePath) : null
+def lendasTemChave = lendasKeystore != null && lendasKeystore.isFile() &&
+    lendasProp('LENDAS_KEYSTORE_PASSWORD') != null && lendasProp('LENDAS_KEY_ALIAS') != null
+if (lendasKeystorePath && !lendasTemChave) {
+    logger.warn("Lendas da Base: LENDAS_KEYSTORE_FILE foi informado, mas o arquivo ou as senhas/alias faltam. Usando a chave de depuração.")
+}
+
 android {
     namespace = "com.kelvinatsoc.lendasdabase"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +27,9 @@ android {
         applicationId "com.kelvinatsoc.lendasdabase"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // ao lançar uma versão nova: suba o versionCode (+1) e acompanhe o "version" do package.json
+        versionCode 2
+        versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +37,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (lendasTemChave) {
+            release {
+                storeFile lendasKeystore
+                storePassword lendasProp('LENDAS_KEYSTORE_PASSWORD')
+                keyAlias lendasProp('LENDAS_KEY_ALIAS')
+                keyPassword lendasProp('LENDAS_KEY_PASSWORD') ?: lendasProp('LENDAS_KEYSTORE_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // com a chave fixa quando configurada; senão a de depuração (o APK sempre instala)
+            signingConfig lendasTemChave ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

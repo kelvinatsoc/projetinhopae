@@ -1,7 +1,7 @@
 {
   "name": "lendas-da-base",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Manager de futebol casual para celular com as ligas brasileiras e lendas renascendo nas bases",
   "scripts": {
@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dados": "python3 scripts/fetch_squads.py && python3 scripts/fetch_pt_positions.py && python3 scripts/build_database.py",
-    "jogar": "node scripts/jogar.mjs"
+    "jogar": "node scripts/jogar.mjs",
+    "android:sync": "npm run build && npx cap sync android",
+    "apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
+    "midia": "python3 scripts/build_media_index.py && python3 scripts/build_database.py"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",

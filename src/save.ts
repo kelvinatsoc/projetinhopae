@@ -1,5 +1,7 @@
 // Salvamento no IndexedDB do navegador (funciona offline no celular).
+import { Capacitor } from "@capacitor/core";
 import type { World } from "./engine/types";
+import { toast } from "./store";
 
 const DB_NAME = "lendas-da-base";
 const STORE = "saves";
@@ -78,19 +80,48 @@ export function lastSaveId(): string | null {
   }
 }
 
-/** Baixa o jogo salvo como arquivo .json (backup). */
-export function exportWorld(w: World) {
-  const blob = new Blob([JSON.stringify(w)], { type: "application/json" });
+function exportFileName(w: World): string {
+  const c = w.clubs[w.userClubId];
+  return `lendas-da-base-${c.abbr.toLowerCase()}-${w.season}.json`;
+}
+
+/**
+ * Exporta o jogo salvo como arquivo .json (backup).
+ * No app Android grava o arquivo no cache do app e abre o menu "Compartilhar"
+ * (Drive, WhatsApp, e-mail...); no navegador baixa o arquivo.
+ */
+export async function exportWorld(w: World): Promise<void> {
+  const name = exportFileName(w);
+  const json = JSON.stringify(w);
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const [{ Filesystem, Directory, Encoding }, { Share }] = await Promise.all([
+        import("@capacitor/filesystem"),
+        import("@capacitor/share"),
+      ]);
+      const { uri } = await Filesystem.writeFile({ path: `backup/${name}`, data: json, directory: Directory.Cache, encoding: Encoding.UTF8, recursive: true });
+      await Share.share({ title: name, files: [uri], dialogTitle: "Guardar o backup do jogo" });
+    } catch (e) {
+      // fechar o menu sem escolher nada também cai aqui: não é erro
+      if (!/cancel/i.test(String((e as Error)?.message ?? e))) {
+        console.error(e);
+        toast("Não foi possível exportar o save.");
+      }
+    }
+    return;
+  }
+  const blob = new Blob([json], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  const c = w.clubs[w.userClubId];
-  a.download = `lendas-da-base-${c.abbr.toLowerCase()}-${w.season}.json`;
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+/** Lê um backup .json (no app Android o arquivo vem do seletor de arquivos do sistema). */
 export async function importWorldFile(file: File): Promise<World> {
-  const text = await file.text();
+  // alguns apps (WhatsApp, editores) gravam o arquivo com BOM no começo
+  const text = (await file.text()).replace(/^\uFEFF/, "");
   const w = JSON.parse(text) as World;
   if (!w || !w.clubs || !w.players || !w.userClubId) throw new Error("Arquivo inválido");
   return w;

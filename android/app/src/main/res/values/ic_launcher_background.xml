@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- fundo do ícone adaptável e da tela de abertura: mesma cor escura do jogo -->
+    <color name="ic_launcher_background">#0C1712</color>
+    <color name="fundo_jogo">#0C1712</color>
 </resources>
