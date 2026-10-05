@@ -46,6 +46,29 @@ const T = {
   sub: ["Substituição no {t}: sai {a}, entra {p}."],
   var: ["Gol anulado pelo VAR! Impedimento milimétrico de {p}.", "O VAR chama e o gol de {p} é anulado por falta no início da jogada."],
   corner: ["Escanteio para o {t}.", "{p} cobra o escanteio... a zaga afasta."],
+  freeKickGoal: [
+    "Que cobrança! {p} coloca a falta no ângulo!",
+    "GOL DE FALTA! {p} passa a bola por cima da barreira e não dá chance para {g}!",
+    "Falta perfeita! {p} acerta a gaveta e explode a torcida do {t}!",
+  ],
+  freeKickSave: [
+    "{g} voa e espalma a cobrança de falta de {p}!",
+    "{p} cobra a falta com veneno, mas {g} faz grande defesa!",
+  ],
+  headerGoal: [
+    "{p} sobe mais que todo mundo e cabeceia para o gol!",
+    "GOL DE CABEÇA! {a} cobra o escanteio e {p} testa firme para a rede!",
+    "Escanteio na área e {p}, de cabeça, manda para o fundo do gol!",
+  ],
+  headerMiss: ["{p} cabeceia por cima!", "{p} sobe sozinho, mas a cabeçada sai pela linha de fundo."],
+  longShotGoal: [
+    "GOLAÇO de fora da área de {p}!",
+    "Que pancada! {p} arrisca de longe e a bola morre no ângulo de {g}!",
+  ],
+  gkPenSpecialist: [
+    "{g} é especialista e pega o pênalti de {p}!",
+    "De novo ele! {g} adivinha o canto e defende o pênalti de {p}!",
+  ],
   info: [
     "O {t} troca passes no meio-campo.",
     "Pressão do {t}, que empurra o adversário para a defesa.",

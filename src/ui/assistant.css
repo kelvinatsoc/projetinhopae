@@ -85,3 +85,6 @@
 .as-live-actions .btn.sm { min-height: 36px; text-align: left; }
 .as-x { flex: none; width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--muted); cursor: pointer; font-size: 14px; }
 .as-next { align-self: flex-start; border: 0; background: none; color: var(--info); padding: 2px 0; cursor: pointer; font-weight: 700; }
+
+/* balão da preleção */
+.as-talk { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 12px; padding: 8px 10px; line-height: 1.4; }

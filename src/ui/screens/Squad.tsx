@@ -1,28 +1,33 @@
 import { useMemo, useState } from "react";
+import { chemOf } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
 import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
 import { age, playerValue, shortName } from "../../engine/player";
+import { potRangeLabel } from "../../engine/scouting";
 import { FORMATION_DESC, FORMATIONS, MENTALITY_NAMES, ovrAt, POS_ORDER, PRESSING_NAMES } from "../../engine/positions";
 import type { Club, Lineup, Player, World } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { TacticsAdvice } from "../Assistant";
 import { Avatar, Bar, Ovr, PlayerRow, PosBadge } from "../components";
+import { AcademyScreen } from "./Academy";
+import { TrainingScreen } from "./Training";
 
 type Sort = "pos" | "ovr" | "age" | "cond" | "value";
 
 export function SquadScreen() {
-  const [tab, setTab] = useState<"list" | "tactics" | "youth">("list");
+  const [tab, setTab] = useState<"list" | "tactics" | "train" | "youth">("list");
   return (
     <div>
       <div className="page" style={{ paddingBottom: 0 }}>
         <div className="seg">
           <button className={tab === "list" ? "active" : ""} onClick={() => setTab("list")}>Elenco</button>
           <button className={tab === "tactics" ? "active" : ""} onClick={() => setTab("tactics")}>Tática</button>
+          <button className={tab === "train" ? "active" : ""} onClick={() => setTab("train")}>Treino</button>
           <button className={tab === "youth" ? "active" : ""} onClick={() => setTab("youth")}>Base</button>
         </div>
       </div>
-      {tab === "list" ? <SquadList /> : tab === "tactics" ? <TacticsScreen /> : <YouthScreen />}
+      {tab === "list" ? <SquadList /> : tab === "tactics" ? <TacticsScreen /> : tab === "train" ? <TrainingScreen /> : <AcademyScreen />}
     </div>
   );
 }
@@ -54,6 +59,9 @@ function SquadList() {
         <div className="stat-box"><b>{squadOf(w, club).length}</b><span>jogadores</span></div>
         <div className="stat-box"><b>{Math.round(lineupStrength(w, club, lineup))}</b><span>força do time</span></div>
         <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, club))}</b><span>folha mensal</span></div>
+      </div>
+      <div className="small muted" style={{ textAlign: "center" }} title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas no elenco e o foco Tático no treino)">
+        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b>
       </div>
       <div className="chips">
         {([["all", "Todos"], ["starters", "Titulares"], ["out", "Lesionados/suspensos"], ["listed", "À venda"]] as const).map(([k, l]) => (
@@ -264,7 +272,7 @@ export function YouthScreen() {
         <div className="list">
           {youth.map((p) => (
             <PlayerRow key={p.id} p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-              right={<span className="tag">pot. {potLabel(p)}</span>} />
+              right={<span className="tag">pot. {potLabel(w, p)}</span>} />
           ))}
         </div>
         {!youth.length && <div className="empty">Nenhum jogador nas categorias de base.</div>}
@@ -275,9 +283,7 @@ export function YouthScreen() {
   );
 }
 
-export function potLabel(p: Player): string {
-  // potencial aproximado (faixa), como um olheiro avaliaria
-  const lo = Math.max(p.ovr, p.pot - 3);
-  const hi = Math.min(99, p.pot + 2);
-  return `${lo}-${hi}`;
+/** Potencial aproximado (faixa), como os olheiros enxergam. */
+export function potLabel(w: World, p: Player): string {
+  return potRangeLabel(w, p);
 }

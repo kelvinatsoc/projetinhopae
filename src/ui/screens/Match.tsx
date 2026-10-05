@@ -6,6 +6,7 @@ import { lineupStrength, validLineup, autoLineup } from "../../engine/lineup";
 import { MatchSim } from "../../engine/match";
 import { shortName } from "../../engine/player";
 import { MENTALITY_NAMES, ovrAt } from "../../engine/positions";
+import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reaction, type Tone } from "../../engine/teamtalk";
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
 import { forceBack, getWorld, push, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
@@ -14,6 +15,59 @@ import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView } from "../MatchView";
 import { Pitch } from "./Squad";
+import "../talk.css";
+
+/** Tom da preleção escolhido no pré-jogo (sem escolha, vale a sugestão do auxiliar). */
+let chosenTalk: { fid: number; tone: Tone } | null = null;
+
+/** Fileira com os titulares e a reação de cada um à conversa. */
+function ReactionRow({ w, rs }: { w: World; rs: Reaction[] }) {
+  return (
+    <div className="tk-reacts" role="list" aria-label="Reação dos jogadores">
+      {rs.map((r) => {
+        const p = w.players[r.pid];
+        if (!p) return null;
+        return (
+          <div key={r.pid} className="tk-react" role="listitem" title={`${p.name}: ${r.emoji}`}>
+            <Avatar p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} size={30} />
+            <span className="tk-emo">{r.emoji}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Card "Preleção" do pré-jogo: 4 tons, um toque. */
+function TalkCard({ w, f }: { w: World; f: Fixture }) {
+  const pre = userPreTalk(w, f);
+  const [tone, setTone] = useState<Tone | null>(chosenTalk?.fid === f.id ? chosenTalk.tone : null);
+  const [rs, setRs] = useState<Reaction[] | null>(null);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  function choose(t: Tone) {
+    chosenTalk = { fid: f.id, tone: t };
+    setTone(t);
+    setRs(reactions(w, f, pre.ids, t, pre.ctx));
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setRs(null), 2000);
+  }
+  return (
+    <div className="card tk-card">
+      <div className="row gap8"><b>🗣️ Preleção</b><span className="tiny muted grow">o que dizer no vestiário?</span></div>
+      <div className="tk-grid">
+        {PRE_TONES.map((t) => (
+          <button key={t} className={`btn tk-btn${tone === t ? " active" : ""}`} aria-pressed={tone === t} onClick={() => choose(t)}>
+            <span className="tk-ico" aria-hidden="true">{TONES[t].emoji}</span>{TONES[t].label}
+          </button>
+        ))}
+      </div>
+      {rs ? <ReactionRow w={w} rs={rs} /> : (
+        <div className="tiny muted">{tone ? `Combinado: “${TONES[tone].label}”.` : `Se não escolher, vale a sugestão do auxiliar (${TONES[pre.tone].emoji} ${TONES[pre.tone].label}).`}</div>
+      )}
+    </div>
+  );
+}
 
 function stageLabel(w: World, f: Fixture) {
   const comp = w.comps[f.comp];
@@ -79,6 +133,8 @@ export function PreMatchScreen() {
         </div>
       </div>
 
+      <TalkCard w={w} f={f} />
+
       <div className="grid2" style={{ position: "sticky", bottom: "calc(var(--nav-h) + 8px + env(safe-area-inset-bottom))" }}>
         <button className="btn" onClick={() => goToMatch(true)}>⏩ Resultado rápido</button>
         <button className="btn primary" onClick={() => goToMatch(false)}>▶ Assistir ao jogo</button>
@@ -119,6 +175,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
   const [subs, setSubs] = useState(false);
+  const [halfSheet, setHalfSheet] = useState(false);
   const [flash, setFlash] = useState<MatchEvent | null>(null);
   const [flashTop, setFlashTop] = useState<number | null>(null);
   const [field, setField] = useState(() => !quick && readFieldPref());
@@ -137,7 +194,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   if (!simRef.current && f) {
     loadRng(w);
-    simRef.current = new MatchSim(w, f, { live: !quick, userSide });
+    const s = new MatchSim(w, f, { live: !quick, userSide });
+    // preleção: o tom escolhido no pré-jogo ou, sem escolha, a sugestão do auxiliar
+    const tone = chosenTalk?.fid === f.id ? chosenTalk.tone : userPreTalk(w, f).tone;
+    s.applyTalk(userSide, tone, "pre");
+    s.autoTalk = quick; // resultado rápido: no intervalo vale a sugestão do auxiliar
+    simRef.current = s;
   }
   const sim = simRef.current;
 
@@ -218,7 +280,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs || intro || hold) return;
+    if (!sim || quick || paused || result || subs || intro || hold || halfSheet) return;
     const t = window.setInterval(() => {
       const evs = sim.step();
       const slow = speedRef.current <= 1;
@@ -231,14 +293,18 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           else celebrate(e);
         } else if (e.type === "post" || e.type === "save" || e.type === "pen-miss") {
           if (!viewLive) beat(e);
-        } else if (e.type === "half") whistle(2);
+        } else if (e.type === "half") {
+          whistle(2);
+          setPaused(true);
+          setHalfSheet(true);
+        }
         else if (e.type === "end") whistle(3);
       }
       if (sim.finished) finish();
       setTick((x) => x + 1);
     }, SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, intro, hold]);
+  }, [sim, speed, paused, result, subs, intro, hold, halfSheet]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -336,14 +402,63 @@ export function MatchScreen({ quick }: { quick: boolean }) {
                 {SPEEDS.map((s, i) => <button key={s.l} className={speed === i ? "active" : ""} onClick={() => setSpeed(i)}>{s.l}</button>)}
               </div>
               <button className="btn sm" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
-              <button className="btn sm" aria-label="Pular para o fim" onClick={() => { setIntro(false); sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
+              <button className="btn sm" aria-label="Pular para o fim" onClick={() => { setIntro(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
             </div>
           )}
         </div>
       </div>
 
+      {halfSheet && !result && !subs && (
+        <HalftimeSheet sim={sim} side={userSide} w={w}
+          onSubs={() => { setHalfSheet(false); setSubs(true); }}
+          onClose={() => { setHalfSheet(false); setPaused(false); setTick((x) => x + 1); }} />
+      )}
       {subs && !result && <SubsSheet sim={sim} side={userSide} w={w} onClose={() => { setSubs(false); setPaused(false); setTick((x) => x + 1); }} />}
     </div>
+  );
+}
+
+/** Intervalo: 4 frases conforme o placar, reação do grupo e atalho para mexer no time. */
+function HalftimeSheet({ sim, side, w, onClose, onSubs }: { sim: MatchSim; side: 0 | 1; w: World; onClose: () => void; onSubs: () => void }) {
+  const ctx = sim.talkCtx(side, "half");
+  const tones = halfTones(ctx.score);
+  const tip = suggest(w, sim.f, ctx, side);
+  const [rs, setRs] = useState<Reaction[] | null>(null);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const [H, A] = sim.sides;
+  function choose(t: Tone) {
+    if (rs) return;
+    setRs(sim.applyTalk(side, t, "half"));
+    timer.current = window.setTimeout(onClose, 2000);
+  }
+  return (
+    <Sheet title="Intervalo — o que dizer?" onClose={onClose}>
+      <div className="tk-score">
+        <span className="ellipsis">{H.club.name}</span><b className="kbd">{H.goals} : {A.goals}</b><span className="ellipsis">{A.club.name}</span>
+      </div>
+      {rs ? (
+        <>
+          <div className="small center">O grupo ouviu. Bola rolando no 2º tempo!</div>
+          <ReactionRow w={w} rs={rs} />
+        </>
+      ) : (
+        <>
+          <div className="as-talk small mt8">💡 Auxiliar sugere: <b>{TONES[tip].emoji} {TONES[tip].label}</b></div>
+          <div className="tk-grid mt8">
+            {tones.map((t) => (
+              <button key={t} className="btn tk-btn" onClick={() => choose(t)}>
+                <span className="tk-ico" aria-hidden="true">{TONES[t].emoji}</span>{TONES[t].label}
+              </button>
+            ))}
+          </div>
+          <div className="grid2 mt12">
+            <button className="btn" onClick={onSubs}>🔄 Mexer no time</button>
+            <button className="btn" onClick={onClose}>Voltar ao jogo</button>
+          </div>
+        </>
+      )}
+    </Sheet>
   );
 }
 

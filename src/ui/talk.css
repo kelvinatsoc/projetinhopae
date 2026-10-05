@@ -1,0 +1,16 @@
+/* Preleção e conversa do intervalo */
+.tk-card { display: flex; flex-direction: column; gap: 10px; }
+.tk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tk-btn { min-height: 48px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; line-height: 1.2; font-size: 14px; padding: 8px 10px; white-space: normal; }
+.tk-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--card, transparent)); }
+.tk-ico { font-size: 20px; flex: none; }
+.tk-reacts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tk-react { position: relative; width: 34px; height: 36px; animation: tk-pop 0.35s ease-out both; }
+.tk-react:nth-child(2n) { animation-delay: 0.05s; }
+.tk-react:nth-child(3n) { animation-delay: 0.1s; }
+.tk-emo { position: absolute; right: -4px; bottom: -2px; font-size: 16px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
+.tk-score { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; font-size: 14px; }
+.tk-score > :first-child { text-align: right; }
+.tk-score b { font-size: 22px; }
+@keyframes tk-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tk-react { animation: none; } }

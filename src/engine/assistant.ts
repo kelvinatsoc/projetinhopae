@@ -28,10 +28,13 @@
 //    (+0,24, ≈ 9 pontos num Brasileirão de 38 rodadas). Só o pré-jogo: +0,18; as dicas ao vivo somam +0,07.
 //  RED_CARD_FINDING
 import { isAvailable, squadOf, validLineup, autoLineup } from "./lineup";
-import { MatchSim } from "./match";
+import { MatchSim, TUNING } from "./match";
+import { commonFactor, NEUTRAL_SIDE, playerMods, SET_PIECE_GOALS, sideMult } from "./matchmods";
 import { FORMATIONS, MENTALITY_NAMES, ovrAt, POS_GROUP, POS_NAME, PRESSING_NAMES } from "./positions";
 import { shortName } from "./player";
 import { getRngState, hashString, setRngState } from "./rng";
+import { aiTalk, suggest, talkCtx, talkEffect } from "./teamtalk";
+import { hasTrait } from "./traits";
 import type { Club, Fixture, Lineup, Player, Pos, Tactic, World } from "./types";
 
 // ---------------------------------------------------------------- pesos do motor
@@ -48,10 +51,13 @@ const slotsOf = (formation: string): Pos[] => (FORMATIONS[formation] ?? FORMATIO
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const num = (x: number, d = 2) => x.toFixed(d).replace(".", ",");
 
-/** Rendimento do jogador numa posição, como o motor calcula (overall na posição × condição × moral). */
-export function effAt(p: Player, pos: Pos): number {
-  return ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100));
+/** Rendimento do jogador numa posição, como o motor calcula (overall na posição × condição × moral × forma do dia). */
+export function effAt(p: Player, pos: Pos, form = 1): number {
+  return ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100)) * form;
 }
+
+/** Rendimento de um jogador dentro de uma partida ao vivo (com a forma do dia dele). */
+const liveEff = (sim: MatchSim, side: 0 | 1, p: Player, pos: Pos) => effAt(p, pos, sim.pm(sim.sides[side], p.id).eff);
 
 // ---------------------------------------------------------------- modelo analítico
 // Reproduz em média as contas de match.ts (posse, chance de finalizar, xG, pênaltis, cansaço)
@@ -69,6 +75,21 @@ export interface SideState {
   fis: number; // físico médio (cansaço)
   cond: number; // condição média dos que estão em campo
   horizon?: number; // se definido, os setores já são a média dos próximos `horizon` minutos (cansaço de cada um)
+  // efeitos de gestão (matchmods.ts); neutros quando não há contexto de partida
+  penAdj: number; // Batedor de pênalti + treino de bola parada
+  penSave: number; // nosso goleiro é Pegador de pênalti
+  penAward: number; // dribladores cavam mais pênaltis
+  setPiece: number; // bola parada (cabeçadas e faltas)
+  fatMul: number; // ritmo de cansaço (Raçudo, foco físico)
+}
+
+/** Partida, clube e adversário: liga os efeitos de gestão (forma, jogadas, entrosamento, preleção). */
+export interface SideCtx {
+  f: Fixture;
+  club: Club;
+  oppM: number; // mentalidade do adversário
+  captain?: number;
+  talk?: number; // efeito médio da conversa no período analisado
 }
 
 /** Ritmo de perda de condição por minuto (match.ts: a cada 5 minutos). */
@@ -79,31 +100,48 @@ const fatigueRate = (fis: number, pressing: number) => 0.26 * (1.25 - (fis / 100
  * Com `horizon`, cada jogador entra com a condição média que terá nos próximos minutos
  * (pontas e atacantes, de físico menor, cansam antes — isso pesa em formações como o 4-2-4).
  */
-export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: number, p: number, home: boolean, horizon?: number): SideState {
-  let d = 0, dw = 0, mm = 0, mw = 0, a = 0, aw = 0, gk = 30, count = 0, qs = 0, qw = 0, pen = 50, fis = 0, cond = 0;
+export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: number, p: number, home: boolean, horizon?: number, ctx?: SideCtx): SideState {
+  let d = 0, dw = 0, mm = 0, mw = 0, a = 0, aw = 0, gk = 30, count = 0, qs = 0, qw = 0, fis = 0, cond = 0, fat = 0;
+  let pen = 50, penPen = false, penAdj = 0, penSave = 0;
+  const isUser = !!ctx && ctx.club.id === w.userClubId;
+  const sm = ctx ? sideMult(w, ctx.f, ctx.club, slots, ids, ctx.oppM, m, ctx.captain) : NEUTRAL_SIDE;
   ids.forEach((id, k) => {
     if (id == null) return;
     const pl = w.players[id];
     const pos = slots[k];
     if (!pl || !pos) return;
     count++;
-    const c = horizon ? Math.max(5, pl.cond - fatigueRate(pl.attrs.fis, p) * horizon * 0.5) : pl.cond;
-    const eff = ovrAt(pl, pos) * (0.7 + 0.3 * (c / 100)) * (0.97 + 0.06 * (pl.morale / 100));
-    if (pos === "GOL") gk = eff;
-    else pen = Math.max(pen, pl.attrs.fin);
+    const md = ctx ? playerMods(w, ctx.f, pl, isUser) : null;
+    const fm = (md?.fatigue ?? 1) * sm.fatigue;
+    const c = horizon ? Math.max(5, pl.cond - fatigueRate(pl.attrs.fis, p) * fm * horizon * 0.5) : pl.cond;
+    const eff = ovrAt(pl, pos) * (0.7 + 0.3 * (c / 100)) * (0.97 + 0.06 * (pl.morale / 100)) * (md?.eff ?? 1);
+    if (pos === "GOL") { gk = eff; penSave = md?.penSave ?? 0; }
+    else {
+      // cobrador: o Batedor de pênalti, senão o melhor finalizador (como no motor)
+      const isPen = !!md && hasTrait(pl, "PEN");
+      if ((isPen && !penPen) || (isPen === penPen && pl.attrs.fin > pen)) { pen = pl.attrs.fin; penPen = isPen; penAdj = md?.pen ?? 0; }
+    }
     d += eff * DEF_W[pos]; dw += DEF_W[pos];
     mm += eff * MID_W[pos]; mw += MID_W[pos];
     a += eff * ATT_W[pos]; aw += ATT_W[pos];
-    const sw = SHOOT_W[pos] * Math.pow(pl.attrs.fin / 70, 1.5);
-    qs += sw * Math.exp((pl.attrs.fin - 75) / 30); qw += sw;
+    const sw = SHOOT_W[pos] * Math.pow(pl.attrs.fin / 70, 1.5) * (md?.shoot ?? 1);
+    qs += sw * Math.exp((pl.attrs.fin - 75) / 30) * (md?.xg ?? 1); qw += sw;
     fis += pl.attrs.fis;
     cond += pl.cond;
+    fat += fm;
   });
   const line = (sum: number, wt: number, base: number) => (wt > 0 ? (sum / wt) * Math.pow(wt / base, 0.3) : 30);
   const short = count < 11 ? Math.pow(0.93, 11 - count) : 1;
+  const k = commonFactor(sm, ctx?.talk ?? 0);
   return {
-    s: { att: line(a, aw, BASE.att) * short, mid: line(mm, mw, BASE.mid) * short, def: line(d, dw, BASE.def) * short, gk },
+    s: {
+      att: line(a, aw, BASE.att) * short * sm.att * k,
+      mid: line(mm, mw, BASE.mid) * short * sm.mid * k,
+      def: line(d, dw, BASE.def) * short * sm.def * k,
+      gk: gk * sm.gk + sm.gkPlus,
+    },
     m, p, home, shotQ: qw > 0 ? qs / qw : 1, penFin: pen, fis: count ? fis / count : 70, cond: count ? cond / count : 100, horizon,
+    penAdj: penAdj + sm.penPlus, penSave, penAward: sm.penAward, setPiece: sm.setPiece, fatMul: count ? fat / count : 1,
   };
 }
 
@@ -125,17 +163,19 @@ function withMods(x: SideState, fatigue: number): Sectors {
 
 /** Gols esperados de cada lado em `mins` minutos. */
 export function expectedGoals(a: SideState, b: SideState, mins: number): [number, number] {
-  const A = withMods(a, a.horizon ? 1 : fatigueFactor(a.cond, a.fis, a.p, mins));
-  const B = withMods(b, b.horizon ? 1 : fatigueFactor(b.cond, b.fis, b.p, mins));
+  const A = withMods(a, a.horizon ? 1 : fatigueFactor(a.cond, a.fis, a.p, mins * a.fatMul));
+  const B = withMods(b, b.horizon ? 1 : fatigueFactor(b.cond, b.fis, b.p, mins * b.fatMul));
   const pmA = Math.pow(A.mid, 3), pmB = Math.pow(B.mid, 3);
   const shareA = pmA / (pmA + pmB);
   const lam = (S: Sectors, O: Sectors, x: SideState, y: SideState, share: number) => {
     const ratio = S.att / Math.max(20, O.def);
-    const pShot = 0.23 * Math.pow(ratio, 1.6) * (1 + 0.06 * x.m + 0.03 * y.m);
-    const xg = clampN(0.066 * 1.163 * x.shotQ * Math.exp((S.att - O.def) / 40), 0.02, 0.6);
+    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp) * (1 + 0.06 * x.m + 0.03 * y.m);
+    const xg = clampN(TUNING.xgBase * 1.163 * x.shotQ * Math.exp((S.att - O.def) / TUNING.xgAttDiv), 0.02, 0.6);
     const pGoal = clampN(xg * (1 + (70 - O.gk) / 50), 0.01, 0.75) * 0.97;
-    const conv = clampN(0.74 + (x.penFin - 70) / 200 - (O.gk - 70) / 250, 0.5, 0.92);
-    return mins * share * (Math.min(1, pShot) * pGoal + 0.0017 * ratio * conv);
+    const conv = clampN(0.74 + (x.penFin - 70) / 200 + x.penAdj - y.penSave - (O.gk - 70) / 250, 0.45, 0.95);
+    // bola parada (cabeçadas de escanteio e faltas diretas): uns poucos gols a mais por jogo
+    const setPiece = (SET_PIECE_GOALS * x.setPiece * (1 + (70 - O.gk) / 50) * mins) / MATCH_MINUTES;
+    return mins * share * (Math.min(1, pShot) * pGoal + TUNING.penBase * ratio * x.penAward * conv) + setPiece;
   };
   return [lam(A, B, a, b, shareA), lam(B, A, b, a, 1 - shareA)];
 }
@@ -194,6 +234,9 @@ export function predictAiTactic(w: World, ai: Club, user: Club, userFormation: s
 }
 
 // ---------------------------------------------------------------- escalação
+/** Mesmo critério de capitão do autoLineup (Líder tem preferência). */
+const capScore = (p: Player) => p.fame + p.ovr + (hasTrait(p, "LID") ? 20 : 0);
+
 function pickBench(rest: Player[]): number[] {
   const bench: Player[] = [];
   const byOvr = rest.slice().sort((a, b) => b.ovr - a.ovr);
@@ -234,7 +277,7 @@ export function bestLineup(w: World, club: Club, compId: string | undefined, for
   const keepCap = club.lineup?.captain;
   const captain = keepCap != null && used.has(keepCap)
     ? keepCap
-    : [...used].map((id) => w.players[id]).sort((a, b) => b.fame + b.ovr - (a.fame + a.ovr))[0]?.id;
+    : [...used].map((id) => w.players[id]).sort((a, b) => capScore(b) - capScore(a))[0]?.id;
   return { starters, bench, captain };
 }
 
@@ -383,10 +426,18 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
     if (!r) { r = predictAiTactic(w, opp, user, form, oppHome); aiCache.set(form, r); }
     return r;
   };
+  // preleção: a nossa (a sugestão do auxiliar) e a da IA valem no 1º tempo (metade do jogo)
+  const userIdx: 0 | 1 = userIsHome ? 0 : 1;
+  const preCtx = talkCtx(w, f, user, curLineup, opp, oppLineup, "pre");
+  const oppCtx = talkCtx(w, f, opp, oppLineup, user, curLineup, "pre");
+  const userTalk = talkEffect(preCtx, suggest(w, f, preCtx, userIdx)) * 0.5;
+  const oppTalk = talkEffect(oppCtx, aiTalk(w, f, oppCtx, (1 - userIdx) as 0 | 1)) * 0.5;
+  const usCtx = (lineup: Lineup, oppM: number): SideCtx => ({ f, club: user, oppM, captain: lineup.captain, talk: userTalk });
+  const themCtx = (m: number): SideCtx => ({ f, club: opp, oppM: m, captain: oppLineup.captain, talk: oppTalk });
   const evalPlan = (form: string, lineup: Lineup, m: number, p: number): Outlook => {
     const ai = aiFor(form);
-    const us = sideState(w, slotsOf(form), lineup.starters, m, p, home, MATCH_MINUTES);
-    const them = sideState(w, oppSlots, oppLineup.starters, ai.mentality, ai.pressing, oppHome, MATCH_MINUTES);
+    const us = sideState(w, slotsOf(form), lineup.starters, m, p, home, MATCH_MINUTES, usCtx(lineup, ai.mentality));
+    const them = sideState(w, oppSlots, oppLineup.starters, ai.mentality, ai.pressing, oppHome, MATCH_MINUTES, themCtx(m));
     const [lu, lt] = expectedGoals(us, them, MATCH_MINUTES);
     return resultProbs(lu, lt);
   };
@@ -420,9 +471,9 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
   if (pick.form !== curForm && pick.score < stay.score + FORMATION_SWITCH_MARGIN) pick = stay;
 
   // setores e força
-  const userState = sideState(w, slotsOf(curForm), curLineup.starters, user.tactic.mentality, user.tactic.pressing, home);
   const ai = aiFor(pick.form);
-  const oppState = sideState(w, oppSlots, oppLineup.starters, ai.mentality, ai.pressing, oppHome);
+  const userState = sideState(w, slotsOf(curForm), curLineup.starters, user.tactic.mentality, user.tactic.pressing, home, undefined, usCtx(curLineup, ai.mentality));
+  const oppState = sideState(w, oppSlots, oppLineup.starters, ai.mentality, ai.pressing, oppHome, undefined, themCtx(user.tactic.mentality));
   const strength = strengthWith(w, curForm, curLineup);
   const oppStrength = strengthWith(w, oppForm, oppLineup);
   const gap = strength - oppStrength;
@@ -679,19 +730,25 @@ export function remainingMinutes(sim: MatchSim): number {
 /** Uma mudança hipotética no time: mentalidade, pressão e/ou quem está em cada posição. */
 export interface LiveOverride { m?: number; p?: number; ids?: (number | null)[] }
 
-export function liveSideState(sim: MatchSim, side: 0 | 1, o: LiveOverride = {}): SideState {
+export function liveSideState(sim: MatchSim, side: 0 | 1, o: LiveOverride = {}, oppM?: number): SideState {
   const S = sim.sides[side];
-  return sideState(sim.w, S.slots, o.ids ?? S.onPitch, o.m ?? S.mentality, o.p ?? S.pressing, side === 0 && !sim.f.neutral, remainingMinutes(sim));
+  const O = sim.sides[1 - side];
+  const rem = remainingMinutes(sim);
+  // a conversa vale até o fim do tempo em que foi dada
+  const talkMins = sim.half === 1 ? Math.max(0, 45 + sim.stoppage[0] - sim.minute) : rem;
+  const talk = rem > 0 ? (sim.talk[side] * talkMins) / rem : 0;
+  const ctx: SideCtx = { f: sim.f, club: S.club, oppM: oppM ?? O.mentality, captain: S.captain, talk };
+  return sideState(sim.w, S.slots, o.ids ?? S.onPitch, o.m ?? S.mentality, o.p ?? S.pressing, side === 0 && !sim.f.neutral, rem, ctx);
 }
 
 // o estado do adversário não muda enquanto comparamos as nossas opções no mesmo minuto
 const themCache = new WeakMap<MatchSim, { key: string; st: SideState }>();
-function themState(sim: MatchSim, side: 0 | 1): SideState {
+function themState(sim: MatchSim, side: 0 | 1, ourM: number): SideState {
   const O = sim.sides[1 - side];
-  const key = `${side}|${sim.half}|${sim.minute}|${O.onPitch.join(",")}|${O.mentality}|${O.pressing}`;
+  const key = `${side}|${sim.half}|${sim.minute}|${O.onPitch.join(",")}|${O.mentality}|${O.pressing}|${ourM}|${sim.talk[1 - side]}`;
   const hit = themCache.get(sim);
   if (hit && hit.key === key) return hit.st;
-  const st = liveSideState(sim, (1 - side) as 0 | 1);
+  const st = liveSideState(sim, (1 - side) as 0 | 1, {}, ourM); // Velocistas deles dependem da nossa mentalidade
   themCache.set(sim, { key, st });
   return st;
 }
@@ -700,7 +757,7 @@ function themState(sim: MatchSim, side: 0 | 1): SideState {
 export function liveOutlook(sim: MatchSim, side: 0 | 1, o: LiveOverride = {}): Outlook {
   const mins = remainingMinutes(sim);
   const us = liveSideState(sim, side, o);
-  const them = themState(sim, side);
+  const them = themState(sim, side, o.m ?? sim.sides[side].mentality);
   const [lu, lt] = expectedGoals(us, them, mins);
   return resultProbs(lu, lt, sim.sides[side].goals - sim.sides[1 - side].goals);
 }
@@ -781,7 +838,7 @@ function bestBenchFor(sim: MatchSim, side: 0 | 1, k: number, exclude: Set<number
     if (exclude.has(b)) continue;
     const p = sim.player(b);
     if (!p || (pos === "GOL") !== (p.pos === "GOL") || p.injury > 0) continue;
-    const e = effAt(p, pos);
+    const e = liveEff(sim, side, p, pos);
     if (!best || e > best.eff) best = { id: b, eff: e };
   }
   return best;
@@ -952,11 +1009,11 @@ function buildTips(sim: MatchSim, side: 0 | 1): LiveTip[] {
     if (wk) {
       const inn = bestBenchFor(sim, side, wk.k);
       const p = sim.player(wk.id);
-      if (inn && inn.eff > effAt(p, S.slots[wk.k]) + 1) {
+      if (inn && inn.eff > liveEff(sim, side, p, S.slots[wk.k]) + 1) {
         const ip = sim.player(inn.id);
         tips.push({
           id: `tired:${wk.id}`, tone: "warn", priority: 72, title: `${shortName(p.name)} está esgotado`,
-          text: `Condição ${Math.round(p.cond)}%: ele rende ${Math.round(effAt(p, S.slots[wk.k]))}. ${shortName(ip.name)} entra descansado (${Math.round(inn.eff)} como ${S.slots[wk.k]}).`,
+          text: `Condição ${Math.round(p.cond)}%: ele rende ${Math.round(liveEff(sim, side, p, S.slots[wk.k]))}. ${shortName(ip.name)} entra descansado (${Math.round(inn.eff)} como ${S.slots[wk.k]}).`,
           actions: [{ label: subLabel(sim, wk.id, inn.id), kind: "sub", outId: wk.id, inId: inn.id }],
         });
       }
@@ -970,7 +1027,7 @@ function buildTips(sim: MatchSim, side: 0 | 1): LiveTip[] {
       if (id == null || !S.yellows.has(id) || DEF_W[S.slots[k]] < 0.55) continue;
       const inn = bestBenchFor(sim, side, k);
       const p = sim.player(id);
-      if (inn && inn.eff >= effAt(p, S.slots[k]) * 0.95) {
+      if (inn && inn.eff >= liveEff(sim, side, p, S.slots[k]) * 0.95) {
         tips.push({
           id: `booked:${id}`, tone: "warn", priority: 60, title: `${shortName(p.name)} está pendurado`,
           text: `Tem amarelo e é dos que mais fazem falta. Um 2º cartão deixa vocês com 10. ${shortName(sim.player(inn.id).name)} cobre a posição.`,

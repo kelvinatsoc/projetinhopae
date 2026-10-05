@@ -1,11 +1,16 @@
 // Motor de partida: simulação minuto a minuto baseada na força de cada setor.
 // O mesmo motor serve para o jogo ao vivo (passo a passo) e para a simulação rápida.
+import { adminCheats } from "./admin";
 import { phrase } from "./commentary";
+import { isBigMatch } from "./common";
 import { needsPenalties } from "./competitions";
 import { lineupStrength, validLineup, autoLineup } from "./lineup";
 import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
 import { shortName } from "./player";
+import { commonFactor, freeKickXg, HEADER_W, headerXg, NEUTRAL_SIDE, playerMods, SET_PIECE, sideMult, type PMods, type SideMult } from "./matchmods";
 import { chance, clamp, gauss, pickWeighted, rand, randInt } from "./rng";
+import { aiTalk, reactions, suggest, talkCtx, talkEffect, type Reaction, type TalkPhase, type Tone } from "./teamtalk";
+import { hasTrait } from "./traits";
 import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, World } from "./types";
 
 interface Side {
@@ -27,6 +32,8 @@ interface Side {
   gk: number;
   auto: boolean; // IA faz substituições
   captain?: number;
+  mods: Map<number, PMods>; // efeitos de cada jogador nesta partida (matchmods.ts)
+  sm: SideMult; // efeitos do time (refeitos em recompute)
 }
 
 const SHOOT_W: Record<Pos, number> = { GOL: 0, ZAG: 0.12, LD: 0.12, LE: 0.12, VOL: 0.14, MC: 0.28, MEI: 0.5, PD: 0.55, PE: 0.55, ATA: 0.85 };
@@ -37,7 +44,7 @@ const ATT_W: Record<Pos, number> = { GOL: 0, ZAG: 0, LD: 0.15, LE: 0.15, VOL: 0.
 const BASE = { def: 4.9, mid: 4.4, att: 3.6 }; // somatório de pesos num 4-3-3 típico
 
 // Constantes de calibração (médias do Brasileirão: ~2,4 gols e ~24 finalizações por jogo)
-export const TUNING = { shotBase: 0.23, shotExp: 1.6, xgBase: 0.066, xgSpread: 0.55, xgAttDiv: 40, penBase: 0.0017 };
+export const TUNING = { shotBase: 0.227, shotExp: 1.6, xgBase: 0.066, xgSpread: 0.55, xgAttDiv: 40, penBase: 0.0017 };
 
 /**
  * Resumo do último minuto simulado, só para a animação do jogo ao vivo (campo em pixel art).
@@ -54,6 +61,7 @@ export interface MinutePhase {
     result: "goal" | "owngoal" | "save" | "miss" | "post" | "var";
     og?: number; // quem fez o gol contra
     xg: number;
+    kind?: "header" | "freekick" | "long"; // cabeçada de escanteio, falta direta, chute de longe
   };
   corner?: { side: 0 | 1; taker: number | null };
   tackle?: { side: 0 | 1; pid: number | null }; // desarme de quem estava sem a bola
@@ -82,12 +90,18 @@ export class MatchSim {
   pens?: [number, number];
   /** O que aconteceu no último minuto (para a animação). */
   phase: MinutePhase = { min: 0, half: 1, atk: null };
+  /** Efeito da preleção / conversa do intervalo de cada lado (fração: 0,02 = +2%). */
+  talk: [number, number] = [0, 0];
+  /** Lado do usuário recebe a sugestão do auxiliar no intervalo (resultado rápido / ⏭). */
+  autoTalk = false;
+  private big: boolean;
 
   constructor(w: World, f: Fixture, opts: MatchOptions = {}) {
     this.w = w;
     this.f = f;
     this.live = !!opts.live;
     this.userSide = opts.userSide ?? null;
+    this.big = isBigMatch(w, f);
     const mk = (clubId: string, idx: 0 | 1): Side => {
       const club = w.clubs[clubId];
       const isUser = clubId === w.userClubId;
@@ -99,12 +113,52 @@ export class MatchSim {
         mentality: club.tactic.mentality, pressing: club.tactic.pressing, goals: 0,
         played: lineup.starters.filter((x): x is number => x !== null), rating: new Map(), yellows: new Set(),
         att: 0, mid: 0, def: 0, gk: 0, auto: this.userSide !== idx, captain: lineup.captain,
+        mods: new Map(), sm: NEUTRAL_SIDE,
       };
       for (const id of side.played) side.rating.set(id, 6.0);
       return side;
     };
     this.sides = [mk(f.home, 0), mk(f.away, 1)];
     this.recompute();
+    // preleção da IA (o usuário escolhe a dele na tela do pré-jogo)
+    for (let i = 0; i < 2; i++) if (this.sides[i].auto) this.aiTalk(i as 0 | 1, "pre");
+  }
+
+  /** Efeitos do jogador nesta partida (criados na primeira vez que ele aparece). */
+  pm(side: Side, id: number): PMods {
+    let m = side.mods.get(id);
+    if (!m) {
+      m = playerMods(this.w, this.f, this.player(id), side.club.id === this.w.userClubId, this.big);
+      side.mods.set(id, m);
+    }
+    return m;
+  }
+
+  /** Contexto da conversa (força, placar, capitão) para um lado. */
+  talkCtx(side: 0 | 1, phase: TalkPhase) {
+    const S = this.sides[side], O = this.sides[1 - side];
+    const lu = (x: Side) => ({ starters: x.onPitch, bench: [], captain: x.captain });
+    return talkCtx(this.w, this.f, S.club, lu(S), O.club, lu(O), phase, S.goals - O.goals);
+  }
+
+  /** Aplica uma preleção / conversa de intervalo: efeito no time e moral de cada titular. */
+  applyTalk(side: 0 | 1, tone: Tone, phase: TalkPhase, morale = true): Reaction[] {
+    const ctx = this.talkCtx(side, phase);
+    this.talk[side] = talkEffect(ctx, tone);
+    const ids = this.sides[side].onPitch.filter((x): x is number => x != null);
+    const rs = reactions(this.w, this.f, ids, tone, ctx);
+    if (morale) for (const r of rs) {
+      const p = this.player(r.pid);
+      p.morale = clamp(Math.round(p.morale + r.morale), p.wantsOut ? 30 : 15, 100);
+    }
+    this.recompute();
+    return rs;
+  }
+
+  /** Conversa automática dos times da IA (sem mexer na moral de ninguém). */
+  private aiTalk(side: 0 | 1, phase: TalkPhase) {
+    const ctx = this.talkCtx(side, phase);
+    this.talk[side] = talkEffect(ctx, aiTalk(this.w, this.f, ctx, side));
   }
 
   player(id: number): Player {
@@ -125,7 +179,7 @@ export class MatchSim {
         count++;
         const p = this.player(id);
         const pos = s.slots[k];
-        const eff = ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100));
+        const eff = ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100)) * this.pm(s, id).eff;
         if (pos === "GOL") gk = eff;
         d += eff * DEF_W[pos]; dw += DEF_W[pos];
         m += eff * MID_W[pos]; mw += MID_W[pos];
@@ -137,7 +191,14 @@ export class MatchSim {
       s.def = line(d, dw, BASE.def) * shortHanded * (1 - 0.03 * s.mentality) * (1 + 0.03 * home);
       s.mid = line(m, mw, BASE.mid) * shortHanded * (1 + 0.025 * (s.pressing - 1)) * (1 + 0.03 * home);
       s.att = line(a, aw, BASE.att) * shortHanded * (1 + 0.04 * s.mentality) * (1 + 0.07 * home);
-      s.gk = gk;
+      // jogadas, entrosamento, foco do treino, turbo do admin e preleção (matchmods.ts)
+      const sm = sideMult(this.w, this.f, s.club, s.slots, s.onPitch, this.sides[1 - i].mentality, s.mentality, s.captain);
+      s.sm = sm;
+      const k = commonFactor(sm, this.talk[i]);
+      s.def *= sm.def * k;
+      s.mid *= sm.mid * k;
+      s.att *= sm.att * k;
+      s.gk = gk * sm.gk + sm.gkPlus;
     }
   }
 
@@ -151,14 +212,14 @@ export class MatchSim {
     side.rating.set(id, (side.rating.get(id) ?? 6) + delta);
   }
 
-  private pickOnPitch(side: Side, weights: Record<Pos, number>, attr: keyof Player["attrs"], exclude?: number, power = 2): number | null {
+  private pickOnPitch(side: Side, weights: Record<Pos, number>, attr: keyof Player["attrs"], exclude?: number, power = 2, key?: keyof PMods): number | null {
     const ids: number[] = [];
     const ws: number[] = [];
     side.onPitch.forEach((id, k) => {
       if (id == null || id === exclude) return;
       const p = this.player(id);
       ids.push(id);
-      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power));
+      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1));
     });
     if (!ids.length) return null;
     return pickWeighted(ids, ws);
@@ -185,6 +246,12 @@ export class MatchSim {
       this.minute = 45;
       this.ev({ min: 45, type: "half", text: `Fim do primeiro tempo: ${this.sides[0].club.name} ${this.sides[0].goals} x ${this.sides[1].goals} ${this.sides[1].club.name}` });
       for (const s of this.sides) this.autoSubs(s, true);
+      // conversa do intervalo: a preleção perde o efeito; a IA fala de novo (o usuário escolhe na tela)
+      this.talk = [0, 0];
+      for (let i = 0; i < 2; i++) {
+        if (this.sides[i].auto) this.aiTalk(i as 0 | 1, "half");
+        else if (this.autoTalk) this.applyTalk(i as 0 | 1, suggest(this.w, this.f, this.talkCtx(i as 0 | 1, "half"), i as 0 | 1), "half");
+      }
       this.recompute();
       return this.events.slice(start);
     }
@@ -202,7 +269,7 @@ export class MatchSim {
         for (const id of s.onPitch) {
           if (id == null) continue;
           const p = this.player(id);
-          const rate = 0.26 * (1.25 - (p.attrs.fis / 100) * 0.6) * (1 + 0.15 * (s.pressing - 1));
+          const rate = 0.26 * (1.25 - (p.attrs.fis / 100) * 0.6) * (1 + 0.15 * (s.pressing - 1)) * this.pm(s, id).fatigue * s.sm.fatigue;
           p.cond = clamp(p.cond - rate * 5, 5, 100);
         }
       }
@@ -226,20 +293,21 @@ export class MatchSim {
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
       this.phase.corner = { side: atk as 0 | 1, taker: null };
-      if (this.live && chance(0.3)) {
+      if (chance(SET_PIECE.header * S.sm.setPiece)) this.header(atk);
+      else if (this.live && chance(0.3)) {
         const taker = this.pickOnPitch(S, ASSIST_W, "pas");
         this.phase.corner.taker = taker;
         this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("corner", { t: S.club.name, p: this.name(taker) }) });
       }
     } else {
       // desarmes contam pontos para defensores
-      const d = this.pickOnPitch(O, DEF_W, "def");
+      const d = this.pickOnPitch(O, DEF_W, "def", undefined, 2, "tackle");
       this.rate(O, d, 0.025);
       this.phase.tackle = { side: (1 - atk) as 0 | 1, pid: d };
     }
 
     // pênalti
-    if (chance(TUNING.penBase * ratio)) this.penalty(atk);
+    if (chance(TUNING.penBase * ratio * S.sm.penAward)) this.penalty(atk);
 
     // faltas e cartões (o time sem a bola comete mais)
     if (chance(0.27)) {
@@ -248,6 +316,7 @@ export class MatchSim {
       this.stats.fouls[foulSide]++;
       this.phase.foul = foulSide as 0 | 1;
       if (chance(0.17)) this.card(foulSide, F);
+      else if (foulSide === 1 - atk && chance(SET_PIECE.freeKick * S.sm.setPiece)) this.freeKick(atk);
       else if (this.live && chance(0.04)) this.ev({ min, type: "info", text: phrase("info", { t: S.club.name, p: this.name(this.pickOnPitch(S, ATT_W, "dri")) }) });
     }
 
@@ -267,19 +336,61 @@ export class MatchSim {
   private shot(atk: number) {
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
-    const min = this.minute;
-    const shooter = this.pickOnPitch(S, SHOOT_W, "fin", undefined, 1.5);
+    const shooter = this.pickOnPitch(S, SHOOT_W, "fin", undefined, 1.5, "shoot");
     if (shooter == null) return;
     const sp = this.player(shooter);
     const z = gauss(0, 1);
-    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + (S.att - O.def) / TUNING.xgAttDiv), 0.02, 0.6);
+    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + (S.att - O.def) / TUNING.xgAttDiv) * this.pm(S, shooter).xg, 0.02, 0.6);
+    const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter, 2, "assist") : null;
+    const kind = hasTrait(sp, "CHF") && !hasTrait(sp, "MAT") ? "long" : undefined;
+    this.finishShot(atk, shooter, assister, xg, kind);
+  }
+
+  /** Cabeçada de escanteio: quem cobra é o garçom, quem cabeceia é o mais alto/forte (e o Cabeceador). */
+  private header(atk: number) {
+    const S = this.sides[atk];
+    const taker = this.pickOnPitch(S, ASSIST_W, "pas", undefined, 2, "assist");
+    const ids: number[] = [];
+    const ws: number[] = [];
+    S.onPitch.forEach((id, k) => {
+      if (id == null || id === taker) return;
+      const p = this.player(id);
+      ids.push(id);
+      ws.push(HEADER_W[S.slots[k]] * Math.pow(p.height / 185, 2) * Math.pow(p.attrs.fis / 70, 2) * this.pm(S, id).header);
+    });
+    if (!ids.length) return;
+    const shooter = pickWeighted(ids, ws);
+    if (this.phase.corner) this.phase.corner.taker = taker;
+    this.finishShot(atk, shooter, taker, headerXg(this.player(shooter)), "header");
+  }
+
+  /** Falta perto da área cobrada direto: o Cobrador de falta, senão quem tem melhor finalização + passe. */
+  private freeKick(atk: number) {
+    const S = this.sides[atk];
+    let taker: number | null = null, best = -1;
+    for (const id of S.onPitch) {
+      if (id == null) continue;
+      const p = this.player(id);
+      if (p.pos === "GOL") continue;
+      const v = (hasTrait(p, "FAL") ? 1000 : 0) + (p.attrs.fin + p.attrs.pas) / 2;
+      if (v > best) { best = v; taker = id; }
+    }
+    if (taker == null) return;
+    this.finishShot(atk, taker, null, freeKickXg(this.player(taker)), "freekick");
+  }
+
+  /** Daqui em diante todo chute segue o mesmo caminho: gol, defesa, trave ou para fora. */
+  private finishShot(atk: number, shooter: number, assister: number | null, xg: number, kind?: "header" | "freekick" | "long") {
+    const S = this.sides[atk];
+    const O = this.sides[1 - atk];
+    const min = this.minute;
     this.stats.shots[atk]++;
     this.stats.xg[atk] += xg;
     const gk = this.gkId(O);
     const gkEff = O.gk;
     const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75);
-    const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter) : null;
     const shotInfo: NonNullable<MinutePhase["shot"]> = { side: atk as 0 | 1, shooter, assist: assister, result: "miss", xg };
+    if (kind) shotInfo.kind = kind;
     this.phase.shot = shotInfo;
     if (this.live && xg > 0.3 && chance(0.6)) {
       this.ev({ min, type: "chance", side: atk as 0 | 1, pid: shooter, text: phrase("bigChance", { p: this.name(shooter), a: this.name(assister) }) });
@@ -292,7 +403,7 @@ export class MatchSim {
         return;
       }
       this.stats.onTarget[atk]++;
-      if (chance(0.025)) {
+      if (kind !== "freekick" && chance(0.025)) {
         const og = this.pickOnPitch(O, DEF_W, "def");
         shotInfo.result = "owngoal";
         shotInfo.og = og ?? undefined;
@@ -301,7 +412,7 @@ export class MatchSim {
         return;
       }
       shotInfo.result = "goal";
-      this.goal(atk, shooter, assister ?? undefined, "goal");
+      this.goal(atk, shooter, assister ?? undefined, "goal", kind === "header" ? "headerGoal" : kind === "freekick" ? "freeKickGoal" : kind === "long" ? "longShotGoal" : undefined);
       return;
     }
     const onTarget = rand() < 0.3 + xg * 0.6;
@@ -310,18 +421,18 @@ export class MatchSim {
       this.rate(S, shooter, 0.1);
       this.rate(O, gk, 0.28);
       shotInfo.result = "save";
-      if (this.live || xg > 0.25) this.ev({ min, type: "save", side: atk as 0 | 1, pid: shooter, text: phrase("save", { p: this.name(shooter), g: this.name(gk) }) });
+      if (this.live || xg > 0.25 || kind === "freekick") this.ev({ min, type: "save", side: atk as 0 | 1, pid: shooter, text: phrase(kind === "freekick" ? "freeKickSave" : "save", { p: this.name(shooter), g: this.name(gk) }) });
     } else if (chance(0.06)) {
       this.rate(S, shooter, 0.05);
       shotInfo.result = "post";
       this.ev({ min, type: "post", side: atk as 0 | 1, pid: shooter, text: phrase("post", { p: this.name(shooter) }) });
     } else {
       this.rate(S, shooter, -0.06);
-      if (this.live) this.ev({ min, type: "miss", side: atk as 0 | 1, pid: shooter, text: phrase("miss", { p: this.name(shooter) }) });
+      if (this.live) this.ev({ min, type: "miss", side: atk as 0 | 1, pid: shooter, text: phrase(kind === "header" ? "headerMiss" : "miss", { p: this.name(shooter) }) });
     }
   }
 
-  private goal(atk: number, scorer: number, assist: number | undefined, kind: "goal" | "owngoal" | "pen-goal") {
+  private goal(atk: number, scorer: number, assist: number | undefined, kind: "goal" | "owngoal" | "pen-goal", key?: "headerGoal" | "freeKickGoal" | "longShotGoal") {
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     S.goals++;
@@ -343,22 +454,24 @@ export class MatchSim {
         ? phrase("ownGoal", { p: this.name(scorer) })
         : kind === "pen-goal"
           ? phrase("penGoal", { p: this.name(scorer), g: this.name(gk) })
-          : phrase("goal", { p: this.name(scorer), a: assist != null ? this.name(assist) : undefined, t: S.club.name, g: this.name(gk) });
+          : phrase(key ?? "goal", { p: this.name(scorer), a: assist != null ? this.name(assist) : undefined, t: S.club.name, g: this.name(gk) });
     this.ev({ min: this.minute, type: kind, side: atk as 0 | 1, pid: scorer, pid2: assist, text: `${text} (${this.sides[0].goals} x ${this.sides[1].goals})` });
   }
 
   private penalty(atk: number) {
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
-    const fouled = this.pickOnPitch(S, ATT_W, "dri");
+    const fouled = this.pickOnPitch(S, ATT_W, "dri", undefined, 2, "fouled");
     this.ev({ min: this.minute, type: "info", side: atk as 0 | 1, text: phrase("penAward", { t: S.club.name, p: this.name(fouled) }) });
-    // cobrador: melhor finalizador em campo
+    // cobrador: o Batedor de pênalti em campo, senão o melhor finalizador
     let taker: number | null = null;
     let best = -1;
     for (const id of S.onPitch) {
       if (id == null) continue;
       const p = this.player(id);
-      if (p.pos !== "GOL" && p.attrs.fin > best) { best = p.attrs.fin; taker = id; }
+      if (p.pos === "GOL") continue;
+      const v = p.attrs.fin + (hasTrait(p, "PEN") ? 1000 : 0);
+      if (v > best) { best = v; taker = id; }
     }
     const penInfo: NonNullable<MinutePhase["penalty"]> = { side: atk as 0 | 1, taker, fouled, scored: false };
     this.phase.penalty = penInfo;
@@ -366,7 +479,7 @@ export class MatchSim {
     this.stats.shots[atk]++;
     this.stats.xg[atk] += 0.76;
     const gk = this.gkId(O);
-    const p = clamp(0.74 + (best - 70) / 200 - (O.gk - 70) / 250, 0.5, 0.92);
+    const p = this.penChance(S, taker, O);
     if (rand() < p) {
       this.stats.onTarget[atk]++;
       penInfo.scored = true;
@@ -374,16 +487,24 @@ export class MatchSim {
     } else {
       this.rate(S, taker, -0.6);
       this.rate(O, gk, 0.6);
-      this.ev({ min: this.minute, type: "pen-miss", side: atk as 0 | 1, pid: taker, text: phrase("penMiss", { p: this.name(taker), g: this.name(gk) }) });
+      const pegou = gk != null && hasTrait(this.player(gk), "PEG");
+      this.ev({ min: this.minute, type: "pen-miss", side: atk as 0 | 1, pid: taker, text: phrase(pegou ? "gkPenSpecialist" : "penMiss", { p: this.name(taker), g: this.name(gk) }) });
     }
     // falta no pênalti pode gerar cartão
     if (chance(0.35)) this.card(1 - atk, O);
   }
 
+  /** Chance de converter um pênalti (cobrador, goleiro, Batedor/Pegador e treino de bola parada). */
+  private penChance(S: Side, taker: number, O: Side): number {
+    const gk = this.gkId(O);
+    const save = gk != null ? this.pm(O, gk).penSave : 0;
+    return clamp(0.74 + (this.player(taker).attrs.fin - 70) / 200 - (O.gk - 70) / 250 + this.pm(S, taker).pen + S.sm.penPlus - save, 0.45, 0.95);
+  }
+
   private card(sideIdx: number, F: Side) {
-    const id = this.pickOnPitch(F, DEF_W, "def") ?? this.pickOnPitch(F, MID_W, "def");
+    const id = this.pickOnPitch(F, DEF_W, "def", undefined, 2, "card") ?? this.pickOnPitch(F, MID_W, "def", undefined, 2, "card");
     if (id == null) return;
-    const straightRed = chance(0.025);
+    const straightRed = chance(this.pm(F, id).redP);
     if (straightRed || F.yellows.has(id)) {
       this.stats.reds[sideIdx]++;
       if (!straightRed) this.stats.yellows[sideIdx]++;
@@ -433,11 +554,13 @@ export class MatchSim {
 
   private injury(sideIdx: 0 | 1) {
     const F = this.sides[sideIdx];
+    // trapaça "sem lesões" (só o clube do usuário; o sorteio do minuto já foi feito)
+    if (F.club.id === this.w.userClubId && adminCheats(this.w).noInj) return;
     const cand = F.onPitch.filter((x): x is number => x != null);
     if (!cand.length) return;
-    const id = cand[Math.floor(rand() * cand.length)];
+    const id = pickWeighted(cand, cand.map((c) => this.pm(F, c).injW));
     const p = this.player(id);
-    const days = pickWeighted([randInt(3, 7), randInt(8, 21), randInt(22, 60), randInt(61, 160)], [50, 30, 15, 5]);
+    const days = Math.max(1, Math.round(pickWeighted([randInt(3, 7), randInt(8, 21), randInt(22, 60), randInt(61, 160)], [50, 30, 15, 5]) * this.pm(F, id).injDays));
     p.injury = Math.max(p.injury, days);
     p.injuryName = injuryName(days);
     this.ev({ min: this.minute, type: "injury", side: sideIdx, pid: id, text: phrase("injury", { p: this.name(id), t: F.club.name }) });
@@ -542,14 +665,14 @@ export class MatchSim {
 
   private shootout() {
     const order = (s: Side) =>
-      s.onPitch.filter((x): x is number => x != null).sort((a, b) => this.player(b).attrs.fin - this.player(a).attrs.fin);
+      s.onPitch.filter((x): x is number => x != null).sort((a, b) => this.kickScore(b) - this.kickScore(a));
     const ta = order(this.sides[0]);
     const tb = order(this.sides[1]);
     let a = 0, b = 0;
-    const kick = (taker: number, gkSide: Side) => rand() < clamp(0.74 + (this.player(taker).attrs.fin - 70) / 200 - (gkSide.gk - 70) / 250, 0.5, 0.92);
+    const kick = (taker: number, S: Side, gkSide: Side) => rand() < this.penChance(S, taker, gkSide);
     for (let r = 0; r < 30; r++) {
-      const sa = kick(ta[r % ta.length], this.sides[1]);
-      const sb = kick(tb[r % tb.length], this.sides[0]);
+      const sa = kick(ta[r % ta.length], this.sides[0], this.sides[1]);
+      const sb = kick(tb[r % tb.length], this.sides[1], this.sides[0]);
       if (sa) a++;
       if (sb) b++;
       if (r < 5) {
@@ -560,6 +683,11 @@ export class MatchSim {
     this.pens = [a, b];
     const winner = a > b ? this.sides[0] : this.sides[1];
     this.ev({ min: this.minute, type: "info", text: `Pênaltis: ${this.sides[0].club.name} ${a} x ${b} ${this.sides[1].club.name}. ${winner.club.name} avança!` });
+  }
+
+  private kickScore(id: number) {
+    const p = this.player(id);
+    return p.attrs.fin + (hasTrait(p, "PEN") ? 8 : 0);
   }
 
   runToEnd() {
@@ -574,7 +702,7 @@ export class MatchSim {
       const res = scored > conceded ? 0.25 : scored < conceded ? -0.25 : 0;
       for (const id of s.played) {
         const p = this.player(id);
-        let r = (s.rating.get(id) ?? 6) + res + gauss(0, 0.3) + (p.ovr - 70) / 45;
+        let r = (s.rating.get(id) ?? 6) + res + gauss(0, 0.3) + (p.ovr - 70) / 45 + (this.pm(s, id).eff - 1) * 15;
         if (conceded === 0) {
           if (p.pos === "GOL") r += 0.6;
           else if (POS_GROUP[p.pos] === "DEF") r += 0.35;

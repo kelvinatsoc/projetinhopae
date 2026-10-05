@@ -105,7 +105,8 @@ describe("empréstimos", () => {
     }
     if (w.players[b.id]) {
       expect(b.loan).toBeUndefined();
-      expect(b.clubId).toBeNull();
+      // liberado pelo usuário; no fim da temporada um clube da IA pode contratá-lo como jogador livre
+      expect(b.clubId).not.toBe(w.userClubId);
     }
   }, 60000);
 

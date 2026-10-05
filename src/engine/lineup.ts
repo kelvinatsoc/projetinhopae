@@ -1,5 +1,6 @@
 // Escalação automática (usada pela IA e pelo botão "Escalar automaticamente").
 import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
+import { hasTrait } from "./traits";
 import type { Club, Lineup, Player, World } from "./types";
 
 export function isAvailable(p: Player, compId?: string): boolean {
@@ -41,7 +42,9 @@ export function autoLineup(w: World, club: Club, compId?: string, formation = cl
     used.add(p.id);
   }
   const bench = pickBench(pool.filter((p) => !used.has(p.id)));
-  const captain = [...used].map((id) => w.players[id]).sort((a, b) => b.fame + b.ovr - (a.fame + a.ovr))[0]?.id;
+  // capitão: o mais famoso/experiente; quem é Líder ganha preferência
+  const capScore = (p: Player) => p.fame + p.ovr + (hasTrait(p, "LID") ? 20 : 0);
+  const captain = [...used].map((id) => w.players[id]).sort((a, b) => capScore(b) - capScore(a))[0]?.id;
   return { starters, bench, captain };
 }
 

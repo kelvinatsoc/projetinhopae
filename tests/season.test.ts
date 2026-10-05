@@ -43,8 +43,18 @@ describe("temporada completa", () => {
     console.log("lendas:", legends.join(", "));
     const user = w.clubs[w.userClubId];
     console.log("saldo Flamengo", user.balance, "receitas", JSON.stringify(user.finance.income), "despesas", JSON.stringify(user.finance.expense));
-    expect(goals).toBeGreaterThan(1.8);
-    expect(goals).toBeLessThan(3.2);
+    // faixas de calibração (TUNING em match.ts), com todos os efeitos de gestão ligados
+    expect(goals).toBeGreaterThanOrEqual(2.21);
+    expect(goals).toBeLessThanOrEqual(2.45);
+    expect(home).toBeGreaterThanOrEqual(0.4);
+    expect(home).toBeLessThanOrEqual(0.48);
+    expect(draw).toBeGreaterThanOrEqual(0.23);
+    expect(draw).toBeLessThanOrEqual(0.31);
+    expect(shots).toBeGreaterThanOrEqual(23);
+    expect(shots).toBeLessThanOrEqual(28);
+    expect(yel).toBeGreaterThanOrEqual(3.8);
+    expect(yel).toBeLessThanOrEqual(5.2);
+    expect(t2 - t1).toBeLessThan(6000);
     expect(w.seasonEnded).toBe(true);
     const nPlayersBefore = Object.keys(w.players).length;
     const summary = runEndOfSeason(w);

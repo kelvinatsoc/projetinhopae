@@ -143,6 +143,7 @@ function looksOf(p: Player | undefined): { skin: string; hair: string } {
 
 // ---------------------------------------------------------------- tipos da animação
 type Mode = "kickoff" | "play" | "celebrate" | "corner" | "penalty" | "tunnel" | "stand";
+type ShotKind = NonNullable<MinutePhase["shot"]>["kind"];
 
 interface Dude {
   side: 0 | 1 | 2; // 2 = arbitragem
@@ -1006,9 +1007,11 @@ class PitchAnim {
     }
   }
 
-  shootingSpot(d: Dude): [number, number] {
+  shootingSpot(d: Dude, kind?: ShotKind): [number, number] {
     const side = d.side as 0 | 1;
-    const u = d.grp === 3 ? rnd(80, 90) : d.grp === 2 ? rnd(70, 80) : rnd(84, 90);
+    // cabeçada: na marca do pênalti; falta: na meia-lua; chute de longe: fora da área
+    const u = kind === "header" ? rnd(89, 93) : kind === "freekick" ? rnd(74, 79) : kind === "long" ? rnd(66, 73)
+      : d.grp === 3 ? rnd(80, 90) : d.grp === 2 ? rnd(70, 80) : rnd(84, 90);
     const v = 50 + (d.bv - 50) * 0.45 + rnd(-8, 8);
     return toPx(side, u, clamp(v, 22, 78));
   }
@@ -1026,7 +1029,7 @@ class PitchAnim {
     const [start, t1] = this.ensurePossession(atk, t0, Bs);
     let t = t1;
     let cur = start;
-    const spot = this.shootingSpot(shooter);
+    const spot = this.shootingSpot(shooter, sh.kind);
     const assist = this.byPid(sh.assist);
     this.at(t0, () => {
       // o finalizador dispara para a área (e o time sobe junto)
@@ -1052,7 +1055,8 @@ class PitchAnim {
       if (assist === from || !assist) this.at(tt, () => this.say(`${this.name(from)} serve ${this.name(shooter)}`, atk));
     }
     this.at(shotT, () => {
-      this.say(`${this.name(shooter)} finaliza…`, atk, 1);
+      const verb = sh.kind === "header" ? "sobe de cabeça…" : sh.kind === "freekick" ? "cobra a falta…" : sh.kind === "long" ? "arrisca de longe…" : "finaliza…";
+      this.say(`${this.name(shooter)} ${verb}`, atk, 1);
       this.doShot(shooter, sh, goalE ?? outE ?? null, hold);
     });
   }

@@ -8,6 +8,7 @@ import { fixtureById, nextFixture } from "../engine/competitions";
 import type { MatchSim } from "../engine/match";
 import { MENTALITY_NAMES, PRESSING_NAMES } from "../engine/positions";
 import { shortName } from "../engine/player";
+import { TONES, userPreTalk } from "../engine/teamtalk";
 import type { Fixture, World } from "../engine/types";
 import { toast, update, useVersion, useWorld } from "../store";
 import { autosave } from "./actions";
@@ -167,12 +168,26 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
         <FixList w={w} fixes={a.fixes} compId={f.comp} />
       </div>
 
+      <TalkTip w={w} f={f} />
+
       <div className="col gap8">
         {a.changed
           ? <button className="btn primary block" onClick={() => applyPlan(a.plan, f.comp)}>✅ Aplicar sugestões</button>
           : <div className="as-ok small">✔ Seu time já está do jeito que eu sugiro.</div>}
         <OddsSim w={w} f={f} a={a} />
       </div>
+    </div>
+  );
+}
+
+/** Balão da preleção: o que o auxiliar diria no vestiário (os botões ficam no card "Preleção"). */
+function TalkTip({ w, f }: { w: World; f: Fixture }) {
+  const tone = userPreTalk(w, f).tone;
+  const t = TONES[tone];
+  return (
+    <div className="as-section">
+      <div className="as-title">Preleção</div>
+      <div className="as-talk small">💡 “{t.bubble}” <span className="muted">Eu diria:</span> <b>{t.emoji} {t.label}</b></div>
     </div>
   );
 }
