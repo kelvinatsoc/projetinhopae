@@ -641,9 +641,13 @@ export function drawBig(g: CanvasRenderingContext2D, x: number, y: number, s: nu
   const nx = Math.round(-nw * px / 2) + (view === "front" ? Math.round(s) : 0);
   const ny = Math.round((torsoTop + 0.8 - H) * s);
   g.fillStyle = numColor(K.shirt);
+  // se o quadro estiver espelhado (replay), desespelha só o número para não ler "01"
+  const mirrored = g.getTransform().a < 0;
+  if (mirrored) { g.save(); g.translate(2 * nx + nw * px, 0); g.scale(-1, 1); }
   num.split("").forEach((ch, i) => DIGITS[ch]?.forEach((row, ry) => row.split("").forEach((c, rx) => {
     if (c === "1") g.fillRect(nx + (i * 4 + rx) * px, ny + ry * px, px, px);
   })));
+  if (mirrored) g.restore();
   // calção
   R(bx, shortsY, bw, 2, K.shorts);
   // pernas
