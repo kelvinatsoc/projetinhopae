@@ -81,12 +81,35 @@ DEEPCATS = [
 ]
 MAX_DEPTH = 1  # para categorymembers (quando deepcat falhar)
 
-# Arquivos escolhidos -> saída. Cada item: arquivo do Commons, trecho (início, duração em s),
+# Arquivos escolhidos -> saída. Cada item: arquivo do Commons, trecho (início e duração em s),
 # taxa de bits, canais e se é um laço (crossfade do fim com o início para não "pular").
-SELECTION: list[dict] = []
+# Trechos escolhidos pelo perfil de volume (astats a cada 1 s), ver "probe".
+WWS = "File:WWS FootballAustriavs.Sweden.ogg"  # Áustria x Suécia, Ernst Happel (Viena), no meio da torcida
+TRILLER = "File:Maracas & Trillerpfeife.ogg"  # apito de bolinha (o do árbitro); só os trechos sem maracas
+SELECTION: list[dict] = [
+    # ambiente: trecho sem grandes explosões, em laço de 55 s
+    dict(out="crowd.m4a", file=WWS, start=140.0, dur=55.0, loop=True, xfade=2.5, bitrate="72k", lufs=-20),
+    # explosão da arquibancada (subida forte aos 59-63 s)
+    dict(out="goal.m4a", file=WWS, start=57.5, dur=10.0, fadein=0.15, fadeout=3.0, bitrate="80k", lufs=-14),
+    # torcida do Elversberg comemorando o 4 a 0 ("Alleh Hopp!") — variação do gol
+    dict(out="goal2.m4a", file="File:2025-03-02 SVE-BSC Alleh Hopp.ogg", start=0.1, dur=11.0, fadein=0.1,
+         fadeout=2.0, bitrate="80k", lufs=-14),
+    # "uhhh": subida e queda rápida da torcida (46-54 s)
+    dict(out="ooh.m4a", file=WWS, start=46.5, dur=7.5, fadein=0.3, fadeout=2.0, bitrate="72k", lufs=-16),
+    # apito: trechos só com o apito, passa-altas para tirar o resto do chocalho
+    dict(out="whistle.m4a", file=TRILLER, start=0.18, dur=0.75, fadein=0.02, fadeout=0.08, bitrate="64k",
+         channels=1, lufs=-16, pre="highpass=f=1500"),
+    dict(out="whistle-long.m4a", file=TRILLER, start=7.2, dur=2.0, fadein=0.02, fadeout=0.15, bitrate="64k",
+         channels=1, lufs=-16, pre="highpass=f=1500"),
+    # hinos de clube (gravações livres)
+    dict(out="chant-sao-paulo.m4a", file="File:Hino-do-São-Paulo-FC.ogg", start=0.0, dur=60.0, fadein=0.05,
+         fadeout=3.0, bitrate="64k", lufs=-16),
+    dict(out="chant-nacional-uru.m4a", file="File:Himno Del Club Nacional de Football.ogg", start=0.0, dur=60.0,
+         fadein=0.05, fadeout=3.0, bitrate="64k", lufs=-16),
+]
 
-# Cantos de torcida por clube (id do jogo -> nome da saída em SELECTION)
-CLUB_CHANTS: dict[str, str] = {}
+# Cantos/hinos por clube (id do jogo -> saída em SELECTION); espelhado em src/ui/audio.ts
+CLUB_CHANTS: dict[str, str] = {"sao-paulo": "chant-sao-paulo.m4a", "nacional-uru": "chant-nacional-uru.m4a"}
 
 
 def load(path, default):
@@ -273,6 +296,9 @@ def probe(titles=None):
 
 def build_one(s: dict):
     src = raw_path(s["file"])
+    if not os.path.exists(src):
+        print(f"{s['out']}: falta o original ({s['file']}), rode 'download'")
+        return
     out = os.path.join(OUTDIR, s["out"])
     ss, dur = s.get("start", 0.0), s["dur"]
     fade = s.get("fade", 0.08)
@@ -324,6 +350,8 @@ def credits():
         save(CANDS, db)
     out = {}
     for s in SELECTION:
+        if not os.path.exists(os.path.join(OUTDIR, s["out"])):
+            continue
         m = db.get(s["file"], {})
         out[f"audio/{s['out']}"] = {
             "file": wm.norm_file(s["file"]),
