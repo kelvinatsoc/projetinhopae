@@ -4,6 +4,7 @@ import { COMP_META } from "../../engine/competitions";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
 import { clubStrength, squadOf } from "../../engine/lineup";
 import { POS_ORDER } from "../../engine/positions";
+import { repairWorld } from "../../engine/integrity";
 import { fireAndRehire } from "../../engine/season";
 import type { Club, World } from "../../engine/types";
 import { exportWorld, saveWorld } from "../../save";
@@ -188,6 +189,7 @@ export function HistoryScreen() {
             <Crest club={w.clubs[h.clubId]} size={18} />
             <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div} · {h.pos ?? "-"}º</span>
             {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}>🏆</span>)}
+            {h.admin && <span title="Temporada com edições do administrador">🛠️</span>}
           </div>
         ))}
       </div>
@@ -313,6 +315,12 @@ export function SettingsScreen() {
           <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
           <button className="btn sm" onClick={saveNow}>💾 Salvar agora</button>
         </div>
+        <button className="btn sm block mt8" onClick={() => {
+          let n = 0;
+          update((x) => { n = repairWorld(x); });
+          if (n) autosave();
+          toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
+        }}>🩺 Verificar save</button>
         <p className="tiny muted mt8">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}). Notas estimadas pelo jogo — edite no perfil do jogador.</p>
         <button className="btn sm block mt8" onClick={() => push({ name: "credits" })}>📜 Créditos das fotos, escudos e sons</button>
       </div>
@@ -400,6 +408,7 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
           </div>
         )}
         <div className="card small" style={{ whiteSpace: "pre-line" }}>{summary.join("\n")}</div>
+        {last && w.admin?.seasons.includes(last.season) && <div className="tiny center" style={{ color: "var(--gold)" }}>🛠️ Temporada com edições do administrador</div>}
         <button className="btn primary block" onClick={() => { forceBack(); setTab("home"); if (w.fired) push({ name: "fired" }); }}>Começar {w.season}</button>
       </div>
     </div>

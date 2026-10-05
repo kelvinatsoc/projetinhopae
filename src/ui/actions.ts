@@ -2,9 +2,10 @@
 import { migrateWorld, type Database } from "../engine/world";
 import { advance, runEndOfSeason } from "../engine/game";
 import { registerMedia, type RegenFace } from "../engine/media";
+import { clearAdminUndo, markAdmin } from "../engine/admin";
 import type { World } from "../engine/types";
-import { saveWorld } from "../save";
-import { getWorld, push, replace, setWorld, toast, update } from "../store";
+import { loadSnapshot, saveSnapshot, saveWorld } from "../save";
+import { getWorld, push, replace, resetNav, setWorld, toast, update } from "../store";
 
 let dbPromise: Promise<Database> | null = null;
 
@@ -36,12 +37,33 @@ export function loadDatabase(): Promise<Database> {
 
 /** Abre um jogo salvo (ou importado), atualizando-o com as fotos/escudos do banco atual. */
 export async function openWorld(w: World) {
+  let info: ReturnType<typeof migrateWorld> | null = null;
   try {
-    migrateWorld(w, await loadDatabase());
+    info = migrateWorld(w, await loadDatabase());
   } catch (e) {
     console.error(e);
   }
+  clearAdminUndo();
   setWorld(w);
+  if (info?.newer) toast("Este save é de uma versão mais nova do jogo — atualize o app.");
+  else if (info && info.repaired > 0) toast(`Save verificado: ${info.repaired} problema${info.repaired > 1 ? "s" : ""} corrigido${info.repaired > 1 ? "s" : ""} ✔`);
+}
+
+/** Admin: volta para o ponto de restauração (antes do último jogo). */
+export async function restoreBeforeMatch(): Promise<boolean> {
+  const w = getWorld();
+  if (!w) return false;
+  const rec = await loadSnapshot(w.saveId);
+  if (!rec) {
+    toast("Não há ponto de restauração.");
+    return false;
+  }
+  await openWorld(rec.world);
+  resetNav();
+  update((x) => { markAdmin(x, `⏪ Voltou para antes do jogo contra ${rec.meta.opp}`); });
+  autosave(true);
+  toast(`⏪ De volta para antes do jogo contra ${rec.meta.opp}`);
+  return true;
 }
 
 let saveTimer: number | undefined;
@@ -88,7 +110,14 @@ export function continueGame() {
   });
   const r = res as ReturnType<typeof advance> | null;
   if (!r) return;
-  if (r.reason === "match") push({ name: "prematch" });
+  if (r.reason === "match") {
+    // admin: ponto de restauração antes de cada jogo (cópia síncrona; gravação em segundo plano)
+    if (w.admin?.on && r.fixture) {
+      const opp = w.clubs[r.fixture.home === w.userClubId ? r.fixture.away : r.fixture.home]?.name ?? "?";
+      saveSnapshot(w, opp).catch((e) => console.error(e));
+    }
+    push({ name: "prematch" });
+  }
   else if (r.reason === "seasonEnd") finishSeason();
   autosave();
 }
@@ -103,6 +132,7 @@ export function finishSeason() {
 }
 
 export function startNewWorld(w: World) {
+  clearAdminUndo();
   setWorld(w);
   autosave(true);
 }

@@ -14,6 +14,14 @@ export interface SaveMeta {
   clubName: string;
   season: number;
   day: number;
+  admin?: boolean; // save com edições do administrador (selo 🛠️ editado)
+}
+
+/** Ponto de restauração do admin (antes do último jogo). */
+export interface SnapshotMeta {
+  season: number;
+  day: number;
+  opp: string;
 }
 
 function open(): Promise<IDBDatabase> {
@@ -44,7 +52,7 @@ function tx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) 
 
 export function metaOf(w: World): SaveMeta {
   const c = w.clubs[w.userClubId];
-  return { id: w.saveId, savedAt: Date.now(), manager: w.managerName, clubId: c.id, clubName: c.name, season: w.season, day: w.day };
+  return { id: w.saveId, savedAt: Date.now(), manager: w.managerName, clubId: c.id, clubName: c.name, season: w.season, day: w.day, admin: !!w.admin?.everUsed };
 }
 
 export async function saveWorld(w: World): Promise<void> {
@@ -69,7 +77,33 @@ export async function listSaves(): Promise<SaveMeta[]> {
 
 export async function deleteSave(id: string): Promise<void> {
   await tx(STORE, "readwrite", (s) => s.delete(id));
+  await tx(STORE, "readwrite", (s) => s.delete(`${id}:pre`));
+  await tx(STORE, "readwrite", (s) => s.delete(`${id}:pre:meta`));
   await tx("meta", "readwrite", (s) => s.delete(id));
+}
+
+/**
+ * Guarda um ponto de restauração (Modo Administrador: "voltar para antes do último jogo").
+ * A cópia é feita NA HORA (síncrona), antes de qualquer mudança; fica no STORE com id "<save>:pre"
+ * (nunca na lista de saves).
+ */
+export function saveSnapshot(w: World, opp: string): Promise<void> {
+  const snap = structuredClone(w);
+  const meta: SnapshotMeta = { season: w.season, day: w.day, opp };
+  return tx(STORE, "readwrite", (s) => s.put({ id: `${w.saveId}:pre`, world: snap, meta }))
+    .then(() => tx(STORE, "readwrite", (s) => s.put({ id: `${w.saveId}:pre:meta`, meta })))
+    .then(() => undefined);
+}
+
+export async function loadSnapshot(saveId: string): Promise<{ world: World; meta: SnapshotMeta } | null> {
+  const rec = await tx<{ id: string; world: World; meta: SnapshotMeta } | undefined>(STORE, "readonly", (s) => s.get(`${saveId}:pre`));
+  return rec ? { world: rec.world, meta: rec.meta } : null;
+}
+
+/** Dados do ponto de restauração (sem carregar o mundo para a interface), ou null. */
+export async function hasSnapshot(saveId: string): Promise<SnapshotMeta | null> {
+  const rec = await tx<{ id: string; meta: SnapshotMeta } | undefined>(STORE, "readonly", (s) => s.get(`${saveId}:pre:meta`));
+  return rec?.meta ?? null;
 }
 
 export function lastSaveId(): string | null {

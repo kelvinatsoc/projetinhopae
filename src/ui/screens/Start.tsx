@@ -2,14 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import type { Div } from "../../engine/types";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
-import { toast } from "../../store";
+import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
 import { clubStars, Crest, Stars } from "../components";
 import { flag } from "../flags";
 import type { Club } from "../../engine/types";
 
 export function StartScreen() {
-  const [mode, setMode] = useState<"menu" | "new" | "load">("menu");
+  // "Novo jogo" e "Carregar" entram na pilha de navegação: o botão voltar do Android (e do navegador)
+  // tira essa entrada e a tela volta ao menu, em vez de minimizar o app.
+  const nav = useNav();
+  const [sub, setSub] = useState<"new" | "load">("new");
+  const mode: "menu" | "new" | "load" = nav.stack.length ? sub : "menu";
+  const setMode = (m: "menu" | "new" | "load") => {
+    if (m === "menu") { if (nav.stack.length) back(); return; }
+    setSub(m);
+    if (!nav.stack.length) push({ name: "tab" });
+  };
   const [saves, setSaves] = useState<SaveMeta[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
@@ -24,7 +33,7 @@ export function StartScreen() {
     setBusy(true);
     try {
       const w = await loadWorld(id);
-      if (w) await openWorld(w);
+      if (w) { resetNav(); await openWorld(w); }
       else toast("Jogo salvo não encontrado.");
     } finally {
       setBusy(false);
@@ -34,6 +43,7 @@ export function StartScreen() {
   async function importFile(f: File) {
     try {
       const w = await importWorldFile(f);
+      resetNav();
       await openWorld(w);
       autosave(true);
     } catch {
@@ -55,7 +65,7 @@ export function StartScreen() {
           <>
             {last && (
               <button className="btn primary block" disabled={busy} onClick={() => open(last.id)}>
-                ▶ Continuar — {last.clubName} ({last.season})
+                ▶ Continuar — {last.clubName} ({last.season}){last.admin ? " 🛠️" : ""}
               </button>
             )}
             <button className="btn gold block" onClick={() => setMode("new")}>＋ Novo jogo</button>
@@ -76,7 +86,7 @@ export function StartScreen() {
               {saves.map((s) => (
                 <div key={s.id} className="list-item">
                   <div className="grow" onClick={() => open(s.id)}>
-                    <b>{s.clubName}</b> · temporada {s.season}
+                    <b>{s.clubName}</b> · temporada {s.season} {s.admin && <span className="tag" style={{ color: "var(--gold)" }}>🛠️ editado</span>}
                     <div className="small muted">{s.manager} · salvo em {new Date(s.savedAt).toLocaleString("pt-BR")}</div>
                   </div>
                   {confirmDel === s.id ? (
@@ -120,6 +130,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
     try { localStorage.setItem("managerName", name); } catch { /* ignore */ }
     setTimeout(() => {
       const w = createWorld(db, { managerName: name.trim() || "Professor", clubId, settings: { casual, legendFreq } });
+      resetNav();
       startNewWorld(w);
     }, 30);
   }
