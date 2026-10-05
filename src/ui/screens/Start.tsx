@@ -6,7 +6,8 @@ import "../progression.css";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
-import { clubStars, Crest, Stars } from "../components";
+import { clubStars, Crest, stadiumSrc, Stars, visibleColor } from "../components";
+import type { CSSProperties } from "react";
 import { flag } from "../flags";
 import type { Club } from "../../engine/types";
 
@@ -157,12 +158,12 @@ function NewGame({ onBack }: { onBack: () => void }) {
         ))}
       </div>
       {!db && <div className="empty">Carregando elencos…</div>}
-      <div className="card flat" style={{ padding: 4 }}>
-        <div className="list">
-          {clubs.map((c) => (
-            <ClubPick key={c.id} c={c} selected={c.id === clubId} onClick={() => setClubId(c.id)} />
-          ))}
-        </div>
+      {!db && <div className="club-pick-grid">{Array.from({ length: 9 }, (_, i) => <div key={i} className="skeleton" style={{ height: 110 }} />)}</div>}
+      {selected && <PickPreview c={selected} />}
+      <div className="club-pick-grid">
+        {clubs.map((c) => (
+          <ClubPick key={c.id} c={c} selected={c.id === clubId} onClick={() => setClubId(c.id)} />
+        ))}
       </div>
       <div className="card flat">
         <div className="switch">
@@ -249,16 +250,35 @@ function Scenarios({ onBack }: { onBack: () => void }) {
   );
 }
 
-function ClubPick({ c, selected, onClick }: { c: DbClub; selected: boolean; onClick: () => void }) {
-  const fake = { ...c, colors: [...c.colors, "#fff", "#fff"].slice(0, 3), crest: c.crest } as unknown as Club;
+function fakeClub(c: DbClub): Club {
+  return { ...c, colors: [...c.colors, "#fff", "#fff"].slice(0, 3), crest: c.crest } as unknown as Club;
+}
+
+/** Vitrine do clube escolhido: foto do estádio, escudo e dados. */
+function PickPreview({ c }: { c: DbClub }) {
+  const photo = stadiumSrc(c);
+  const col = visibleColor(c.colors);
   return (
-    <div className="list-item" onClick={onClick} style={{ background: selected ? "color-mix(in srgb, var(--accent) 18%, transparent)" : undefined, borderRadius: 10, padding: "9px 8px" }}>
-      <Crest club={fake} size={34} />
-      <div className="grow">
-        <b>{c.name}</b>
-        <div className="small muted ellipsis">{flag("BRA")} {c.city}/{c.region} · {c.stadium}</div>
+    <div className="pick-preview" style={{ background: `linear-gradient(135deg, ${col}, #0d1322)` }}>
+      {photo && <img className="bgimg" src={photo} alt="" decoding="async" />}
+      <div className="row" style={{ width: "100%" }}>
+        <Crest club={fakeClub(c)} size={60} />
+        <div className="grow" style={{ minWidth: 0 }}>
+          <h2 className="ellipsis" style={{ fontSize: 28 }}>{c.name}</h2>
+          <div className="small ellipsis" style={{ opacity: 0.9 }}>{flag("BRA")} {c.city}/{c.region} · 🏟️ {c.stadium}</div>
+          <Stars n={clubStars(c.level)} />
+        </div>
       </div>
-      <Stars n={clubStars(c.level)} />
+    </div>
+  );
+}
+
+function ClubPick({ c, selected, onClick }: { c: DbClub; selected: boolean; onClick: () => void }) {
+  return (
+    <div data-club-pick className={`club-pick${selected ? " sel" : ""}`} onClick={onClick} style={{ "--c": visibleColor(c.colors) } as CSSProperties}>
+      <Crest club={fakeClub(c)} size={46} />
+      <b>{c.name}</b>
+      <span className="stars"><Stars n={clubStars(c.level)} /></span>
     </div>
   );
 }

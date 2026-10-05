@@ -161,6 +161,11 @@ export function Silhouette({ club }: { club?: Club | null }) {
 }
 
 /** Foto real do estádio (Wikimedia Commons), com nome e capacidade por cima. */
+/** Endereço da foto do estádio (ou null se o clube não tiver). */
+export function stadiumSrc(club: { stadiumImg?: string }): string | null {
+  return mediaUrlOrNull(club.stadiumImg ? `stadiums/${club.stadiumImg}.webp` : null);
+}
+
 export function StadiumPhoto({ club }: { club: Club }) {
   const [broken, setBroken] = useState(false);
   const src = mediaUrlOrNull(club.stadiumImg ? `stadiums/${club.stadiumImg}.webp` : null);
@@ -188,6 +193,37 @@ export function CompLogo({ id, size = 24 }: { id: string; size?: number }) {
 export function Ovr({ v, lg }: { v: number; lg?: boolean }) {
   const cls = v >= 88 ? "o90" : v >= 78 ? "o80" : v >= 70 ? "o70" : v >= 62 ? "o60" : v >= 52 ? "o50" : "o0";
   return <span className={`ovr ${cls}${lg ? " lg" : ""}`}>{v}</span>;
+}
+
+/** Cor da carta pelo overall (álbum de figurinhas). */
+export function cardTier(p: Player): string {
+  return p.legend ? "legend" : p.ovr >= 78 ? "gold" : p.ovr >= 66 ? "silver" : "bronze";
+}
+
+/** Carta de jogador estilo álbum: overall, posição, rosto, nome e condição. */
+export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
+  p: Player; club?: Club | null; season: number; starter?: boolean; onClick?: () => void; delay?: number;
+}) {
+  const injured = p.injury > 0;
+  const banned = Object.values(p.bans).some((b) => b > 0);
+  return (
+    <div data-player className={`pcard ${cardTier(p)}`} onClick={onClick} style={{ animationDelay: `${Math.min(delay, 20) * 25}ms` }}>
+      <div className="pc-top">
+        <div><span className="pc-ovr">{p.ovr}</span><span className="pc-pos">{p.pos}</span></div>
+        {starter && <span className="pc-xi">XI</span>}
+      </div>
+      <div className="pc-flags">
+        <span>{flag(p.nat)}</span>
+        {injured && <span title="Lesionado">🚑</span>}
+        {banned && <span title="Suspenso">🟥</span>}
+        {p.listed && <span title="À venda">💲</span>}
+      </div>
+      <Avatar p={p} club={club} season={season} size={64} />
+      <div className="pc-name">{p.name.split(" ").slice(-1)[0]}</div>
+      <div className="pc-meta"><span>{age(p, season)}a</span><span>{formatMoney(p.wage)}</span></div>
+      <div className="pc-cond"><i style={{ width: `${p.cond}%`, background: p.cond < 60 ? "#ff6b6b" : p.cond < 80 ? "#ffc145" : undefined }} /></div>
+    </div>
+  );
 }
 
 export function PosBadge({ pos }: { pos: Pos }) {
@@ -237,7 +273,7 @@ export function PlayerRow({ p, club, season, right, onClick, showClub }: {
   const injured = p.injury > 0;
   const banned = Object.values(p.bans).some((b) => b > 0);
   return (
-    <div className="list-item" onClick={onClick}>
+    <div data-player className="list-item" onClick={onClick}>
       <Avatar p={p} club={club} season={season} size={42} />
       <div className="grow">
         <div className="row gap4">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LEGEND_BY_ID, TIER_NAMES } from "../../data/legends";
 import { userWindowOpen } from "../../engine/admin";
 import { COMP_META } from "../../engine/competitions";
@@ -8,12 +8,12 @@ import { peekClause } from "../../engine/contracts";
 import { roleLine } from "../../engine/dressing";
 import { canAskLoan, endLoanNow, exerciseOption, loanUntilLabel } from "../../engine/loans";
 import { age, fitAttrs, playerValue, roundMoney } from "../../engine/player";
-import { ATTR_NAMES, POS_NAME, ovrAt, POSITIONS, recalcOvr } from "../../engine/positions";
+import { ATTR_NAMES, POS_NAME, POS_ORDER, ovrAt, POSITIONS, recalcOvr } from "../../engine/positions";
 import { askingPrice, canAfford, evaluateUserBid, playerWillingness, releasePlayer, type OfferResponse } from "../../engine/transfers";
 import type { Attrs, Player, World } from "../../engine/types";
-import { back, push, toast, update, useWorld } from "../../store";
+import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, Crest, Flag, Ovr, PosBadge, Sheet } from "../components";
+import { Avatar, Bar, cardTier, Crest, Flag, PosBadge, Sheet } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME } from "../flags";
 import { potRangeLabel } from "../../engine/scouting";
@@ -31,6 +31,7 @@ export function PlayerScreen({ id }: { id: number }) {
   const w = useWorld();
   const p = w.players[id];
   const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train" | "talk" | "loanOut" | "loanIn" | "option" | "act">(null);
+  const swipeX = useRef<number | null>(null);
   if (!p) return <div className="page"><div className="empty">Este jogador se aposentou ou não existe mais.</div></div>;
   const club = p.clubId ? w.clubs[p.clubId] : null;
   const mine = p.clubId === w.userClubId;
@@ -44,37 +45,64 @@ export function PlayerScreen({ id }: { id: number }) {
   const shortlisted = w.shortlist.includes(p.id);
   const attrKeys: (keyof Attrs)[] = p.pos === "GOL" ? ["gol", "fis", "vel", "pas"] : ["vel", "fin", "pas", "dri", "def", "fis"];
   const best = POSITIONS.map((pos) => ({ pos, v: ovrAt(p, pos) })).sort((a, b) => b.v - a.v).slice(0, 4);
+  // colegas de elenco, na ordem de posição, para trocar de carta deslizando
+  const mates = club ? club.players.map((pid) => w.players[pid]).filter((x): x is Player => !!x && !x.youth === !p.youth).sort((a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos] || b.ovr - a.ovr) : [];
+  const go = (d: number) => {
+    if (mates.length < 2) return;
+    const i = mates.findIndex((x) => x.id === p.id);
+    replace({ name: "player", id: mates[(i + d + mates.length) % mates.length].id });
+  };
   const avgRating = p.stats.apps ? (p.stats.ratingSum / p.stats.apps).toFixed(2) : "-";
 
   return (
     <div className="page">
-      <div className="hero" style={{ background: `linear-gradient(135deg, ${club?.colors[0] ?? "#334"} , ${club?.colors[1] ?? "#556"})` }}>
-        <div className="row" style={{ alignItems: "flex-end" }}>
-          <Avatar p={p} club={club} season={w.season} size={96} />
-          <div className="grow">
-            {legend && <span className="tag legend">★ Lenda {TIER_NAMES[legend.tier]}</span>}
-            <h2 style={{ fontSize: 22, marginTop: 4 }}>{p.name}</h2>
-            <div className="small" style={{ opacity: 0.9 }}>
-              <Flag code={p.nat} /> {COUNTRY_NAME[p.nat] ?? p.nat} · {ageY} anos · {p.height} cm · pé {p.foot === "E" ? "esquerdo" : p.foot === "A" ? "ambos" : "direito"}
-            </div>
-            <div className="row gap8 mt8">
-              <PosBadge pos={p.pos} /> {p.sec.map((s) => <PosBadge key={s} pos={s} />)}
-              <span className="small">{POS_NAME[p.pos]}</span>
-            </div>
+      <div
+        className={`pcard fut ${cardTier(p)}`}
+        onTouchStart={(e) => { swipeX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (swipeX.current == null) return;
+          const dx = e.changedTouches[0].clientX - swipeX.current;
+          swipeX.current = null;
+          if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
+        }}
+      >
+        {legend && <span className="tag legend fut-legend">★ Lenda {TIER_NAMES[legend.tier]}</span>}
+        <div className="fut-top">
+          <div className="fut-ovr">
+            <span className="pc-ovr">{p.ovr}</span>
+            <span className="pc-pos">{p.pos}</span>
+            <Flag code={p.nat} />
+            {club && <Crest club={club} size={26} />}
           </div>
-          <div className="col center" style={{ alignItems: "center" }}>
-            <Ovr v={p.ovr} lg />
-            <span className="tiny" style={{ opacity: 0.85 }}>pot. {potRangeLabel(w, p)}</span>
-          </div>
+          <Avatar p={p} club={club} season={w.season} size={150} />
         </div>
-        <PhotoCredit p={p} />
-        {club && (
-          <div className="row mt12 small" style={{ cursor: "pointer" }} onClick={() => push({ name: "club", id: club.id })}>
-            <Crest club={club} size={20} /> <b>{club.name}</b>{p.youth && <span className="tag">base</span>}{p.shirt && <span>· camisa {p.shirt}</span>}
-          </div>
-        )}
-        {!club && <div className="mt12 small">Sem clube (jogador livre)</div>}
+        <div className="fut-name">{p.name}</div>
+        <div className="fut-attrs">
+          {attrKeys.map((k) => (
+            <div key={k}><b>{Math.round(p.attrs[k])}</b> {ATTR_NAMES[k].slice(0, 3).toUpperCase()}</div>
+          ))}
+        </div>
+        <div className="fut-foot">
+          pot. {potRangeLabel(w, p)} · {ageY} anos · {p.height} cm · pé {p.foot === "E" ? "esq." : p.foot === "A" ? "ambos" : "dir."}
+        </div>
       </div>
+      <div className="swipe-hint">
+        <button className="btn sm ghost" disabled={!mates.length} onClick={() => go(-1)} aria-label="Jogador anterior">‹</button>
+        <div className="col center grow" style={{ alignItems: "center", gap: 4 }}>
+          <div className="row gap8" style={{ flexWrap: "wrap", justifyContent: "center" }}>
+            <PosBadge pos={p.pos} /> {p.sec.map((s) => <PosBadge key={s} pos={s} />)}
+            <span className="small">{POS_NAME[p.pos]}</span>
+          </div>
+          {club ? (
+            <div className="row small" style={{ cursor: "pointer" }} onClick={() => push({ name: "club", id: club.id })}>
+              <Crest club={club} size={18} /> <b>{club.name}</b>{p.youth && <span className="tag">base</span>}{p.shirt && <span>· camisa {p.shirt}</span>}
+            </div>
+          ) : <div className="small">Sem clube (jogador livre)</div>}
+          <span className="tiny muted"><Flag code={p.nat} /> {COUNTRY_NAME[p.nat] ?? p.nat}{mates.length > 1 ? " · deslize a carta para trocar" : ""}</span>
+        </div>
+        <button className="btn sm ghost" disabled={!mates.length} onClick={() => go(1)} aria-label="Próximo jogador">›</button>
+      </div>
+      <PhotoCredit p={p} />
 
       {ownedOut && club && (
         <div className="banner blue">

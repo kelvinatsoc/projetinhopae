@@ -9,7 +9,7 @@ import type { Club, Lineup, Player, World } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { TacticsAdvice } from "../Assistant";
-import { Avatar, Bar, Ovr, PlayerRow, PosBadge } from "../components";
+import { Avatar, Bar, Ovr, PlayerCard, PlayerRow, PosBadge } from "../components";
 import { AcademyScreen } from "./Academy";
 import { TrainingScreen } from "./Training";
 
@@ -37,6 +37,8 @@ function SquadList() {
   const club = w.clubs[w.userClubId];
   const [sort, setSort] = useState<Sort>("pos");
   const [filter, setFilter] = useState<"all" | "starters" | "out" | "listed">("all");
+  const [view, setViewMode] = useState<"cards" | "list">(() => { try { return localStorage.getItem("ldb.squadView") === "list" ? "list" : "cards"; } catch { return "cards"; } });
+  const pickView = (v: "cards" | "list") => { setViewMode(v); try { localStorage.setItem("ldb.squadView", v); } catch { /* sem armazenamento */ } };
   const lineup = useMemo(() => validLineup(w, club), [w, club, club.players.length, club.lineup]);
   const starters = new Set(lineup.starters.filter((x): x is number => x != null));
   let list = squadOf(w, club);
@@ -60,8 +62,14 @@ function SquadList() {
         <div className="stat-box"><b>{Math.round(lineupStrength(w, club, lineup))}</b><span>força do time</span></div>
         <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, club))}</b><span>folha mensal</span></div>
       </div>
-      <div className="small muted" style={{ textAlign: "center" }} title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas no elenco e o foco Tático no treino)">
-        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b>
+      <div className="row">
+      <div className="small muted grow" title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas no elenco e o foco Tático no treino)">
+        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b> · média {avg}
+      </div>
+      <div className="view-toggle">
+        <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
+        <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
+      </div>
       </div>
       <div className="chips">
         {([["all", "Todos"], ["starters", "Titulares"], ["out", "Lesionados/suspensos"], ["listed", "À venda"]] as const).map(([k, l]) => (
@@ -74,6 +82,13 @@ function SquadList() {
           <button key={k} className={`chip${sort === k ? " active" : ""}`} onClick={() => setSort(k)}>{l}</button>
         ))}
       </div>
+      {view === "cards" ? (
+        <div className="pgrid">
+          {list.map((p, i) => (
+            <PlayerCard key={p.id} p={p} club={club} season={w.season} starter={starters.has(p.id)} delay={i} onClick={() => push({ name: "player", id: p.id })} />
+          ))}
+        </div>
+      ) : (
       <div className="card flat" style={{ padding: "2px 10px" }}>
         <div className="list">
           {list.map((p) => (
@@ -81,9 +96,9 @@ function SquadList() {
               right={starters.has(p.id) ? <span className="tag good">titular</span> : undefined} />
           ))}
         </div>
-        {!list.length && <div className="empty">Nenhum jogador.</div>}
       </div>
-      <div className="small muted center">Média de overall: {avg}</div>
+      )}
+      {!list.length && <div className="empty">😶 Nenhum jogador neste filtro.</div>}
       <div style={{ height: 50 }} />
     </div>
   );
