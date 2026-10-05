@@ -358,8 +358,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}>📺 Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}>📜 Lances</button>
               {field && (
-                <button aria-pressed={gfx === "ultra"} title="Gráficos" onClick={() => { const m = gfx === "ultra" ? "leve" : "ultra"; setGfx(m); saveGraphics(m); }}>
-                  {gfx === "ultra" ? "✨ Ultra" : "🪶 Leve"}
+                <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → Retrô PS1" onClick={() => { const m = gfx === "leve" ? "ultra" : gfx === "ultra" ? "ps1" : "leve"; setGfx(m); saveGraphics(m); }}>
+                  {gfx === "ultra" ? "✨ Ultra" : gfx === "ps1" ? "📼 Retrô PS1" : "🪶 Leve"}
                 </button>
               )}
             </div>
@@ -387,6 +387,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             tick={tick}
             msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
             ultra={gfx === "ultra"}
+            ps1={gfx === "ps1"}
             paused={(paused || subs) && !result}
             intro={intro}
             goalHold={hl || speed <= 1}
