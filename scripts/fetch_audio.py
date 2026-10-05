@@ -44,41 +44,32 @@ AUDIO_EXT = (".ogg", ".oga", ".opus", ".wav", ".flac", ".mp3", ".webm", ".mid")
 FREE_RE = re.compile(r"(cc[ -]?by|cc0|public domain|domínio público|pd|gfdl|fal|free art|attribution)", re.I)
 NONFREE_RE = re.compile(r"(\bnc\b|non-?commercial|\bnd\b|no ?deriv|fair use|non-free)", re.I)
 
-# Buscas no Commons (o filtro filetype:audio deixa só áudio)
+# Buscas no Commons. A API está com limite de taxa apertado (e é compartilhada com os outros
+# scripts), então as buscas são agrupadas com OR e o filtro filetype:audio deixa só áudio.
+# "deepcat:" busca também nas subcategorias (até 5 níveis) numa única requisição.
 QUERIES = [
     # português
-    "torcida", "torcida cantando", "torcida futebol", "estádio", "estádio futebol", "Maracanã",
-    "arquibancada", "gol torcida", "grito de gol", "hino clube", "apito árbitro", "apito",
-    "canto torcida", "futebol", "jogo de futebol", "Mineirão", "Pacaembu", "Morumbi",
+    'torcida OR torcedores OR arquibancada OR "grito de gol" OR "canto de torcida" OR Maracanã OR estádio',
+    'futebol OR "jogo de futebol" OR apito OR árbitro OR Mineirão OR Morumbi OR Pacaembu OR "hino do clube"',
     # inglês
-    "football crowd", "soccer crowd", "soccer fans chanting", "stadium crowd", "crowd cheering",
-    "crowd cheering goal", "goal celebration", "football supporters", "football chant",
-    "crowd", "stadium", "referee whistle", "whistle", "sports whistle", "crowd ooh",
-    "crowd groan", "audience applause", "fans singing", "ultras", "football match",
-    "soccer match", "football stadium ambience", "crowd ambience", "crowd noise",
+    '"football crowd" OR "soccer crowd" OR "stadium crowd" OR "football fans" OR "soccer fans" OR "football supporters"',
+    '"crowd cheering" OR "crowd cheer" OR "goal celebration" OR "football chant" OR "crowd chanting" OR "fans chanting" OR ultras',
+    'crowd OR stadium OR cheering OR applause OR audience',
+    '"referee whistle" OR "sports whistle" OR whistle OR "football match" OR "soccer match" OR "football game"',
     # espanhol
-    "hinchada", "cancha", "hinchas cantando", "estadio fútbol", "afición", "barra brava",
-    "silbato árbitro", "gol estadio",
+    'hinchada OR hinchas OR cancha OR "barra brava" OR afición OR estadio OR silbato OR "gol"',
     # clubes
-    "Flamengo", "Corinthians", "Palmeiras", "Grêmio", "Internacional Porto Alegre",
-    "Atlético Mineiro", "Cruzeiro", "Vasco da Gama", "Botafogo", "Fluminense", "São Paulo FC",
-    "Santos FC", "Bahia", "Boca Juniors", "River Plate", "Peñarol", "Nacional Montevideo",
-    "Colo-Colo", "Racing Club", "Independiente", "San Lorenzo", "Sport Recife", "Athletico Paranaense",
-    "Fortaleza", "Ceará", "Vitória", "Coritiba", "Olimpia", "Cerro Porteño", "Alianza Lima",
-    "Universitario", "Millonarios", "Atlético Nacional", "Barcelona SC", "LDU Quito",
+    'Flamengo OR Corinthians OR Palmeiras OR Grêmio OR "Atlético Mineiro" OR Cruzeiro OR Vasco OR Botafogo OR Fluminense',
+    '"São Paulo FC" OR "Santos FC" OR "Sport Club Internacional" OR "EC Bahia" OR Vitória OR "Sport Recife" OR Athletico OR Coritiba OR Fortaleza OR Ceará',
+    '"Boca Juniors" OR "River Plate" OR Peñarol OR "Nacional" OR "Colo-Colo" OR "Racing Club" OR Independiente OR "San Lorenzo" OR Olimpia OR "Cerro Porteño"',
+    '"Alianza Lima" OR Universitario OR Millonarios OR "Atlético Nacional" OR "Barcelona SC" OR "LDU" OR "Club Nacional de Football"',
 ]
-
-# Categorias de áudio (com subcategorias até MAX_DEPTH)
-CATEGORIES = [
-    "Audio files of football", "Sounds of football", "Football chants", "Crowd sounds",
-    "Audio files of stadiums", "Whistles", "Sounds of whistles", "Audio files of crowds",
-    "Sounds of crowds", "Football songs", "Association football audio", "Audio files of sports",
-    "Sounds of sports", "Cheering", "Sounds of cheering", "Applause", "Sounds of applause",
-    "Audio files of association football", "Football supporters' chants", "Chants",
-    "Referee whistles", "Sound effects", "Crowd noise", "Audio files of Brazil",
-    "Audio files of Argentina", "Football anthems", "Club anthems",
+DEEPCATS = [
+    "Sounds of association football", "Audio files of association football", "Football chants",
+    "Crowd sounds", "Sounds of crowds", "Audio files of crowds", "Whistles", "Sound effects of sports",
+    "Audio files of stadiums", "Association football songs", "Cheering", "Applause",
 ]
-MAX_DEPTH = 2
+MAX_DEPTH = 1  # para categorymembers (quando deepcat falhar)
 
 # Arquivos escolhidos -> saída. Cada item: arquivo do Commons, trecho (início, duração em s),
 # taxa de bits, canais e se é um laço (crossfade do fim com o início para não "pular").
@@ -111,13 +102,19 @@ def is_audio(title: str) -> bool:
     return title.lower().endswith(AUDIO_EXT)
 
 
-def search_titles(query: str, limit=100) -> list[str]:
-    out = []
-    j = wm.api(wm.COMMONS_API, {"action": "query", "list": "search", "srnamespace": 6,
-                                 "srsearch": f"{query} filetype:audio", "srlimit": limit})
-    for it in (j or {}).get("query", {}).get("search", []):
-        out.append(it["title"])
-    return out
+def search_titles(query: str, limit=500) -> list[str] | None:
+    """Títulos de arquivos de áudio para a busca (None se a API falhar)."""
+    out, cont = [], {}
+    while True:
+        j = wm.api(wm.COMMONS_API, {"action": "query", "list": "search", "srnamespace": 6,
+                                     "srsearch": f"{query} filetype:audio", "srlimit": limit,
+                                     "srinfo": "totalhits", "srprop": "", **cont})
+        if j is None or "error" in j:
+            return None if not out else out
+        out += [it["title"] for it in j.get("query", {}).get("search", [])]
+        if "continue" not in j or len(out) >= 1500:
+            return out
+        cont = j["continue"]
 
 
 def category_files(cat: str, depth=0, seen=None) -> list[str]:
@@ -172,33 +169,51 @@ def is_free(lic: str) -> bool:
     return bool(lic) and bool(FREE_RE.search(lic)) and not NONFREE_RE.search(lic)
 
 
+# Arquivos que não interessam: pronúncias (Lingua Libre etc.), hinos nacionais em MIDI...
+JUNK_RE = re.compile(r"^File:(LL-Q\d|(pt|en|es|de|fr|it|nl|ca|pl|ru|sv|fi|ja|zh|ko|ar|he|tr|cs|hu|ro|eu|gl|la|el|da|nb|no|uk|sr|hr|id|vi|fa|hi|bn|ta|ur|eo)(-[a-z]{2,4})?-)|.*\.mid$|pronunciation|pronúncia|pronunciación", re.I)
+
+
 def search():
     db = load(CANDS, {})
-    found: dict[str, set] = {}
-    for q in QUERIES:
-        for t in search_titles(q):
-            found.setdefault(t, set()).add(f"q:{q}")
-        print(f"busca {q!r}: {len(found)} no total", flush=True)
-    for c in CATEGORIES:
-        for t in category_files(c):
-            found.setdefault(t, set()).add(f"c:{c}")
-        print(f"categoria {c!r}: {len(found)} no total", flush=True)
-    titles = [t for t in found if is_audio(t)]
-    new = [t for t in titles if t not in db]
-    meta = file_meta(new)
-    for t in titles:
-        if t in meta:
-            db[t] = meta[t]
+    done = set(db.get("_done", []))
+    found: dict[str, list] = db.get("_found", {})
+    jobs = [("q", q) for q in QUERIES] + [("d", c) for c in DEEPCATS]
+    for kind, q in jobs:
+        key = f"{kind}:{q}"
+        if key in done:
+            continue
+        titles = search_titles(f'deepcat:"{q}"' if kind == "d" else q)
+        if titles is None and kind == "d":
+            titles = category_files(q)
+        if titles is None:
+            print(f"falhou: {key}", flush=True)
+            continue
+        for t in titles:
+            found.setdefault(t, [])
+            if key not in found[t]:
+                found[t].append(key)
+        done.add(key)
+        db["_done"], db["_found"] = sorted(done), found
+        save(CANDS, db)
+        print(f"{key}: {len(titles)} resultados, {len(found)} no total", flush=True)
+    want = [t for t in found if is_audio(t) and not JUNK_RE.search(t) and t not in db]
+    print(f"{len(want)} arquivos para buscar metadados", flush=True)
+    for i in range(0, len(want), 50):
+        db.update(file_meta(want[i:i + 50]))
+        save(CANDS, db)
+    for t in found:
         if t in db:
-            db[t]["via"] = sorted(set(db[t].get("via", [])) | found[t])
+            db[t]["via"] = found[t]
     save(CANDS, db)
-    print(f"{len(db)} candidatos gravados em {CANDS}")
+    print(f"{sum(1 for k in db if k.startswith('File:'))} candidatos gravados em {CANDS}")
 
 
 def list_cands(pattern=""):
     db = load(CANDS, {})
     rx = re.compile(pattern, re.I) if pattern else None
     for t, m in sorted(db.items()):
+        if not t.startswith("File:"):
+            continue
         if not is_free(m.get("license", "")):
             continue
         blob = f"{t} {m.get('desc', '')} {' '.join(m.get('cats', []))}"

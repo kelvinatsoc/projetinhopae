@@ -67,7 +67,11 @@ TITLE_OVERRIDES = {"amazonas": "Amazonas Futebol Clube"}
 CREST_OVERRIDES: dict[str, tuple[str, str]] = {}
 # Estádio do clube: clubId -> QID do estádio (quando o link da Wikipedia/P115 não bate com o
 # estádio usado no banco de dados, inclusive os nomes fixados em build_database.STADIUMS)
-VENUE_OVERRIDES: dict[str, str] = {}
+VENUE_OVERRIDES: dict[str, str] = {
+    "remo": "Q1370732",  # Mangueirão (nome fixado em STADIUMS); a Wikipedia em inglês aponta o Baenão
+    "medellin": "Q6156079",  # Estádio Atanasio Girardot (a P115 aponta o complexo esportivo)
+    "puerto-cabello": "Q28790440",  # Estadio de Fútbol Puerto Cabello (só existe na Wikipedia em espanhol)
+}
 # Foto do estádio: QID -> arquivo do Commons (quando a P18 é ruim: mapa, planta, foto escura...)
 STADIUM_IMG_OVERRIDES: dict[str, str] = {}
 # Estádios cuja P18 não serve e que devem ficar sem foto (se não houver alternativa)

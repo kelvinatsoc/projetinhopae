@@ -174,6 +174,14 @@ GENDER = {
     "female": ["a woman", "a girl", "a young woman", "a lady", "a teenage girl"],
 }
 
+# segunda opinião, focada em rostos andróginos (meninas de cabelo curto etc.)
+GENDER2 = {
+    "male": ["a man with short hair", "a boy with short hair", "a teenage boy with short hair",
+             "a young man with a masculine face"],
+    "female": ["a woman with short hair", "a girl with short hair", "a teenage girl with short hair",
+               "a tomboy girl", "a young woman with a pixie haircut"],
+}
+
 # centro (anos) de cada faixa, para a idade esperada
 AGE_CENTER = {"child": 8, "teen": 16, "twenties": 24, "thirties": 34, "middle": 48, "old": 68}
 AGE = {
@@ -186,10 +194,11 @@ AGE = {
 }
 
 SKIN = {
-    "light": ["a white man", "a caucasian man", "a man with fair skin", "a european man", "a pale man"],
-    "medium": ["a latino man", "a brown-skinned man", "a mixed-race man", "a hispanic man",
-               "a man with tan brown skin", "a brazilian pardo man"],
-    "dark": ["a black man", "an african man", "a man with dark skin", "an african american man"],
+    "light": ["a white man", "a caucasian man", "a man with fair skin", "a european man", "a man with pale skin"],
+    "medium": ["a latino man", "a hispanic man", "a mixed-race man with light brown skin",
+               "a middle eastern man", "a man with olive skin"],
+    "dark": ["a black man", "an african man", "a man with dark brown skin", "an african american man",
+             "an afro-brazilian man", "a black man with very dark skin"],
     "asian": ["an east asian man", "a chinese man", "a japanese man", "a korean man"],
 }
 
@@ -225,7 +234,7 @@ def class_matrix(model, tok, groups: dict):
     for phrases in groups.values():
         texts = [t.format(p) for p in phrases for t in TEMPLATES]
         with torch.no_grad():
-            e = model.encode_text(tok(texts))
+            e = model.encode_text(tok(texts)).detach()
         e = e / e.norm(dim=-1, keepdim=True)
         m = e.mean(0)
         rows.append(m / m.norm())
@@ -240,10 +249,54 @@ def softmax(x, axis=-1):
     return e / e.sum(axis=axis, keepdims=True)
 
 
+# Tom de pele medido nos pixels (complementa o CLIP, que confunde negros com
+# pardos): ITA (individual typology angle) = atan((L* - 50) / b*) no espaço
+# CIELAB, em amostras das bochechas e do dorso do nariz (posições FFHQ).
+TONE_FILE = CACHE / "tone.json"
+TONE_PATCHES = [(388, 620), (636, 620), (512, 560)]  # centros na escala 1024
+TONE_HALF = 22  # meia-largura do recorte (escala 1024)
+
+
+def srgb_to_lab(rgb):
+    import numpy as np
+
+    c = rgb / 255.0
+    c = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    m = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+    xyz = c @ m.T / np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    L = 116 * f[..., 1] - 16
+    a = 500 * (f[..., 0] - f[..., 1])
+    b = 200 * (f[..., 1] - f[..., 2])
+    return L, a, b
+
+
+def skin_tone(h):
+    import math
+
+    import numpy as np
+    from PIL import Image
+
+    im = Image.open(IMG_DIR / f"{h}.jpg").convert("RGB")
+    k = im.size[0] / 1024
+    px = []
+    for cx, cy in TONE_PATCHES:
+        box = tuple(round(v * k) for v in (cx - TONE_HALF, cy - TONE_HALF, cx + TONE_HALF, cy + TONE_HALF))
+        px.append(np.asarray(im.crop(box), dtype=np.float64).reshape(-1, 3))
+    L, _, b = srgb_to_lab(np.concatenate(px))
+    Lm, bm = float(np.median(L)), float(np.median(b))
+    return {"L": round(Lm, 1), "ita": round(math.degrees(math.atan2(Lm - 50, max(bm, 1e-3))), 1)}
+
+
 def cmd_classify(args):
     import numpy as np
 
     names, feats = load_embeddings()
+    tone = json.loads(TONE_FILE.read_text()) if TONE_FILE.exists() else {}
+    for h in names:
+        if h not in tone:
+            tone[h] = skin_tone(h)
+    TONE_FILE.write_text(json.dumps(tone))
     model, _, tok = load_clip()
     scale = float(model.logit_scale.exp().item())
     out = {}
@@ -252,6 +305,7 @@ def cmd_classify(args):
         return softmax(scale * feats @ class_matrix(model, tok, groups).T)
 
     g = probs(GENDER)
+    g2 = probs(GENDER2)
     a = probs(AGE)
     s = probs(SKIN)
     rej = {k: probs({"pos": pos, "neg": neg})[:, 0] for k, (pos, neg) in REJECTS.items()}
@@ -259,10 +313,12 @@ def cmd_classify(args):
     for i, h in enumerate(names):
         out[h] = {
             "male": round(float(g[i, 0]), 4),
+            "male2": round(float(g2[i, 0]), 4),
             "age": {k: round(float(a[i, j]), 4) for j, k in enumerate(AGE)},
             "ageY": round(float(a[i] @ centers), 1),
             "skin": {k: round(float(s[i, j]), 4) for j, k in enumerate(SKIN)},
             "rej": {k: round(float(v[i]), 4) for k, v in rej.items()},
+            **tone[h],
         }
     SCORES_FILE.write_text(json.dumps(out))
     print(f"ok: {len(out)} rostos classificados", flush=True)
@@ -270,16 +326,16 @@ def cmd_classify(args):
 
 # ----------------------------------------------------------------- seleção ---
 
-MIN_MALE = 0.97
-REJ_MAX = {"glasses": 0.5, "hat": 0.5, "multi": 0.5, "makeup": 0.5, "artifact": 0.5,
-           "tilt": 0.5, "notphoto": 0.5, "occluded": 0.5}
+MIN_MALE, MIN_MALE2 = 0.97, 0.93
+REJ_MAX = {"glasses": 0.25, "hat": 0.5, "multi": 0.5, "makeup": 0.5, "artifact": 0.5,
+           "tilt": 0.4, "notphoto": 0.5, "occluded": 0.5}
 MAX_CHILD = 0.25
-MAX_OLD = 0.35  # P(middle) + P(old)
-AGE_MIN, AGE_MAX = 14.0, 40.0
+MAX_OLD = 0.25  # P(middle) + P(old)
+AGE_MIN, AGE_MAX = 14.0, 38.0
 MIN_SKIN = 0.5
 SKIN_ORDER = ["light", "medium", "dark", "asian"]
 AGE_ORDER = ["teen", "young", "adult"]
-TEEN_BELOW, ADULT_FROM = 20.0, 28.0  # limites na idade esperada do CLIP
+TEEN_BELOW, ADULT_FROM = 22.0, 28.0  # limites na idade esperada do CLIP
 
 
 def age_bucket(sc) -> str:
@@ -295,7 +351,7 @@ def age_bucket(sc) -> str:
 
 def judge(sc) -> tuple[bool, str]:
     """(aceito?, motivo) para um rosto."""
-    if sc["male"] < MIN_MALE:
+    if sc["male"] < MIN_MALE or sc["male2"] < MIN_MALE2:
         return False, "gender"
     for k, lim in REJ_MAX.items():
         if sc["rej"][k] > lim:
@@ -388,8 +444,8 @@ def cmd_sweep(args):
     scores = load_scores()
 
     def val(sc):
-        if args.key == "male":
-            return sc["male"]
+        if args.key in ("male", "male2"):
+            return sc[args.key]
         if args.key in ("ageY",):
             return sc["ageY"]
         if args.key.startswith("skin:"):

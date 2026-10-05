@@ -328,10 +328,68 @@ def summarize_entity(e):
     }
 
 
+SPARQL_ENT = """
+SELECT ?item (GROUP_CONCAT(DISTINCT STR(?occ); separator="|") AS ?occs)
+       (GROUP_CONCAT(DISTINCT STR(?dob); separator="|") AS ?dobs)
+       (GROUP_CONCAT(DISTINCT STR(?img); separator="|") AS ?imgs)
+       (SAMPLE(?cat) AS ?cat1) (SAMPLE(?en) AS ?en1) (SAMPLE(?pt) AS ?pt1)
+       (SAMPLE(?lpt) AS ?lpt1) (SAMPLE(?len) AS ?len1) WHERE {
+  VALUES ?item { %s }
+  OPTIONAL { ?item wdt:P106 ?occ }
+  OPTIONAL { ?item wdt:P569 ?dob }
+  OPTIONAL { ?item wdt:P18 ?img }
+  OPTIONAL { ?item wdt:P373 ?cat }
+  OPTIONAL { ?enl schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>; schema:name ?en }
+  OPTIONAL { ?ptl schema:about ?item; schema:isPartOf <https://pt.wikipedia.org/>; schema:name ?pt }
+  OPTIONAL { ?item rdfs:label ?lpt FILTER(LANG(?lpt) = "pt") }
+  OPTIONAL { ?item rdfs:label ?len FILTER(LANG(?len) = "en") }
+} GROUP BY ?item
+"""
+
+
+def _commons_name(url):
+    """http://commons.wikimedia.org/wiki/Special:FilePath/Nome%20X.jpg -> 'Nome X.jpg'"""
+    import urllib.parse
+    return urllib.parse.unquote(url.rsplit("/", 1)[-1]).replace("_", " ")
+
+
+def fetch_entities_sparql(st, need):
+    """Resumo das entidades via SPARQL (300 por consulta, bem mais leve que wbgetentities).
+    Devolve os QIDs que não vieram (inexistentes ou redirecionados) para o caminho antigo."""
+    ents = st["entities"]
+    left = []
+    for i, batch in enumerate(chunks(need, 300)):
+        rows = wm.sparql(SPARQL_ENT % " ".join("wd:" + q for q in batch))
+        if not rows:
+            print("  consulta SPARQL falhou; usando wbgetentities", file=sys.stderr)
+            left.extend(batch)
+            continue
+        got = set()
+        for r in rows:
+            q = r["item"]["value"].rsplit("/", 1)[-1]
+            g = lambda k: (r.get(k) or {}).get("value") or ""  # noqa: E731
+            occ = [o.rsplit("/", 1)[-1] for o in g("occs").split("|") if o]
+            births = sorted(y for y in (year_of(d) for d in g("dobs").split("|") if d) if y)
+            imgs = [_commons_name(u) for u in g("imgs").split("|") if u]
+            if not (occ or births or imgs or g("lpt1") or g("len1") or g("en1")):
+                continue  # entidade vazia: redirecionada ou inexistente
+            got.add(q)
+            ents[q] = {"fb": FOOTBALLER in occ, "occ": occ[:6], "by": births[0] if births else None,
+                       "p18": imgs[:3], "p373": g("cat1") or None, "en": g("en1") or None,
+                       "pt": g("pt1") or None, "label": g("lpt1") or g("len1") or None}
+        left.extend(q for q in batch if q not in got)
+        save(STATE, st)
+        print(f"  SPARQL {min((i + 1) * 300, len(need))}/{len(need)}", flush=True)
+    return left
+
+
 def fetch_entities(st, qids):
     ents = st["entities"]
     need = sorted({q for q in qids if q and q not in ents})
     print(f"entidades a baixar: {len(need)}")
+    if len(need) > 20:
+        need = fetch_entities_sparql(st, need)
+        print(f"  restantes para wbgetentities: {len(need)}")
     for i, batch in enumerate(chunks(need, 50)):
         r = wm.api(wm.WIKIDATA_API, {"action": "wbgetentities", "ids": "|".join(batch),
                                      "props": "claims|labels|sitelinks", "languages": "pt|en"})

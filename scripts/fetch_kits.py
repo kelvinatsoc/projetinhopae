@@ -62,6 +62,8 @@ EN_COLOR = {"la": "leftarm", "b": "body", "ra": "rightarm", "sh": "shorts", "so"
 PT_COLOR = {"la": "braçoesquerdo", "b": "corpo", "ra": "braçodireito", "sh": "calções", "so": "meias"}
 PT_SKIN = {"la": "skin_be", "b": "skin", "ra": "skin_bd", "sh": "skin_calção", "so": "skin_meia"}
 KIT_NAMES = ("Titular", "Reserva", "Terceiro")
+# artigos do catálogo que apontam para outro clube homônimo
+TITLE_FIX = {"barra-sc": "Barra Futebol Clube (SC)"}
 
 CSS_COLORS = {
     "black": "000000", "white": "FFFFFF", "red": "FF0000", "green": "008000", "blue": "0000FF",
@@ -259,26 +261,43 @@ def work(name):
     return os.path.join(WORK, name)
 
 
-def pt_titles() -> dict:
-    """{clubId: título na Wikipedia em português} (via Wikidata, guardado em cache)."""
-    path = work("pt_titles.json")
+def resolve_titles() -> dict:
+    """{clubId: {"en": título atual no enwiki|None, "pt": título no ptwiki|None}} (em cache).
+    Segue redirecionamentos; se o título do catálogo não existir, tenta o nome oficial."""
+    path = work("titles.json")
     out = load(path, None)
     if out is not None:
         return out
-    by_title = {c["wiki"]: c["id"] for c in BR_CLUBS}
+    cands = {}
+    for c in ALL_CLUBS:
+        first = TITLE_FIX.get(c["id"], c["wiki"])
+        cands[c["id"]] = [first] + ([c["full"]] if c.get("full") and c["id"] not in TITLE_FIX else [])
+    resolved = {}
+    allt = sorted({t for ts in cands.values() for t in ts})
+    for batch in chunks(allt, 50):
+        r = wm.api(EN_API, {"action": "query", "titles": "|".join(batch), "redirects": 1})
+        q = (r or {}).get("query", {})
+        step = {}
+        for x in q.get("normalized", []):
+            step[x["from"]] = x["to"]
+        redir = {x["from"]: x["to"] for x in q.get("redirects", [])}
+        exists = {p["title"] for p in q.get("pages", []) if not p.get("missing") and not p.get("invalid")}
+        for t in batch:
+            u = step.get(t, t)
+            u = redir.get(u, u)
+            resolved[t] = u if u in exists else None
     out = {}
-    titles = list(by_title)
-    for batch in chunks(titles, 50):
+    for c in ALL_CLUBS:
+        en = next((resolved.get(t) for t in cands[c["id"]] if resolved.get(t)), None)
+        out[c["id"]] = {"en": en, "pt": None}
+    br = {out[c["id"]]["en"]: c["id"] for c in BR_CLUBS if out[c["id"]]["en"]}
+    for batch in chunks(sorted(br), 50):
         r = wm.api(wm.WIKIDATA_API, {"action": "wbgetentities", "sites": "enwiki", "titles": "|".join(batch),
                                      "props": "sitelinks", "sitefilter": "enwiki|ptwiki"})
-        ents = (r or {}).get("entities", {})
-        for e in ents.values():
+        for e in (r or {}).get("entities", {}).values():
             sl = e.get("sitelinks", {})
-            if "enwiki" in sl and "ptwiki" in sl:
-                cid = by_title.get(sl["enwiki"]["title"])
-                if cid:
-                    out[cid] = sl["ptwiki"]["title"]
-    # títulos que viraram redirecionamento no enwiki: tenta pelo título normalizado
+            if "enwiki" in sl and "ptwiki" in sl and sl["enwiki"]["title"] in br:
+                out[br[sl["enwiki"]["title"]]]["pt"] = sl["ptwiki"]["title"]
     save(path, out)
     return out
 
@@ -311,16 +330,18 @@ def raw_page(wiki: str, title: str, cache_path: str | None) -> str:
 
 def parse():
     """Lê as infoboxes (en + pt) e escolhe, por clube, a fonte mais atual."""
-    ptt = pt_titles()
+    titles = resolve_titles()
     specs = {}
     for c in ALL_CLUBS:
         cid = c["id"]
-        en_t = raw_page("en", c["wiki"], os.path.join(SCACHE, "wikitext", cid + ".txt"))
+        en_title = titles[cid]["en"] or c["wiki"]
+        shared = None if cid in TITLE_FIX else os.path.join(SCACHE, "wikitext", cid + ".txt")
+        en_t = raw_page("en", en_title, shared)
         en_p = template_params(clean_wikitext(en_t), EN_INFOBOX) or {}
         en_k = kits_from_params(en_p, {x: "pattern_" + x for x in PARTS}, EN_COLOR, True)
         pt_k = []
-        if cid in ptt:
-            title = ptt[cid]
+        if titles[cid]["pt"]:
+            title = titles[cid]["pt"]
             pt_t = raw_page("pt", title, os.path.join(SCACHE, "pt", re.sub(r"[^\w\-]+", "_", title) + ".txt"))
             pt_p = template_params(clean_wikitext(pt_t), PT_INFOBOX) or {}
             if pt_p.get("modelo", "padrão").strip().lower() in ("padrão", "padrao", ""):
@@ -344,3 +365,141 @@ def parse():
     none = [k for k, s in specs.items() if not any(s[s["src"]])]
     print(f"parse: {len(specs)} clubes; fonte en={n_en} pt={n_pt}; sem dados={len(none)} {none}")
     return specs
+
+
+# ---------------------------------------------------------------- etapa 2: arquivos na Wikimedia
+def chosen(specs: dict) -> dict:
+    """{clubId: lista de uniformes da fonte escolhida (sem buracos)}."""
+    return {cid: [k for k in s[s["src"]] if k] for cid, s in specs.items()}
+
+
+def pattern_file(part: str, pattern: str) -> str:
+    return title_key(f"{PREFIX[part]}{pattern}.png")
+
+
+def needed_files(specs: dict) -> list:
+    files = set(title_key(v) for v in OVERLAYS.values())
+    for kits in chosen(specs).values():
+        for k in kits:
+            for x in PARTS:
+                if k["p" + x]:
+                    files.add(pattern_file(x, k["p" + x]))
+    return sorted(files)
+
+
+def query_info(api: str, names: list, info: dict, repo: str, path: str | None = None):
+    """imageinfo (tamanho, tipo, URL e metadados de autoria) em lotes de 50."""
+    for bi, batch in enumerate(chunks(names, 50)):
+        if path and bi:
+            save(path, info)
+        r = wm.api(api, {"action": "query", "titles": "|".join("File:" + n for n in batch), "redirects": 1,
+                         "prop": "imageinfo", "iiprop": "url|size|mime|extmetadata",
+                         "iiextmetadatafilter": "Artist|LicenseShortName|LicenseUrl|Credit"})
+        if not r:
+            print(f"  falha na consulta ({len(batch)} arquivos)")
+            continue
+        q = r.get("query", {})
+        back = {}
+        for n in batch:
+            back["File:" + n] = n
+        for x in q.get("normalized", []):
+            if x["from"] in back:
+                back[x["to"]] = back[x["from"]]
+        for x in q.get("redirects", []):
+            if x["from"] in back:
+                back[x["to"]] = back[x["from"]]
+        for p in q.get("pages", []):
+            orig = back.get(p["title"])
+            if orig is None:
+                continue
+            ii = (p.get("imageinfo") or [None])[0]
+            if p.get("missing") and not ii or not ii:
+                info.setdefault(orig, {"exists": False})
+                continue
+            md = ii.get("extmetadata", {})
+            info[orig] = {
+                "exists": True, "repo": repo, "title": p["title"][5:],
+                "url": ii.get("url"), "w": ii.get("width"), "h": ii.get("height"), "mime": ii.get("mime"),
+                "desc": ii.get("descriptionurl"),
+                "author": strip_html(md.get("Artist", {}).get("value")) or
+                strip_html(md.get("Credit", {}).get("value")) or "desconhecido",
+                "license": strip_html(md.get("LicenseShortName", {}).get("value")) or "ver página do arquivo",
+            }
+
+
+def info(specs: dict | None = None) -> dict:
+    specs = specs or load(work("specs.json"), None) or parse()
+    path = work("info.json")
+    inf = load(path, {})
+    need = [n for n in needed_files(specs) if n not in inf]
+    print(f"info: {len(need)} arquivos a consultar (de {len(needed_files(specs))})")
+    query_info(wm.COMMONS_API, need, inf, "commons", path)
+    save(path, inf)
+    # o que não está na Commons pode ser arquivo local da Wikipedia em inglês
+    miss = [n for n in needed_files(specs) if not inf.get(n, {}).get("exists") and not inf.get(n, {}).get("enChecked")]
+    if miss:
+        query_info(EN_API, miss, inf, "en", path)
+        for n in miss:  # a API do enwiki também enxerga a Commons: confere pelo endereço
+            if inf.get(n, {}).get("exists") and "commons.wikimedia.org" in (inf[n].get("desc") or ""):
+                inf[n]["repo"] = "commons"
+            inf.setdefault(n, {"exists": False})["enChecked"] = True
+    for n in need:
+        inf.setdefault(n, {"exists": False})
+    save(path, inf)
+    ok = sum(1 for n in needed_files(specs) if inf.get(n, {}).get("exists"))
+    print(f"info: {ok} existem, {len(needed_files(specs)) - ok} inexistentes")
+    return inf
+
+
+# ---------------------------------------------------------------- etapa 3: download
+def local_names(inf: dict) -> dict:
+    """{arquivo na Wikimedia: nome local} sem colisões (sistemas de arquivos sem caixa)."""
+    out, used = {}, {}
+    for n in sorted(k for k, v in inf.items() if v.get("exists")):
+        base = local_name(n)
+        name, i = base, 2
+        while name in used and used[name] != n:
+            stem, ext = os.path.splitext(base)
+            name = f"{stem}-{i}{ext}"
+            i += 1
+        used[name] = n
+        out[n] = name
+    return out
+
+
+def valid_file(data: bytes | None, name: str) -> bool:
+    if not data:
+        return False
+    if name.endswith(".png"):
+        return data[:8] == b"\x89PNG\r\n\x1a\n"
+    if name.endswith(".svg"):
+        return b"<svg" in data[:4000]
+    return True
+
+
+def download(specs: dict | None = None):
+    specs = specs or load(work("specs.json"), None) or parse()
+    inf = load(work("info.json"), None) or info(specs)
+    names = local_names(inf)
+    os.makedirs(MEDIA, exist_ok=True)
+    need = [n for n in needed_files(specs) if n in names]
+    todo = [n for n in need if not os.path.exists(os.path.join(MEDIA, names[n]))]
+    print(f"download: {len(todo)} de {len(need)} arquivos")
+    failed = load(work("failed.json"), {})
+    for i, n in enumerate(todo):
+        meta = inf[n]
+        wiki = "en.wikipedia.org" if meta.get("repo") == "en" else "commons.wikimedia.org"
+        data = wm.download(meta.get("title") or n, wiki=wiki)
+        if not valid_file(data, names[n]):
+            failed[n] = failed.get(n, 0) + 1
+            print(f"  falhou: {n}")
+            continue
+        with open(os.path.join(MEDIA, names[n]), "wb") as f:
+            f.write(data)
+        failed.pop(n, None)
+        if (i + 1) % 50 == 0:
+            print(f"  {i + 1}/{len(todo)}")
+            save(work("failed.json"), failed)
+    save(work("failed.json"), failed)
+    have = sum(1 for n in need if os.path.exists(os.path.join(MEDIA, names[n])))
+    print(f"download: {have}/{len(need)} arquivos em {MEDIA}")
