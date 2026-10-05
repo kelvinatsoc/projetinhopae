@@ -83,8 +83,14 @@ function pickPool(key: string): number[] | undefined {
   return list && list.length >= 6 ? list : undefined;
 }
 
-/** Caminho (relativo, sem barra inicial) da foto empacotada do jogador, se houver. */
-export function playerImageUrl(p: Pick<Player, "img">): string | null {
+/** Caminho da foto empacotada do jogador dentro de media/ (ex.: "players/Q1.webp"), se houver. */
+export function playerImagePath(p: Pick<Player, "img">): string | null {
   if (!p.img) return null;
-  return p.img.startsWith("r") ? `media/regens/${p.img.slice(1)}.webp` : `media/players/${p.img}.webp`;
+  return p.img.startsWith("r") ? `regens/${p.img.slice(1)}.webp` : `players/${p.img}.webp`;
+}
+
+/** Caminho relativo (sem barra inicial) da foto empacotada do jogador, se houver. */
+export function playerImageUrl(p: Pick<Player, "img">): string | null {
+  const path = playerImagePath(p);
+  return path && `media/${path}`;
 }

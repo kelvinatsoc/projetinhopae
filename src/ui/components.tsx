@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { formatMoney } from "../engine/finance";
-import { playerImageUrl } from "../engine/media";
+import { playerImagePath } from "../engine/media";
 import { age } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
 import type { Club, Player, Pos } from "../engine/types";
@@ -8,6 +8,7 @@ import { getWorld } from "../store";
 import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
+import { mediaUrlOrNull } from "./mediaUrl";
 
 // ---------------------------------------------------------------- escudo
 function luminance(hex: string) {
@@ -41,7 +42,8 @@ function starPath(cx: number, cy: number, r: number) {
 
 export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
   const [broken, setBroken] = useState<string | null>(null);
-  const src = club.customCrest ?? (club.logo ? `media/crests/${club.id}.webp` : null);
+  const logo = mediaUrlOrNull(club.logo && !club.customCrest ? `crests/${club.id}.webp` : null);
+  const src = club.customCrest ?? logo;
   if (src && broken !== src) {
     return (
       <span className="crest" style={{ width: size, height: size * 1.15 }}>
@@ -118,7 +120,8 @@ export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
  */
 export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club | null; season: number; size?: number }) {
   const [broken, setBroken] = useState<string | null>(null);
-  const src = p.photo ?? playerImageUrl(p);
+  const bundled = mediaUrlOrNull(p.photo ? null : playerImagePath(p));
+  const src = p.photo ?? bundled;
   const cls = `avatar${p.legend ? " legend" : ""}`;
   if (src && broken !== src) {
     return (
@@ -159,10 +162,11 @@ export function Silhouette({ club }: { club?: Club | null }) {
 /** Foto real do estádio (Wikimedia Commons), com nome e capacidade por cima. */
 export function StadiumPhoto({ club }: { club: Club }) {
   const [broken, setBroken] = useState(false);
-  if (!club.stadiumImg || broken) return null;
+  const src = mediaUrlOrNull(club.stadiumImg ? `stadiums/${club.stadiumImg}.webp` : null);
+  if (!src || broken) return null;
   return (
     <div className="stadium-photo">
-      <img src={`media/stadiums/${club.stadiumImg}.webp`} alt={club.stadium} loading="lazy" decoding="async" onError={() => setBroken(true)} />
+      <img src={src} alt={club.stadium} loading="lazy" decoding="async" onError={() => setBroken(true)} />
       <div className="stadium-caption">
         <b>{club.stadium}</b>
         <span>{club.capacity ? `${club.capacity.toLocaleString("pt-BR")} lugares · ` : ""}{club.city}</span>
@@ -174,10 +178,9 @@ export function StadiumPhoto({ club }: { club: Club }) {
 /** Logo oficial de uma competição (ou nada, se não houver arquivo). */
 export function CompLogo({ id, size = 24 }: { id: string; size?: number }) {
   const [broken, setBroken] = useState(false);
-  if (broken) return null;
-  return (
-    <img className="comp-logo" src={`media/comps/${id}.webp`} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setBroken(true)} />
-  );
+  const src = mediaUrlOrNull(`comps/${id}.webp`);
+  if (broken || !src) return null;
+  return <img className="comp-logo" src={src} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setBroken(true)} />;
 }
 
 // ---------------------------------------------------------------- pequenos

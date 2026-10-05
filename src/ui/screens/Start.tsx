@@ -12,6 +12,7 @@ export function StartScreen() {
   const [mode, setMode] = useState<"menu" | "new" | "load">("menu");
   const [saves, setSaves] = useState<SaveMeta[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
   useEffect(() => {
     listSaves().then(setSaves).catch(() => setSaves([]));
@@ -78,7 +79,11 @@ export function StartScreen() {
                     <b>{s.clubName}</b> · temporada {s.season}
                     <div className="small muted">{s.manager} · salvo em {new Date(s.savedAt).toLocaleString("pt-BR")}</div>
                   </div>
-                  <button className="btn sm danger" onClick={async () => { if (confirm("Apagar este jogo salvo?")) { await deleteSave(s.id); setSaves(await listSaves()); } }}>Apagar</button>
+                  {confirmDel === s.id ? (
+                    <button className="btn sm danger" onClick={async () => { setConfirmDel(null); await deleteSave(s.id); setSaves(await listSaves()); }}>Confirmar</button>
+                  ) : (
+                    <button className="btn sm" onClick={() => setConfirmDel(s.id)}>Apagar</button>
+                  )}
                 </div>
               ))}
             </div>

@@ -1,0 +1,9 @@
+# scripts de dois cliques: Windows precisa de CRLF, Mac/Linux de LF
+*.bat text eol=crlf
+*.sh text eol=lf
+# mídia e APK são binários
+*.webp binary
+*.png binary
+*.m4a binary
+*.ogg binary
+*.apk binary
