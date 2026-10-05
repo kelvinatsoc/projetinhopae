@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { inWindow, windowLabel } from "../../engine/calendar";
+import { userWindowOpen } from "../../engine/admin";
+import { windowLabel } from "../../engine/calendar";
 import { formatMoney } from "../../engine/finance";
 import { playerValue } from "../../engine/player";
 import { POSITIONS } from "../../engine/positions";
@@ -8,26 +9,30 @@ import type { Pos } from "../../engine/types";
 import { push, toast, update, useVersion, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Crest, PlayerRow } from "../components";
+import { ScoutingTab } from "./Scouting";
 
 export function MarketScreen() {
   const w = useWorld();
-  const [tab, setTab] = useState<"search" | "offers" | "short" | "legends">("search");
+  const [tab, setTab] = useState<"search" | "offers" | "short" | "legends" | "scout">("search");
+  const open = userWindowOpen(w);
   const pending = w.offers.filter((o) => o.status === "pending" && !o.byUser).length;
   return (
     <div className="page">
-      <div className={`card flat small ${inWindow(w.day) ? "" : "muted"}`} style={{ borderColor: inWindow(w.day) ? "var(--accent)" : undefined }}>
-        {windowLabel(w.day) ?? "Janela fechada: só jogadores livres podem ser contratados. Próxima janela: 1º de julho / janeiro."}
+      <div className={`card flat small ${open ? "" : "muted"}`} style={{ borderColor: open ? "var(--accent)" : undefined }}>
+        {windowLabel(w.day) ?? (open ? "🛠️ Janela sempre aberta (Modo Administrador)." : "Janela fechada: só jogadores livres podem ser contratados. Próxima janela: 1º de julho / janeiro.")}
       </div>
       <div className="seg">
         <button className={tab === "search" ? "active" : ""} onClick={() => setTab("search")}>Buscar</button>
         <button className={tab === "offers" ? "active" : ""} onClick={() => setTab("offers")}>Propostas{pending ? ` (${pending})` : ""}</button>
         <button className={tab === "short" ? "active" : ""} onClick={() => setTab("short")}>Observados</button>
         <button className={tab === "legends" ? "active" : ""} onClick={() => setTab("legends")}>Lendas</button>
+        <button className={tab === "scout" ? "active" : ""} onClick={() => setTab("scout")}>Olheiros</button>
       </div>
       {tab === "search" && <Search />}
       {tab === "offers" && <Offers />}
       {tab === "short" && <Shortlist />}
       {tab === "legends" && <LegendsMarket />}
+      {tab === "scout" && <ScoutingTab />}
       <div style={{ height: 40 }} />
     </div>
   );

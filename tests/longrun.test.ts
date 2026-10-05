@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
 import { LEGEND_BY_ID } from "../src/data/legends";
 import { advance, finishUserMatch, loadRng, runEndOfSeason, saveRng } from "../src/engine/game";
+import { validateWorld } from "../src/engine/integrity";
 import { simulateFixture } from "../src/engine/match";
 import { squadOf } from "../src/engine/lineup";
 import { completeTransfer } from "../src/engine/transfers";
@@ -30,6 +31,7 @@ describe("várias temporadas", () => {
       playSeason(w);
       runEndOfSeason(w);
       counts.push(Object.keys(w.players).length);
+      expect(validateWorld(w)).toEqual([]);
       for (const c of Object.values(w.clubs)) {
         if (c.div !== "D") expect(squadOf(w, c).length).toBeGreaterThanOrEqual(18);
       }

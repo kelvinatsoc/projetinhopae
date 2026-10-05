@@ -1,16 +1,24 @@
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
-import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY } from "./calendar";
+import { adminCheats } from "./admin";
+import { projectTick } from "./board";
+import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
+import { goalBonuses } from "./contracts";
+import { afterUserMatch, monthlyMood } from "./dressing";
 import { attendanceFor, gateRevenue, monthlyFinances } from "./finance";
 import { clubStrength } from "./lineup";
+import { aiLoanDay, loanDigest, processLoanReturns } from "./loans";
 import { simulateFixture } from "./match";
 import { addNews } from "./news";
-import { age, developPlayer } from "./player";
+import { age } from "./player";
 import { clamp, getRngState, setRngState } from "./rng";
+import { scoutTick } from "./scouting";
 import { boardAfterMatch, endSeason } from "./season";
+import { staffMonthly } from "./staff";
+import { midSeasonTick, monthlyTraining, recoveryBonus, trainingDaily } from "./training";
 import { aiTransferDay, expireOffers } from "./transfers";
 import type { Fixture, MatchResult, World } from "./types";
-import { legendWave, youthIntake } from "./youth";
+import { legendWave, peneiraTick, previewIntake, youthIntake } from "./youth";
 
 export type StopReason = "match" | "seasonEnd" | "idle";
 
@@ -41,6 +49,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
   recordResult(w, f);
 
   const comp = f.comp;
+  const noBans = !!adminCheats(w).noBans; // trapaça do admin: o clube do usuário não leva suspensão
   const sides: [string, string] = [f.home, f.away];
   sides.forEach((clubId, idx) => {
     const club = w.clubs[clubId];
@@ -57,6 +66,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       if (!p) continue;
       const rating = r.ratings[id] ?? 6;
       p.stats.apps++;
+      p.ma = (p.ma ?? 0) + 1; // jogos no mês (evolução mensal)
       p.stats.ratingSum += rating;
       p.form.push(rating);
       if (p.form.length > 5) p.form.shift();
@@ -75,6 +85,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       if (e.pid2 != null && w.players[e.pid2]) w.players[e.pid2].stats.assists++;
     } else if (e.type === "yellow") {
       p.stats.yel++;
+      if (noBans && p.clubId === w.userClubId) continue;
       p.yel[comp] = (p.yel[comp] ?? 0) + 1;
       if (p.yel[comp] >= 3) {
         p.yel[comp] = 0;
@@ -82,10 +93,12 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       }
     } else if (e.type === "red") {
       p.stats.red++;
+      if (noBans && p.clubId === w.userClubId) continue;
       p.bans[comp] = (p.bans[comp] ?? 0) + 1;
     }
   }
   if (r.motm != null && w.players[r.motm]) w.players[r.motm].stats.motm++;
+  goalBonuses(w, f, r);
 
   // diretoria (só para o clube do usuário)
   const userIdx = f.home === w.userClubId ? 0 : f.away === w.userClubId ? 1 : -1;
@@ -95,6 +108,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
     const opp = w.clubs[userIdx === 0 ? f.away : f.home];
     const oppStronger = clubStrength(w, opp) > clubStrength(w, w.clubs[w.userClubId]) + 1;
     boardAfterMatch(w, us > them, us === them, oppStronger);
+    afterUserMatch(w, f, r, userIdx as 0 | 1);
   }
 }
 
@@ -117,23 +131,32 @@ function dailyTick(w: World) {
     if (p.cond < 100) {
       const club = p.clubId ? w.clubs[p.clubId] : null;
       const a = age(p, w.season);
-      const rec = 6 + (club?.facilities ?? 2) * 0.6 + (a < 24 ? 1 : a > 31 ? -1 : 0);
+      let rec = 6 + (club?.facilities ?? 2) * 0.6 + (a < 24 ? 1 : a > 31 ? -1 : 0);
+      rec += recoveryBonus(w, p, club);
       p.cond = Math.min(100, p.cond + rec);
     }
   }
-  if (isMonthStart(w.season, d)) monthlyFinances(w);
+  if (isMonthStart(w.season, d)) {
+    monthlyFinances(w);
+    monthlyTraining(w);
+    monthlyMood(w);
+    staffMonthly(w);
+    loanDigest(w);
+  }
   if (d === YOUTH_INTAKE_DAY) {
     youthIntake(w);
     legendWave(w);
   }
   if (d === LEGEND_WAVE_DAY) legendWave(w);
   if (d === MID_SEASON_DAY) {
-    for (const p of Object.values(w.players)) {
-      const club = p.clubId ? w.clubs[p.clubId] : null;
-      developPlayer(p, w.season, club?.facilities ?? 2);
-    }
-    addNews(w, "info", "Meio de temporada", "Os jogadores evoluíram (ou caíram de rendimento) conforme idade, potencial e minutos em campo. Confira o elenco!");
+    midSeasonTick(w);
+    processLoanReturns(w, "half");
   }
+  if (d === YOUTH_PREVIEW_DAY) previewIntake(w);
+  trainingDaily(w);
+  peneiraTick(w);
+  scoutTick(w);
+  projectTick(w);
   if (d === 90 || d === 243) addNews(w, "transfer", "Janela de transferências fechada", "Agora só é possível contratar jogadores livres.");
   if (d === 181) addNews(w, "transfer", "Janela de transferências aberta", "A janela do meio do ano vai até 31 de agosto.");
   if (d === 300) {
@@ -141,7 +164,10 @@ function dailyTick(w: World) {
     const exp = user.players.map((id) => w.players[id]).filter((p) => p && !p.youth && p.contractEnd <= w.season);
     if (exp.length) addNews(w, "contract", "Contratos terminando", `Estes contratos acabam no fim da temporada: ${exp.map((p) => p.name).join(", ")}. Renove no perfil do jogador se quiser mantê-los.`);
   }
-  if (inWindow(d)) aiTransferDay(w);
+  if (inWindow(d)) {
+    aiTransferDay(w);
+    aiLoanDay(w);
+  }
   expireOffers(w);
 }
 

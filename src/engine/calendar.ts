@@ -61,6 +61,7 @@ export const seasonEndDay = (year: number) => sunday(year, 47) + 2;
 export const YOUTH_INTAKE_DAY = 25; // depois da Copinha
 export const MID_SEASON_DAY = 181; // 1º de julho
 export const LEGEND_WAVE_DAY = 196; // meados de julho
+export const YOUTH_PREVIEW_DAY = 305; // relatório do coordenador da base sobre a próxima safra (início de novembro)
 
 export function inWindow(day: number): boolean {
   return day <= 89 || (day >= 181 && day <= 242);

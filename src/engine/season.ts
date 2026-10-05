@@ -1,11 +1,18 @@
 // Início e fim de temporada: acessos, rebaixamentos, vagas continentais, evolução,
 // aposentadorias, contratos, premiações e diretoria.
+import { adminCheats } from "./admin";
+import { aiInfrastructure } from "./board";
 import { COMP_META, createSeasonCompetitions, sortTable, tablePosition, type SeasonEntrants } from "./competitions";
+import { managerChanged, seasonReset } from "./dressing";
 import { awardPrize, CUP_PRIZES, leaguePrize } from "./finance";
 import { bestFormationFor, squadOf } from "./lineup";
+import { processLoanReturns } from "./loans";
 import { addNews } from "./news";
-import { age, developPlayer, emptyStats, generatePlayer, retireChance, wageFor } from "./player";
+import { age, emptyStats, generatePlayer, retireChance, wageFor } from "./player";
 import { chance, rand, randInt } from "./rng";
+import { pruneScouting } from "./scouting";
+import { staffOnClubChange } from "./staff";
+import { seasonEndDevelop } from "./training";
 import { aiSignFree, releasePlayer } from "./transfers";
 import type { Club, Competition, Div, World } from "./types";
 
@@ -171,11 +178,11 @@ export function endSeason(w: World): string[] {
   // diretoria
   const promotedUser = (B.promoted ?? []).includes(user.id) || (C.promoted ?? []).includes(user.id);
   const userTitles = Object.entries(champions).filter(([, c]) => c === user.id).map(([k]) => k);
-  w.managerHistory.push({ season: y, clubId: user.id, pos: userPos, div: user.div, titles: userTitles });
+  w.managerHistory.push({ season: y, clubId: user.id, pos: userPos, div: user.div, titles: userTitles, admin: w.admin?.seasons.includes(y) || undefined });
   const met = objectiveMet(w, userPos, promotedUser);
   w.board.confidence = Math.max(0, Math.min(100, w.board.confidence + (met ? 20 : -25) + userTitles.length * 15));
   summary.push(met ? `A diretoria ficou satisfeita: objetivo cumprido (${w.board.objective}).` : `A diretoria está decepcionada: o objetivo era "${w.board.objective}".`);
-  if (!w.settings.casual && w.board.confidence <= 10) {
+  if (!w.settings.casual && w.board.confidence <= 10 && !adminCheats(w).noFire) {
     w.fired = true;
     summary.push(`Você foi demitido do ${user.name}.`);
   }
@@ -222,7 +229,7 @@ export function endSeason(w: World): string[] {
       if (p.history.length > 25) p.history.shift();
     }
     const club = p.clubId ? w.clubs[p.clubId] : null;
-    developPlayer(p, y, club?.facilities ?? 2);
+    seasonEndDevelop(w, p, y);
     // fama cresce com boas temporadas
     if (p.stats.apps >= 10) p.fame = Math.min(100, p.fame + Math.round((p.stats.ratingSum / p.stats.apps - 6.5) * 4 + p.stats.goals * 0.3));
     if (chance(retireChance(p, y + 1))) {
@@ -241,6 +248,8 @@ export function endSeason(w: World): string[] {
     p.morale = Math.round(p.morale * 0.6 + 70 * 0.4);
   }
   if (retired.length) summary.push(`Aposentadorias: ${retired.slice(0, 8).join(", ")}${retired.length > 8 ? "…" : ""}.`);
+  // emprestados voltam antes de olhar os contratos
+  processLoanReturns(w, "season");
 
   w.season = y + 1;
   const ny = w.season;
@@ -291,6 +300,10 @@ export function endSeason(w: World): string[] {
   }
   for (let i = free; i < 160; i++) generatePlayer(w, null, randInt(50, 68), randInt(22, 32));
 
+  pruneScouting(w);
+  aiInfrastructure(w);
+  seasonReset(w);
+
   // finanças: fecha o ano
   for (const club of Object.values(w.clubs)) {
     club.finance.lastIncome = club.finance.income;
@@ -309,8 +322,9 @@ export function endSeason(w: World): string[] {
     let guard = 0;
     while (sq.length < 24 && guard++ < 12) { aiSignFree(w, club); sq = squadOf(w, club); }
     if (sq.length > 32) {
-      sq.sort((a, b) => a.ovr - b.ovr);
-      for (const p of sq.slice(0, sq.length - 32)) releasePlayer(w, p, false);
+      // emprestados não são dispensados
+      const cands = sq.filter((p) => !p.loan).sort((a, b) => a.ovr - b.ovr);
+      for (const p of cands.slice(0, sq.length - 32)) releasePlayer(w, p, false);
     }
   }
   // rede de segurança: a diretoria completa o elenco do usuário com jogadores livres
@@ -353,6 +367,8 @@ export function fireAndRehire(w: World, newClubId: string) {
   w.fired = false;
   w.board.confidence = 50;
   setBoardObjective(w);
+  staffOnClubChange(w);
+  managerChanged(w);
   addNews(w, "board", `Novo desafio: ${w.clubs[newClubId].name}`, `Você assumiu o comando do ${w.clubs[newClubId].name}. Objetivo: ${w.board.objective}.`);
 }
 

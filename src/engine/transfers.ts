@@ -1,5 +1,6 @@
 // Mercado de transferências: propostas do usuário, ofertas da IA e negócios entre clubes da IA.
-import { inWindow } from "./calendar";
+import { adminCheats, userWindowOpen } from "./admin";
+import { onJoinUserClub } from "./dressing";
 import { addExpense, addIncome, formatMoney } from "./finance";
 import { autoLineup, squadOf } from "./lineup";
 import { addNews } from "./news";
@@ -40,6 +41,7 @@ export function wageDemand(w: World, p: Player, club: Club): number {
 export function playerWillingness(w: World, p: Player, club: Club): { ok: boolean; reason?: string } {
   const from = p.clubId ? w.clubs[p.clubId] : null;
   if (from && from.id === club.id) return { ok: false, reason: "Já joga no seu clube." };
+  if (adminCheats(w).willing && club.id === w.userClubId) return { ok: true };
   const gap = (from?.rep ?? 30) - club.rep;
   if (p.ovr >= club.level + 12 && gap > 15) return { ok: false, reason: `${p.name} acha que seu clube não está à altura dele no momento.` };
   if (gap > 35 && p.ovr >= 70) return { ok: false, reason: `${p.name} não quer descer tanto de patamar.` };
@@ -56,8 +58,9 @@ export interface OfferResponse {
 export function evaluateUserBid(w: World, p: Player, fee: number): OfferResponse {
   const seller = p.clubId ? w.clubs[p.clubId] : null;
   if (!seller) return { status: "accepted", message: "Jogador livre, sem custo de transferência." };
-  if (!inWindow(w.day)) return { status: "rejected", message: "A janela de transferências está fechada." };
+  if (!userWindowOpen(w)) return { status: "rejected", message: "A janela de transferências está fechada." };
   const ask = askingPrice(w, p);
+  if (adminCheats(w).anyBid && fee >= 0.5 * playerValue(p, w.season)) return { status: "accepted", message: `${seller.name} aceitou a proposta de ${formatMoney(fee)}!` };
   // clubes pequenos não seguram seus melhores jogadores contra propostas boas
   const squad = squadOf(w, seller);
   if (squad.length <= 18) return { status: "rejected", message: `${seller.name} não pode liberar mais jogadores agora.` };
@@ -66,7 +69,8 @@ export function evaluateUserBid(w: World, p: Player, fee: number): OfferResponse
   return { status: "rejected", message: `${seller.name} recusou. A proposta está muito abaixo do esperado (${formatMoney(ask)}).` };
 }
 
-export function canAfford(club: Club, fee: number) {
+export function canAfford(club: Club, fee: number, w?: World) {
+  if (w && club.id === w.userClubId && adminCheats(w).money) return true;
   return club.balance - fee >= -Math.max(5_000_000, club.rep * 200_000);
 }
 
@@ -79,6 +83,7 @@ export function completeTransfer(w: World, p: Player, buyer: Club, fee: number, 
     if (seller.lineup) {
       seller.lineup.starters = seller.lineup.starters.map((x) => (x === p.id ? null : x));
       seller.lineup.bench = seller.lineup.bench.filter((x) => x !== p.id);
+      if (seller.lineup.captain === p.id) seller.lineup.captain = undefined;
     }
   }
   if (fee > 0) addExpense(buyer, "transfers", fee);
@@ -93,6 +98,7 @@ export function completeTransfer(w: World, p: Player, buyer: Club, fee: number, 
   p.freeSince = undefined;
   p.shirt = freeShirt(w, buyer, p.pos);
   w.offers = w.offers.filter((o) => o.pid !== p.id || o.status === "done");
+  if (buyer.id === w.userClubId) onJoinUserClub(w, p);
 }
 
 export function freeShirt(w: World, club: Club, pos: Pos): number {
@@ -117,6 +123,7 @@ export function releasePlayer(w: World, p: Player, compensate: boolean) {
     if (club.lineup) {
       club.lineup.starters = club.lineup.starters.map((x) => (x === p.id ? null : x));
       club.lineup.bench = club.lineup.bench.filter((x) => x !== p.id);
+      if (club.lineup.captain === p.id) club.lineup.captain = undefined;
     }
   }
   p.clubId = null;

@@ -61,7 +61,13 @@ export type Route =
   | { name: "history" }
   | { name: "fixture"; id: number }
   | { name: "seasonEnd"; summary: string[] }
-  | { name: "fired" };
+  | { name: "fired" }
+  | { name: "admin"; tab?: string }
+  | { name: "training" }
+  | { name: "peneira" }
+  | { name: "staff" }
+  | { name: "board" }
+  | { name: "dressing" };
 
 interface NavState {
   tab: Tab;

@@ -1,7 +1,7 @@
 // Lendas do futebol que "renascem" como garotos de 15-16 anos nas categorias de base.
 // Cada temporada algumas aparecem (de preferência no clube onde foram revelados ou
 // viraram ídolos, e às vezes no seu clube!). Os atributos abaixo são do auge.
-import type { Pos, Race } from "../engine/types";
+import type { Pos, Race, TraitId } from "../engine/types";
 
 export interface LegendDef {
   id: string;
@@ -19,6 +19,8 @@ export interface LegendDef {
   bio: string;
   tier: 1 | 2 | 3; // 1 = raríssima, 2 = épica, 3 = rara
   face: { r: Race; hair?: string; hc?: string; fh?: string; acc?: string };
+  traits?: TraitId[]; // DNA: jogadas preferidas (a 1ª vem de nascença, as outras despertam com o overall)
+  hid?: { pro?: number; big?: number; loy?: number }; // mínimos dos atributos ocultos
 }
 
 const GK = (gol: number, fis = 80, vel = 55, pas = 58): LegendDef["a"] => [vel, 12, pas, 30, 22, fis, gol];
@@ -135,6 +137,28 @@ export const LEGENDS: LegendDef[] = [
   { id: "del-piero", name: "Del Piero", full: "Alessandro Del Piero", nat: "ITA", pos: "ATA", foot: "D", height: 174, ovr: 89, a: [80, 90, 84, 90, 30, 70, 10], clubs: [], era: "1993–2014", bio: "Pinturicchio, gols 'alla Del Piero'.", tier: 3, face: { r: "white", hair: "short", hc: "#272421" } },
   { id: "schmeichel", name: "Schmeichel", full: "Peter Bolesław Schmeichel", nat: "DEN", pos: "GOL", foot: "D", height: 191, ovr: 89, a: GK(89, 86), clubs: [], era: "1981–2003", bio: "O gigante dinamarquês do United.", tier: 3, face: { r: "white", hair: "short", hc: "#D7BF91" } },
 ];
+
+// DNA das lendas: jogadas preferidas na ordem em que despertam
+const DNA: Record<string, TraitId[]> = {
+  pele: ["MAT", "DEC", "DRI"], ronaldo: ["MAT", "DRI", "VEL"], ronaldinho: ["DRI", "GAR", "FAL"], garrincha: ["DRI", "VEL"],
+  zico: ["FAL", "GAR", "MAT"], romario: ["MAT", "DEC"], rivaldo: ["CHF", "FAL", "DRI"], kaka: ["VEL", "DRI"],
+  socrates: ["LID", "GAR"], rivellino: ["FAL", "CHF", "DRI"], "roberto-carlos": ["CHF", "FAL", "VEL"], cafu: ["RAC", "LID"],
+  jairzinho: ["VEL", "MAT"], didi: ["FAL", "GAR"], "carlos-alberto": ["LID", "DES"], gerson: ["GAR", "CHF"],
+  adriano: ["CHF", "MAT"], "juninho-pernambucano": ["FAL", "CHF"], marcelo: ["DRI", "GAR"], bebeto: ["MAT", "DRI"],
+  dunga: ["LID", "DES"],
+  taffarel: ["PEG", "MUR"], marcos: ["MUR", "DEC"], "rogerio-ceni": ["FAL", "PEN", "MUR"],
+  chilavert: ["FAL", "PEN"], maradona: ["DRI", "DEC", "GAR"], beckenbauer: ["LID", "DES"], zidane: ["DRI", "GAR", "DEC"],
+  cruyff: ["DRI", "LID"], maldini: ["DES", "LID"], baggio: ["FAL", "PEN"], pirlo: ["FAL", "GAR"], batistuta: ["MAT", "CHF"],
+  riquelme: ["GAR", "FAL"],
+};
+const HID: Record<string, NonNullable<LegendDef["hid"]>> = {
+  pele: { pro: 18, big: 20 }, romario: { big: 20 }, zico: { pro: 18 }, socrates: { big: 17 }, kaka: { pro: 19 },
+  "rogerio-ceni": { pro: 20, loy: 20 }, marcos: { loy: 20 },
+};
+for (const l of LEGENDS) {
+  if (DNA[l.id]) l.traits = DNA[l.id];
+  if (HID[l.id]) l.hid = HID[l.id];
+}
 
 export const LEGEND_BY_ID: Record<string, LegendDef> = Object.fromEntries(LEGENDS.map((l) => [l.id, l]));
 

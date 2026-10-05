@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LEGEND_BY_ID, TIER_NAMES } from "../../data/legends";
-import { inWindow } from "../../engine/calendar";
+import { userWindowOpen } from "../../engine/admin";
 import { COMP_META } from "../../engine/competitions";
 import { formatMoney } from "../../engine/finance";
 import { addNews } from "../../engine/news";
@@ -13,12 +13,15 @@ import { autosave } from "../actions";
 import { Avatar, Bar, Crest, Flag, Ovr, PosBadge, Sheet } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME } from "../flags";
-import { potLabel } from "./Squad";
+import { potRangeLabel } from "../../engine/scouting";
+import { AdminPlayerEditor } from "./Admin";
+import { PlayerInsightCards, ScoutButton } from "./Scouting";
+import { IndividualTrainingSheet } from "./Training";
 
 export function PlayerScreen({ id }: { id: number }) {
   const w = useWorld();
   const p = w.players[id];
-  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit">(null);
+  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train">(null);
   if (!p) return <div className="page"><div className="empty">Este jogador se aposentou ou não existe mais.</div></div>;
   const club = p.clubId ? w.clubs[p.clubId] : null;
   const mine = p.clubId === w.userClubId;
@@ -48,7 +51,7 @@ export function PlayerScreen({ id }: { id: number }) {
           </div>
           <div className="col center" style={{ alignItems: "center" }}>
             <Ovr v={p.ovr} lg />
-            <span className="tiny" style={{ opacity: 0.85 }}>pot. {potLabel(p)}</span>
+            <span className="tiny" style={{ opacity: 0.85 }}>pot. {potRangeLabel(w, p)}</span>
           </div>
         </div>
         <PhotoCredit p={p} />
@@ -97,6 +100,8 @@ export function PlayerScreen({ id }: { id: number }) {
         </div>
       </div>
 
+      <PlayerInsightCards p={p} />
+
       <div className="card">
         <h3>Temporada {w.season}</h3>
         <div className="grid3 mt8">
@@ -132,6 +137,7 @@ export function PlayerScreen({ id }: { id: number }) {
         {mine ? (
           <>
             <button className="btn block" onClick={() => setSheet("renew")}>📝 Renovar contrato</button>
+            <button className="btn block" onClick={() => setSheet("train")}>🎯 Treino individual</button>
             <div className="grid2">
               <button className="btn" onClick={() => { update(() => { p.listed = !p.listed; }); toast(p.listed ? "Colocado na lista de transferências" : "Retirado da lista"); autosave(); }}>
                 {p.listed ? "Tirar da venda" : "💲 Colocar à venda"}
@@ -153,9 +159,10 @@ export function PlayerScreen({ id }: { id: number }) {
             </button>
           </div>
         )}
+        {!mine && <ScoutButton p={p} />}
         <div className="grid2">
           <button className="btn sm" onClick={() => setSheet("photo")}>📷 Trocar foto</button>
-          <button className="btn sm" onClick={() => setSheet("edit")}>✏️ Editar jogador</button>
+          <button className="btn sm" onClick={() => setSheet("edit")}>{w.admin?.on ? "🛠️ Editor completo" : "✏️ Editar jogador"}</button>
         </div>
       </div>
       <div style={{ height: 30 }} />
@@ -163,7 +170,8 @@ export function PlayerScreen({ id }: { id: number }) {
       {sheet === "offer" && <OfferSheet w={w} p={p} onClose={() => setSheet(null)} />}
       {sheet === "renew" && <RenewSheet w={w} p={p} onClose={() => setSheet(null)} />}
       {sheet === "photo" && <PhotoSheet p={p} onClose={() => setSheet(null)} />}
-      {sheet === "edit" && <EditSheet p={p} onClose={() => setSheet(null)} />}
+      {sheet === "edit" && (w.admin?.on ? <AdminPlayerEditor p={p} onClose={() => setSheet(null)} /> : <EditSheet p={p} onClose={() => setSheet(null)} />)}
+      {sheet === "train" && <IndividualTrainingSheet p={p} onClose={() => setSheet(null)} />}
       {sheet === "release" && (
         <Sheet title={`Dispensar ${p.name}?`} onClose={() => setSheet(null)}>
           <p className="small">O clube paga metade dos salários restantes do contrato como rescisão (aprox. {formatMoney(Math.round(p.wage * Math.max(1, (p.contractEnd - w.season) * 12 + (12 - Math.floor(w.day / 30))) * 0.5))}).</p>
@@ -183,10 +191,10 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
   const [years, setYears] = useState(3);
   const willing = playerWillingness(w, p, user);
   const demand = wageDemand(w, p, user);
-  const windowOpen = inWindow(w.day);
+  const windowOpen = userWindowOpen(w);
 
   function propose() {
-    if (!canAfford(user, fee)) { toast("Dinheiro insuficiente."); return; }
+    if (!canAfford(user, fee, w)) { toast("Dinheiro insuficiente."); return; }
     const r = evaluateUserBid(w, p, fee);
     setResp(r);
     if (r.status === "countered" && r.counter) setFee(r.counter);
@@ -194,7 +202,7 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
 
   function sign() {
     if (!willing.ok) { toast(willing.reason ?? "O jogador recusou."); return; }
-    if (!canAfford(user, fee)) { toast("Dinheiro insuficiente."); return; }
+    if (!canAfford(user, fee, w)) { toast("Dinheiro insuficiente."); return; }
     const from = p.clubId ? w.clubs[p.clubId].name : null;
     update((x) => {
       completeTransfer(x, p, user, fee, demand, years);

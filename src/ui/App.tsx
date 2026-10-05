@@ -11,8 +11,14 @@ import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
 import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
 import { PlayerScreen } from "./screens/Player";
-import { SquadScreen, TacticsScreen, YouthScreen } from "./screens/Squad";
+import { SquadScreen, TacticsScreen } from "./screens/Squad";
 import { StartScreen } from "./screens/Start";
+import { AdminScreen } from "./screens/Admin";
+import { AcademyScreen, PeneiraScreen } from "./screens/Academy";
+import { BoardScreen } from "./screens/Board";
+import { DressingScreen } from "./screens/Dressing";
+import { StaffScreen } from "./screens/Staff";
+import { TrainingScreen } from "./screens/Training";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "home", label: "Início", icon: "home" },
@@ -36,6 +42,12 @@ function routeTitle(r: Route): string {
     case "youth": return "Categorias de base";
     case "history": return "Histórico";
     case "fixture": return "Ficha do jogo";
+    case "admin": return "Administrador";
+    case "training": return "Treino";
+    case "peneira": return "Dia da peneira";
+    case "staff": return "Comissão técnica";
+    case "board": return "Diretoria e obras";
+    case "dressing": return "Vestiário";
     default: return "";
   }
 }
@@ -75,11 +87,17 @@ export function App() {
       case "settings": content = <SettingsScreen />; break;
       case "credits": content = <CreditsScreen />; break;
       case "finances": content = <FinancesScreen />; break;
-      case "youth": content = <YouthScreen />; break;
+      case "youth": content = <AcademyScreen />; break;
       case "history": content = <HistoryScreen />; break;
       case "fixture": content = <FixtureReport id={top.id} />; break;
       case "seasonEnd": content = <SeasonEndScreen summary={top.summary} />; break;
       case "fired": content = <FiredScreen />; break;
+      case "admin": content = <AdminScreen />; break;
+      case "training": content = <TrainingScreen />; break;
+      case "peneira": content = <PeneiraScreen />; break;
+      case "staff": content = <StaffScreen />; break;
+      case "board": content = <BoardScreen />; break;
+      case "dressing": content = <DressingScreen />; break;
       default: content = null;
     }
   }
@@ -99,6 +117,9 @@ export function App() {
             <b>{top ? routeTitle(top) || club.name : club.name}</b>
             <small>{formatDate(w.season, w.day)} {w.season} · {formatMoney(club.balance)}</small>
           </div>
+          {w.admin?.on && (
+            <button className="icon-btn" style={{ color: "#f5c542", fontSize: 18 }} onClick={() => push({ name: "admin" })} aria-label="Painel do administrador">🛠️</button>
+          )}
           <button className="icon-btn badge-dot" data-count={unread > 0 ? Math.min(unread, 99) : undefined} onClick={() => push({ name: "news" })} aria-label="Notícias">
             <Icon name="bell" />
           </button>

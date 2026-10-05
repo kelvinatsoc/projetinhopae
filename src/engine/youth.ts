@@ -5,27 +5,44 @@ import { addNews } from "./news";
 import { fitAttrs, generatePlayer, newPlayerBase, wageFor } from "./player";
 import { POS_NAME, rawOvr } from "./positions";
 import { chance, clamp, gauss, pickWeighted, rand, randInt } from "./rng";
-import type { Attrs, Club, Player, World } from "./types";
+import type { Attrs, Club, IntakeQuality, Player, World } from "./types";
+
+export interface IntakeOpts {
+  quality?: IntakeQuality; // qualidade forçada da safra (relatório do coordenador / admin)
+  forceGem?: boolean; // garante uma joia rara
+  pending?: boolean; // garotos vão para a peneira (fora de w.players) em vez de direto para a base
+}
+
+/**
+ * Safra anual de um clube: gera os garotos de 15-17 anos e enxuga a base.
+ * Devolve os garotos gerados. (FUNDAÇÃO: opts ainda é ignorado; a Trilha A implementa.)
+ */
+export function intakeForClub(w: World, club: Club, _opts: IntakeOpts = {}): Player[] {
+  const out: Player[] = [];
+  const n = club.div === "A" ? randInt(3, 5) : club.div === "B" || club.div === "F" ? randInt(2, 4) : randInt(2, 3);
+  for (let i = 0; i < n; i++) {
+    const ageY = randInt(15, 17);
+    const ovr = clamp(Math.round(38 + club.youthLevel * 2.5 + (ageY - 15) * 3 + gauss(0, 4)), 30, 70);
+    const p = generatePlayer(w, club, ovr, ageY, undefined, true);
+    let pot = Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7));
+    if (chance(0.03)) pot += 8; // joia rara
+    p.pot = clamp(pot, ovr + 5, 92);
+    p.fame = 1;
+    p.wage = Math.round(wageFor(p.ovr, club.rep, ageY));
+    p.contractEnd = w.season + 3;
+    out.push(p);
+  }
+  trimYouth(w, club);
+  return out;
+}
 
 /** Promoção anual de garotos de 15-17 anos em todos os clubes. */
 export function youthIntake(w: World) {
   const user = w.clubs[w.userClubId];
-  const userNew: Player[] = [];
+  let userNew: Player[] = [];
   for (const club of Object.values(w.clubs)) {
-    const n = club.div === "A" ? randInt(3, 5) : club.div === "B" || club.div === "F" ? randInt(2, 4) : randInt(2, 3);
-    for (let i = 0; i < n; i++) {
-      const ageY = randInt(15, 17);
-      const ovr = clamp(Math.round(38 + club.youthLevel * 2.5 + (ageY - 15) * 3 + gauss(0, 4)), 30, 70);
-      const p = generatePlayer(w, club, ovr, ageY, undefined, true);
-      let pot = Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7));
-      if (chance(0.03)) pot += 8; // joia rara
-      p.pot = clamp(pot, ovr + 5, 92);
-      p.fame = 1;
-      p.wage = Math.round(wageFor(p.ovr, club.rep, ageY));
-      p.contractEnd = w.season + 3;
-      if (club.id === user.id) userNew.push(p);
-    }
-    trimYouth(w, club);
+    const kids = intakeForClub(w, club);
+    if (club.id === user.id) userNew = kids;
   }
   if (userNew.length) {
     userNew.sort((a, b) => b.pot - a.pot);
@@ -33,6 +50,26 @@ export function youthIntake(w: World) {
     addNews(w, "youth", `${userNew.length} garotos promovidos à base`,
       `Os novos talentos chegaram depois da Copinha. Destaque: ${best.name} (${POS_NAME[best.pos]}, ${w.season - best.born} anos). Veja em Clube › Base.`, { pid: best.id });
   }
+}
+
+/** Relatório do coordenador da base sobre a próxima safra (dia YOUTH_PREVIEW_DAY). */
+export function previewIntake(_w: World) {
+  // implementado pela Trilha A
+}
+
+/** Diário: resolve sozinha a peneira esquecida depois de 30 dias. */
+export function peneiraTick(_w: World) {
+  // implementado pela Trilha A
+}
+
+/** Assina e dispensa garotos da peneira (ids). */
+export function resolvePeneira(_w: World, _sign: number[], _release: number[]) {
+  // implementado pela Trilha A
+}
+
+/** Resolve a peneira pendente automaticamente (fim de temporada, segurança). */
+export function resolvePeneiraAuto(_w: World) {
+  // implementado pela Trilha A
 }
 
 /** Mantém a base com no máximo 14 jogadores (dispensa quem tem menos potencial). */

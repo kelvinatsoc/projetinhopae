@@ -1,5 +1,7 @@
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
 import { formatDate } from "./calendar";
+import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
+import { repairWorld } from "./integrity";
 import { addNews } from "./news";
 import { assignRegenFace, legendImage } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
@@ -30,7 +32,8 @@ export interface Database {
   players: DbPlayer[];
 }
 
-export const SAVE_VERSION = 2;
+// 1: original · 2: mídia real · 3: gestão (traços, personalidade, base, comissão, admin...)
+export const SAVE_VERSION = 3;
 
 const FAMOUS_ACADEMIES = new Set(["sao-paulo", "fluminense", "santos", "flamengo", "gremio", "internacional", "vasco", "athletico-pr", "palmeiras", "cruzeiro", "river-plate", "boca-juniors", "independiente-del-valle", "argentinos-juniors"]);
 const JERSEYS = ["football", "football2", "football4", "football5", "football3"];
@@ -89,7 +92,13 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
       fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
       shirt: dp.no,
     });
-    p.ovr = dp.o;
+    if (p.ovr !== dp.o) {
+      // o overall real manda; os extras (que dependem do overall) são refeitos com o mesmo gerador próprio
+      p.ovr = dp.o;
+      delete p.hid;
+      delete p.traits;
+      initPlayerExtras(w, p);
+    }
     if (dp.img && dp.q) p.img = dp.q;
     p.clubId = club.id;
     club.players.push(p.id);
@@ -133,6 +142,8 @@ function makeClub(c: DbClub): Club {
     players: [],
     tactic: { formation: "4-3-3", mentality: 0, pressing: 1 },
     youthLevel,
+    youthFac: youthLevel,
+    youthCoach: youthLevel,
     facilities: clamp(Math.round(rep / 22), 1, 5),
     ticket: c.div === "A" ? Math.round(40 + rep * 0.4) : c.div === "B" ? 30 : c.div === "C" ? 20 : c.div === "D" ? 15 : 25,
     history: [], trophies: [],
@@ -146,9 +157,12 @@ function makeClub(c: DbClub): Club {
 
 /**
  * Atualiza um jogo salvo com a mídia do banco de dados atual (fotos reais, escudos, estádios,
- * rostos dos regens). Roda a cada carregamento: é barato e faz jogos antigos ganharem as fotos novas.
+ * rostos dos regens) e com os dados da versão atual do save (migração v3, extras e reparo).
+ * Roda a cada carregamento: é barato e faz jogos antigos ganharem as novidades.
+ * @returns repaired = correções feitas; newer = o save veio de uma versão mais nova do jogo
  */
-export function migrateWorld(w: World, db: Database) {
+export function migrateWorld(w: World, db: Database): { repaired: number; newer: boolean } {
+  const from = w.version ?? 1;
   const dbClubs = new Map(db.clubs.map((c) => [c.id, c]));
   for (const c of Object.values(w.clubs)) {
     const d = dbClubs.get(c.id);
@@ -171,7 +185,11 @@ export function migrateWorld(w: World, db: Database) {
       assignRegenFace(w, p);
     }
   }
-  w.version = SAVE_VERSION;
+  if (from < 3) migrateTo3(w);
+  fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
+  const repaired = repairWorld(w);
+  w.version = Math.max(from, SAVE_VERSION);
+  return { repaired, newer: from > SAVE_VERSION };
 }
 
 const MIN_BY_POS: Record<Pos, number> = { GOL: 3, ZAG: 4, LD: 2, LE: 2, VOL: 2, MC: 2, MEI: 2, PD: 2, PE: 2, ATA: 3 };

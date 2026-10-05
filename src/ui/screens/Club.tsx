@@ -14,6 +14,7 @@ import { Avatar, Bar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, Stars
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
+import { AdminSettingsCard } from "./Admin";
 
 export function ClubScreen() {
   const w = useWorld();
@@ -41,7 +42,7 @@ export function ClubScreen() {
 
       <StadiumPhoto club={c} />
 
-      <div className="card">
+      <div className="card tap" onClick={() => push({ name: "board" })}>
         <div className="card-title"><h3>Diretoria</h3><span className="small">{Math.round(w.board.confidence)}%</span></div>
         <Bar v={w.board.confidence} />
         <div className="small mt8">🎯 {w.board.objective}</div>
@@ -50,10 +51,15 @@ export function ClubScreen() {
       <div className="col gap8">
         <MenuItem icon="⭐" label="Álbum de Lendas" sub="Lendas que renasceram nas bases" onClick={() => push({ name: "legends" })} />
         <MenuItem icon="🌱" label="Categorias de base" sub={`${c.players.filter((id) => w.players[id]?.youth).length} jogadores`} onClick={() => push({ name: "youth" })} />
+        <MenuItem icon="🏋️" label="Treino" sub="Foco do time, intensidade e treino individual" onClick={() => push({ name: "training" })} />
+        <MenuItem icon="👔" label="Comissão técnica" sub="Auxiliar, treinador, preparador, olheiro e base" onClick={() => push({ name: "staff" })} />
+        <MenuItem icon="🏛️" label="Diretoria e obras" sub="Pedidos, estádio, CT e base" onClick={() => push({ name: "board" })} />
+        <MenuItem icon="🤝" label="Vestiário" sub="Clima do elenco, conversas e promessas" onClick={() => push({ name: "dressing" })} />
         <MenuItem icon="💰" label="Finanças" sub="Receitas, despesas e salários" onClick={() => push({ name: "finances" })} />
         <MenuItem icon="📜" label="Histórico" sub="Campeões e suas temporadas" onClick={() => push({ name: "history" })} />
         <MenuItem icon="🔎" label="Ver página do clube" sub="Elenco e informações" onClick={() => push({ name: "club", id: c.id })} />
         <MenuItem icon="⚙️" label="Configurações" sub="Modo casual, lendas, som, escudo, créditos" onClick={() => push({ name: "settings" })} />
+        {w.admin?.on && <MenuItem icon="🛠️" label="Painel do administrador" sub="Editor, trapaças e ponto de restauração" onClick={() => push({ name: "admin" })} />}
       </div>
 
       <div className="grid2">
@@ -243,6 +249,7 @@ export function SettingsScreen() {
 
   return (
     <div className="page">
+      <AdminSettingsCard />
       <div className="card">
         <h3>Jogo</h3>
         <div className="switch"><div><b>Modo casual</b><div className="small muted">Sem demissão por maus resultados.</div></div>

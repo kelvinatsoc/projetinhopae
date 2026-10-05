@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
 import { LEGEND_BY_ID } from "../src/data/legends";
 import { playerImageUrl, registerMedia, type RegenFace } from "../src/engine/media";
-import { createWorld, migrateWorld, type Database } from "../src/engine/world";
+import { createWorld, migrateWorld, SAVE_VERSION, type Database } from "../src/engine/world";
 import { spawnLegend, youthIntake } from "../src/engine/youth";
 
 // índice falso de rostos: 4 por combinação de idade e tom de pele
@@ -46,7 +46,7 @@ describe("mídia real", () => {
     w.version = 1;
     registerMedia({ regenFaces: FACES });
     migrateWorld(w, db as Database);
-    expect(w.version).toBe(2);
+    expect(w.version).toBe(SAVE_VERSION);
     expect(Object.values(w.players).filter((p) => !p.real && !p.legend).every((p) => p.img?.startsWith("r"))).toBe(true);
     const dbLogos = (db as Database).clubs.filter((c) => c.logo).length;
     expect(Object.values(w.clubs).filter((c) => c.logo).length).toBe(dbLogos);

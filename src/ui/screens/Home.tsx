@@ -4,6 +4,9 @@ import { LEGENDS } from "../../data/legends";
 import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
 import { Bar, CompLogo, Crest } from "../components";
+import { PeneiraHomeCard } from "./Academy";
+import { BoardHomeCard } from "./Board";
+import { SquadMoodHomeCard } from "./Dressing";
 
 export function HomeScreen() {
   const w = useWorld();
@@ -19,6 +22,10 @@ export function HomeScreen() {
       {next ? <NextMatchCard w={w} f={next} /> : (
         <div className="card center"><b>Sem jogos marcados</b><div className="small muted">Toque em Continuar para encerrar a temporada.</div></div>
       )}
+
+      <PeneiraHomeCard />
+      <SquadMoodHomeCard />
+      <BoardHomeCard />
 
       {last && <LastResult w={w} f={last} />}
 
@@ -140,7 +147,7 @@ export function MiniTable({ w, compId }: { w: World; compId: string }) {
   );
 }
 
-const ICON: Record<string, string> = { legend: "⭐", youth: "🌱", transfer: "💼", offer: "💰", board: "🏛️", injury: "🚑", contract: "📝", season: "🏆", match: "⚽", info: "📣" };
+const ICON: Record<string, string> = { legend: "⭐", youth: "🌱", transfer: "💼", offer: "💰", board: "🏛️", injury: "🚑", contract: "📝", season: "🏆", match: "⚽", info: "📣", training: "🏋️", staff: "👔", scout: "🔭", dressing: "💬", admin: "🛠️" };
 
 function NewsRow({ n, w }: { n: NewsItem; w: World }) {
   return (

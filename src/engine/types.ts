@@ -16,6 +16,37 @@ export interface Attrs {
   gol: number; // goleiro (reflexos, posicionamento)
 }
 
+// ---------------------------------------------------------------- gestão (v3)
+/** Jogadas preferidas (traços). Códigos curtos para o save ficar pequeno. PAV é o único negativo. */
+export type TraitId = "MAT" | "CHF" | "CAB" | "DRI" | "GAR" | "PEN" | "FAL" | "VEL" | "RAC" | "DES" | "LID" | "DEC" | "VER" | "PEG" | "MUR" | "PAV";
+/** Atributos ocultos (1–20): profissionalismo, ambição, lealdade, temperamento, regularidade, jogos grandes, propensão a lesões. */
+export type Hidden = [number, number, number, number, number, number, number];
+/** Papel no elenco: C = craque, T = titular, R = rotação, S = reserva, J = jovem promessa. */
+export type SquadRole = "C" | "T" | "R" | "S" | "J";
+/** Foco do treino do time: equilibrado, físico, ataque, defesa, tático, recuperação, bola parada. */
+export type TeamFocus = "eq" | "fis" | "atk" | "def" | "tat" | "rec" | "bola";
+/** Treino individual. */
+export type TrainFocus =
+  | { k: "attr"; a: keyof Attrs }
+  | { k: "pos"; pos: Pos; prog: number }
+  | { k: "trait"; t: TraitId; prog: number }
+  | { k: "calm"; prog: number };
+/** Comissão técnica: auxiliar, treinador, preparador físico, olheiro-chefe, coordenador da base. */
+export type StaffRole = "aux" | "tre" | "fis" | "olh" | "bas";
+export interface StaffMember { id: number; role: StaffRole; name: string; nat: string; born: number; stars: number; wage: number; until: number }
+export type IntakeQuality = "fraca" | "normal" | "boa" | "dourada";
+export interface PlayerLoan { from: string; until: number; half?: boolean; wagePct: number; opt?: number; since: number }
+export interface PlayerPromise { until: number; base: [number, number] }
+export interface BoardProject { kind: "stadium" | "ct" | "yfac" | "yrec" | "ycoach"; start: number; done: number; add?: number; cost: number }
+export interface ScoutMission { id: number; region: string; focus: "young" | "ready" | "cheap"; until: number; next: number }
+export interface ScoutState { k: Record<number, number>; queue: number[]; missions: ScoutMission[]; recs: number[] }
+export interface AdminCheats {
+  noInj?: boolean; noBans?: boolean; window?: boolean; anyBid?: boolean; willing?: boolean; money?: boolean;
+  noFire?: boolean; youthTurbo?: boolean; legendRain?: boolean; boost?: 0 | 0.05 | 0.1 | 0.2;
+}
+export interface AdminLogEntry { season: number; day: number; text: string }
+export interface AdminState { on: boolean; pin?: string; everUsed?: boolean; seasons: number[]; cheats: AdminCheats; log: AdminLogEntry[] }
+
 export interface Face {
   s: number; // semente do gerador de rosto
   r: Race;
@@ -79,6 +110,25 @@ export interface Player {
   form: number[]; // últimas notas
   fame: number; // 0-100, reputação (afeta valor e salário)
   freeSince?: number; // dia/temporada em que ficou livre
+  // --- gestão (v3, tudo opcional: saves antigos ganham valores na migração ou sob demanda)
+  traits?: TraitId[]; // jogadas preferidas
+  lockedTraits?: TraitId[]; // jogadas de lenda ainda não despertadas
+  hid?: Hidden; // atributos ocultos
+  tf?: TrainFocus; // treino individual
+  dx?: number; // acumulador fracionário da evolução mensal
+  ma?: number; // jogos disputados no mês
+  ot?: [number, number]; // overall/temporada de referência (setas ▲▼)
+  trend?: number; // última variação mensal
+  role?: SquadRole;
+  pt?: [number, number]; // minutos: jogos como titular / jogos possíveis
+  unhappy?: number;
+  promise?: PlayerPromise;
+  wantsOut?: boolean;
+  talkAt?: number; // dia absoluto da última conversa
+  loan?: PlayerLoan;
+  clause?: number; // multa rescisória
+  goalBonus?: number;
+  sellOn?: { club: string; pct: number };
 }
 
 export type CrestPattern =
@@ -141,6 +191,14 @@ export interface Club {
   founded?: string;
   nickname?: string;
   jersey: string; // modelo de camisa do avatar
+  // --- gestão (v3)
+  youthFac?: number; // estrutura da base 1-5 (padrão: youthLevel)
+  youthCoach?: number; // formação da base 1-5 (padrão: youthLevel)
+  train?: { focus: TeamFocus; int: 0 | 1 | 2 };
+  chem?: number; // entrosamento 0-100
+  proj?: BoardProject[];
+  expansions?: number;
+  loanedOut?: number[];
 }
 
 export interface FinanceBook {
@@ -244,7 +302,9 @@ export interface Competition {
   tier: number; // ordem de exibição / importância
 }
 
-export type NewsKind = "info" | "match" | "transfer" | "legend" | "youth" | "board" | "injury" | "contract" | "season" | "offer";
+export type NewsKind =
+  | "info" | "match" | "transfer" | "legend" | "youth" | "board" | "injury" | "contract" | "season" | "offer"
+  | "training" | "staff" | "scout" | "dressing" | "admin";
 
 export interface NewsItem {
   id: number;
@@ -317,10 +377,23 @@ export interface World {
   legends: Record<string, LegendState>;
   settings: Settings;
   history: SeasonSummary[];
-  board: { confidence: number; objective: string; objectiveCode: string; warned?: boolean };
+  board: {
+    confidence: number; objective: string; objectiveCode: string; warned?: boolean;
+    cool?: Record<string, number>; // pedidos à diretoria em espera
+    grantSeason?: number; // última temporada com aporte extra
+  };
   pendingMatch?: number; // fixture do usuário aguardando para ser jogada
   fired?: boolean;
-  managerHistory: { season: number; clubId: string; pos: number | null; div: Div; titles: string[] }[];
+  managerHistory: { season: number; clubId: string; pos: number | null; div: Div; titles: string[]; admin?: boolean }[];
   seasonEnded?: boolean;
   dataDate: string; // data de coleta dos elencos reais
+  // --- gestão (v3)
+  staff?: Partial<Record<StaffRole, StaffMember>>;
+  staffPool?: { key: string; list: StaffMember[] };
+  intakePreview?: { season: number; q: IntakeQuality; shown: IntakeQuality; pos: Pos };
+  peneira?: { season: number; day: number; kids: Player[] }; // garotos da peneira (fora de w.players até assinarem)
+  intakeForce?: IntakeQuality;
+  forceGem?: boolean;
+  scout?: ScoutState;
+  admin?: AdminState;
 }

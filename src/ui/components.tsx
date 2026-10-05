@@ -9,6 +9,7 @@ import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
 import { mediaUrlOrNull } from "./mediaUrl";
+import { PlayerBadges } from "./PlayerBadges";
 
 // ---------------------------------------------------------------- escudo
 function luminance(hex: string) {
@@ -245,6 +246,7 @@ export function PlayerRow({ p, club, season, right, onClick, showClub }: {
           {injured && <span className="tag danger">🚑 {p.injury}d</span>}
           {banned && <span className="tag danger">🟥</span>}
           {p.listed && <span className="tag">💲</span>}
+          <PlayerBadges p={p} />
         </div>
         <div className="row gap8 small muted" style={{ whiteSpace: "nowrap", minWidth: 0 }}>
           <PosBadge pos={p.pos} />

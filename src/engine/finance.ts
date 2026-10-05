@@ -1,5 +1,6 @@
 // Finanças simplificadas: TV, patrocínio, bilheteria, premiações, salários e custos.
 import { clamp, gauss } from "./rng";
+import { staffWageBill } from "./staff";
 import type { Club, Fixture, World } from "./types";
 
 export const INCOME_LABELS: Record<string, string> = {
@@ -8,6 +9,8 @@ export const INCOME_LABELS: Record<string, string> = {
   gate: "Bilheteria",
   prize: "Premiações",
   sales: "Venda de jogadores",
+  board: "Aporte da diretoria",
+  admin: "Ajuste do administrador",
 };
 
 export const EXPENSE_LABELS: Record<string, string> = {
@@ -16,6 +19,11 @@ export const EXPENSE_LABELS: Record<string, string> = {
   transfers: "Compra de jogadores",
   youth: "Categorias de base",
   release: "Rescisões",
+  comissao: "Comissão técnica",
+  bonus: "Bônus e luvas",
+  infra: "Obras e melhorias",
+  scout: "Olheiros e observação",
+  admin: "Ajuste do administrador",
 };
 
 export function addIncome(c: Club, key: string, v: number) {
@@ -73,8 +81,16 @@ export function monthlyFinances(w: World) {
     addIncome(c, "tv", Math.round(annualTV(c) / 12));
     addIncome(c, "sponsor", Math.round(annualSponsor(c) / 12));
     addExpense(c, "wages", wageBill(w, c));
-    addExpense(c, "staff", monthlyStaff(c));
-    addExpense(c, "youth", 20_000 * c.youthLevel * (c.div === "A" ? 6 : c.div === "B" ? 2 : 1));
+    const user = c.id === w.userClubId;
+    // com comissão técnica contratada, a estrutura genérica fica 15% mais barata
+    addExpense(c, "staff", user ? Math.round(monthlyStaff(c) * (w.staff ? 0.85 : 1)) : monthlyStaff(c));
+    if (user) {
+      const comissao = staffWageBill(w);
+      if (comissao) addExpense(c, "comissao", comissao);
+    }
+    // base: média das três notas (captação, estrutura, formação); igual a youthLevel por padrão
+    const youthAvg = (c.youthLevel + (c.youthFac ?? c.youthLevel) + (c.youthCoach ?? c.youthLevel)) / 3;
+    addExpense(c, "youth", Math.round(20_000 * youthAvg * (c.div === "A" ? 6 : c.div === "B" ? 2 : 1)));
   }
 }
 
