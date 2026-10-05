@@ -9,7 +9,7 @@ import type { MatchSim } from "../engine/match";
 import { MENTALITY_NAMES, PRESSING_NAMES } from "../engine/positions";
 import { shortName } from "../engine/player";
 import { TONES, userPreTalk } from "../engine/teamtalk";
-import type { Fixture, World } from "../engine/types";
+import type { Fixture, Lineup, World } from "../engine/types";
 import { toast, update, useVersion, useWorld } from "../store";
 import { autosave } from "./actions";
 import { Avatar, Crest, PosBadge } from "./components";
@@ -86,6 +86,12 @@ function applyPlan(plan: TacticPlan, compId?: string) {
   update((world) => applyAdvice(world, world.clubs[world.userClubId], plan, compId));
   autosave();
   toast("Sugestões do auxiliar aplicadas ✔");
+}
+
+function applyAlternative(l: Lineup) {
+  update((world) => { world.clubs[world.userClubId].lineup = { starters: l.starters.slice(), bench: l.bench.slice(), captain: l.captain }; });
+  autosave();
+  toast("Time alternativo escalado ✔");
 }
 
 // ---------------------------------------------------------------- pré-jogo
@@ -167,6 +173,14 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
         <div className="as-title">Escalação</div>
         <FixList w={w} fixes={a.fixes} compId={f.comp} />
       </div>
+
+      {a.rotation && (
+        <div className="as-section">
+          <div className="as-title">Estadual</div>
+          <div className="small">💡 {a.rotation.text}</div>
+          <button className="btn sm block mt8" onClick={() => applyAlternative(a.rotation!.lineup)}>🔄 Escalar time alternativo</button>
+        </div>
+      )}
 
       <TalkTip w={w} f={f} />
 
