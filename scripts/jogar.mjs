@@ -5,7 +5,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import qrcode from "qrcode-terminal";
 import { preview } from "vite";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,7 +44,12 @@ console.log(`   Neste computador:  http://localhost:${port}`);
 for (const ip of ips) console.log(`   No celular:        http://${ip}:${port}`);
 if (ips.length) {
   console.log("\n   Aponte a câmera do celular para o QR code (celular e computador no mesmo Wi-Fi):\n");
-  qrcode.generate(`http://${ips[0]}:${port}`, { small: true });
+  try {
+    const { default: qrcode } = await import("qrcode-terminal");
+    qrcode.generate(`http://${ips[0]}:${port}`, { small: true });
+  } catch {
+    console.log(`   (digite no navegador do celular: http://${ips[0]}:${port})`);
+  }
   console.log("   Se o Windows perguntar, permita o acesso do Node.js em redes privadas.");
 }
 console.log("\n   Para fechar o jogo, feche esta janela (ou aperte Ctrl+C).\n");

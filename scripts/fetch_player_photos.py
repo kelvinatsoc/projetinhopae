@@ -219,33 +219,46 @@ def phase_qids(st):
     extra = load(EXTRA, {})
     titles = st["titles"]  # "en:Title"/"pt:Title" -> {qid, image, final}
 
-    # 1a) títulos em inglês sem QID
-    need_en = sorted({p["link"] for c in raw.values() for p in c["players"]
-                      if not p.get("qid") and p.get("link") and "en:" + p["link"] not in titles})
-    print(f"títulos en sem QID a resolver: {len(need_en)}")
-    for t, v in query_titles(EN_API, need_en).items():
-        titles["en:" + t] = v
+    # 1a) títulos sem QID (en; links interlíngua como ":es:Fulano" vão para a wiki da língua)
+    def wiki_of(link):
+        m = re.match(r"^:?([a-z]{2,3}):(.+)$", link)
+        return (m.group(1), m.group(2)) if m else ("en", link)
+
+    need = {}
+    for c in raw.values():
+        for p in c["players"]:
+            if p.get("qid") or not p.get("link"):
+                continue
+            lang, t = wiki_of(p["link"])
+            if f"{lang}:{t}" not in titles:
+                need.setdefault(lang, set()).add(t)
+    for lang, ts in sorted(need.items()):
+        print(f"títulos {lang} sem QID a resolver: {len(ts)}")
+        for t, v in query_titles(f"https://{lang}.wikipedia.org/w/api.php", ts).items():
+            titles[f"{lang}:{t}"] = v
     save(STATE, st)
 
-    # 1b) elenco da Wikipedia em português
-    pending = {}
+    # 1b) elenco da Wikipedia em português. Também casa quem já tem QID: se o QID de raw.json
+    #     for de um homônimo (rejeitado na validação), o do elenco pt serve de alternativa.
+    pending, alt_pending = {}, {}
     for cid, c in raw.items():
         pt_list = pt_all.get(cid) or []
         for p in c["players"]:
             key = f"{cid}|{p['name']}"
-            if p.get("qid"):
-                continue
-            en = titles.get("en:" + p["link"]) if p.get("link") else None
-            if en and en.get("qid"):
-                extra[key] = en["qid"]
-                continue
+            if not p.get("qid") and p.get("link"):
+                lang, t = wiki_of(p["link"])
+                v = titles.get(f"{lang}:{t}")
+                if v and v.get("qid"):
+                    extra[key] = v["qid"]
+                    continue
             if not pt_list:
                 continue
             q = pt_match({"name": clean_name(p["name"]), "no": p.get("no") or ""}, pt_list)
             if q and q.get("link"):
-                pending[key] = q["link"]
-    need_pt = sorted({t for t in pending.values() if "pt:" + t not in titles})
-    print(f"títulos pt a resolver: {len(need_pt)} (jogadores casados com o elenco pt: {len(pending)})")
+                (alt_pending if p.get("qid") else pending)[key] = q["link"]
+    need_pt = sorted({t for t in list(pending.values()) + list(alt_pending.values()) if "pt:" + t not in titles})
+    print(f"títulos pt a resolver: {len(need_pt)} (casados com o elenco pt: {len(pending)} sem QID, "
+          f"{len(alt_pending)} com QID)")
     for t, v in query_titles(PT_API, need_pt).items():
         titles["pt:" + t] = v
     n_pt = 0
@@ -254,21 +267,33 @@ def phase_qids(st):
         if v and v.get("qid"):
             extra[key] = v["qid"]
             n_pt += 1
+    alt = {}
+    for key, t in alt_pending.items():
+        v = titles.get("pt:" + t)
+        if v and v.get("qid"):
+            alt[key] = v["qid"]
+    st["ptalt"] = alt
     save(EXTRA, extra)
     save(STATE, st)
-    print(f"QIDs extras: {len(extra)} (via pt: {n_pt})")
+    print(f"QIDs extras: {len(extra)} (via pt: {n_pt}); alternativas pt para quem tem QID: {len(alt)}")
 
 
-def player_candidates(st):
-    """Lista (chave 'clube|nome', jogador, QID candidato)."""
+def player_candidates(st, all_qids=False):
+    """Lista (chave 'clube|nome', jogador, QID candidato). Com all_qids=True o terceiro item é a
+    lista de todos os candidatos em ordem de preferência (raw.json, extra, elenco pt, P54)."""
     raw = load(RAW, {})["clubs"]
     extra = load(EXTRA, {})
+    alt = st.get("ptalt", {})
+    p54 = st.get("p54", {})
     out = []
     for cid, c in raw.items():
         for p in c["players"]:
             key = f"{cid}|{p['name']}"
-            q = p.get("qid") or extra.get(key)
-            out.append((key, p, q))
+            qs = []
+            for q in (p.get("qid"), extra.get(key), alt.get(key), p54.get(key)):
+                if q and q not in qs:
+                    qs.append(q)
+            out.append((key, p, qs if all_qids else (qs[0] if qs else None)))
     return out
 
 
@@ -328,43 +353,57 @@ def fetch_entities(st, qids):
 
 
 def phase_entities(st):
-    fetch_entities(st, [q for _, _, q in player_candidates(st)])
+    fetch_entities(st, [q for _, _, qs in player_candidates(st, True) for q in qs])
 
 
 # ------------------------------------------------------------------ etapa 3: validação
 
+def check_identity(e, p, q):
+    """None se o QID é mesmo do jogador; senão o motivo da rejeição."""
+    if not e or e.get("missing"):
+        return "sem-entidade"
+    if q in BAD_QIDS:
+        return "manual"
+    if not e["fb"]:
+        return "nao-futebolista"
+    py = year_of(p.get("dob"))
+    by = e.get("by")
+    if py and by and abs(py - by) > 1:
+        return "nascimento"
+    # sem data em raw.json: quem está num elenco de 2026 nasceu depois de ~1981
+    if not py and by and not (1981 <= by <= 2012):
+        return "nascimento"
+    return None
+
+
 def phase_validate(st):
     ents = st["entities"]
     players = {}
-    stats = {"sem-qid": 0, "ok": 0, "nao-futebolista": 0, "nascimento": 0, "sem-entidade": 0, "manual": 0}
+    stats = {"sem-qid": 0, "ok": 0, "ok-alternativa": 0}
     rejected = {}
-    for key, p, q in player_candidates(st):
-        if not q:
+    for key, p, qs in player_candidates(st, True):
+        if not qs:
             stats["sem-qid"] += 1
             continue
-        e = ents.get(q)
-        if not e or e.get("missing"):
-            stats["sem-entidade"] += 1
-            continue
-        if q in BAD_QIDS:
-            stats["manual"] += 1
-            rejected[q] = "manual"
-            continue
-        if not e["fb"]:
-            stats["nao-futebolista"] += 1
-            rejected[q] = "occupation"
-            continue
-        py = year_of(p.get("dob"))
-        if py and e.get("by") and abs(py - e["by"]) > 1:
-            stats["nascimento"] += 1
-            rejected[q] = "birth"
-            continue
-        stats["ok"] += 1
-        players[key] = q
+        good = None
+        for i, q in enumerate(qs):
+            why = check_identity(ents.get(q), p, q)
+            if why is None:
+                good = q
+                stats["ok" if i == 0 else "ok-alternativa"] += 1
+                break
+            rejected[q] = why
+            if i == 0:
+                stats[why] = stats.get(why, 0) + 1
+        if good:
+            players[key] = good
+    # um QID aceito para algum jogador não fica na lista de rejeitados
+    accepted = set(players.values())
+    rejected = {q: w for q, w in rejected.items() if q not in accepted}
     st["players"] = players
     st["rejected"] = rejected
     save(STATE, st)
-    print("validação:", stats)
+    print("validação:", stats, "QIDs válidos distintos:", len(accepted))
 
 
 # ------------------------------------------------------------------ etapa 4: imagem dos artigos

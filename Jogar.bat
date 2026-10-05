@@ -27,5 +27,5 @@ if not exist "node_modules\" (
   )
 )
 
-call npm run jogar
+node scripts\jogar.mjs
 pause

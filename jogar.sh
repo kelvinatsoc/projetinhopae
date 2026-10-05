@@ -17,4 +17,4 @@ if [ ! -d node_modules ]; then
   npm install --no-audit --no-fund || { echo " Não consegui instalar. Verifique a internet."; exit 1; }
 fi
 
-npm run jogar
+node scripts/jogar.mjs
