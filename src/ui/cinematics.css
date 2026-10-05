@@ -1,9 +1,9 @@
 /* "Lance decisivo": cena em pixel art por cima do campo */
 .cine {
   position: absolute; inset: 0; z-index: 6; cursor: pointer; overflow: hidden; line-height: 1.2;
-  background: #05080a; animation: cine-in 0.22s ease-out;
+  background: #05080a; animation: cine-wipe 0.16s steps(4, end);
 }
-.cine.out { animation: cine-out 0.26s ease-in forwards; }
+.cine.out { animation: cine-wipe-out 0.14s steps(3, end) forwards; }
 .cine-canvas {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   image-rendering: pixelated; image-rendering: crisp-edges;
@@ -39,6 +39,9 @@
   animation: cine-in 0.2s ease-out;
 }
 @keyframes cine-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+/* corte seco em cortina: a cena é sempre opaca, sem mistura com o campo ao vivo */
+@keyframes cine-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes cine-wipe-out { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); visibility: hidden; } }
 @keyframes cine-out { to { opacity: 0; visibility: hidden; } }
 @keyframes cine-slide { from { transform: translateX(-120%); } to { transform: none; } }
 @keyframes cine-blink { 50% { opacity: 0.4; } }

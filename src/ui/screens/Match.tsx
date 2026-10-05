@@ -152,6 +152,11 @@ export function PreMatchScreen() {
   );
 }
 
+/** Nome no placar: curto o bastante para não cortar ("Vasco da Gama" vira "VAS"). */
+function scoreName(c: { name: string; abbr: string }) {
+  return c.name.length <= 11 ? c.name : c.abbr;
+}
+
 const SPEEDS = [{ l: "1x", ms: 650 }, { l: "2x", ms: 320 }, { l: "4x", ms: 120 }, { l: "8x", ms: 45 }];
 const FIELD_KEY = "ldb.matchField";
 const HIGHLIGHT_MS = 650; // nos melhores momentos cada lance roda na velocidade 1x
@@ -180,7 +185,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const simRef = useRef<MatchSim | null>(null);
   const [tick, setTick] = useState(0);
   const [result, setResult] = useState<MatchResult | null>(null);
-  const [speed, setSpeed] = useState(() => (w.settings.speed <= 150 ? 2 : w.settings.speed <= 350 ? 1 : 0));
+  const [speed, setSpeed] = useState(0); // começa sempre em 1x; o jogador acelera se quiser
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
   const [subs, setSubs] = useState(false);
@@ -204,6 +209,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   fieldRef.current = field;
   const speedRef = useRef(speed);
   speedRef.current = speed;
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
   const userSide: 0 | 1 = f && f.away === w.userClubId ? 1 : 0;
 
   if (!simRef.current && f) {
@@ -228,6 +234,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     update(() => finishUserMatch(world, f, r));
     saveRng(world);
     setResult(r);
+    // apito final: some a comemoração do gol que ainda estiver na tela
+    window.clearTimeout(flashTimer.current);
+    setFlash(null);
+    setHold(false);
     stopCrowd();
     autosave(true);
   }
@@ -356,13 +366,13 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           )}
         </div>
         <div className={`scoreboard${showField ? " mv-compact" : ""}`}>
-          <div className="team"><Crest club={H.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{H.club.name}</span></div>
+          <div className="team"><Crest club={H.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(H.club)}</span></div>
           <div className="center">
             <div className="score kbd">{H.goals} : {A.goals}</div>
             {sim.pens && <div className="small">pên. {sim.pens[0]} × {sim.pens[1]}</div>}
             <span className="minute">{result || sim.finished ? "Fim" : sim.minute === 0 ? "0'" : sim.half === 2 && sim.minute === 45 ? "Intervalo" : sim.displayMinute()}</span>
           </div>
-          <div className="team"><Crest club={A.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{A.club.name}</span></div>
+          <div className="team"><Crest club={A.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(A.club)}</span></div>
         </div>
         <div className={showField ? "mv-momentum" : ""} style={showField ? undefined : { padding: "0 12px 10px" }}>
           <div className="momentum">
@@ -390,7 +400,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
       <DerbyBanner home={f.home} away={f.away} />
 
-      {flash && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+      {flash && !result && !sim.finished && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
       {!quick && !result && !sim.finished && (
         <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>

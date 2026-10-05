@@ -154,12 +154,25 @@ window.addEventListener("popstate", () => {
 });
 
 let toastTimer: number | undefined;
+const toastQueue: string[] = [];
+/** Avisos curtos: entram numa fila e aparecem um de cada vez no topo da tela. */
 export function toast(msg: string) {
-  nav = { ...nav, toast: msg };
-  emitNav();
+  if (nav.toast === msg || toastQueue.includes(msg)) return;
+  toastQueue.push(msg);
+  if (!nav.toast) showNextToast();
+}
+function showNextToast() {
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => {
-    nav = { ...nav, toast: undefined };
-    emitNav();
-  }, 2600);
+  const next = toastQueue.shift();
+  nav = { ...nav, toast: next };
+  emitNav();
+  if (next !== undefined) toastTimer = window.setTimeout(dismissToast, 2600);
+}
+/** Fecha o aviso atual (tempo esgotado ou deslizado para o lado) e mostra o próximo. */
+export function dismissToast() {
+  window.clearTimeout(toastTimer);
+  if (!nav.toast && !toastQueue.length) return;
+  nav = { ...nav, toast: undefined };
+  emitNav();
+  if (toastQueue.length) toastTimer = window.setTimeout(showNextToast, 220);
 }
