@@ -1830,7 +1830,7 @@ class PitchAnim {
 // fogos nos gols, refletores em jogos à noite, chuva e câmera que acompanha a bola.
 // Só usa Math.random e um gerador próprio por partida: nunca mexe no gerador do mundo.
 export type GraphicsMode = "ultra" | "leve" | "ps1";
-const GFX_KEY = "ldb.graphics";
+const GFX_KEY = "ldb.graphics.v2"; // v2: o padrão passou a ser o Retrô PS1
 
 /** Aparelho aguenta o modo Ultra? (tela densa, vários núcleos e sem pedido de menos movimento) */
 export function capableDevice(): boolean {
@@ -1849,7 +1849,7 @@ export function readGraphics(): GraphicsMode {
   } catch {
     /* sem armazenamento local */
   }
-  return capableDevice() ? "ultra" : "leve";
+  return "ps1"; // sem WebGL o renderizador volta sozinho para o campinho 2D
 }
 
 export function saveGraphics(m: GraphicsMode) {
