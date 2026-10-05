@@ -218,6 +218,7 @@ export interface Club {
   sponsors?: SponsorState;
   fac?: FacilityState;
   setPieces?: SetPieceConfig;
+  minor?: string; // UF: clube fictício que só disputa o estadual (fora da pirâmide nacional)
 }
 
 export interface FinanceBook {
@@ -438,6 +439,7 @@ export interface World {
     confidence: number; objective: string; objectiveCode: string; warned?: boolean;
     cool?: Record<string, number>; // pedidos à diretoria em espera
     grantSeason?: number; // última temporada com aporte extra
+    estadual?: { comp: string; code: "title" | "final" | "semi" | "none"; text: string; season: number; judged?: boolean };
   };
   pendingMatch?: number; // fixture do usuário aguardando para ser jogada
   fired?: boolean;

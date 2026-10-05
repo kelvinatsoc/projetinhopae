@@ -127,10 +127,11 @@ function LeagueView({ w, comp }: { w: World; comp: Competition }) {
     serieB: [["up", "Acesso direto"], ["po", "Playoff de acesso"], ["rel", "Rebaixamento"]],
     serieC: [["up", "Mata-mata (quartas = acesso)"], ["rel", "Rebaixamento"]],
   };
+  if (comp.id.startsWith("est-")) legend[comp.id] = [["up", "Semifinal (jogo único) e final em ida e volta"]];
   return (
     <>
       <div className="card" style={{ padding: 6 }}>
-        <Table w={w} rows={comp.table} compId={comp.id} />
+        <Table w={w} rows={comp.table} compId={comp.id} qualify={comp.id.startsWith("est-") ? 4 : undefined} />
         <div className="row wrap gap8 tiny muted" style={{ padding: 6 }}>
           {legend[comp.id]?.map(([z, l]) => <span key={z} className="row gap4"><i className={`zone ${z}`} style={{ width: 10, height: 10, display: "inline-block", borderRadius: 2 }} />{l}</span>)}
         </div>

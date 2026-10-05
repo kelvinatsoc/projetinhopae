@@ -1,5 +1,7 @@
 // Competições: tabelas, mata-matas, sorteios e avanço de fases.
 import { continentalDays, copaDays, leagueDays, serieBPlayoffDays, serieCDays } from "./calendar";
+import { ESTADUAIS } from "../data/estaduais";
+import { createEstaduais, isEstadual, progressEstadual } from "./estaduais";
 import { rand, shuffle } from "./rng";
 import type { Club, Competition, Fixture, TableRow, Tie, World } from "./types";
 
@@ -11,6 +13,8 @@ export const COMP_META: Record<string, { name: string; short: string; color: str
   liberta: { name: "Copa Libertadores", short: "Libertadores", color: "#d4a017", tier: 0 },
   sula: { name: "Copa Sul-Americana", short: "Sul-Americana", color: "#06b6d4", tier: 3 },
 };
+// estaduais: nomes em português nas telas de tabela, jogos, histórico e troféus
+ESTADUAIS.forEach((e, i) => { COMP_META[e.id] = { name: e.name, short: e.short, color: e.color, tier: 10 + i }; });
 
 export const STAGE_NAMES: Record<string, string> = {
   league: "Pontos corridos",
@@ -205,6 +209,8 @@ export function createSeasonCompetitions(w: World, e: SeasonEntrants) {
     w.comps[id] = comp;
     drawGroups(w, comp, continentalDays(y, thu).groups);
   }
+
+  createEstaduais(w);
 }
 
 const strength = (w: World, id: string) => {
@@ -297,7 +303,8 @@ function allTiesDone(comp: Competition, stage: string) {
 function progressOne(w: World, comp: Competition, news: string[]) {
   const y = w.season;
   const name = (id: string) => w.clubs[id]?.name ?? id;
-  if (comp.id === "serieA" && comp.stage === "league" && stageDone(w, comp, "league")) {
+  if (isEstadual(comp)) progressEstadual(w, comp, news);
+  else if (comp.id === "serieA" && comp.stage === "league" && stageDone(w, comp, "league")) {
     sortTable(comp.table);
     comp.champion = comp.table[0].club;
     comp.runnerUp = comp.table[1].club;

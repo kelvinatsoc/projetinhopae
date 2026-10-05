@@ -24,6 +24,7 @@ export function BoardScreen() {
         <div className="card-title"><h3>🏛️ Confiança da diretoria</h3><b>{Math.round(w.board.confidence)}%</b></div>
         <Bar v={w.board.confidence} />
         <div className="small mt8">🎯 {w.board.objective}</div>
+        {w.board.estadual?.season === w.season && <div className="small mt8">🏅 {w.board.estadual.text}</div>}
         <div className="tiny muted mt8">Vencer aumenta a confiança. Com mais confiança, a diretoria aprova obras maiores.</div>
       </div>
 

@@ -57,6 +57,21 @@ export function continentalDays(year: number, thursdayGames: boolean) {
   };
 }
 
+/**
+ * Campeonatos estaduais (jan–mar). A maior parte das rodadas vem antes da estreia da Série A; o resto
+ * cai nas quartas-feiras livres de Copa do Brasil (semanas 2 e 5) e antes das copas continentais. A final de volta
+ * cai no domingo da semana 7, que não tem rodada de Série A/B (data FIFA).
+ */
+export function estadualDays(year: number) {
+  const s0 = sunday(year, 0);
+  return {
+    rounds: [s0 - 17, s0 - 14, s0 - 11, s0 - 7, s0 - 4, wednesday(year, 0), wednesday(year, 1)],
+    qf: [wednesday(year, 1)],
+    sf: [wednesday(year, 3)],
+    final: [wednesday(year, 6), sunday(year, 7)],
+  };
+}
+
 export const seasonEndDay = (year: number) => sunday(year, 47) + 2;
 export const YOUTH_INTAKE_DAY = 25; // depois da Copinha
 export const MID_SEASON_DAY = 181; // 1º de julho

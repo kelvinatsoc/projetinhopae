@@ -37,7 +37,7 @@ function foreignEntrants(w: World): { lib: string[]; sula: string[] } {
 
 export function initialEntrants(w: World): SeasonEntrants {
   const byDiv = (d: Div) => Object.values(w.clubs).filter((c) => c.div === d).map((c) => c.id);
-  const d = Object.values(w.clubs).filter((c) => c.div === "D").sort((a, b) => b.rep - a.rep).slice(0, 4).map((c) => c.id);
+  const d = Object.values(w.clubs).filter((c) => c.div === "D" && !c.minor).sort((a, b) => b.rep - a.rep).slice(0, 4).map((c) => c.id);
   const f = foreignEntrants(w);
   // vagas reais de 2026
   const libBR = ["flamengo", "palmeiras", "cruzeiro", "mirassol", "fluminense", "corinthians", "botafogo"].filter((id) => w.clubs[id]);
@@ -208,7 +208,7 @@ export function endSeason(w: World): string[] {
   const relB = B.relegated ?? B.table.slice(-4).map((r) => r.club);
   const proC = C.promoted ?? C.table.slice(0, 4).map((r) => r.club);
   const relC = C.relegated ?? C.table.slice(-2).map((r) => r.club);
-  const dPool = Object.values(w.clubs).filter((c) => c.div === "D");
+  const dPool = Object.values(w.clubs).filter((c) => c.div === "D" && !c.minor);
   const proD = dPool.map((c) => ({ c, s: c.level + c.rep / 10 + rand() * 8 })).sort((a, b) => b.s - a.s).slice(0, relC.length).map((x) => x.c.id);
   for (const id of relA) w.clubs[id].div = "B";
   for (const id of proB) w.clubs[id].div = "A";
@@ -358,7 +358,7 @@ export function endSeason(w: World): string[] {
 
   // nova temporada
   const byDiv = (d: Div) => Object.values(w.clubs).filter((c) => c.div === d).map((c) => c.id);
-  const d4 = Object.values(w.clubs).filter((c) => c.div === "D").sort((a, b) => b.rep - a.rep).slice(0, 4).map((c) => c.id);
+  const d4 = Object.values(w.clubs).filter((c) => c.div === "D" && !c.minor).sort((a, b) => b.rep - a.rep).slice(0, 4).map((c) => c.id);
   const entrants: SeasonEntrants = {
     serieA: byDiv("A"), serieB: byDiv("B"), serieC: byDiv("C"),
     copa: [...byDiv("A"), ...byDiv("B"), ...byDiv("C"), ...d4],
