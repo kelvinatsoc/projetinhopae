@@ -1,17 +1,19 @@
 import { SponsorsScreen } from "./Sponsors";
 import { FacilitiesScreen } from "./Facilities";
 import { SetPiecesScreen } from "./SetPieces";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { installTapHaptics } from "./haptics";
+import { nextFixture } from "../engine/competitions";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
 import { inboxUnread } from "../engine/inbox";
-import { back, push, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
+import { back, dismissToast, push, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
 import { popToast } from "../engine/achievements";
 import { AchievementsScreen } from "./Achievements";
 import { CareerScreen } from "./Career";
 import { TrophyRoomScreen } from "./TrophyRoom";
 import { continueGame } from "./actions";
-import { Crest, Icon } from "./components";
+import { Crest, Icon, textOn, visibleColor } from "./components";
 import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
 import { CompsScreen } from "./screens/Comps";
 import { HomeScreen, NewsScreen } from "./screens/Home";
@@ -78,6 +80,22 @@ export function App() {
     document.documentElement.dataset.theme = w?.settings.theme ?? "dark";
   }, [w?.settings.theme]);
 
+  useEffect(() => installTapHaptics(), []);
+
+  // o app inteiro veste as cores do clube comandado
+  const colors = w ? w.clubs[w.userClubId]?.colors : undefined;
+  const colorKey = colors?.join(",") ?? "";
+  useEffect(() => {
+    const root = document.documentElement.style;
+    if (!colors) { root.removeProperty("--club"); root.removeProperty("--club2"); root.removeProperty("--club-ink"); return; }
+    const c1 = visibleColor(colors);
+    const rest = colors.filter((c) => c.toLowerCase() !== c1.toLowerCase());
+    const c2 = rest.length ? visibleColor(rest) : "#1f6fd1";
+    root.setProperty("--club", c1);
+    root.setProperty("--club2", c2.toLowerCase() === c1.toLowerCase() ? "#1f6fd1" : c2);
+    root.setProperty("--club-ink", textOn(c1) === "#fff" ? "#fff" : "#0b0f1a");
+  }, [colorKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // conquistas e desafios: avisos pendentes viram toasts, um de cada vez
   const pending = w?.ach?.toasts.length ?? 0;
   const toastBusy = !!nav.toast;
@@ -141,6 +159,9 @@ export function App() {
   }
 
   const showFab = !top && (nav.tab === "home" || nav.tab === "squad" || nav.tab === "comps");
+  const nf = nextFixture(w, w.userClubId);
+  const matchToday = !!nf && nf.day === w.day;
+  const routeKey = top ? `${nav.stack.length}:${top.name}:${"id" in top ? top.id : ""}` : `tab:${nav.tab}`;
 
   return (
     <div className={`app${fullScreen ? " no-chrome" : ""}`}>
@@ -153,8 +174,9 @@ export function App() {
           )}
           <div className="title">
             <b>{top ? routeTitle(top) || club.name : club.name}</b>
-            <small>{formatDate(w.season, w.day)} {w.season} · {formatMoney(club.balance)}</small>
+            <small>{formatDate(w.season, w.day)} {w.season}</small>
           </div>
+          <button className="money-chip" onClick={() => push({ name: "finances" })} aria-label="Finanças">{formatMoney(club.balance)}</button>
           {w.admin?.on && (
             <button className="icon-btn" style={{ color: "#f5c542", fontSize: 18 }} onClick={() => push({ name: "admin" })} aria-label="Painel do administrador">🛠️</button>
           )}
@@ -163,10 +185,10 @@ export function App() {
           </button>
         </header>
       )}
-      {content}
+      <div className={`screen${top ? "" : " from-tab"}`} key={routeKey}>{content}</div>
       {showFab && (
         <button className="fab" onClick={continueGame}>
-          <Icon name="play" fill size={18} /> Continuar
+          <Icon name="play" fill size={20} /> {matchToday ? "Jogar" : "Continuar"}
         </button>
       )}
       {!fullScreen && (
@@ -175,11 +197,41 @@ export function App() {
             <button key={t.id} className={!top && nav.tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
               <Icon name={t.icon} />
               {t.label}
+              {t.id === "club" && (w.career?.offers.length ?? 0) > 0 && <i className="nav-badge" />}
             </button>
           ))}
         </nav>
       )}
-      {nav.toast && <div className="toast">{nav.toast}</div>}
+      {nav.toast && <Toast key={nav.toast} msg={nav.toast} />}
+    </div>
+  );
+}
+
+/** Aviso compacto no topo: some sozinho, ao tocar ou ao deslizar para o lado. */
+function Toast({ msg }: { msg: string }) {
+  const start = useRef<number | null>(null);
+  const el = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={el}
+      className="toast"
+      role="status"
+      onClick={dismissToast}
+      onPointerDown={(e) => { start.current = e.clientX; }}
+      onPointerMove={(e) => {
+        if (start.current == null || !el.current) return;
+        const dx = e.clientX - start.current;
+        el.current.style.transform = `translateX(calc(-50% + ${dx}px))`;
+        el.current.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 160));
+      }}
+      onPointerUp={(e) => {
+        const dx = start.current == null ? 0 : e.clientX - start.current;
+        start.current = null;
+        if (Math.abs(dx) > 60) dismissToast();
+        else if (el.current) { el.current.style.transform = ""; el.current.style.opacity = ""; }
+      }}
+    >
+      {msg}
     </div>
   );
 }
