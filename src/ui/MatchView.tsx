@@ -9,8 +9,9 @@ import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
-import type { Club, MatchEvent, Player, Race } from "../engine/types";
+import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from "../engine/types";
 import { Avatar, Crest, StadiumPhoto } from "./components";
+import "./economy.css";
 import "./matchView.css";
 
 // ---------------------------------------------------------------- geometria (pixels de jogo)
@@ -1720,6 +1721,215 @@ class PitchAnim {
 }
 
 // ---------------------------------------------------------------- componente
+
+// ---------------------------------------------------------------- gráficos Ultra
+// Camada extra desenhada por cima do campo em pixel art, na resolução real da tela (devicePixelRatio):
+// sombra e rastro da bola, torcida animada com bandeiras nas cores de cada clube, sinalizadores e
+// fogos nos gols, refletores em jogos à noite, chuva e câmera que acompanha a bola.
+// Só usa Math.random e um gerador próprio por partida: nunca mexe no gerador do mundo.
+export type GraphicsMode = "ultra" | "leve";
+const GFX_KEY = "ldb.graphics";
+
+/** Aparelho aguenta o modo Ultra? (tela densa, vários núcleos e sem pedido de menos movimento) */
+export function capableDevice(): boolean {
+  try {
+    const cores = navigator.hardwareConcurrency ?? 4;
+    return (window.devicePixelRatio || 1) >= 2 && cores >= 6 && !prefersReducedMotion();
+  } catch {
+    return false;
+  }
+}
+
+export function readGraphics(): GraphicsMode {
+  try {
+    const v = localStorage.getItem(GFX_KEY);
+    if (v === "ultra" || v === "leve") return v;
+  } catch {
+    /* sem armazenamento local */
+  }
+  return capableDevice() ? "ultra" : "leve";
+}
+
+export function saveGraphics(m: GraphicsMode) {
+  try {
+    localStorage.setItem(GFX_KEY, m);
+  } catch {
+    /* vale só nesta sessão */
+  }
+}
+
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; glow?: boolean }
+
+class UltraFX {
+  anim: PitchAnim;
+  night: boolean;
+  rain: boolean;
+  trail: { x: number; y: number; h: number }[] = [];
+  parts: Particle[] = [];
+  drops: { x: number; y: number; s: number }[] = [];
+  lastCelebr: unknown = null;
+  cam = { x: CX, y: CY, z: 1 };
+  t = 0;
+  colors: [string[], string[]];
+
+  constructor(anim: PitchAnim) {
+    this.anim = anim;
+    // clima e horário fixos por partida (gerador próprio)
+    const r = makeRng(anim.sim.f.id * 7919 + 13);
+    this.night = r() < 0.45;
+    this.rain = r() < 0.18;
+    const hc = anim.sim.sides[0].club.colors, ac = anim.sim.sides[1].club.colors;
+    this.colors = [[hc[0], hc[1], "#ffffff"], [ac[0], ac[1], "#ffffff"]];
+    for (let i = 0; i < 140; i++) this.drops.push({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 0.8 });
+  }
+
+  /** Avança partículas, rastro e câmera. dt em ms. */
+  update(dt: number) {
+    this.t += dt;
+    const a = this.anim;
+    const b = a.ball;
+    this.trail.push({ x: b.x, y: b.y, h: b.h });
+    if (this.trail.length > 10) this.trail.shift();
+    if (a.celebr && a.celebr !== this.lastCelebr) {
+      this.lastCelebr = a.celebr;
+      this.goalBurst(a.celebr.side);
+    }
+    if (!a.celebr) this.lastCelebr = null;
+    const k = dt / 16.7;
+    for (const p of this.parts) {
+      p.x += p.vx * k; p.y += p.vy * k; p.vy += 0.02 * k; p.life -= dt;
+    }
+    this.parts = this.parts.filter((p) => p.life > 0);
+    if (this.rain) for (const d of this.drops) {
+      d.y += 3.2 * d.s * k; d.x -= 0.8 * d.s * k;
+      if (d.y > H) { d.y = -4; d.x = Math.random() * (W + 30); }
+    }
+    // câmera: segue a bola; perto do gol (lance de perigo) aproxima suavemente
+    const danger = b.x < PX0 + BOX_D + 12 || b.x > PX1 - BOX_D - 12;
+    const tz = a.celebr ? 1.18 : danger && a.mode === "play" ? 1.32 : 1.12;
+    const e = Math.min(1, 0.0035 * dt);
+    this.cam.z += (tz - this.cam.z) * e;
+    this.cam.x += (b.x - this.cam.x) * Math.min(1, e * 1.6);
+    this.cam.y += (b.y - this.cam.y) * Math.min(1, e * 1.6);
+  }
+
+  /** Gol: sinalizadores na torcida de quem marcou e fogos de artifício. */
+  goalBurst(side: 0 | 1) {
+    const cols = this.colors[side];
+    for (let i = 0; i < 70; i++) {
+      const top = Math.random() < 0.5;
+      this.parts.push({
+        x: Math.random() * W, y: top ? rnd(2, PY0 - 6) : rnd(PY1 + 4, H - 2),
+        vx: rnd(-0.15, 0.15), vy: rnd(-0.35, -0.08), life: rnd(1400, 2600), max: 2600,
+        color: cols[i % 2], size: rnd(1.5, 3.5), glow: i % 5 === 0,
+      });
+    }
+    for (let f = 0; f < 4; f++) {
+      const cx = rnd(20, W - 20), cy = rnd(10, H / 2);
+      for (let i = 0; i < 26; i++) {
+        const ang = (i / 26) * Math.PI * 2, sp = rnd(0.6, 1.3);
+        this.parts.push({ x: cx, y: cy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: rnd(700, 1200), max: 1200, color: i % 3 ? cols[f % 3] : "#fff6b0", size: 1.2, glow: true });
+      }
+    }
+  }
+
+  /** Câmera como transform CSS no palco (o canvas em pixel art continua nítido). */
+  cameraCss(): string {
+    const z = this.cam.z;
+    const ox = clamp((CX - this.cam.x) / W, -0.5, 0.5) * 100 * (z - 1);
+    const oy = clamp((CY - this.cam.y) / H, -0.5, 0.5) * 100 * (z - 1);
+    return `translate(${ox.toFixed(2)}%, ${oy.toFixed(2)}%) scale(${z.toFixed(3)})`;
+  }
+
+  draw(g: CanvasRenderingContext2D, cw: number, ch: number) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cw, ch);
+    g.setTransform(cw / W, 0, 0, ch / H, 0, 0);
+    const t = this.t / 1000;
+    // torcida animada: bandeiras nas cores dos dois clubes (pulam mais no gol)
+    const party = this.anim.celebr ? 2.2 : 1;
+    for (let i = 0; i < 46; i++) {
+      const top = i % 2 === 0;
+      const side = i % 4 < 2 ? 0 : 1;
+      const x = ((i * 37) % (W - 8)) + 4;
+      const y0 = top ? 6 + (i % 3) * 3 : PY1 + 6 + (i % 3) * 3;
+      const wave = Math.sin(t * 5 * party + i) * 1.6 * party;
+      g.fillStyle = this.colors[side][i % 2];
+      g.globalAlpha = 0.85;
+      g.fillRect(x, y0 + wave - 3, 0.4, 4);
+      const flutter = Math.sin(t * 9 + i * 1.7) * 0.8;
+      g.beginPath();
+      g.moveTo(x + 0.4, y0 + wave - 3);
+      g.lineTo(x + 4 + flutter, y0 + wave - 2.2);
+      g.lineTo(x + 0.4, y0 + wave - 1);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    // sombra e rastro da bola
+    const b = this.anim.ball;
+    if (b.h > 0.2) {
+      g.fillStyle = "rgba(0,0,0,0.35)";
+      g.beginPath();
+      g.ellipse(b.x + b.h * 0.25, b.y + 0.6 + b.h * 0.15, 1.4 + b.h * 0.05, 0.7, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    for (let i = 1; i < this.trail.length; i++) {
+      const p0 = this.trail[i - 1], p1 = this.trail[i];
+      const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      if (d < 0.25 || d > 20) continue;
+      g.strokeStyle = `rgba(255,255,255,${((i / this.trail.length) * 0.45).toFixed(3)})`;
+      g.lineWidth = 0.4 + (i / this.trail.length) * 0.8;
+      g.beginPath();
+      g.moveTo(p0.x, p0.y - p0.h);
+      g.lineTo(p1.x, p1.y - p1.h);
+      g.stroke();
+    }
+    // partículas (sinalizadores, fogos)
+    for (const p of this.parts) {
+      g.globalAlpha = Math.max(0, Math.min(1, p.life / p.max));
+      if (p.glow) {
+        const r = p.size * 3;
+        const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        gr.addColorStop(0, p.color);
+        gr.addColorStop(1, "rgba(0,0,0,0)");
+        g.fillStyle = gr;
+        g.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      }
+      g.fillStyle = p.color;
+      g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    g.globalAlpha = 1;
+    // noite: bordas escuras e brilho dos quatro refletores
+    if (this.night) {
+      const v = g.createRadialGradient(CX, CY, 30, CX, CY, W * 0.7);
+      v.addColorStop(0, "rgba(0,0,20,0)");
+      v.addColorStop(1, "rgba(0,0,25,0.45)");
+      g.fillStyle = v;
+      g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = "lighter";
+      for (const [lx, ly] of [[4, 4], [W - 4, 4], [4, H - 4], [W - 4, H - 4]]) {
+        const fl = g.createRadialGradient(lx, ly, 0, lx, ly, 60);
+        fl.addColorStop(0, "rgba(255,250,215,0.35)");
+        fl.addColorStop(0.15, "rgba(255,250,215,0.12)");
+        fl.addColorStop(1, "rgba(255,250,215,0)");
+        g.fillStyle = fl;
+        g.fillRect(lx - 60, ly - 60, 120, 120);
+      }
+      g.globalCompositeOperation = "source-over";
+    }
+    // chuva
+    if (this.rain) {
+      g.strokeStyle = "rgba(200,220,255,0.35)";
+      g.lineWidth = 0.35;
+      g.beginPath();
+      for (const d of this.drops) { g.moveTo(d.x, d.y); g.lineTo(d.x - 1.2 * d.s, d.y + 3.5 * d.s); }
+      g.stroke();
+      g.fillStyle = "rgba(40,60,90,0.12)";
+      g.fillRect(0, 0, W, H);
+    }
+  }
+}
+
 function prefersReducedMotion(): boolean {
   try {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1744,6 +1954,8 @@ export interface MatchViewProps {
   /** desfecho de um lance perigoso (defesa, trave, para fora) — para o "uhhh" da torcida */
   onBeat?: (e: MatchEvent) => void;
   onSkipIntro?: () => void;
+  /** gráficos Ultra (camada em alta resolução, câmera, efeitos) ou Leve (só o pixel art) */
+  ultra?: boolean;
 }
 
 /** Campo em pixel art com os jogadores se movendo e a legenda do lance. */
@@ -1751,6 +1963,8 @@ export function MatchView(props: MatchViewProps) {
   const { sim, tick, intro } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fxRef = useRef<HTMLCanvasElement>(null);
+  const camRef = useRef<HTMLDivElement>(null);
   const capRef = useRef<HTMLSpanElement>(null);
   const dotRef = useRef<HTMLElement>(null);
   const animRef = useRef<PitchAnim | null>(null);
@@ -1782,16 +1996,26 @@ export function MatchView(props: MatchViewProps) {
     else if (sim.finished) anim.say("Fim de jogo!");
     else if (sim.phase.atk != null) anim.say(`Bola com o ${sim.sides[sim.phase.atk].club.name}`, sim.phase.atk);
 
+    const fx = propsRef.current.ultra ? new UltraFX(anim) : null;
+    const fxCanvas = fxRef.current;
+    const fg = fx && fxCanvas ? fxCanvas.getContext("2d") : null;
+    if (camRef.current && !fx) camRef.current.style.transform = "";
     let raf = 0;
     let last = 0;
     const frame = (t: number) => {
       raf = 0;
       if (!last) last = t;
       const dt = t - last;
-      if (dt >= 31) {
+      // Leve: ~30 quadros por segundo. Ultra: sem limite (acompanha a tela, até 120 Hz)
+      if (dt >= (fx ? 1 : 31)) {
         last = t;
         anim.update(Math.min(dt, 100));
         anim.draw(g);
+        if (fx && fg && fxCanvas) {
+          fx.update(Math.min(dt, 100));
+          fx.draw(fg, fxCanvas.width, fxCanvas.height);
+          if (camRef.current) camRef.current.style.transform = fx.cameraCss();
+        }
       }
       if (!propsRef.current.paused && !document.hidden && !anim.idle()) raf = requestAnimationFrame(frame);
     };
@@ -1815,6 +2039,13 @@ export function MatchView(props: MatchViewProps) {
       while (k > 1 && (H * k) / dpr > maxH) k--;
       canvas.style.width = `${(W * k) / dpr}px`;
       canvas.style.height = `${(H * k) / dpr}px`;
+      if (fxCanvas) {
+        // camada Ultra na resolução real da tela (devicePixelRatio inteiro)
+        fxCanvas.width = W * k;
+        fxCanvas.height = H * k;
+        fxCanvas.style.width = canvas.style.width;
+        fxCanvas.style.height = canvas.style.height;
+      }
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -1831,7 +2062,7 @@ export function MatchView(props: MatchViewProps) {
       kick.current = () => undefined;
       animRef.current = null;
     };
-  }, [sim]);
+  }, [sim, props.ultra]);
 
   // velocidade e segura-no-gol vêm sempre da última renderização
   useEffect(() => {
@@ -1857,8 +2088,11 @@ export function MatchView(props: MatchViewProps) {
   const photo = !!home.stadiumImg && !sim.f.neutral;
   return (
     <div className="mv" ref={wrapRef}>
-      <div className="mv-stage">
-        <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
+      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}`}>
+        <div className="mv-cam" ref={camRef}>
+          <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
+          {props.ultra && <canvas ref={fxRef} className="mv-fx" aria-hidden="true" />}
+        </div>
         {intro && (
           <div className="mv-intro" onClick={props.onSkipIntro}>
             <div className="mv-intro-fallback">
@@ -1930,3 +2164,67 @@ export function GoalCelebration({ e, sim, top }: { e: MatchEvent; sim: MatchSim;
   );
 }
 
+
+// ---------------------------------------------------------------- cartão pós-jogo
+/** Cartão do fim de jogo: placar, xG, craque do jogo e as notas dos dois times. */
+export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: MatchResult; label: string }) {
+  const H = w.clubs[f.home], A = w.clubs[f.away];
+  const xg = r.stats.xg;
+  const xgTot = xg[0] + xg[1] || 1;
+  const motm = r.motm != null ? w.players[r.motm] : null;
+  const goals = r.events.filter((e) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal");
+  const rows = (side: 0 | 1) =>
+    r.lineups[side].filter((id) => w.players[id] && r.ratings[id] != null).sort((a, b) => r.ratings[b] - r.ratings[a]);
+  return (
+    <div className="pm-card" style={{ "--h": H.colors[0], "--a": A.colors[0] } as CSSProperties} role="region" aria-label="Resumo da partida">
+      <div className="center small" style={{ fontWeight: 700 }}>{label}</div>
+      <div className="pm-score mt8">
+        <Crest club={H} size={40} />
+        <div className="center">
+          <div className="big">{r.hg} × {r.ag}</div>
+          {r.pens && <div className="tiny">pên. {r.pens[0]} × {r.pens[1]}</div>}
+        </div>
+        <Crest club={A} size={40} />
+      </div>
+      <div className="row tiny mt8"><span>xG {xg[0].toFixed(2)}</span><span className="grow center muted">gols esperados</span><span>{xg[1].toFixed(2)}</span></div>
+      <div className="pm-xg">
+        <i style={{ width: `${(xg[0] / xgTot) * 100}%`, background: H.colors[0] }} />
+        <i style={{ width: `${(xg[1] / xgTot) * 100}%`, background: A.colors[0] === H.colors[0] ? "#9aa5a0" : A.colors[0] }} />
+      </div>
+      <div className="row tiny muted"><span>Chutes {r.stats.shots[0]} ({r.stats.onTarget[0]} no gol)</span><span className="grow" /><span>{r.stats.shots[1]} ({r.stats.onTarget[1]} no gol)</span></div>
+      {goals.length > 0 && (
+        <div className="small mt8 col gap4">
+          {goals.map((e, i) => (
+            <span key={i}>⚽ {e.min}' {e.pid ? w.players[e.pid]?.name : ""}{e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""} — {(e.side === 0 ? H : A).abbr}</span>
+          ))}
+        </div>
+      )}
+      {motm && (
+        <div className="pm-motm">
+          <Avatar p={motm} club={motm.clubId ? w.clubs[motm.clubId] : null} season={w.season} size={44} />
+          <div className="grow">
+            <div className="tiny muted">⭐ Craque do jogo</div>
+            <b>{motm.name}</b>
+          </div>
+          <b style={{ fontSize: 22 }}>{r.ratings[motm.id]?.toFixed(1)}</b>
+        </div>
+      )}
+      <div className="pm-cols">
+        {([0, 1] as const).map((side) => (
+          <div key={side} style={{ minWidth: 0 }}>
+            <b className="tiny">{(side === 0 ? H : A).abbr}</b>
+            {rows(side).map((id) => {
+              const v = r.ratings[id];
+              return (
+                <div key={id} className="pm-r">
+                  <span className="ellipsis">{w.players[id].name.split(" ").slice(-1)[0]}</span>
+                  <b className={v >= 7.5 ? "hi" : v < 6 ? "lo" : ""}>{v.toFixed(1)}</b>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

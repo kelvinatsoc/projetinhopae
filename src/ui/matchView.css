@@ -115,3 +115,8 @@
   .mv-confetti { display: none; }
   .mv-intro { animation: none; }
 }
+
+/* gráficos Ultra: camada em alta resolução por cima do pixel art e câmera que segue a bola */
+.mv-cam { position: relative; transform-origin: 50% 50%; will-change: transform; }
+.mv-stage.mv-ultra { overflow: hidden; }
+.mv-fx { position: absolute; left: 0; top: 0; pointer-events: none; }

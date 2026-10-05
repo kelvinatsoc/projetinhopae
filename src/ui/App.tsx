@@ -1,3 +1,6 @@
+import { SponsorsScreen } from "./Sponsors";
+import { FacilitiesScreen } from "./Facilities";
+import { SetPiecesScreen } from "./SetPieces";
 import { useEffect } from "react";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
@@ -48,6 +51,9 @@ function routeTitle(r: Route): string {
     case "staff": return "Comissão técnica";
     case "board": return "Diretoria e obras";
     case "dressing": return "Vestiário";
+    case "sponsors": return "Patrocínios";
+    case "facilities": return "Estrutura";
+    case "setpieces": return "Bola parada";
     default: return "";
   }
 }
@@ -98,6 +104,9 @@ export function App() {
       case "staff": content = <StaffScreen />; break;
       case "board": content = <BoardScreen />; break;
       case "dressing": content = <DressingScreen />; break;
+      case "sponsors": content = <SponsorsScreen />; break;
+      case "facilities": content = <FacilitiesScreen />; break;
+      case "setpieces": content = <SetPiecesScreen />; break;
       default: content = null;
     }
   }

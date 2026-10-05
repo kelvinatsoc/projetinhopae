@@ -1,7 +1,10 @@
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
 import { formatDate } from "./calendar";
 import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
+import { migrateFacilities } from "./facilities";
 import { repairWorld } from "./integrity";
+import { migrateSetPieces } from "./setpieces";
+import { migrateSponsors } from "./sponsors";
 import { addNews } from "./news";
 import { assignRegenFace, legendImage } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
@@ -187,6 +190,8 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   }
   if (from < 3) migrateTo3(w);
   fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
+  // economia e dia de jogo (opcionais): repara sub-objetos inválidos
+  for (const c of Object.values(w.clubs)) { migrateSponsors(c); migrateFacilities(c); migrateSetPieces(c); }
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };

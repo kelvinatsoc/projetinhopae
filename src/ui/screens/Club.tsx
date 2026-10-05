@@ -56,6 +56,8 @@ export function ClubScreen() {
         <MenuItem icon="👔" label="Comissão técnica" sub="Auxiliar, treinador, preparador, olheiro e base" onClick={() => push({ name: "staff" })} />
         <MenuItem icon="🏛️" label="Diretoria e obras" sub="Pedidos, estádio, CT e base" onClick={() => push({ name: "board" })} />
         <MenuItem icon="🤝" label="Vestiário" sub="Clima do elenco, conversas e promessas" onClick={() => push({ name: "dressing" })} />
+        <MenuItem icon="🤝" label="Patrocínios" sub="Camisa, nome do estádio e material esportivo" onClick={() => push({ name: "sponsors" })} />
+        <MenuItem icon="🏗️" label="Estrutura" sub="Estádio, CT, base e departamento médico" onClick={() => push({ name: "facilities" })} />
         <MenuItem icon="💰" label="Finanças" sub="Receitas, despesas e salários" onClick={() => push({ name: "finances" })} />
         <MenuItem icon="📜" label="Histórico" sub="Campeões e suas temporadas" onClick={() => push({ name: "history" })} />
         <MenuItem icon="🔎" label="Ver página do clube" sub="Elenco e informações" onClick={() => push({ name: "club", id: c.id })} />

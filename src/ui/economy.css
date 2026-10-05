@@ -1,0 +1,27 @@
+/* Patrocínios, estrutura, bola parada e cartão pós-jogo (Trilha C) */
+.eco-offers { display: grid; gap: 8px; margin-top: 8px; }
+.eco-offer { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg2); cursor: pointer; transition: transform .12s, border-color .12s; }
+.eco-offer:active { transform: scale(.98); }
+.eco-offer.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.eco-offer .brand { font-weight: 700; }
+.eco-tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent); margin: 4px 4px 0 0; }
+.eco-signed { border-left: 4px solid var(--accent); padding-left: 10px; }
+.eco-levels { display: flex; gap: 4px; margin: 6px 0; }
+.eco-levels i { flex: 1; height: 8px; border-radius: 4px; background: var(--line); }
+.eco-levels i.on { background: var(--accent); }
+.eco-levels i.next { background: repeating-linear-gradient(45deg, var(--warn) 0 4px, transparent 4px 8px); }
+.sp-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sp-role { border: 1px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer; text-align: left; background: var(--bg2); color: inherit; min-width: 0; }
+.sp-role b { display: block; }
+.pm-card { border-radius: 16px; padding: 14px; margin-bottom: 12px; background: linear-gradient(160deg, color-mix(in srgb, var(--h) 35%, var(--bg2)), var(--bg2) 55%, color-mix(in srgb, var(--a) 35%, var(--bg2))); border: 1px solid var(--line); animation: pm-in .45s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes pm-in { from { transform: translateY(18px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+.pm-score { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pm-score .big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pm-xg { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 4px 0 10px; }
+.pm-motm { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: color-mix(in srgb, #f5c542 18%, transparent); margin: 10px 0; }
+.pm-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pm-r { display: flex; justify-content: space-between; gap: 4px; font-size: 13px; padding: 2px 0; min-width: 0; }
+.pm-r b { padding: 0 6px; border-radius: 6px; }
+.pm-r b.hi { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.pm-r b.lo { background: color-mix(in srgb, var(--danger) 30%, transparent); }
+@media (prefers-reduced-motion: reduce) { .pm-card { animation: none; } }

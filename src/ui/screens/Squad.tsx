@@ -176,6 +176,7 @@ export function TacticsScreen() {
 
       <div className="row gap8">
         <button className="btn sm" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar automaticamente</button>
+        <button className="btn sm" onClick={() => push({ name: "setpieces" })}>🎯 Bola parada</button>
         {sel !== null && <span className="small muted">Toque em outro jogador para trocar</span>}
       </div>
 
