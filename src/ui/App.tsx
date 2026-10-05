@@ -58,7 +58,7 @@ function routeTitle(r: Route): string {
     case "training": return "Treino";
     case "peneira": return "Dia da peneira";
     case "staff": return "Comissão técnica";
-    case "board": return "Diretoria e obras";
+    case "board": return "Diretoria";
     case "dressing": return "Vestiário";
     case "inbox": return "Caixa de entrada";
     case "press": return "Coletiva";

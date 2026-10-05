@@ -40,7 +40,7 @@ export function AcademyScreen() {
           <Rating icon="🏫" name="Instalações" n={fac} text={`garotos chegam mais prontos · até ${cap} na base`} />
           <Rating icon="🎓" name="Treinadores" n={coach} text="garotos evoluem mais rápido e safras melhores" />
         </div>
-        <button className="btn sm ghost mt8" style={{ minHeight: 40 }} onClick={() => push({ name: "board" })}>Melhorar na Diretoria ›</button>
+        <button className="btn sm ghost mt8" style={{ minHeight: 40 }} onClick={() => push({ name: "facilities" })}>Melhorar em Estrutura ›</button>
       </div>
 
       {pending > 0 ? (

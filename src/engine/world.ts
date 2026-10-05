@@ -6,6 +6,7 @@ import { formatDate } from "./calendar";
 import { ensureCareer } from "./career";
 import { SCENARIO_BY_ID } from "./scenarios";
 import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
+import { migrateBoardProjects } from "./board";
 import { migrateFacilities } from "./facilities";
 import { repairWorld } from "./integrity";
 import { migrateSetPieces } from "./setpieces";
@@ -204,6 +205,7 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   inboxOf(w);
   migrateProgression(w);
   // economia e dia de jogo (opcionais): repara sub-objetos inválidos
+  migrateBoardProjects(w); // obras antigas da diretoria → Estrutura
   for (const c of Object.values(w.clubs)) { migrateSponsors(c); migrateFacilities(c); migrateSetPieces(c); }
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
