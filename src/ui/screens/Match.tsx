@@ -8,7 +8,7 @@ import { shortName } from "../../engine/player";
 import { MENTALITY_NAMES, ovrAt } from "../../engine/positions";
 import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reaction, type Tone } from "../../engine/teamtalk";
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
-import { forceBack, getWorld, push, update, useWorld } from "../../store";
+import { forceBack, getWorld, push, replace, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
 import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
@@ -16,6 +16,9 @@ import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView } from "../MatchView";
 import { Pitch } from "./Squad";
 import "../talk.css";
+import "../narrative.css";
+import { derbyIntensity, derbyName } from "../../data/rivalries";
+import { pressDone } from "../../engine/press";
 
 /** Tom da preleção escolhido no pré-jogo (sem escolha, vale a sugestão do auxiliar). */
 let chosenTalk: { fid: number; tone: Tone } | null = null;
@@ -109,6 +112,7 @@ export function PreMatchScreen() {
         {agg && tie && <div className="small mt8">Jogo de ida: {w.clubs[tie.a].name} {agg.a} × {agg.b} {w.clubs[tie.b].name}{tie.advantage ? ` · ${w.clubs[tie.advantage].name} joga pelo empate no agregado` : " · empate no agregado vai para os pênaltis"}</div>}
       </div>
 
+      <DerbyBanner home={f.home} away={f.away} />
       <PreMatchAdvice fixtureId={f.id} />
 
       {out.length > 0 && (
@@ -134,6 +138,10 @@ export function PreMatchScreen() {
       </div>
 
       <TalkCard w={w} f={f} />
+
+      {!pressDone(w, f.id, "pre") && (
+        <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}>🎤 Coletiva pré-jogo (opcional)</button>
+      )}
 
       <div className="grid2" style={{ position: "sticky", bottom: "calc(var(--nav-h) + 8px + env(safe-area-inset-bottom))" }}>
         <button className="btn" onClick={() => goToMatch(true)}>⏩ Resultado rápido</button>
@@ -358,6 +366,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         )}
       </div>
 
+      <DerbyBanner home={f.home} away={f.away} />
+
       {flash && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
       {!quick && !result && !sim.finished && (
@@ -394,7 +404,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 15, background: "var(--bg2)", borderTop: "1px solid var(--line)", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))" }}>
         <div style={{ maxWidth: 536, margin: "0 auto" }}>
           {result ? (
-            <button className="btn primary block" onClick={() => { forceBack(); }}>Continuar</button>
+            <div className="row gap8">
+              <button className="btn" style={{ flex: 1 }} onClick={() => replace({ name: "press", fid: f.id, phase: "post" })}>🎤 Coletiva</button>
+              <button className="btn primary" style={{ flex: 1 }} onClick={() => { forceBack(); }}>Continuar</button>
+            </div>
           ) : (
             <div className="row gap8">
               <button className="btn sm" aria-label={paused ? "Continuar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
@@ -644,6 +657,17 @@ export function FixtureReport({ id }: { id: number }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Faixa "CLÁSSICO" (só lê o par de clubes via src/data/rivalries). */
+function DerbyBanner({ home, away }: { home: string; away: string }) {
+  const int = derbyIntensity(home, away);
+  if (!int) return null;
+  return (
+    <div className="derby-banner" role="status">
+      <span>{"🔥".repeat(int)}</span> CLÁSSICO <small>· {derbyName(home, away)}</small>
     </div>
   );
 }

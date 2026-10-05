@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
-import { unreadCount } from "../engine/news";
+import { inboxUnread } from "../engine/inbox";
 import { back, push, setTab, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
 import { continueGame } from "./actions";
 import { Crest, Icon } from "./components";
@@ -19,6 +19,8 @@ import { BoardScreen } from "./screens/Board";
 import { DressingScreen } from "./screens/Dressing";
 import { StaffScreen } from "./screens/Staff";
 import { TrainingScreen } from "./screens/Training";
+import { InboxScreen } from "./Inbox";
+import { PressConferenceScreen } from "./PressConference";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "home", label: "Início", icon: "home" },
@@ -48,6 +50,8 @@ function routeTitle(r: Route): string {
     case "staff": return "Comissão técnica";
     case "board": return "Diretoria e obras";
     case "dressing": return "Vestiário";
+    case "inbox": return "Caixa de entrada";
+    case "press": return "Coletiva";
     default: return "";
   }
 }
@@ -66,7 +70,7 @@ export function App() {
   const top = nav.stack[nav.stack.length - 1];
   const fullScreen = top && (top.name === "match" || top.name === "seasonEnd" || top.name === "fired");
   const club = w.clubs[w.userClubId];
-  const unread = unreadCount(w);
+  const unread = inboxUnread(w);
 
   let content;
   if (!top) {
@@ -98,6 +102,8 @@ export function App() {
       case "staff": content = <StaffScreen />; break;
       case "board": content = <BoardScreen />; break;
       case "dressing": content = <DressingScreen />; break;
+      case "inbox": content = <InboxScreen />; break;
+      case "press": content = <PressConferenceScreen fid={top.fid} phase={top.phase} key={`${top.fid}${top.phase}`} />; break;
       default: content = null;
     }
   }
@@ -120,7 +126,7 @@ export function App() {
           {w.admin?.on && (
             <button className="icon-btn" style={{ color: "#f5c542", fontSize: 18 }} onClick={() => push({ name: "admin" })} aria-label="Painel do administrador">🛠️</button>
           )}
-          <button className="icon-btn badge-dot" data-count={unread > 0 ? Math.min(unread, 99) : undefined} onClick={() => push({ name: "news" })} aria-label="Notícias">
+          <button className="icon-btn badge-dot" data-count={unread > 0 ? Math.min(unread, 99) : undefined} onClick={() => push({ name: "inbox" })} aria-label="Caixa de entrada">
             <Icon name="bell" />
           </button>
         </header>

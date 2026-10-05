@@ -1,3 +1,4 @@
+import { derbyCrowdMult, derbyTicketMult } from "./narrative";
 // Finanças simplificadas: TV, patrocínio, bilheteria, premiações, salários e custos.
 import { clamp, gauss } from "./rng";
 import { staffWageBill } from "./staff";
@@ -108,7 +109,7 @@ export function attendanceFor(w: World, f: Fixture): number {
   const away = w.clubs[f.away];
   if (!home || !away) return 0;
   const big = f.stage !== "league" && f.stage !== "group" ? 1.25 : 1;
-  const demand = home.rep * home.rep * 7 * (0.8 + away.rep / 250) * big;
+  const demand = home.rep * home.rep * 7 * (0.8 + away.rep / 250) * big * derbyCrowdMult(w, f);
   const att = clamp(demand * (0.85 + gauss(0, 0.08)), 800, home.capacity);
   return Math.round(f.neutral ? home.capacity * 0.9 : att);
 }
@@ -117,7 +118,7 @@ export function gateRevenue(w: World, f: Fixture, attendance: number) {
   const home = w.clubs[f.home];
   if (!home || home.div === "F") return;
   const mult = f.stage === "final" ? 2 : f.stage === "sf" || f.stage === "qf" ? 1.4 : 1;
-  addIncome(home, "gate", Math.round(attendance * home.ticket * mult));
+  addIncome(home, "gate", Math.round(attendance * home.ticket * mult * derbyTicketMult(f)));
 }
 
 // Premiações por fase alcançada (R$)

@@ -1,3 +1,5 @@
+import { inboxOf } from "./inbox";
+import { narrativeOf } from "./narrative";
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
 import { formatDate } from "./calendar";
 import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
@@ -187,6 +189,8 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   }
   if (from < 3) migrateTo3(w);
   fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
+  narrativeOf(w); // trilha A: torcida, coletivas e interações
+  inboxOf(w);
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };

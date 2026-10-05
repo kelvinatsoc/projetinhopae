@@ -396,4 +396,24 @@ export interface World {
   forceGem?: boolean;
   scout?: ScoutState;
   admin?: AdminState;
+  // --- narrativa e mídia (trilha A, opcionais: saves antigos ganham na migração)
+  narrative?: NarrativeState;
+  inbox?: InboxState;
 }
+
+// ---------------------------------------------------------------- narrativa e mídia
+/** Clima da torcida, coletivas já dadas e última interação com cada jogador. */
+export interface NarrativeState {
+  fan: number; // humor da torcida 0-100
+  press: string[]; // coletivas concluídas ("<fixture>:<pre|post>"), últimas 40
+  talks: Record<number, number>; // jogador -> dia absoluto da última interação individual
+}
+export type InboxKind = "news" | "offer" | "contract" | "injury" | "board" | "dressing" | "transfer" | "press" | "match";
+export type InboxActionId = "player" | "market" | "renew" | "accept" | "reject" | "board" | "dressing" | "fixture";
+export interface InboxAction { id: InboxActionId; label: string }
+export interface InboxMsg {
+  id: number; day: number; season: number; kind: InboxKind; title: string; body: string; read: boolean;
+  pid?: number; clubId?: string; offerId?: number; newsId?: number; fid?: number;
+  actions: InboxAction[]; done?: boolean;
+}
+export interface InboxState { msgs: InboxMsg[]; lastNews: number }
