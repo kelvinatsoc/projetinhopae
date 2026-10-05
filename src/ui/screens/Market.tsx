@@ -4,12 +4,14 @@ import { windowLabel } from "../../engine/calendar";
 import { formatMoney } from "../../engine/finance";
 import { playerValue } from "../../engine/player";
 import { POSITIONS } from "../../engine/positions";
-import { acceptOffer, searchMarket, type MarketFilter } from "../../engine/transfers";
-import type { Pos } from "../../engine/types";
+import { TRAIT_IDS, TRAITS } from "../../engine/traits";
+import { acceptOffer, feeWithSellOn, searchMarket, type MarketFilter } from "../../engine/transfers";
+import type { Pos, TraitId } from "../../engine/types";
 import { push, toast, update, useVersion, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Crest, PlayerRow } from "../components";
 import { ScoutingTab } from "./Scouting";
+import "../market.css";
 
 export function MarketScreen() {
   const w = useWorld();
@@ -70,6 +72,11 @@ function Search() {
           <option value="foreign">Só sul-americanos</option>
         </select>
       </div>
+      <select className="text" value={f.trait ?? ""} onChange={(e) => set({ trait: e.target.value as TraitId | "" })} aria-label="Jogada preferida">
+        <option value="">Jogada: qualquer</option>
+        {TRAIT_IDS.filter((t) => !TRAITS[t].bad).map((t) => <option key={t} value={t}>{TRAITS[t].emoji} {TRAITS[t].label}</option>)}
+      </select>
+      {f.trait && <div className="tiny muted">Só aparecem jogadores que seus olheiros conhecem bem (observe mais jogadores para ampliar a busca).</div>}
       <div className="chips">
         <button className={`chip${f.freeOnly ? " active" : ""}`} onClick={() => set({ freeOnly: !f.freeOnly })}>Livres</button>
         <button className={`chip${f.listedOnly ? " active" : ""}`} onClick={() => set({ listedOnly: !f.listedOnly })}>À venda</button>
@@ -91,6 +98,7 @@ function Search() {
 function Offers() {
   const w = useWorld();
   const incoming = w.offers.filter((o) => !o.byUser).slice().reverse();
+  const [sellOn, setSellOn] = useState<Record<number, number>>({});
   return (
     <div className="col gap8">
       {incoming.map((o) => {
@@ -107,10 +115,21 @@ function Offers() {
               </div>
             </div>
             {o.status === "pending" ? (
-              <div className="grid2 mt8">
-                <button className="btn sm danger" onClick={() => { update(() => { o.status = "rejected"; }); autosave(); }}>Recusar</button>
-                <button className="btn sm primary" onClick={() => { update((x) => acceptOffer(x, o)); autosave(); toast(`${p.name} vendido!`); }}>Aceitar</button>
-              </div>
+              <>
+                <div className="row gap4 mt8 wrap">
+                  <span className="tiny muted">Revenda:</span>
+                  {[0, 0.1, 0.2].map((pct) => (
+                    <button key={pct} className={`chip${(sellOn[o.id] ?? 0) === pct ? " active" : ""}`} style={{ minHeight: 36 }} onClick={() => setSellOn((x) => ({ ...x, [o.id]: pct }))}>
+                      {pct ? `${pct * 100}%` : "Sem revenda"}
+                    </button>
+                  ))}
+                </div>
+                {(sellOn[o.id] ?? 0) > 0 && <div className="tiny muted mt4">Você recebe {formatMoney(feeWithSellOn(o.fee, sellOn[o.id]))} agora e {sellOn[o.id] * 100}% de uma futura venda dele.</div>}
+                <div className="grid2 mt8">
+                  <button className="btn sm danger" onClick={() => { update(() => { o.status = "rejected"; }); autosave(); }}>Recusar</button>
+                  <button className="btn sm primary" onClick={() => { update((x) => acceptOffer(x, o, sellOn[o.id] ?? 0)); autosave(); toast(`${p.name} vendido!`); }}>Aceitar</button>
+                </div>
+              </>
             ) : (
               <div className="small muted mt8">{o.status === "done" ? "✅ Vendido" : o.status === "rejected" ? "❌ Recusada" : "⌛ Expirada"}</div>
             )}

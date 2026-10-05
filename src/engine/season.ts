@@ -6,7 +6,7 @@ import { COMP_META, createSeasonCompetitions, sortTable, tablePosition, type Sea
 import { managerChanged, seasonReset } from "./dressing";
 import { awardPrize, CUP_PRIZES, leaguePrize } from "./finance";
 import { bestFormationFor, squadOf } from "./lineup";
-import { processLoanReturns } from "./loans";
+import { clearLoanedOut, processLoanReturns } from "./loans";
 import { addNews } from "./news";
 import { age, emptyStats, generatePlayer, retireChance, wageFor } from "./player";
 import { chance, rand, randInt } from "./rng";
@@ -14,6 +14,7 @@ import { pruneScouting } from "./scouting";
 import { staffOnClubChange } from "./staff";
 import { seasonEndDevelop } from "./training";
 import { aiSignFree, releasePlayer } from "./transfers";
+import { resolvePeneiraAuto } from "./youth";
 import type { Club, Competition, Div, World } from "./types";
 
 const FOREIGN_QUOTA: Record<string, number> = { ARG: 6, URU: 3, PAR: 3, CHI: 3, COL: 3, ECU: 3, PER: 2, BOL: 1, VEN: 1 };
@@ -130,6 +131,8 @@ function awardCupPrizes(w: World) {
 }
 
 export function endSeason(w: World): string[] {
+  // peneira pendente é resolvida antes de fechar a temporada
+  resolvePeneiraAuto(w);
   const y = w.season;
   const summary: string[] = [];
   const user = w.clubs[w.userClubId];
@@ -236,6 +239,7 @@ export function endSeason(w: World): string[] {
       if (p.clubId === w.userClubId || (p.legend && p.ovr >= 75) || p.ovr >= 82) retired.push(`${p.name} (${age(p, y)} anos)`);
       if (p.legend && w.legends[p.legend]) w.legends[p.legend].active = undefined;
       if (club) club.players = club.players.filter((id) => id !== p.id);
+      if (p.loan) clearLoanedOut(w, p);
       delete w.players[p.id];
       continue;
     }

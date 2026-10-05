@@ -3,10 +3,13 @@ import { LEGEND_BY_ID, TIER_NAMES } from "../../data/legends";
 import { userWindowOpen } from "../../engine/admin";
 import { COMP_META } from "../../engine/competitions";
 import { formatMoney } from "../../engine/finance";
-import { addNews } from "../../engine/news";
-import { age, fitAttrs, playerValue, roundMoney, wageFor } from "../../engine/player";
+import { withWorldRng } from "../../engine/common";
+import { peekClause } from "../../engine/contracts";
+import { roleLine } from "../../engine/dressing";
+import { canAskLoan, endLoanNow, exerciseOption, loanUntilLabel } from "../../engine/loans";
+import { age, fitAttrs, playerValue, roundMoney } from "../../engine/player";
 import { ATTR_NAMES, POS_NAME, ovrAt, POSITIONS, recalcOvr } from "../../engine/positions";
-import { askingPrice, canAfford, completeTransfer, evaluateUserBid, playerWillingness, releasePlayer, wageDemand, type OfferResponse } from "../../engine/transfers";
+import { askingPrice, canAfford, evaluateUserBid, playerWillingness, releasePlayer, type OfferResponse } from "../../engine/transfers";
 import type { Attrs, Player, World } from "../../engine/types";
 import { back, push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
@@ -15,16 +18,24 @@ import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME } from "../flags";
 import { potRangeLabel } from "../../engine/scouting";
 import { AdminPlayerEditor } from "./Admin";
+import { NegotiationSheet } from "./Contracts";
+import { TalkSheet } from "./Dressing";
+import { LoanInSheet, LoanOutSheet } from "./Loans";
+import "../market.css";
 import { PlayerInsightCards, ScoutButton } from "./Scouting";
 import { IndividualTrainingSheet } from "./Training";
 
 export function PlayerScreen({ id }: { id: number }) {
   const w = useWorld();
   const p = w.players[id];
-  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train">(null);
+  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train" | "talk" | "loanOut" | "loanIn" | "option">(null);
   if (!p) return <div className="page"><div className="empty">Este jogador se aposentou ou não existe mais.</div></div>;
   const club = p.clubId ? w.clubs[p.clubId] : null;
   const mine = p.clubId === w.userClubId;
+  const loanedIn = mine && !!p.loan; // emprestado ao seu clube
+  const ownedOut = p.loan?.from === w.userClubId; // seu, emprestado a outro clube
+  const parent = p.loan ? w.clubs[p.loan.from] : null;
+  const clause = mine && !loanedIn ? p.clause ?? 0 : peekClause(w, p);
   const legend = p.legend ? LEGEND_BY_ID[p.legend] : null;
   const ageY = age(p, w.season);
   const value = playerValue(p, w.season);
@@ -63,6 +74,22 @@ export function PlayerScreen({ id }: { id: number }) {
         {!club && <div className="mt12 small">Sem clube (jogador livre)</div>}
       </div>
 
+      {ownedOut && club && (
+        <div className="banner blue">
+          <span className="grow">📤 Emprestado ao <b>{club.name}</b> até {loanUntilLabel(p)}</span>
+          <button className="btn sm" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`↩️ ${p.name} voltou ao elenco`); }}>↩️ Chamar de volta</button>
+        </div>
+      )}
+      {loanedIn && (
+        <div className="banner blue">
+          <span className="grow">📥 Emprestado pelo <b>{parent?.name ?? "outro clube"}</b> até o fim de {p.loan!.until}{p.loan!.opt ? ` · opção de compra ${formatMoney(p.loan!.opt)}` : ""}</span>
+        </div>
+      )}
+      {!mine && !ownedOut && p.loan && club && (
+        <div className="banner">📤 Emprestado pelo {parent?.name ?? "?"} ao {club.name} até {loanUntilLabel(p)}. Não pode ser negociado agora.</div>
+      )}
+      {mine && p.wantsOut && <div className="banner red">😤 Quer ser negociado — converse, prometa minutos ou venda.</div>}
+
       {legend && (
         <div className="card" style={{ borderColor: "#8a6a00" }}>
           <b>⭐ {legend.full}</b>
@@ -76,6 +103,15 @@ export function PlayerScreen({ id }: { id: number }) {
         <div className="stat-box"><b style={{ fontSize: 14 }}>{p.clubId ? formatMoney(p.wage) : "-"}</b><span>salário/mês</span></div>
         <div className="stat-box"><b>{p.clubId ? p.contractEnd : "-"}</b><span>contrato até</span></div>
       </div>
+      {p.clubId && (
+        <div className="card flat small" style={{ padding: "8px 12px" }}>
+          <div className="muted">
+          {loanedIn ? `Contrato com o ${parent?.name ?? "clube de origem"} · você paga ${Math.round((p.loan!.wagePct) * 100)}% do salário` : clause > 0 ? <>Multa rescisória: <b>{formatMoney(clause)}</b></> : "Sem multa rescisória"}
+          {p.goalBonus && mine ? ` · bônus de ${formatMoney(p.goalBonus)} por gol` : ""}
+          </div>
+          {mine && <div className="mt4">{roleLine(w, p)}{p.promise ? " · ⏱️ promessa ativa" : ""}</div>}
+        </div>
+      )}
 
       <div className="card">
         <h3>Atributos</h3>
@@ -134,10 +170,25 @@ export function PlayerScreen({ id }: { id: number }) {
       )}
 
       <div className="col gap8">
-        {mine ? (
+        {loanedIn ? (
+          <>
+            {p.loan!.opt
+              ? <button className="btn primary block" onClick={() => setSheet("option")}>💰 Exercer opção ({formatMoney(p.loan!.opt)})</button>
+              : <button className="btn primary block" onClick={() => setSheet("offer")}>💼 Comprar em definitivo</button>}
+            <div className="grid2">
+              <button className="btn" onClick={() => setSheet("talk")}>💬 Conversar</button>
+              <button className="btn" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`${p.name} devolvido ao ${parent?.name ?? "clube"}`); back(); }}>↩️ Devolver</button>
+            </div>
+          </>
+        ) : ownedOut ? (
+          <button className="btn block" onClick={() => setSheet("renew")}>📝 Renovar contrato</button>
+        ) : mine ? (
           <>
             <button className="btn block" onClick={() => setSheet("renew")}>📝 Renovar contrato</button>
-            <button className="btn block" onClick={() => setSheet("train")}>🎯 Treino individual</button>
+            <div className="grid2">
+              <button className="btn" onClick={() => setSheet("talk")}>💬 Conversar</button>
+              <button className="btn" onClick={() => setSheet("train")}>🎯 Treino individual</button>
+            </div>
             <div className="grid2">
               <button className="btn" onClick={() => { update(() => { p.listed = !p.listed; }); toast(p.listed ? "Colocado na lista de transferências" : "Retirado da lista"); autosave(); }}>
                 {p.listed ? "Tirar da venda" : "💲 Colocar à venda"}
@@ -150,16 +201,20 @@ export function PlayerScreen({ id }: { id: number }) {
                 <button className="btn danger" onClick={() => setSheet("release")}>Dispensar</button>
               )}
             </div>
+            <button className="btn block" onClick={() => setSheet("loanOut")}>📤 Emprestar</button>
           </>
         ) : (
-          <div className="grid2">
-            <button className="btn primary" onClick={() => setSheet("offer")}>{p.clubId ? "💼 Fazer proposta" : "✍️ Contratar"}</button>
-            <button className="btn" onClick={() => update((x) => { x.shortlist = shortlisted ? x.shortlist.filter((s) => s !== p.id) : [...x.shortlist, p.id]; })}>
-              {shortlisted ? "★ Observando" : "☆ Observar"}
-            </button>
-          </div>
+          <>
+            <div className="grid2">
+              <button className="btn primary" disabled={!!p.loan} onClick={() => setSheet("offer")}>{p.clubId ? "💼 Fazer proposta" : "✍️ Contratar"}</button>
+              <button className="btn" onClick={() => update((x) => { x.shortlist = shortlisted ? x.shortlist.filter((s) => s !== p.id) : [...x.shortlist, p.id]; })}>
+                {shortlisted ? "★ Observando" : "☆ Observar"}
+              </button>
+            </div>
+            {canAskLoan(w, p) && <button className="btn block" onClick={() => setSheet("loanIn")}>📥 Pedir emprestado</button>}
+          </>
         )}
-        {!mine && <ScoutButton p={p} />}
+        {!mine && !ownedOut && <ScoutButton p={p} />}
         <div className="grid2">
           <button className="btn sm" onClick={() => setSheet("photo")}>📷 Trocar foto</button>
           <button className="btn sm" onClick={() => setSheet("edit")}>{w.admin?.on ? "🛠️ Editor completo" : "✏️ Editar jogador"}</button>
@@ -168,7 +223,21 @@ export function PlayerScreen({ id }: { id: number }) {
       <div style={{ height: 30 }} />
 
       {sheet === "offer" && <OfferSheet w={w} p={p} onClose={() => setSheet(null)} />}
-      {sheet === "renew" && <RenewSheet w={w} p={p} onClose={() => setSheet(null)} />}
+      {sheet === "renew" && <NegotiationSheet p={p} mode="renew" onClose={() => setSheet(null)} />}
+      {sheet === "talk" && <TalkSheet p={p} onClose={() => setSheet(null)} />}
+      {sheet === "loanOut" && <LoanOutSheet p={p} onClose={() => setSheet(null)} />}
+      {sheet === "loanIn" && <LoanInSheet p={p} onClose={() => setSheet(null)} />}
+      {sheet === "option" && p.loan?.opt && (
+        <Sheet title={`Comprar ${p.name}`} onClose={() => setSheet(null)}>
+          <p className="small">Exercer a opção de compra: você paga <b>{formatMoney(p.loan.opt)}</b> ao {parent?.name} e ele assina com você por 3 anos.</p>
+          <button className="btn primary block" onClick={() => {
+            let err: string | null = null;
+            update((x) => { err = exerciseOption(x, p); });
+            if (err) { toast(err); return; }
+            autosave(); setSheet(null); toast(`💰 ${p.name} agora é seu!`);
+          }}>💰 Exercer opção</button>
+        </Sheet>
+      )}
       {sheet === "photo" && <PhotoSheet p={p} onClose={() => setSheet(null)} />}
       {sheet === "edit" && (w.admin?.on ? <AdminPlayerEditor p={p} onClose={() => setSheet(null)} /> : <EditSheet p={p} onClose={() => setSheet(null)} />)}
       {sheet === "train" && <IndividualTrainingSheet p={p} onClose={() => setSheet(null)} />}
@@ -188,30 +257,28 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
   const ask = free ? 0 : askingPrice(w, p);
   const [fee, setFee] = useState(free ? 0 : roundMoney(ask * 0.9));
   const [resp, setResp] = useState<OfferResponse | null>(free ? { status: "accepted", message: "Jogador livre: basta acertar o salário." } : null);
-  const [years, setYears] = useState(3);
+  const [neg, setNeg] = useState(false);
   const willing = playerWillingness(w, p, user);
-  const demand = wageDemand(w, p, user);
   const windowOpen = userWindowOpen(w);
+  const clause = p.loan ? 0 : peekClause(w, p);
 
-  function propose() {
-    if (!canAfford(user, fee, w)) { toast("Dinheiro insuficiente."); return; }
-    const r = evaluateUserBid(w, p, fee);
+  function propose(value = fee) {
+    if (!canAfford(user, value, w)) { toast("Dinheiro insuficiente."); return; }
+    let r: OfferResponse = { status: "rejected", message: "" };
+    // evaluateUserBid usa o gerador do mundo
+    update((x) => { r = withWorldRng(x, () => evaluateUserBid(x, p, value)); });
+    setFee(value);
     setResp(r);
     if (r.status === "countered" && r.counter) setFee(r.counter);
   }
 
-  function sign() {
+  function next() {
     if (!willing.ok) { toast(willing.reason ?? "O jogador recusou."); return; }
     if (!canAfford(user, fee, w)) { toast("Dinheiro insuficiente."); return; }
-    const from = p.clubId ? w.clubs[p.clubId].name : null;
-    update((x) => {
-      completeTransfer(x, p, user, fee, demand, years);
-      addNews(x, "transfer", `${p.name} é o novo reforço do ${user.name}!`, from ? `Contratado do ${from} por ${formatMoney(fee)}. Salário de ${formatMoney(demand)}/mês até ${x.season + years}.` : `Chegou sem custo de transferência. Salário de ${formatMoney(demand)}/mês.`, { pid: p.id });
-    });
-    autosave();
-    toast(`${p.name} contratado!`);
-    onClose();
+    setNeg(true);
   }
+
+  if (neg) return <NegotiationSheet p={p} mode="sign" fee={fee} onClose={onClose} />;
 
   return (
     <Sheet title={free ? `Contratar ${p.name}` : `Proposta por ${p.name}`} onClose={onClose}>
@@ -225,7 +292,10 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
             <b style={{ fontSize: 22, minWidth: 150, textAlign: "center" }}>{formatMoney(fee)}</b>
             <button className="btn sm" onClick={() => setFee((f) => roundMoney(f * 1.1 + 50_000))}>+10%</button>
           </div>
-          <button className="btn block mt12" disabled={!windowOpen} onClick={propose}>Enviar proposta</button>
+          <button className="btn block mt12" disabled={!windowOpen} onClick={() => propose()}>Enviar proposta</button>
+          {clause > 0 && windowOpen && resp?.status !== "accepted" && (
+            <button className="btn gold block mt8" onClick={() => propose(clause)}>💥 Pagar a multa ({formatMoney(clause)})</button>
+          )}
         </>
       )}
       {resp && (
@@ -234,39 +304,7 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
         </div>
       )}
       {resp?.status === "accepted" && willing.ok && (
-        <div className="col gap8 mt12">
-          <div className="small">Salário pedido: <b>{formatMoney(demand)}/mês</b> {demand > wageFor(p.ovr, user.rep) * 1.2 ? "(acima da média do seu clube)" : ""}</div>
-          <div className="row gap8 small wrap">
-            <span>Contrato:</span>
-            {[1, 2, 3, 4, 5].map((y) => <button key={y} className={`chip${years === y ? " active" : ""}`} onClick={() => setYears(y)}>{y} {y === 1 ? "ano" : "anos"}</button>)}
-          </div>
-          <button className="btn primary block" onClick={sign}>Fechar contratação {fee ? `(${formatMoney(fee)})` : ""}</button>
-        </div>
-      )}
-    </Sheet>
-  );
-}
-
-function RenewSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => void }) {
-  const club = w.clubs[w.userClubId];
-  const demand = roundMoney(Math.max(p.wage * 1.05, wageFor(p.ovr, club.rep, age(p, w.season)) * (p.morale < 40 ? 1.2 : 1)));
-  const [years, setYears] = useState(3);
-  const wantsOut = p.ovr >= club.level + 12 && age(p, w.season) < 29 && p.morale < 55;
-  return (
-    <Sheet title={`Renovar com ${p.name}`} onClose={onClose}>
-      {wantsOut ? (
-        <p className="small">{p.name} quer jogar num clube maior e não aceita renovar agora. Melhore os resultados (e a moral dele) e tente de novo.</p>
-      ) : (
-        <>
-          <p className="small">Salário atual: {formatMoney(p.wage)}/mês · pedido: <b>{formatMoney(demand)}/mês</b></p>
-          <div className="row gap8 small wrap">
-            {[1, 2, 3, 4, 5].map((y) => <button key={y} className={`chip${years === y ? " active" : ""}`} onClick={() => setYears(y)}>{y} {y === 1 ? "ano" : "anos"}</button>)}
-          </div>
-          <button className="btn primary block mt12" onClick={() => {
-            update(() => { p.wage = demand; p.contractEnd = w.season + years; p.morale = Math.min(100, p.morale + 8); });
-            autosave(); toast("Contrato renovado!"); onClose();
-          }}>Renovar até {w.season + years}</button>
-        </>
+        <button className="btn primary block mt12" onClick={next}>✍️ Acertar o contrato {fee ? `(${formatMoney(fee)})` : ""}</button>
       )}
     </Sheet>
   );

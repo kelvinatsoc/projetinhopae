@@ -68,9 +68,17 @@ export function monthlyStaff(c: Club): number {
   }
 }
 
+/** Folha salarial mensal: emprestados dividem o salário entre quem pegou (wagePct) e o clube de origem (o resto). */
 export function wageBill(w: World, c: Club): number {
   let s = 0;
-  for (const id of c.players) s += w.players[id]?.wage ?? 0;
+  for (const id of c.players) {
+    const p = w.players[id];
+    if (p) s += p.loan ? Math.round(p.wage * p.loan.wagePct) : p.wage;
+  }
+  for (const id of c.loanedOut ?? []) {
+    const p = w.players[id];
+    if (p?.loan) s += Math.round(p.wage * (1 - p.loan.wagePct));
+  }
   return s;
 }
 

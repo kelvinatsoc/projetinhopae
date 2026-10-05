@@ -1,13 +1,18 @@
 // Mercado de transferências: propostas do usuário, ofertas da IA e negócios entre clubes da IA.
 import { adminCheats, userWindowOpen } from "./admin";
-import { onJoinUserClub } from "./dressing";
+import { clauseDay, ensureClause, seasonsAtClub } from "./contracts";
+import { clearMood, idolSold, onJoinUserClub } from "./dressing";
 import { addExpense, addIncome, formatMoney } from "./finance";
 import { autoLineup, squadOf } from "./lineup";
+import { moveBack, clearLoanedOut } from "./loans";
 import { addNews } from "./news";
+import { H, hidOf } from "./personality";
+import { knowledgeOf, TRAITS_K } from "./scouting";
 import { FORMATIONS, ovrAt, POS_ORDER } from "./positions";
 import { age, generatePlayer, playerValue, roundMoney, wageFor } from "./player";
 import { chance, clamp, pick, pickWeighted, rand, randInt, shuffle } from "./rng";
-import type { Club, Player, Pos, TransferOffer, World } from "./types";
+import { hasTrait } from "./traits";
+import type { Club, Player, Pos, TraitId, TransferOffer, World } from "./types";
 
 export function isStarter(w: World, p: Player): boolean {
   if (!p.clubId) return false;
@@ -34,15 +39,17 @@ export function wageDemand(w: World, p: Player, club: Club): number {
   let mult = 1.05;
   if (from && from.rep > club.rep + 10) mult += 0.25; // descer de patamar custa caro
   if (!p.clubId) mult = 0.95;
+  mult *= 0.95 + 0.0048 * hidOf(p)[H.amb]; // ambiciosos pedem mais
   return roundMoney(Math.max(base * mult, p.wage * (p.clubId ? 1.1 : 0.8)));
 }
 
 /** O jogador aceita se transferir para este clube? */
 export function playerWillingness(w: World, p: Player, club: Club): { ok: boolean; reason?: string } {
   const from = p.clubId ? w.clubs[p.clubId] : null;
-  if (from && from.id === club.id) return { ok: false, reason: "Já joga no seu clube." };
+  if (from && from.id === club.id) return p.loan ? { ok: true } : { ok: false, reason: "Já joga no seu clube." };
   if (adminCheats(w).willing && club.id === w.userClubId) return { ok: true };
   const gap = (from?.rep ?? 30) - club.rep;
+  if (from && hidOf(p)[H.amb] >= 16 && club.rep < from.rep - 8) return { ok: false, reason: `${p.name} é ambicioso e quer um clube maior.` };
   if (p.ovr >= club.level + 12 && gap > 15) return { ok: false, reason: `${p.name} acha que seu clube não está à altura dele no momento.` };
   if (gap > 35 && p.ovr >= 70) return { ok: false, reason: `${p.name} não quer descer tanto de patamar.` };
   return { ok: true };
@@ -56,14 +63,18 @@ export interface OfferResponse {
 
 /** Resposta do clube vendedor a uma proposta do usuário. */
 export function evaluateUserBid(w: World, p: Player, fee: number): OfferResponse {
-  const seller = p.clubId ? w.clubs[p.clubId] : null;
+  // emprestado: quem decide é o clube de origem, e só se o jogador estiver emprestado ao seu clube
+  if (p.loan && p.clubId !== w.userClubId) return { status: "rejected", message: `Está emprestado ao ${w.clubs[p.clubId!]?.name ?? "outro clube"} até o fim da temporada.` };
+  const seller = p.loan ? w.clubs[p.loan.from] ?? null : p.clubId ? w.clubs[p.clubId] : null;
   if (!seller) return { status: "accepted", message: "Jogador livre, sem custo de transferência." };
   if (!userWindowOpen(w)) return { status: "rejected", message: "A janela de transferências está fechada." };
+  const clause = ensureClause(w, p);
+  if (clause > 0 && fee >= clause && !p.loan) return { status: "accepted", message: `💥 Você pagou a multa rescisória! ${seller.name} não pode segurar ${p.name}.` };
   const ask = askingPrice(w, p);
   if (adminCheats(w).anyBid && fee >= 0.5 * playerValue(p, w.season)) return { status: "accepted", message: `${seller.name} aceitou a proposta de ${formatMoney(fee)}!` };
   // clubes pequenos não seguram seus melhores jogadores contra propostas boas
   const squad = squadOf(w, seller);
-  if (squad.length <= 18) return { status: "rejected", message: `${seller.name} não pode liberar mais jogadores agora.` };
+  if (squad.length <= 18 && !p.loan) return { status: "rejected", message: `${seller.name} não pode liberar mais jogadores agora.` };
   if (fee >= ask * (0.95 + rand() * 0.08)) return { status: "accepted", message: `${seller.name} aceitou a proposta de ${formatMoney(fee)}!` };
   if (fee >= ask * 0.72) return { status: "countered", counter: roundMoney(ask), message: `${seller.name} pede ${formatMoney(ask)} para liberar ${p.name}.` };
   return { status: "rejected", message: `${seller.name} recusou. A proposta está muito abaixo do esperado (${formatMoney(ask)}).` };
@@ -74,17 +85,40 @@ export function canAfford(club: Club, fee: number, w?: World) {
   return club.balance - fee >= -Math.max(5_000_000, club.rep * 200_000);
 }
 
-/** Executa a transferência (pagamentos, elenco, contrato). */
+/** Tira o jogador do elenco e da escalação do clube. */
+export function detachFromClub(club: Club, pid: number) {
+  club.players = club.players.filter((id) => id !== pid);
+  if (club.lineup) {
+    club.lineup.starters = club.lineup.starters.map((x) => (x === pid ? null : x));
+    club.lineup.bench = club.lineup.bench.filter((x) => x !== pid);
+    if (club.lineup.captain === pid) club.lineup.captain = undefined;
+  }
+}
+
+/** Executa a transferência (pagamentos, elenco, contrato). Se ele estiver emprestado, quem vende é o clube de origem. */
 export function completeTransfer(w: World, p: Player, buyer: Club, fee: number, wage: number, years: number) {
-  const seller = p.clubId ? w.clubs[p.clubId] : null;
+  const current = p.clubId ? w.clubs[p.clubId] : null;
+  const seller = p.loan ? w.clubs[p.loan.from] ?? null : current;
+  if (current) detachFromClub(current, p.id);
+  if (p.loan) {
+    clearLoanedOut(w, p);
+    p.loan = undefined;
+  }
   if (seller) {
-    seller.players = seller.players.filter((id) => id !== p.id);
-    addIncome(seller, "sales", fee);
-    if (seller.lineup) {
-      seller.lineup.starters = seller.lineup.starters.map((x) => (x === p.id ? null : x));
-      seller.lineup.bench = seller.lineup.bench.filter((x) => x !== p.id);
-      if (seller.lineup.captain === p.id) seller.lineup.captain = undefined;
+    let toSeller = fee;
+    // revenda: o clube que vendeu antes leva a sua parte
+    const so = p.sellOn;
+    if (so && so.club !== seller.id && fee > 0) {
+      const old = w.clubs[so.club];
+      if (old) {
+        const cut = Math.round(so.pct * fee);
+        toSeller -= cut;
+        addIncome(old, "sales", cut);
+        if (old.id === w.userClubId) addNews(w, "transfer", `💸 Revenda: você recebeu ${formatMoney(cut)}`, `${p.name} foi vendido ao ${buyer.name}, e a cláusula de revenda rendeu ${Math.round(so.pct * 100)}% do negócio para você.`, { pid: p.id, clubId: buyer.id });
+      }
     }
+    if (so) p.sellOn = undefined;
+    addIncome(seller, "sales", toSeller);
   }
   if (fee > 0) addExpense(buyer, "transfers", fee);
   buyer.players.push(p.id);
@@ -99,6 +133,10 @@ export function completeTransfer(w: World, p: Player, buyer: Club, fee: number, 
   p.shirt = freeShirt(w, buyer, p.pos);
   w.offers = w.offers.filter((o) => o.pid !== p.id || o.status === "done");
   if (buyer.id === w.userClubId) onJoinUserClub(w, p);
+  else if (current?.id === w.userClubId || seller?.id === w.userClubId) {
+    clearMood(p);
+    p.goalBonus = undefined;
+  }
 }
 
 export function freeShirt(w: World, club: Club, pos: Pos): number {
@@ -113,18 +151,16 @@ export function freeShirt(w: World, club: Club, pos: Pos): number {
 }
 
 export function releasePlayer(w: World, p: Player, compensate: boolean) {
+  // emprestado não fica livre: volta para o clube de origem
+  if (p.loan) { moveBack(w, p); return; }
   const club = p.clubId ? w.clubs[p.clubId] : null;
   if (club) {
     if (compensate) {
       const months = Math.max(1, (p.contractEnd - w.season) * 12 + (12 - Math.floor(w.day / 30)));
       addExpense(club, "release", Math.round(p.wage * months * 0.5));
     }
-    club.players = club.players.filter((id) => id !== p.id);
-    if (club.lineup) {
-      club.lineup.starters = club.lineup.starters.map((x) => (x === p.id ? null : x));
-      club.lineup.bench = club.lineup.bench.filter((x) => x !== p.id);
-      if (club.lineup.captain === p.id) club.lineup.captain = undefined;
-    }
+    detachFromClub(club, p.id);
+    if (club.id === w.userClubId) clearMood(p);
   }
   p.clubId = null;
   p.youth = false;
@@ -169,7 +205,7 @@ function aiTryBuy(w: World, buyer: Club) {
   const maxOvr = buyer.level + 6;
   const candidates: Player[] = [];
   for (const p of Object.values(w.players)) {
-    if (!p.clubId || p.clubId === buyer.id || p.clubId === w.userClubId || p.youth) continue;
+    if (!p.clubId || p.clubId === buyer.id || p.clubId === w.userClubId || p.youth || p.loan) continue;
     if (p.pos !== weak.pos && !p.sec.includes(weak.pos)) continue;
     if (p.ovr < weak.ovr + 3 || p.ovr > maxOvr) continue;
     if (age(p, w.season) > 31) continue;
@@ -217,9 +253,10 @@ function aiOffersForUser(w: World) {
   const user = w.clubs[w.userClubId];
   for (const id of user.players) {
     const p = w.players[id];
-    if (!p || p.youth) continue;
+    if (!p || p.youth || p.loan) continue;
     if (w.offers.some((o) => o.pid === p.id && o.status === "pending")) continue;
-    const prob = p.listed ? 0.07 : Math.max(0, (p.ovr - user.level - 2) * 0.0015) + (p.legend && p.ovr > 75 ? 0.01 : 0);
+    let prob = p.listed ? 0.07 : Math.max(0, (p.ovr - user.level - 2) * 0.0015) + (p.legend && p.ovr > 75 ? 0.01 : 0);
+    if (p.wantsOut) prob = Math.max(prob, 0.005) * 4; // quem pediu para sair atrai propostas
     if (!chance(prob)) continue;
     const value = playerValue(p, w.season);
     const buyers = Object.values(w.clubs).filter((c) => c.id !== user.id && c.rep >= user.rep - 12 && c.balance > value * 0.9 && c.level + 8 >= p.ovr);
@@ -230,15 +267,24 @@ function aiOffersForUser(w: World) {
     w.offers.push(offer);
     addNews(w, "offer", `Proposta por ${p.name}`, `O ${buyer.name} oferece ${formatMoney(fee)} pelo ${posLabel(p.pos)}. Responda no Mercado em até 10 dias.`, { pid: p.id, clubId: buyer.id });
   }
+  clauseDay(w);
 }
 
-export function acceptOffer(w: World, offer: TransferOffer) {
+/** Valor que entra no caixa ao aceitar com % de revenda (cada 10% de revenda custa 5% da oferta). */
+export const feeWithSellOn = (fee: number, pct: number) => roundMoney(fee * (1 - pct * 0.5));
+
+export function acceptOffer(w: World, offer: TransferOffer, sellOnPct = 0) {
   const p = w.players[offer.pid];
   const buyer = w.clubs[offer.from];
-  if (!p || !buyer || p.clubId !== offer.to) { offer.status = "expired"; return; }
-  completeTransfer(w, p, buyer, offer.fee, wageDemand(w, p, buyer), randInt(2, 4));
+  if (!p || !buyer || p.clubId !== offer.to || p.loan) { offer.status = "expired"; return; }
+  const idol = hidOf(p)[H.loy] >= 16 && seasonsAtClub(w, p) >= 4;
+  const fee = sellOnPct > 0 ? feeWithSellOn(offer.fee, sellOnPct) : offer.fee;
+  offer.fee = fee;
+  completeTransfer(w, p, buyer, fee, wageDemand(w, p, buyer), randInt(2, 4));
+  if (sellOnPct > 0) p.sellOn = { club: offer.to, pct: sellOnPct };
   offer.status = "done";
-  addNews(w, "transfer", `${p.name} vendido ao ${buyer.name}`, `Você recebeu ${formatMoney(offer.fee)} pela venda.`, { pid: p.id, clubId: buyer.id });
+  addNews(w, "transfer", `${p.name} vendido ao ${buyer.name}`, `Você recebeu ${formatMoney(fee)} pela venda.${sellOnPct > 0 ? ` E fica com ${Math.round(sellOnPct * 100)}% de uma futura venda.` : ""}`, { pid: p.id, clubId: buyer.id });
+  if (idol && offer.to === w.userClubId) idolSold(w, p);
 }
 
 export function expireOffers(w: World) {
@@ -257,6 +303,7 @@ export interface MarketFilter {
   legendsOnly?: boolean;
   query?: string;
   scope?: "all" | "br" | "foreign";
+  trait?: TraitId | ""; // jogada preferida (só aparece quem você conhece o bastante)
 }
 
 export function searchMarket(w: World, f: MarketFilter, limit = 60): Player[] {
@@ -264,6 +311,7 @@ export function searchMarket(w: World, f: MarketFilter, limit = 60): Player[] {
   const q = f.query?.trim().toLowerCase();
   for (const p of Object.values(w.players)) {
     if (p.clubId === w.userClubId) continue;
+    if (p.loan && !q) continue; // emprestados só aparecem buscando pelo nome
     if (f.freeOnly && p.clubId) continue;
     if (f.listedOnly && !p.listed) continue;
     if (f.legendsOnly && !p.legend) continue;
@@ -274,6 +322,7 @@ export function searchMarket(w: World, f: MarketFilter, limit = 60): Player[] {
     if (f.scope === "br" && p.clubId && w.clubs[p.clubId].country !== "BRA") continue;
     if (f.scope === "foreign" && (!p.clubId || w.clubs[p.clubId].country === "BRA")) continue;
     if (f.maxValue && playerValue(p, w.season) > f.maxValue) continue;
+    if (f.trait && (!hasTrait(p, f.trait) || knowledgeOf(w, p) < TRAITS_K)) continue;
     out.push(p);
   }
   out.sort((a, b) => b.ovr - a.ovr || POS_ORDER[a.pos] - POS_ORDER[b.pos]);

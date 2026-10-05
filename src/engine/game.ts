@@ -13,6 +13,7 @@ import { addNews } from "./news";
 import { age } from "./player";
 import { clamp, getRngState, setRngState } from "./rng";
 import { scoutTick } from "./scouting";
+import { hasTrait } from "./traits";
 import { boardAfterMatch, endSeason } from "./season";
 import { staffMonthly } from "./staff";
 import { midSeasonTick, monthlyTraining, recoveryBonus, trainingDaily } from "./training";
@@ -56,6 +57,14 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
     const scored = idx === 0 ? r.hg : r.ag;
     const conceded = idx === 0 ? r.ag : r.hg;
     const played = new Set(r.lineups[idx]);
+    // capitão com a jogada "Líder" segura o grupo nas derrotas (só o clube do usuário)
+    let lossDelta = -4;
+    if (clubId === w.userClubId && scored < conceded) {
+      const capId = club.lineup?.captain != null && played.has(club.lineup.captain)
+        ? club.lineup.captain
+        : [...played].map((id) => w.players[id]).filter(Boolean).sort((a, b) => b.fame + b.ovr - (a.fame + a.ovr))[0]?.id;
+      if (capId != null && w.players[capId] && hasTrait(w.players[capId], "LID")) lossDelta = -2;
+    }
     // quem estava suspenso cumpriu a suspensão
     for (const id of club.players) {
       const p = w.players[id];
@@ -71,8 +80,8 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       p.form.push(rating);
       if (p.form.length > 5) p.form.shift();
       if (p.pos === "GOL" && conceded === 0) p.stats.cs++;
-      const delta = scored > conceded ? 4 : scored < conceded ? -4 : 0;
-      p.morale = clamp(p.morale + delta + (rating >= 7.5 ? 2 : rating < 5.5 ? -2 : 0), 15, 100);
+      const delta = scored > conceded ? 4 : scored < conceded ? lossDelta : 0;
+      p.morale = clamp(p.morale + delta + (rating >= 7.5 ? 2 : rating < 5.5 ? -2 : 0), p.wantsOut ? 30 : 15, 100);
     }
   });
   for (const e of r.events) {
@@ -163,6 +172,8 @@ function dailyTick(w: World) {
     const user = w.clubs[w.userClubId];
     const exp = user.players.map((id) => w.players[id]).filter((p) => p && !p.youth && p.contractEnd <= w.season);
     if (exp.length) addNews(w, "contract", "Contratos terminando", `Estes contratos acabam no fim da temporada: ${exp.map((p) => p.name).join(", ")}. Renove no perfil do jogador se quiser mantê-los.`);
+    const opts = user.players.map((id) => w.players[id]).filter((p) => p?.loan?.opt);
+    if (opts.length) addNews(w, "transfer", "Opções de compra", `Estes emprestados voltam no fim da temporada, a menos que você exerça a opção de compra no perfil: ${opts.map((p) => p.name).join(", ")}.`);
   }
   if (inWindow(d)) {
     aiTransferDay(w);
