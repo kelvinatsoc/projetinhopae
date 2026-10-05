@@ -16,8 +16,12 @@ def lendasKeystorePath = lendasProp('LENDAS_KEYSTORE_FILE')
 def lendasKeystore = lendasKeystorePath ? rootProject.file(lendasKeystorePath) : null
 def lendasTemChave = lendasKeystore != null && lendasKeystore.isFile() &&
     lendasProp('LENDAS_KEYSTORE_PASSWORD') != null && lendasProp('LENDAS_KEY_ALIAS') != null
-if (lendasKeystorePath && !lendasTemChave) {
-    logger.warn("Lendas da Base: LENDAS_KEYSTORE_FILE foi informado, mas o arquivo ou as senhas/alias faltam. Usando a chave de depuração.")
+if (lendasTemChave) {
+    logger.lifecycle("Lendas da Base: APK release assinado com a chave fixa (LENDAS_KEYSTORE_FILE).")
+} else if (lendasKeystorePath) {
+    logger.warn("Lendas da Base: LENDAS_KEYSTORE_FILE foi informado, mas o arquivo ou a senha/alias faltam. Usando a chave de depuração.")
+} else {
+    logger.lifecycle("Lendas da Base: sem chave fixa configurada; o APK release usa a chave de depuração deste computador.")
 }
 
 android {

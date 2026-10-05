@@ -12,8 +12,8 @@ const config: CapacitorConfig = {
     backgroundColor: "#0c1712",
     // o APK é offline: tudo vem de dentro do app, nada de conteúdo misto
     allowMixedContent: false,
-    // permite depurar pelo chrome://inspect só nas versões de desenvolvimento
-    webContentsDebuggingEnabled: false,
+    // depuração pelo chrome://inspect: sem a opção webContentsDebuggingEnabled, o Capacitor
+    // liga só no APK de desenvolvimento (assembleDebug) e desliga no de lançamento (assembleRelease)
   },
   plugins: {
     SystemBars: {

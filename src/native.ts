@@ -39,9 +39,11 @@ export async function initNative(): Promise<void> {
 
   followThemeOnSystemBars();
 
-  // esconde a tela de abertura assim que o jogo desenhou a primeira tela
-  await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-  await SplashScreen.hide({ fadeOutDuration: 200 });
+  // esconde a tela de abertura assim que o React montou a primeira tela. Usa setTimeout, não
+  // requestAnimationFrame: enquanto a abertura está na frente o Android segura os quadros da WebView.
+  const root = document.getElementById("root");
+  for (let i = 0; i < 50 && !root?.firstElementChild; i++) await new Promise((r) => setTimeout(r, 20));
+  await SplashScreen.hide();
 }
 
 /** Ícones claros na barra de status sobre o fundo escuro (#0c1712); escuros no tema claro. */

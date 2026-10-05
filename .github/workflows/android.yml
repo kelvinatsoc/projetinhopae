@@ -1,0 +1,114 @@
+# Gera o APK do Android a cada push e publica na página de Releases, na tag "apk-latest":
+# https://github.com/<dono>/<repo>/releases/tag/apk-latest
+# A chave fixa de assinatura é opcional e vem dos secrets do repositório (veja ANDROID.md).
+name: APK Android
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# um push novo cancela o build anterior que ainda estava rodando (só o APK mais novo interessa)
+concurrency:
+  group: apk-android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # "true" quando os 4 secrets da chave fixa foram cadastrados
+      TEM_CHAVE: ${{ secrets.LENDAS_KEYSTORE_BASE64 != '' && secrets.LENDAS_KEYSTORE_PASSWORD != '' && secrets.LENDAS_KEY_ALIAS != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testes
+        run: npm test
+
+      - name: Compilar o jogo (web)
+        run: npm run build
+
+      - name: Copiar o jogo para o projeto Android
+        run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;35.0.0"
+
+      # Sem a chave fixa, o APK é assinado com a chave de depuração. Ela é guardada no cache para
+      # os próximos APKs saírem com a mesma assinatura e atualizarem por cima sem desinstalar.
+      # (O cache pode expirar depois de 7 dias sem uso — a solução definitiva são os secrets.)
+      - name: Reaproveitar a chave de depuração
+        if: env.TEM_CHAVE != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: lendas-android-debug-keystore
+
+      - name: Chave fixa de assinatura (dos secrets)
+        if: env.TEM_CHAVE == 'true'
+        env:
+          LENDAS_KEYSTORE_BASE64: ${{ secrets.LENDAS_KEYSTORE_BASE64 }}
+        run: |
+          echo "$LENDAS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/lendas.jks"
+          echo "LENDAS_KEYSTORE_FILE=$RUNNER_TEMP/lendas.jks" >> "$GITHUB_ENV"
+
+      - name: Gerar o APK
+        working-directory: android
+        env:
+          LENDAS_KEYSTORE_PASSWORD: ${{ secrets.LENDAS_KEYSTORE_PASSWORD }}
+          LENDAS_KEY_ALIAS: ${{ secrets.LENDAS_KEY_ALIAS }}
+          LENDAS_KEY_PASSWORD: ${{ secrets.LENDAS_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../LendasDaBase.apk
+          rm -f "$RUNNER_TEMP/lendas.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LendasDaBase-apk
+          path: LendasDaBase.apk
+          if-no-files-found: error
+
+      - name: Publicar na página de Releases (apk-latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ASSINATURA: ${{ env.TEM_CHAVE == 'true' && 'chave fixa do projeto' || 'chave de depuração do GitHub Actions (cadastre a chave fixa, veja ANDROID.md)' }}
+        run: |
+          cat > notas.md <<EOF
+          APK gerado automaticamente a partir do commit ${GITHUB_SHA::7} (branch \`${GITHUB_REF_NAME}\`).
+
+          **Como instalar no celular Android:** baixe o arquivo **LendasDaBase.apk** aqui embaixo, abra ele e,
+          se o Android pedir, permita "instalar apps desconhecidos" para o navegador ou para o app Arquivos.
+
+          **Para atualizar:** instale o APK novo por cima do antigo — os jogos salvos continuam.
+          Se aparecer "conflito com um pacote existente", exporte o save (Clube › Configurações › Backup), desinstale e instale de novo.
+
+          Assinatura: ${ASSINATURA}.
+          EOF
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest LendasDaBase.apk \
+            --title "Lendas da Base — APK" \
+            --notes-file notas.md \
+            --target "$GITHUB_SHA" \
+            --latest
