@@ -112,7 +112,7 @@ LEGEND_TITLES = {
 MANUAL_FILES: dict[str, str] = {}
 
 # Arquivos que nunca devem ser usados (rosto errado, foto feia, recorte ruim...)
-BAD_FILES: set[str] = set()
+BAD_FILES: set[str] = {'Hristo Stoichkov - Botas del gol 100.jpg'}  # chuteira, não rosto
 
 # QIDs que não devem ganhar foto (identidade duvidosa conferida à mão)
 BAD_QIDS: set[str] = set()

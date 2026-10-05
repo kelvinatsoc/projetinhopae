@@ -72,7 +72,7 @@ def get(url: str, params: dict | None = None, tries: int = 8, **kw) -> requests.
         if r.status_code == 429 or r.status_code >= 500:
             ra = r.headers.get("retry-after", "")
             wait = int(ra) if ra.isdigit() else 5 * (i + 1)
-            wait = min(max(wait, 3), 120)
+            wait = min(max(wait, 3), 900)
             _penalize(wait)
             continue
         return r
