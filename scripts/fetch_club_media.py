@@ -794,7 +794,7 @@ def crests(db, force=False):
             continue
         v["crestDone"] = stamp
         ok += 1
-        if ok % 20 == 0:
+        if ok % 5 == 0:
             save(DATA, db)
             print(f"  {ok} escudos")
     save(DATA, db)
@@ -876,6 +876,7 @@ def stadiums(db, force=False):
         for q, e in wbget(missing_ents).items():
             venues[q] = venue_info(e)
     ok, miss = 0, []
+    # 1ª passada: escolhe a imagem de cada estádio; 2ª: URLs diretas em lote; 3ª: baixa e converte
     for q in need:
         v = venues.get(q, {})
         img = STADIUM_IMG_OVERRIDES.get(q)
@@ -890,6 +891,15 @@ def stadiums(db, force=False):
                     v["catImage"] = category_image(v.get("p373"))
                 img = v["catImage"]
         v["image"] = img
+    save(DATA, db)
+    pend = {venues[q]["image"] for q in need if venues.get(q, {}).get("image")
+            and (force or venues[q].get("imgDone") != venues[q]["image"]
+                 or not os.path.exists(os.path.join(MEDIA, "stadiums", q + ".webp")))
+            and not os.path.exists(raw_path("commons", venues[q]["image"], 960))}
+    urls = thumb_urls(pend, 960, "commons") if pend else {}
+    for q in need:
+        v = venues.get(q, {})
+        img = v.get("image")
         out = os.path.join(MEDIA, "stadiums", q + ".webp")
         if not img:
             v.pop("imgDone", None)
@@ -900,7 +910,7 @@ def stadiums(db, force=False):
         if not force and os.path.exists(out) and v.get("imgDone") == img:
             ok += 1
             continue
-        data = fetch_raw(img, 960, "commons")
+        data = fetch_url(img, 960, "commons", urls.get(img))
         if not data:
             print(f"  falhou: {q} {img}")
             miss.append(q)
@@ -913,7 +923,7 @@ def stadiums(db, force=False):
             continue
         v["imgDone"] = img
         ok += 1
-        if ok % 20 == 0:
+        if ok % 5 == 0:
             save(DATA, db)
             print(f"  {ok} estádios")
     save(DATA, db)

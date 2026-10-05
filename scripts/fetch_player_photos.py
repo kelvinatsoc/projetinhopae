@@ -60,6 +60,8 @@ WIKI_API = {"commons.wikimedia.org": wm.COMMONS_API, "en.wikipedia.org": EN_API,
 FOOTBALLER = "Q937857"
 OUT_SIZE = 160
 MAX_TRIES = 3  # imagens tentadas por jogador
+# pausa extra antes de cada download: o upload.wikimedia.org responde 429 (Retry-After 600) a rajadas
+PACE = float(os.environ.get("PHOTO_PACE", "1"))
 
 PROTO_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
 MODEL_URL = ("https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/"
@@ -697,14 +699,99 @@ def crop_portrait(im, faces):
     return out, {"fh": round(fh), "side": round(side), "conf": round(f[4], 2)}
 
 
-def try_file(name, wiki):
+def polite_get(url, tries=4):
+    """GET direto na URL da miniatura (sem o redirecionamento do Special:FilePath, que gasta duas
+    requisições), passando pelo limitador compartilhado de wm.py. Quando o servidor manda 429,
+    respeita o Retry-After inteiro (até 15 min) para todos os processos, em vez de insistir."""
+    for i in range(tries):
+        wm._throttle()
+        try:
+            r = wm.session.get(url, timeout=60)
+        except Exception:  # noqa: BLE001
+            time.sleep(3 * (i + 1))
+            continue
+        if r.status_code == 429 or r.status_code >= 500:
+            ra = r.headers.get("retry-after", "")
+            wait = min(max(int(ra) if ra.isdigit() else 30 * (i + 1), 5), 900)
+            print(f"    {r.status_code} (espera {wait}s)", flush=True)
+            wm._penalize(wait)
+            continue
+        if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/"):
+            return None
+        return r.content
+    return None
+
+
+def phase_imginfo(st, files_by_wiki):
+    """Tamanho, URL da miniatura de 500px e licença de cada arquivo (imageinfo em lotes de 50)."""
+    ii = st.setdefault("ii", {})
+    for wiki in ("commons.wikimedia.org", "pt.wikipedia.org", "en.wikipedia.org"):
+        need = sorted({f for f in files_by_wiki.get(wiki, ()) if wm.norm_file(f) not in ii
+                       or (ii[wm.norm_file(f)].get("missing") and wiki != "commons.wikimedia.org"
+                           and not ii[wm.norm_file(f)].get("local_" + wiki))})
+        if not need:
+            continue
+        print(f"  imageinfo {wiki}: {len(need)}", flush=True)
+        for batch in chunks(need, 50):
+            r = wm.api(WIKI_API[wiki], {"action": "query", "titles": "|".join("File:" + f for f in batch),
+                                        "redirects": 1, "prop": "imageinfo", "iiprop": "url|size|extmetadata",
+                                        "iiurlwidth": 500,
+                                        "iiextmetadatafilter": "Artist|LicenseShortName|LicenseUrl|NonFree|Credit"})
+            if not r:
+                continue
+            qq = r.get("query", {})
+            alias = {n["from"]: n["to"] for n in qq.get("normalized", [])}
+            redir = {d["from"]: d["to"] for d in qq.get("redirects", [])}
+            pages = {pg["title"]: pg for pg in qq.get("pages", [])}
+            for f in batch:
+                k = wm.norm_file(f)
+                t = alias.get("File:" + f, "File:" + f)
+                t = redir.get(t, t)
+                pg = pages.get(t)
+                if not pg or not pg.get("imageinfo"):
+                    ii[k] = {**ii.get(k, {}), "missing": True, "local_" + wiki: True}
+                    continue
+                inf = pg["imageinfo"][0]
+                em = inf.get("extmetadata") or {}
+                g = lambda x: (em.get(x) or {}).get("value") or ""  # noqa: E731
+                lic = strip_html(g("LicenseShortName"))
+                nonfree = str(g("NonFree")).lower() == "true"
+                author = strip_html(g("Artist")) or strip_html(g("Credit"))
+                ii[k] = {"w": inf.get("width"), "h": inf.get("height"),
+                         "thumb": inf.get("thumburl") or inf.get("url"), "orig": inf.get("url"),
+                         "desc": inf.get("descriptionurl"), "license": lic,
+                         "licenseUrl": g("LicenseUrl") or None,
+                         "author": author[:157] + "..." if len(author) > 160 else author,
+                         "free": bool(lic) and not nonfree and bool(FREE.search(lic)) and not NONFREE.search(lic)}
+            save(STATE, st)
+
+
+def thumb_url(inf, width):
+    t = inf.get("thumb") or ""
+    if width != 500 and re.search(r"/500px-", t):
+        return t.replace("/500px-", f"/{width}px-")
+    return t if width == 500 else None
+
+
+def try_file(name, wiki, inf=None):
     """Baixa um arquivo, detecta o rosto e recorta. (img, info) ou (None, motivo)."""
     import numpy as np
     low = name.lower()
     if low.endswith((".svg", ".gif", ".pdf", ".djvu", ".webm", ".ogv", ".ogg", ".mp4", ".tif", ".tiff")):
         if not low.endswith((".tif", ".tiff")):
             return None, "format"
-    data = wm.download(name, 500, wiki=wiki)
+    if inf is not None:
+        if inf.get("missing"):
+            return None, "missing"
+        if not inf.get("free"):
+            return None, "nonfree"
+        if min(inf.get("w") or 0, inf.get("h") or 0) < 90:
+            return None, "tiny"
+        time.sleep(PACE)
+        data = polite_get(inf["thumb"]) if inf.get("thumb") else None
+    else:
+        time.sleep(PACE)
+        data = wm.download(name, 500, wiki=wiki)
     if not data:
         return None, "download"
     try:
@@ -716,7 +803,9 @@ def try_file(name, wiki):
     if faces:
         big = max(b[3] - b[1] for b in faces)
         if big < 52 and max(im.size) < 1500:
-            data2 = wm.download(name, 960, wiki=wiki)
+            time.sleep(PACE)
+            u960 = thumb_url(inf, 960) if inf is not None else None
+            data2 = (polite_get(u960) if u960 else None) if inf is not None else wm.download(name, 960, wiki=wiki)
             if data2:
                 try:
                     im2 = decode(data2)
@@ -788,6 +877,7 @@ def process_qid(st, q, name):
                 extra = [(f, "commons.wikimedia.org", "category") for f in category_files(st, cat, name)]
                 known = {wm.norm_file(c[0]) for c in cands}
                 extra = [c for c in extra if wm.norm_file(c[0]) not in known and c[0] not in BAD_FILES][:3]
+                phase_imginfo(st, {"commons.wikimedia.org": [c[0] for c in extra]})
                 cands.extend(extra)
                 if i >= len(cands):
                     break
@@ -797,8 +887,10 @@ def process_qid(st, q, name):
             break
         f, wiki, src = cands[i]
         i += 1
-        tried.append(f)
-        out, info = try_file(f, wiki)
+        inf = st.get("ii", {}).get(wm.norm_file(f))
+        out, info = try_file(f, wiki, inf)
+        if info not in ("missing", "nonfree", "tiny", "format"):
+            tried.append(f)
         if out is None:
             reasons.append(info)
             continue
@@ -807,11 +899,16 @@ def process_qid(st, q, name):
         media[q] = {"status": "ok", "file": wm.norm_file(f).replace("_", " "), "wiki": wiki, "src": src,
                     **info, "tried": len(tried)}
         return "ok"
-    if not tried:
+    if not tried and not reasons:
         media[q] = {"status": "no-image"}
         return "no-image"
-    st_ = "no-face" if all(r in ("no-face", "multi-face", "small-face", "tight", "off-center") for r in reasons) \
-        else "error"
+    if all(r in ("missing", "nonfree", "tiny", "format") for r in reasons):
+        st_ = "no-free-image"
+    elif all(r in ("no-face", "multi-face", "small-face", "tight", "off-center", "missing", "nonfree", "tiny",
+                   "format") for r in reasons):
+        st_ = "no-face"
+    else:
+        st_ = "error"
     media[q] = {"status": st_, "reasons": reasons, "tried_files": tried}
     return st_
 
@@ -832,6 +929,13 @@ def phase_photos(st, limit=None, only=None, redo=False):
     todo.sort(key=lambda q: (q not in leg, rank.get(q, 9), q))
     if limit:
         todo = todo[:limit]
+    fb = {}
+    for q in todo:
+        for f, w, _ in candidates_for(st, q, names[q])[0]:
+            fb.setdefault(w, set()).add(f)
+            if w != "commons.wikimedia.org":
+                fb.setdefault("commons.wikimedia.org", set()).add(f)
+    phase_imginfo(st, fb)
     print(f"fotos a processar: {len(todo)} (já feitas: {sum(1 for v in media.values() if v.get('status') == 'ok')})")
     t0 = time.time()
     cnt = {}
