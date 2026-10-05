@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "../engine/calendar";
 import { deleteMsg, INBOX_ICON, markAllRead, markRead, runInboxAction, syncInbox } from "../engine/inbox";
+import { inboxSource } from "../engine/outlets";
 import { fanEmoji, fanLabel } from "../engine/narrative";
 import type { InboxAction, InboxKind, InboxMsg } from "../engine/types";
 import { push, setTab, toast, update, useWorld } from "../store";
@@ -73,7 +74,7 @@ export function InboxScreen() {
               <span className="inbox-ic">{INBOX_ICON[m.kind]}</span>
               <span className="inbox-txt">
                 <b className="ellipsis">{m.title}</b>
-                <span className="tiny muted">{formatDate(m.season, m.day)} {m.season}</span>
+                <span className="tiny muted">{inboxSource(w, m) ? `📰 ${inboxSource(w, m)} · ` : ""}{formatDate(m.season, m.day)} {m.season}</span>
               </span>
               {!m.read && <i className="inbox-dot" aria-label="Não lida" />}
             </button>

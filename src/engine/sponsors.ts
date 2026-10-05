@@ -1,8 +1,12 @@
 // Patrocínios: em cada espaço (camisa, nome do estádio, material esportivo) o clube escolhe 1 de 3 ofertas.
-// Marcas fictícias. Valores escalam com a reputação e a divisão (somadas, ficam perto de annualSponsor).
+// Marcas reais: o clube começa com os contratos verdadeiros de 2025/26 (src/data/sponsorsReal.json) e as
+// ofertas novas vêm de marcas ativas no futebol brasileiro (brands.json). Valores escalam com a reputação e a divisão (somadas, ficam perto de annualSponsor).
 // As ofertas usam um gerador próprio por clube/temporada/espaço: não mexem no gerador global.
 import { addIncome, annualSponsor } from "./finance";
 import { hashString, makeRng } from "./rng";
+import REAL_JSON from "../data/sponsorsReal.json";
+import LOGOS_JSON from "../data/brandLogos.json";
+import POOL from "./brands.json";
 import type { Club, SponsorBonus, SponsorDeal, SponsorSlot, SponsorState, World } from "./types";
 
 export const SLOTS: SponsorSlot[] = ["shirt", "stadium", "kit"];
@@ -17,10 +21,67 @@ export const SLOT_INFO: Record<SponsorSlot, { emoji: string; label: string; shar
 export const EMPTY_SLOT_PCT = 0.55;
 
 const BRANDS: Record<SponsorSlot, string[]> = {
-  shirt: ["Banco Arapuã", "TeleVerde", "Construtora Pedra Alta", "Seguros Capivara", "Cerveja Tropeira", "PixRápido", "Farmácias Boa Saúde", "Mercado Sabiá", "Aero Tucano", "Energia Ipê", "Café Serrano", "Lotérica da Sorte"],
-  stadium: ["Arena Jequitibá", "Parque Bandeirante", "Arena Sol Nascente", "Estádio Grupo Aurora", "Arena Rede Vale", "Arena Sertaneja", "Complexo Maré Alta", "Arena Horizonte"],
-  kit: ["Kanguru Sports", "Trilha", "Onça Pro", "Ventania", "Garra Esportes", "Pé de Pano", "Arremate", "Bicuda"],
+  shirt: POOL.shirt,
+  stadium: POOL.stadium.map((x) => x.name),
+  kit: POOL.kit,
 };
+
+/** Contratos reais de cada clube (fornecedora, master e naming rights onde existe). */
+export const REAL_SPONSORS = REAL_JSON as Record<string, { kit?: string; shirt?: string; stadium?: string }>;
+const LOGOS = LOGOS_JSON as Record<string, string>;
+const STADIUM_LOGO: Record<string, string> = {
+  ...Object.fromEntries(POOL.stadium.map((x) => [x.name, x.logo])),
+  ...(POOL.stadiumBrands as Record<string, string>),
+};
+
+/** Caminho (em public/media) da logo da marca, se houver. */
+export function brandLogo(brand: string | undefined | null): string | null {
+  if (!brand) return null;
+  const key = LOGOS[brand] ?? LOGOS[STADIUM_LOGO[brand] ?? ""];
+  return key ? `brands/${key}.webp` : null;
+}
+
+/** Marcas fictícias das versões antigas (saves antigos são trocados pelas reais). */
+const LEGACY_BRANDS = new Set(["Banco Arapuã", "TeleVerde", "Construtora Pedra Alta", "Seguros Capivara", "Cerveja Tropeira", "PixRápido", "Farmácias Boa Saúde", "Mercado Sabiá", "Aero Tucano", "Energia Ipê", "Café Serrano", "Lotérica da Sorte",
+  "Arena Jequitibá", "Parque Bandeirante", "Arena Sol Nascente", "Estádio Grupo Aurora", "Arena Rede Vale", "Arena Sertaneja", "Complexo Maré Alta", "Arena Horizonte",
+  "Kanguru Sports", "Trilha", "Onça Pro", "Ventania", "Garra Esportes", "Pé de Pano", "Arremate", "Bicuda"]);
+
+/** Contrato atual verdadeiro de um espaço (ou undefined se o clube não tem/não sabemos). */
+function realDeal(w: World, c: Club, slot: SponsorSlot): SponsorDeal | undefined {
+  const brand = REAL_SPONSORS[c.id]?.[slot];
+  if (!brand) return undefined;
+  // contratos já em vigor: valor de mercado, vencem nas próximas temporadas
+  const years = 1 + (hashString(`${c.id}:${slot}`) % 3);
+  return { id: `${slot}-real`, slot, brand, annual: round(slotBase(c, slot) * 1.15), years, bonus: [], since: w.season, until: w.season + years - 1 };
+}
+
+/** Começo de jogo: cada clube com os seus patrocinadores reais. */
+export function seedRealSponsors(w: World) {
+  for (const c of Object.values(w.clubs)) {
+    if (c.sponsors) continue;
+    const deals: SponsorState["deals"] = {};
+    for (const slot of SLOTS) {
+      const d = realDeal(w, c, slot);
+      if (d) deals[slot] = d;
+    }
+    if (Object.keys(deals).length) c.sponsors = { deals };
+  }
+}
+
+/** Fornecedora de material atual (contrato assinado ou o real). */
+export function kitSupplier(w: World, c: Club): string | undefined {
+  return activeDeal(w, c, "kit")?.brand ?? REAL_SPONSORS[c.id]?.kit;
+}
+
+/** Nome do estádio com o naming rights em vigor (ou o nome de sempre). */
+export function stadiumName(w: World, c: Club): string {
+  return activeDeal(w, c, "stadium")?.brand ?? c.stadium;
+}
+
+/** Patrocinador master atual. */
+export function shirtSponsor(w: World, c: Club): string | undefined {
+  return activeDeal(w, c, "shirt")?.brand ?? REAL_SPONSORS[c.id]?.shirt;
+}
 
 export const BONUS_LABEL: Record<SponsorBonus["kind"], string> = {
   title: "Título da liga",
@@ -39,7 +100,8 @@ export function slotBase(c: Club, slot: SponsorSlot): number {
 export function makeOffers(w: World, c: Club, slot: SponsorSlot): SponsorDeal[] {
   const rng = makeRng(hashString(`sponsor:${w.seed}:${w.season}:${c.id}:${slot}`));
   const base = slotBase(c, slot);
-  const names = BRANDS[slot].slice();
+  const real = REAL_SPONSORS[c.id]?.[slot];
+  const names = BRANDS[slot].filter((b) => b !== real);
   const out: SponsorDeal[] = [];
   // perfis: seguro (fixo alto), equilibrado, arrojado (fixo baixo, bônus gordos)
   const profiles = [
@@ -49,7 +111,8 @@ export function makeOffers(w: World, c: Club, slot: SponsorSlot): SponsorDeal[] 
   ];
   for (let i = 0; i < 3; i++) {
     const k = Math.floor(rng() * names.length);
-    const brand = names.splice(k, 1)[0];
+    // o parceiro atual (real) sempre aparece para renovar, no perfil seguro
+    const brand = i === 0 && real ? real : names.splice(k, 1)[0];
     const pr = profiles[i];
     const annual = round(base * pr.fixed * (0.92 + rng() * 0.16));
     const bonus: SponsorBonus[] = [];
@@ -145,9 +208,24 @@ export function settleSponsorBonuses(w: World, c: Club): number {
 }
 
 /** Limpa dados inválidos de saves antigos/corrompidos. */
-export function migrateSponsors(c: Club) {
+export function migrateSponsors(c: Club, w?: World) {
   const s = c.sponsors;
   if (!s) return;
+  if (w) {
+    // marcas fictícias de saves antigos viram as reais (mesmo valor e prazo)
+    for (const slot of SLOTS) {
+      const d = s.deals?.[slot];
+      if (!d || !LEGACY_BRANDS.has(d.brand)) continue;
+      const real = REAL_SPONSORS[c.id]?.[slot];
+      d.brand = real ?? BRANDS[slot][hashString(`${c.id}:${slot}:${d.brand}`) % BRANDS[slot].length];
+    }
+    if (s.offers?.list?.some?.((o) => LEGACY_BRANDS.has(o.brand))) delete s.offers;
+    for (const e of s.log ?? []) {
+      if (!LEGACY_BRANDS.has(e.brand)) continue;
+      const slot: SponsorSlot = /Arena|Parque|Estádio|Complexo/.test(e.brand) ? "stadium" : "shirt";
+      e.brand = REAL_SPONSORS[c.id]?.[slot] ?? BRANDS[slot][hashString(e.brand) % BRANDS[slot].length];
+    }
+  }
   if (typeof s !== "object" || !s.deals || typeof s.deals !== "object") { delete c.sponsors; return; }
   for (const slot of Object.keys(s.deals) as SponsorSlot[]) {
     const d = s.deals[slot];

@@ -1,0 +1,21 @@
+{
+ "kit": ["Nike", "adidas", "Puma", "Umbro", "New Balance", "Kappa", "Volt", "Reebok", "Joma", "Diadora", "Le Coq Sportif", "Mizuno", "Macron", "Topper", "Penalty", "Athleta", "Lupo", "Hummel", "Kelme"],
+ "shirt": ["Betano", "Superbet", "Sportingbet", "Betfair", "Pixbet", "EstrelaBet", "Esportes da Sorte", "Betnacional", "KTO", "Novibet", "Vbet", "Banco do Brasil", "Caixa", "BRB", "Nubank", "Itaú", "Bradesco", "Banco Inter", "C6 Bank", "Mercado Livre", "Azul", "LATAM", "Gol", "Claro", "Vivo", "TIM", "Brahma", "Havaianas", "Magalu", "Casas Bahia", "Hapvida", "Unimed"],
+ "stadium": [
+  {"name": "Arena Betano", "logo": "Betano"},
+  {"name": "Superbet Arena", "logo": "Superbet"},
+  {"name": "Nubank Arena", "logo": "Nubank"},
+  {"name": "Arena Mercado Livre", "logo": "Mercado Livre"},
+  {"name": "Arena Azul", "logo": "Azul"},
+  {"name": "Claro Arena", "logo": "Claro"},
+  {"name": "Vivo Arena", "logo": "Vivo"},
+  {"name": "Arena Itaú", "logo": "Itaú"},
+  {"name": "Arena Caixa", "logo": "Caixa"},
+  {"name": "Arena BRB", "logo": "BRB"},
+  {"name": "Arena Unimed", "logo": "Unimed"},
+  {"name": "Arena Hapvida", "logo": "Hapvida"},
+  {"name": "Casas Bahia Arena", "logo": "Casas Bahia"},
+  {"name": "Arena Sicredi", "logo": "Sicredi"}
+ ],
+ "stadiumBrands": {"Allianz Parque": "Allianz", "Neo Química Arena": "Neo Química", "Arena MRV": "MRV", "Ligga Arena": "Ligga", "Nubank Parque": "Nubank", "MorumBIS": "Mondelez"}
+}

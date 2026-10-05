@@ -29,7 +29,6 @@ MEDIA = os.path.join(ROOT, "public", "media")
 OUT_CREDITS = os.path.join(MEDIA, "credits.json")
 OUT_MEDIA = os.path.join(ROOT, "src", "data", "media.json")
 LEGENDS = os.path.join(ROOT, "src", "data", "legendMedia.json")
-COMP_KEYS = ["serieA", "serieB", "serieC", "copaBR", "liberta", "sula"]
 FIELDS = ("file", "author", "license", "url")
 
 
@@ -85,7 +84,7 @@ def main():
     print(f"credits.json: {len(credits)} arquivos ({missing} sem arquivo, ignorados)"
           f"{'' if changed else ' — sem mudanças'}")
 
-    comps = {k: True for k in COMP_KEYS if os.path.exists(os.path.join(MEDIA, "comps", k + ".webp"))}
+    comps = {os.path.basename(f)[:-5]: True for f in sorted(glob.glob(os.path.join(MEDIA, "comps", "*.webp")))}
     legends = (load(LEGENDS) or {}) if os.path.exists(LEGENDS) else {}
     media = {"comps": comps, "legends": legends}
     changed = write_if_changed(OUT_MEDIA, json.dumps(media, ensure_ascii=False, separators=(",", ":")))

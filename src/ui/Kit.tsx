@@ -3,6 +3,7 @@
 // meias), cada uma com a cor de fundo, o padrão por cima (PNG transparente, quando existe) e,
 // por cima de tudo, o contorno/sombreado. Dados: src/data/kits.json (scripts/fetch_kits.py);
 // arquivos: public/media/kits/.
+import { brandLogo } from "../engine/sponsors";
 import { useId } from "react";
 import kitsData from "../data/kits.json";
 import { mediaUrl } from "./mediaUrl";
@@ -114,7 +115,9 @@ export function pickKits(homeId: string, awayId: string): { home: Kit; away: Kit
 
 // ---------------------------------------------------------------- desenho
 /** Uniforme completo (camisa, calção e meias) em SVG, como na infobox da Wikipedia. */
-export function KitView({ kit, width = 64, title }: { kit: Kit; width?: number; title?: string }) {
+/** Uniforme; com `supplier`, a logo da fornecedora aparece no peito (lado esquerdo, como na camisa real). */
+export function KitView({ kit, width = 64, title, supplier }: { kit: Kit; width?: number; title?: string; supplier?: string }) {
+  const logo = supplier ? brandLogo(supplier) : null;
   const label = title ?? kit.name;
   const maskId = `kit${useId().replace(/[^\w-]/g, "")}`;
   return (
@@ -144,6 +147,7 @@ export function KitView({ kit, width = 64, title }: { kit: Kit; width?: number; 
           );
         })}
       </g>
+      {logo && <image href={mediaUrl(logo)} x={56} y={12} width={10} height={8} preserveAspectRatio="xMidYMid meet" opacity={0.92} />}
     </svg>
   );
 }

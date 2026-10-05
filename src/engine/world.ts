@@ -9,7 +9,8 @@ import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
 import { migrateFacilities } from "./facilities";
 import { repairWorld } from "./integrity";
 import { migrateSetPieces } from "./setpieces";
-import { migrateSponsors } from "./sponsors";
+import { COMP_META } from "./competitions";
+import { migrateSponsors, seedRealSponsors } from "./sponsors";
 import { addNews } from "./news";
 import { assignRegenFace, legendImage, sportsdbPath } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
@@ -122,6 +123,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
   // jogadores livres no mercado
   for (let i = 0; i < 160; i++) generatePlayer(w, null, randInt(50, 68), randInt(22, 32));
 
+  seedRealSponsors(w);
   startSeason(w, initialEntrants(w));
   const user = w.clubs[w.userClubId];
   addNews(w, "info", `Bem-vindo ao ${user.name}!`,
@@ -204,7 +206,9 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   inboxOf(w);
   migrateProgression(w);
   // economia e dia de jogo (opcionais): repara sub-objetos inválidos
-  for (const c of Object.values(w.clubs)) { migrateSponsors(c); migrateFacilities(c); migrateSetPieces(c); }
+  for (const c of Object.values(w.clubs)) { migrateSponsors(c, w); migrateFacilities(c); migrateSetPieces(c); }
+  for (const comp of Object.values(w.comps)) if (COMP_META[comp.id]) comp.name = COMP_META[comp.id].name; // nomes oficiais
+  seedRealSponsors(w); // saves sem patrocínio: clubes ganham os contratos reais
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };

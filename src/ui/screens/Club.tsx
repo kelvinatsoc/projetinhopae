@@ -1,6 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { LEGENDS, TIER_NAMES } from "../../data/legends";
 import { COMP_META } from "../../engine/competitions";
+import { kitSupplier, shirtSponsor, stadiumName } from "../../engine/sponsors";
+import { BrandLogo } from "../BrandLogo";
+import "../economy.css";
 import { estadualTitles } from "../../engine/estaduais";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
 import { clubStrength, squadOf } from "../../engine/lineup";
@@ -40,7 +43,7 @@ export function ClubScreen() {
             <div className="small"><Stars n={clubStars(clubStrength(w, c))} /></div>
           </div>
         </div>
-        <div className="small mt8" style={{ opacity: 0.85 }}>🏟️ {c.stadium} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
+        <div className="small mt8" style={{ opacity: 0.85 }}>🏟️ {stadiumName(w, c)} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
       </div>
 
       <div className="grid3">
@@ -55,7 +58,7 @@ export function ClubScreen() {
         <Tile icon="👔" label="Comissão" sub="Staff técnico" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
         <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
         <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
-        <Tile icon="🤝" label="Patrocínios" sub="Camisa e estádio" tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
+        <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
         <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
@@ -108,9 +111,15 @@ export function ClubInfoScreen({ id }: { id: string }) {
             <div className="small">{c.country === "BRA" ? `${c.city}/${c.region}` : `${flag(c.country)} ${c.city || c.country}`} · {c.div === "F" ? "Exterior" : `Série ${c.div}`}</div>
           </div>
         </div>
-        <div className="small mt12">🏟️ {c.stadium} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
+        <div className="small mt12">🏟️ {stadiumName(w, c)} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
       </div>
       <StadiumPhoto club={c} />
+      {(kitSupplier(w, c) || shirtSponsor(w, c)) && (
+        <div className="card club-brands">
+          {kitSupplier(w, c) && <div><span className="tiny muted">Material esportivo</span><BrandLogo brand={kitSupplier(w, c)} size={26} withName /></div>}
+          {shirtSponsor(w, c) && <div><span className="tiny muted">Patrocínio master</span><BrandLogo brand={shirtSponsor(w, c)} size={26} withName /></div>}
+        </div>
+      )}
       <div className="grid3">
         <div className="stat-box"><b>{Math.round(clubStrength(w, c))}</b><span>força</span></div>
         <div className="stat-box"><b>{squad.length}</b><span>jogadores</span></div>
@@ -360,7 +369,7 @@ export function CreditsScreen() {
         <p className="mt8">Fotos de jogadores e estádios: <b>Wikimedia Commons</b>, com licenças livres. Cada autor está listado abaixo.</p>
         <p className="mt8">Fotos: <b>TheSportsDB.com</b> (carregadas da internet quando há conexão).</p>
         <p className="mt8">Rostos dos jogadores criados pelo jogo (regens): pessoas que não existem, geradas por IA (StyleGAN, thispersondoesnotexist.com).</p>
-        <p className="mt8">Escudos, logos e uniformes são marcas dos respectivos clubes e entidades. Este é um projeto pessoal, sem fins lucrativos.</p>
+        <p className="mt8">Escudos, logos e uniformes são marcas dos respectivos clubes e entidades. Logos de competições (CBF, CONMEBOL, federações estaduais), de fornecedoras de material e de patrocinadores, assim como nomes de veículos de imprensa e emissoras, são marcas registradas dos seus donos, usadas aqui sem autorização ou vínculo. Este é um projeto pessoal, sem fins lucrativos e não publicado.</p>
       </div>
       {CREDIT_GROUPS.map((g) => {
         const list = entries.filter(([k]) => k.startsWith(g.prefix));

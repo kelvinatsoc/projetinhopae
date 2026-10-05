@@ -25,3 +25,10 @@
 .pm-r b.hi { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .pm-r b.lo { background: color-mix(in srgb, var(--danger) 30%, transparent); }
 @media (prefers-reduced-motion: reduce) { .pm-card { animation: none; } }
+/* logos de marcas reais: placa clara para logos escuras aparecerem no tema escuro */
+.brand-logo { display: inline-flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px; padding: 3px 5px; box-sizing: content-box; flex: none; vertical-align: middle; }
+.brand-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.brand-chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.brand-name { font-weight: 700; }
+.club-brands { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.club-brands > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

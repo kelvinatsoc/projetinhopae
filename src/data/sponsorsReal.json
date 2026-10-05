@@ -1,0 +1,700 @@
+{
+ "flamengo": {
+  "kit": "adidas",
+  "shirt": "Betano",
+  "src": "ptwiki:Clube de Regatas do Flamengo+manual"
+ },
+ "palmeiras": {
+  "kit": "Puma",
+  "shirt": "Sportingbet",
+  "src": "ptwiki:Sociedade Esportiva Palmeiras+manual",
+  "stadium": "Allianz Parque"
+ },
+ "corinthians": {
+  "kit": "Nike",
+  "shirt": "Esportes da Sorte",
+  "stadium": "Neo Química Arena",
+  "src": "+manual"
+ },
+ "sao-paulo": {
+  "kit": "New Balance",
+  "shirt": "Superbet",
+  "src": "ptwiki:São Paulo Futebol Clube+manual",
+  "stadium": "MorumBIS"
+ },
+ "santos": {
+  "kit": "Umbro",
+  "shirt": "Novibet",
+  "src": "ptwiki:Santos Futebol Clube"
+ },
+ "atletico-mg": {
+  "kit": "Nike",
+  "shirt": "H2bet",
+  "src": "ptwiki:Clube Atlético Mineiro+manual",
+  "stadium": "Arena MRV"
+ },
+ "cruzeiro": {
+  "kit": "adidas",
+  "shirt": "Betnacional",
+  "src": "ptwiki:Cruzeiro Esporte Clube"
+ },
+ "gremio": {
+  "kit": "New Balance",
+  "shirt": "Banrisul",
+  "src": "ptwiki:Grêmio Foot-Ball Porto Alegrense+manual"
+ },
+ "internacional": {
+  "kit": "adidas",
+  "shirt": "Banrisul",
+  "src": "+manual"
+ },
+ "botafogo": {
+  "kit": "Mizuno",
+  "shirt": "Vbet",
+  "src": "ptwiki:Botafogo de Futebol e Regatas"
+ },
+ "fluminense": {
+  "kit": "Umbro",
+  "shirt": "Superbet",
+  "src": "+manual"
+ },
+ "vasco": {
+  "kit": "Kappa",
+  "shirt": "Betfair",
+  "src": "+manual"
+ },
+ "bahia": {
+  "kit": "Puma",
+  "shirt": "Esportiva Bet",
+  "src": "ptwiki:Esporte Clube Bahia"
+ },
+ "vitoria": {
+  "kit": "Volt",
+  "src": "+manual"
+ },
+ "athletico-pr": {
+  "kit": "Umbro",
+  "shirt": "Viva Sorte .Bet",
+  "src": "ptwiki:Club Athletico Paranaense+manual",
+  "stadium": "Ligga Arena"
+ },
+ "coritiba": {
+  "kit": "Diadora",
+  "src": "+manual"
+ },
+ "chapecoense": {
+  "kit": "Kappa",
+  "shirt": "Aurora",
+  "src": "ptwiki:Associação Chapecoense de Futebol"
+ },
+ "bragantino": {
+  "kit": "Puma",
+  "shirt": "Red Bull",
+  "src": "ptwiki:Red Bull Bragantino"
+ },
+ "mirassol": {
+  "kit": "Athleta",
+  "shirt": "Guaraná Poty",
+  "src": "ptwiki:Mirassol Futebol Clube"
+ },
+ "remo": {
+  "kit": "Volt",
+  "shirt": "Vaidebet",
+  "src": "ptwiki:Clube do Remo"
+ },
+ "america-mg": {
+  "kit": "Volt",
+  "shirt": "BetBra",
+  "src": "ptwiki:América Futebol Clube (Belo Horizonte)"
+ },
+ "athletic": {
+  "kit": "Kickball",
+  "shirt": "IstPay",
+  "src": "ptwiki:Athletic Club (Minas Gerais)"
+ },
+ "atletico-go": {
+  "kit": "Dragão Premium",
+  "shirt": "Blaze",
+  "src": "ptwiki:Atlético Clube Goianiense"
+ },
+ "avai": {
+  "kit": "Volt",
+  "shirt": "1Pra1Bet",
+  "src": "ptwiki:Avaí Futebol Clube"
+ },
+ "botafogo-sp": {
+  "kit": "Volt",
+  "shirt": "EstrelaBet",
+  "src": "ptwiki:Botafogo Futebol Clube (Ribeirão Preto)"
+ },
+ "ceara": {
+  "kit": "Diadora",
+  "shirt": "Esportes da Sorte",
+  "src": "ptwiki:Ceará Sporting Club"
+ },
+ "criciuma": {
+  "kit": "Volt",
+  "shirt": "Bolsa de Aposta",
+  "src": "ptwiki:Criciúma Esporte Clube"
+ },
+ "cuiaba": {
+  "kit": "Kappa",
+  "shirt": "Sicredi",
+  "src": "ptwiki:Cuiabá Esporte Clube"
+ },
+ "crb": {
+  "kit": "Regatas",
+  "shirt": "Betesporte",
+  "src": "ptwiki:Clube de Regatas Brasil"
+ },
+ "fortaleza": {
+  "kit": "Leão 1918",
+  "src": "+manual"
+ },
+ "goias": {
+  "kit": "Diadora",
+  "shirt": "Viva Sorte.bet",
+  "src": "ptwiki:Goiás Esporte Clube"
+ },
+ "juventude": {
+  "kit": "19Treze",
+  "shirt": "RodOil",
+  "src": "ptwiki:Esporte Clube Juventude"
+ },
+ "londrina": {
+  "kit": "Athleta",
+  "shirt": "Esportes 365 Bet",
+  "src": "ptwiki:Londrina Esporte Clube"
+ },
+ "nautico": {
+  "kit": "Reebok",
+  "shirt": "Cimed Sports",
+  "src": "ptwiki:Clube Náutico Capibaribe"
+ },
+ "novorizontino": {
+  "kit": "Physicus",
+  "shirt": "Pagol.Bet",
+  "src": "ptwiki:Grêmio Novorizontino"
+ },
+ "operario-pr": {
+  "kit": "Karilu",
+  "shirt": "GMAD",
+  "src": "ptwiki:Operário Ferroviário Esporte Clube"
+ },
+ "ponte-preta": {
+  "kit": "Diadora",
+  "shirt": "EstrelaBet",
+  "src": "ptwiki:Associação Atlética Ponte Preta"
+ },
+ "sao-bernardo": {},
+ "sport": {
+  "kit": "Kappa",
+  "shirt": "Betvip",
+  "src": "ptwiki:Sport Club do Recife"
+ },
+ "vila-nova": {
+  "kit": "Volt",
+  "shirt": "BYD",
+  "src": "ptwiki:Vila Nova Futebol Clube"
+ },
+ "amazonas": {},
+ "anapolis": {
+  "kit": "Kelme",
+  "shirt": "Geolab",
+  "src": "ptwiki:Anápolis Futebol Clube"
+ },
+ "barra-sc": {},
+ "botafogo-pb": {
+  "kit": "Kappa",
+  "shirt": "Loccel",
+  "src": "ptwiki:Botafogo Futebol Clube (João Pessoa)"
+ },
+ "brusque": {
+  "kit": "Junpe Sports",
+  "src": "ptwiki:Brusque Futebol Clube"
+ },
+ "caxias": {},
+ "confianca": {
+  "kit": "Tolledo Sports",
+  "shirt": "Banese Card",
+  "src": "ptwiki:Associação Desportiva Confiança"
+ },
+ "ferroviaria": {
+  "kit": "Lupo",
+  "shirt": "Unimed",
+  "src": "ptwiki:Associação Ferroviária de Esportes"
+ },
+ "figueirense": {
+  "kit": "Volt",
+  "shirt": "Berlanda",
+  "src": "ptwiki:Figueirense Futebol Clube"
+ },
+ "floresta": {
+  "kit": "Golaço",
+  "shirt": "ZeroUm.bet",
+  "src": "ptwiki:Floresta Esporte Clube"
+ },
+ "guarani": {
+  "kit": "Reebok",
+  "src": "ptwiki:Guarani Futebol Clube"
+ },
+ "inter-limeira": {
+  "kit": "Dubal",
+  "src": "ptwiki:Associação Atlética Internacional (Limeira)"
+ },
+ "itabaiana": {
+  "kit": "Robrac",
+  "shirt": "PlayBet",
+  "src": "ptwiki:Associação Olímpica de Itabaiana"
+ },
+ "ituano": {
+  "kit": "Tolledo Sports",
+  "shirt": "Euro 17",
+  "src": "ptwiki:Ituano Futebol Clube"
+ },
+ "maranhao": {
+  "kit": "Golkiper",
+  "src": "ptwiki:Maranhão Atlético Clube"
+ },
+ "maringa": {},
+ "paysandu": {
+  "kit": "Lobo",
+  "shirt": "Banpará",
+  "src": "ptwiki:Paysandu Sport Club"
+ },
+ "santa-cruz": {
+  "kit": "Reebok",
+  "shirt": "Bet Dá Sorte",
+  "src": "ptwiki:Santa Cruz Futebol Clube"
+ },
+ "volta-redonda": {
+  "kit": "Pratic Sport",
+  "shirt": "BETesporte",
+  "src": "ptwiki:Volta Redonda Futebol Clube"
+ },
+ "ypiranga-rs": {
+  "kit": "Piensa",
+  "shirt": "Banrisul",
+  "src": "ptwiki:Ypiranga Futebol Clube (Erechim)"
+ },
+ "portuguesa": {
+  "kit": "Joma",
+  "src": "ptwiki:Associação Portuguesa de Desportos"
+ },
+ "abc": {
+  "kit": "Diadora",
+  "shirt": "PlayBet",
+  "src": "ptwiki:ABC Futebol Clube"
+ },
+ "csa": {
+  "kit": "Junpe Sports",
+  "shirt": "Betesporte",
+  "src": "ptwiki:Centro Sportivo Alagoano"
+ },
+ "sampaio-correa": {
+  "kit": "Tolledo Sports",
+  "src": "ptwiki:Sampaio Corrêa Futebol Clube"
+ },
+ "joinville": {
+  "kit": "Volt",
+  "shirt": "Leroy Merlin",
+  "src": "ptwiki:Joinville Esporte Clube"
+ },
+ "tombense": {
+  "kit": "Vettor",
+  "shirt": "Lojas Dujuca",
+  "src": "ptwiki:Tombense Futebol Clube"
+ },
+ "america-rn": {
+  "kit": "Kelme",
+  "shirt": "Casa de Apostas Arena das Dunas",
+  "src": "ptwiki:América Futebol Clube (Rio Grande do Norte)"
+ },
+ "ferroviario-ce": {
+  "kit": "BM9",
+  "shirt": "Zenir Móveis",
+  "src": "ptwiki:Ferroviário Atlético Clube (Ceará)"
+ },
+ "brasil-pelotas": {
+  "kit": "Kelme",
+  "shirt": "Snickers",
+  "src": "ptwiki:Grêmio Esportivo Brasil"
+ },
+ "parana": {
+  "kit": "Valente",
+  "src": "ptwiki:Paraná Clube"
+ },
+ "santo-andre": {
+  "kit": "Junpe Sports",
+  "shirt": "Brasil Hospital",
+  "src": "ptwiki:Esporte Clube Santo André"
+ },
+ "treze": {
+  "kit": "Start Esporte",
+  "shirt": "Vai de Bet",
+  "src": "ptwiki:Treze Futebol Clube"
+ },
+ "river-plate": {
+  "kit": "adidas",
+  "shirt": "Betano",
+  "src": "ptwiki:Club Atlético River Plate"
+ },
+ "boca-juniors": {
+  "kit": "adidas",
+  "shirt": "Betsson",
+  "src": "ptwiki:Club Atlético Boca Juniors"
+ },
+ "racing": {
+  "kit": "Nike",
+  "shirt": "Betsson",
+  "src": "ptwiki:Racing Club"
+ },
+ "independiente": {
+  "kit": "Puma",
+  "shirt": "Sportsbet",
+  "src": "ptwiki:Club Atlético Independiente"
+ },
+ "san-lorenzo": {
+  "kit": "Atomik",
+  "shirt": "Casino Buenos Aires Online",
+  "src": "ptwiki:Club Atlético San Lorenzo de Almagro"
+ },
+ "estudiantes": {
+  "kit": "Ruge",
+  "shirt": "Banco Supervielle",
+  "src": "ptwiki:Club Estudiantes de La Plata"
+ },
+ "velez": {
+  "kit": "Macron",
+  "shirt": "Saphirus",
+  "src": "ptwiki:Club Atlético Vélez Sarsfield"
+ },
+ "lanus": {
+  "kit": "Umbro",
+  "shirt": "Mapei",
+  "src": "ptwiki:Club Atlético Lanús"
+ },
+ "rosario-central": {
+  "kit": "Le Coq Sportif",
+  "shirt": "City Center",
+  "src": "ptwiki:Club Atlético Rosario Central"
+ },
+ "talleres": {
+  "kit": "Le Coq Sportif",
+  "shirt": "Holcim",
+  "src": "ptwiki:Club Atlético Talleres"
+ },
+ "argentinos-juniors": {
+  "kit": "Umbro",
+  "shirt": "Mr.Bet",
+  "src": "ptwiki:Asociación Atlética Argentinos Juniors"
+ },
+ "platense": {
+  "kit": "Puma",
+  "shirt": "Esco",
+  "src": "ptwiki:Club Atlético Platense"
+ },
+ "independiente-rivadavia": {
+  "kit": "Aifit",
+  "shirt": "Sports.bet.ar",
+  "src": "ptwiki:Club Sportivo Independiente Rivadavia"
+ },
+ "tigre": {
+  "kit": "Kappa",
+  "shirt": "Banco Macro",
+  "src": "ptwiki:Club Atlético Tigre"
+ },
+ "barracas-central": {
+  "kit": "Retiel",
+  "src": "ptwiki:Club Atlético Barracas Central"
+ },
+ "riestra": {
+  "kit": "adidas",
+  "shirt": "Speed Unlimited",
+  "src": "ptwiki:Club Deportivo Riestra"
+ },
+ "penarol": {
+  "kit": "Puma",
+  "shirt": "Antel",
+  "src": "ptwiki:Club Atlético Peñarol"
+ },
+ "nacional-uru": {
+  "kit": "Umbro",
+  "shirt": "Antel",
+  "src": "ptwiki:Club Nacional de Football"
+ },
+ "liverpool-uru": {
+  "kit": "MGR Sport",
+  "shirt": "Puritas",
+  "src": "ptwiki:Liverpool Fútbol Club"
+ },
+ "defensor": {},
+ "juventud-uru": {
+  "kit": "Macron",
+  "shirt": "MG Cars",
+  "src": "ptwiki:Club Atlético Juventud (Uruguai)"
+ },
+ "boston-river": {
+  "kit": "Kelme",
+  "src": "ptwiki:Boston River"
+ },
+ "racing-uru": {
+  "kit": "adidas",
+  "src": "ptwiki:Racing Club de Montevideo"
+ },
+ "mvd-city-torque": {
+  "kit": "Puma",
+  "shirt": "Marplast",
+  "src": "ptwiki:Montevideo City Torque"
+ },
+ "danubio": {
+  "kit": "Tiffosi",
+  "src": "ptwiki:Danubio Fútbol Club"
+ },
+ "olimpia": {
+  "kit": "Nike",
+  "shirt": "Ueno",
+  "src": "ptwiki:Club Olimpia"
+ },
+ "cerro-porteno": {
+  "kit": "Puma",
+  "shirt": "Tigo",
+  "src": "ptwiki:Club Cerro Porteño"
+ },
+ "libertad-par": {
+  "kit": "Puma",
+  "shirt": "Tigô",
+  "src": "ptwiki:Club Libertad"
+ },
+ "guarani-par": {
+  "kit": "Kyrios Sport",
+  "shirt": "Tigo",
+  "src": "ptwiki:Club Guaraní"
+ },
+ "nacional-par": {
+  "kit": "Kappa",
+  "shirt": "Banco Continental",
+  "src": "ptwiki:Club Nacional"
+ },
+ "2-de-mayo": {},
+ "trinidense": {
+  "kit": "Saltarin Rojo",
+  "src": "ptwiki:Club Sportivo Trinidense"
+ },
+ "recoleta": {
+  "shirt": "Continental",
+  "src": "ptwiki:Recoleta Football Club"
+ },
+ "general-caballero": {
+  "kit": "Kappa",
+  "src": "ptwiki:Club General Caballero (Juan León Mallorquín)"
+ },
+ "colo-colo": {
+  "kit": "adidas",
+  "shirt": "JugaBet",
+  "src": "ptwiki:Club Social y Deportivo Colo-Colo"
+ },
+ "u-de-chile": {
+  "kit": "adidas",
+  "shirt": "Jugabet",
+  "src": "ptwiki:Club Universidad de Chile"
+ },
+ "u-catolica": {
+  "kit": "Puma",
+  "shirt": "Banco Bice",
+  "src": "ptwiki:Club Deportivo Universidad Católica"
+ },
+ "coquimbo": {
+  "kit": "Capelli Sport",
+  "shirt": "Pin-Up Casino",
+  "src": "ptwiki:Coquimbo Unido"
+ },
+ "ohiggins": {
+  "kit": "Joma",
+  "shirt": "BC.Game",
+  "src": "ptwiki:Club Deportivo O'Higgins"
+ },
+ "huachipato": {
+  "kit": "Marathon",
+  "shirt": "Apuestas Royal",
+  "src": "ptwiki:Club Deportivo Huachipato"
+ },
+ "audax": {
+  "kit": "Macron",
+  "shirt": "Apuestas Royal",
+  "src": "ptwiki:Audax Italiano La Florida"
+ },
+ "palestino": {
+  "kit": "Capelli Sport",
+  "shirt": "Bank of Palestine",
+  "src": "ptwiki:Club Deportivo Palestino"
+ },
+ "cobresal": {},
+ "atletico-nacional": {
+  "kit": "Nike",
+  "shirt": "Betsson",
+  "src": "ptwiki:Atlético Nacional"
+ },
+ "millonarios": {
+  "kit": "adidas",
+  "shirt": "Cerveja Andina",
+  "src": "ptwiki:Millonarios Fútbol Club"
+ },
+ "santa-fe": {
+  "kit": "Fila",
+  "shirt": "Colanta",
+  "src": "ptwiki:Independiente Santa Fe"
+ },
+ "junior": {
+  "kit": "adidas",
+  "shirt": "Cerveza Aguila",
+  "src": "ptwiki:Club Deportivo Popular Junior Fútbol Club"
+ },
+ "tolima": {
+  "kit": "Umbro",
+  "shirt": "BetPlay",
+  "src": "ptwiki:Club Deportes Tolima"
+ },
+ "medellin": {
+  "kit": "Reebok",
+  "shirt": "Colanta",
+  "src": "ptwiki:Deportivo Independiente Medellín"
+ },
+ "america-cali": {
+  "kit": "Reebok",
+  "shirt": "BetPlay",
+  "src": "ptwiki:América de Cali"
+ },
+ "bucaramanga": {
+  "kit": "Lotto",
+  "src": "ptwiki:Atlético Bucaramanga"
+ },
+ "ldu-quito": {
+  "kit": "Puma",
+  "shirt": "Banco Pichincha",
+  "src": "ptwiki:Liga Deportiva Universitaria (Quito)"
+ },
+ "independiente-del-valle": {
+  "kit": "Marathon",
+  "shirt": "Banco Guayaquil",
+  "src": "ptwiki:Independiente del Valle"
+ },
+ "barcelona-sc": {
+  "kit": "Marathon",
+  "shirt": "Pilsener",
+  "src": "ptwiki:Barcelona Sporting Club"
+ },
+ "emelec": {},
+ "u-catolica-ecu": {
+  "kit": "Umbro",
+  "src": "ptwiki:Club Deportivo Universidad Católica (Equador)"
+ },
+ "orense": {},
+ "libertad-ecu": {},
+ "macara": {},
+ "cuenca": {
+  "kit": "Lotto",
+  "src": "ptwiki:Club Deportivo Cuenca"
+ },
+ "universitario": {
+  "kit": "Marathon",
+  "shirt": "Apuesta Total",
+  "src": "ptwiki:Club Universitario de Deportes"
+ },
+ "alianza-lima": {},
+ "sporting-cristal": {
+  "kit": "Puma",
+  "shirt": "Caja Piura",
+  "src": "ptwiki:Club Sporting Cristal"
+ },
+ "cusco": {
+  "kit": "adidas",
+  "shirt": "Caja Cusco",
+  "src": "ptwiki:Cusco Fútbol Club"
+ },
+ "melgar": {
+  "kit": "Walon",
+  "src": "ptwiki:Foot Ball Club Melgar"
+ },
+ "cienciano": {
+  "kit": "Umbro",
+  "src": "ptwiki:Club Sportivo Cienciano"
+ },
+ "alianza-atletico": {},
+ "garcilaso": {
+  "kit": "Umbro",
+  "src": "ptwiki:Club Deportivo Garcilaso"
+ },
+ "bolivar": {
+  "kit": "Marathon",
+  "shirt": "Suzuki",
+  "src": "ptwiki:Club Bolívar"
+ },
+ "the-strongest": {
+  "kit": "Marathon",
+  "shirt": "Paceña",
+  "src": "ptwiki:Club The Strongest"
+ },
+ "always-ready": {
+  "kit": "Marathon",
+  "src": "ptwiki:Club Always Ready"
+ },
+ "nacional-potosi": {
+  "kit": "Forte Athletic",
+  "src": "ptwiki:Club Atlético Nacional Potosí"
+ },
+ "blooming": {
+  "kit": "Marathon",
+  "shirt": "Kia Motors",
+  "src": "ptwiki:Club Social, Cultural y Deportivo Blooming"
+ },
+ "independiente-petrolero": {
+  "shirt": "Fancesa",
+  "src": "ptwiki:Club Independiente Petrolero"
+ },
+ "guabira": {
+  "kit": "Forte",
+  "shirt": "Unagro",
+  "src": "ptwiki:Club Deportivo Guabirá"
+ },
+ "bulo-bulo": {
+  "kit": "Oxigeno Storewear",
+  "src": "ptwiki:Club Deportivo San Antonio Bulo Bulo"
+ },
+ "ucv": {
+  "kit": "adidas",
+  "src": "ptwiki:Universidad Central de Venezuela Fútbol Club"
+ },
+ "la-guaira": {
+  "kit": "RS",
+  "shirt": "Lojas Traki",
+  "src": "ptwiki:Deportivo La Guaira"
+ },
+ "carabobo": {
+  "kit": "Runic",
+  "src": "ptwiki:Carabobo Fútbol Club"
+ },
+ "tachira": {
+  "kit": "Boman",
+  "shirt": "Simmonds Equipment",
+  "src": "ptwiki:Deportivo Táchira Fútbol Club"
+ },
+ "caracas": {
+  "kit": "Zeus Sport",
+  "shirt": "1xBet",
+  "src": "ptwiki:Caracas Fútbol Club"
+ },
+ "monagas": {
+  "kit": "RS",
+  "shirt": "Banplus",
+  "src": "ptwiki:Monagas Sport Club"
+ },
+ "metropolitanos": {
+  "kit": "RS",
+  "src": "ptwiki:Metropolitanos Fútbol Club"
+ },
+ "puerto-cabello": {
+  "kit": "adidas",
+  "src": "ptwiki:Academia Puerto Cabello"
+ }
+}
