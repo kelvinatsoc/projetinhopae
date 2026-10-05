@@ -1,0 +1,117 @@
+/* Partida ao vivo: campo em pixel art, cabeçalho compacto, abertura e comemoração do gol. */
+
+/* ---------- cabeçalho fixo da partida ---------- */
+.mv-head {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg2); border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+}
+.mv-topline { display: flex; align-items: center; gap: 8px; padding: 6px 12px 0; min-width: 0; }
+.mv-topline > span { flex: 1; min-width: 0; }
+.mv-toggle { flex: none; display: flex; background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.mv-toggle button {
+  border: 0; background: none; color: var(--muted); font-size: 11.5px; font-weight: 700;
+  padding: 4px 9px; border-radius: 999px; cursor: pointer; white-space: nowrap; min-height: 26px;
+}
+.mv-toggle button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+
+.scoreboard.mv-compact { padding: 4px 12px 6px; gap: 6px; }
+.scoreboard.mv-compact .score { font-size: 32px; line-height: 1.05; }
+.scoreboard.mv-compact .team { flex-direction: row; justify-content: flex-end; gap: 8px; font-size: 13px; min-width: 0; }
+.scoreboard.mv-compact .team:last-child { flex-direction: row-reverse; justify-content: flex-end; }
+.scoreboard.mv-compact .team span { min-width: 0; }
+.mv-momentum { padding: 0 12px 6px; }
+.mv-momentum .row { margin-top: 3px; }
+
+/* ---------- campo ---------- */
+.mv { display: flex; flex-direction: column; align-items: center; background: #0e1612; border-top: 1px solid var(--line); }
+.mv-stage { position: relative; line-height: 0; max-width: 100%; }
+.mv-canvas {
+  display: block; max-width: 100%;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  background: #1a2320;
+}
+@supports (image-rendering: pixelated) { .mv-canvas { image-rendering: pixelated; } }
+
+.mv-cap {
+  align-self: stretch; display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 5px 12px 6px; font-size: 12.5px; font-weight: 600; line-height: 1.3; color: var(--text);
+  background: #0e1612; border-top: 1px solid #1d2b24;
+}
+.mv-cap i { flex: none; width: 9px; height: 9px; border-radius: 2px; background: #9aa5a0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.mv-cap span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme="light"] .mv, :root[data-theme="light"] .mv-cap { background: #13241b; color: #ecf5ef; }
+
+/* ---------- abertura: estádio + escudos ---------- */
+.mv-intro {
+  position: absolute; inset: 0; overflow: hidden; cursor: pointer; line-height: 1.3;
+  animation: mv-intro 2.6s ease-in forwards;
+}
+.mv-intro-photo { position: absolute; inset: 0; }
+.mv-intro-photo .stadium-photo { margin: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.mv-intro-photo .stadium-caption { padding-bottom: 8px; }
+.mv-intro-fallback {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 8px; color: #fff;
+  display: flex; flex-direction: column; gap: 1px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+}
+.mv-intro-fallback b { font-size: 15px; }
+.mv-intro-fallback span { font-size: 12px; opacity: 0.85; }
+.mv-intro-crests {
+  position: absolute; top: 10px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 14px;
+  color: #fff; font-size: 20px; text-shadow: 0 2px 6px #000;
+  animation: mv-crests 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.mv-intro-crests .crest { filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7)); }
+@keyframes mv-intro { 0%, 62% { opacity: 1; } 80%, 100% { opacity: 0; visibility: hidden; } }
+@keyframes mv-crests { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- comemoração do gol ---------- */
+.mv-goal {
+  position: fixed; left: 0; right: 0; top: 30vh; z-index: 32; pointer-events: none;
+  display: flex; justify-content: center; padding: 0 16px;
+}
+.mv-goal-card {
+  --club: var(--accent);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 100%;
+  padding: 12px 22px 12px; border-radius: 18px;
+  background: #08120d; border: 2px solid var(--club);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: mv-pop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both, mv-out 0.25s ease-in 1.75s forwards;
+}
+.mv-goal-pics { position: relative; margin-bottom: 2px; }
+.mv-goal-pics .avatar { box-shadow: 0 0 0 3px var(--gold), 0 4px 14px rgba(0, 0, 0, 0.6); }
+.mv-goal-crest { position: absolute; right: -14px; bottom: -6px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7)); }
+.mv-goal-txt {
+  font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: 1px; color: var(--gold);
+  text-shadow: 0 3px 0 #6b4a00, 0 6px 18px #000;
+  animation: mv-bounce 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) 0.1s both;
+}
+.mv-goal-name { font-weight: 800; color: #fff; text-align: center; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-goal-score { font-size: 12px; font-weight: 700; color: #b9cbbf; font-variant-numeric: tabular-nums; }
+@keyframes mv-pop { from { transform: scale(0.5) translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mv-out { to { transform: scale(0.92); opacity: 0; } }
+@keyframes mv-bounce {
+  0% { transform: scale(0.3); }
+  45% { transform: scale(1.25); }
+  70% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+.mv-confetti { position: fixed; inset: 0; z-index: 31; pointer-events: none; overflow: hidden; }
+.mv-confetti i {
+  position: absolute; top: -12px; display: block;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+  animation-name: mv-fall; animation-timing-function: steps(14); animation-fill-mode: both;
+}
+@keyframes mv-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0), 72vh) rotate(270deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mv-goal-card, .mv-goal-txt, .mv-intro-crests { animation: none; }
+  .mv-confetti { display: none; }
+  .mv-intro { animation: none; }
+}

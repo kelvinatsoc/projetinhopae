@@ -6,6 +6,7 @@ import { FORMATION_DESC, FORMATIONS, MENTALITY_NAMES, ovrAt, POS_ORDER, PRESSING
 import type { Club, Lineup, Player, World } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
+import { TacticsAdvice } from "../Assistant";
 import { Avatar, Bar, Ovr, PlayerRow, PosBadge } from "../components";
 
 type Sort = "pos" | "ovr" | "age" | "cond" | "value";
@@ -155,6 +156,7 @@ export function TacticsScreen() {
 
   return (
     <div className="page">
+      <TacticsAdvice />
       <div className="chips">
         {Object.keys(FORMATIONS).map((f) => (
           <button key={f} className={`chip${club.tactic.formation === f ? " active" : ""}`} onClick={() => setFormation(f)}>{f}</button>

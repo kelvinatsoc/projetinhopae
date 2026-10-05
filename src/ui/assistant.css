@@ -1,0 +1,87 @@
+/* Auxiliar técnico: cards do pré-jogo e da tática, e dicas ao vivo. */
+.as-card { display: flex; flex-direction: column; gap: 12px; }
+.as-head { display: flex; align-items: center; gap: 10px; }
+.as-head b { font-size: 15px; }
+.as-brain {
+  flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; font-size: 20px;
+  background: color-mix(in srgb, var(--info) 22%, var(--card2)); border: 1px solid color-mix(in srgb, var(--info) 45%, var(--line));
+}
+.tag.warn { color: #ffd79a; border-color: #7a5410; background: #3a2a0c; }
+:root[data-theme="light"] .tag.warn { color: #8a5a00; border-color: #e8c27a; background: #fff3dc; }
+:root[data-theme="light"] .tag.good { color: #0d6b35; border-color: #9ad8b2; background: #e3f6ea; }
+:root[data-theme="light"] .tag.danger { color: #a3201d; border-color: #f0b0ae; background: #fde8e7; }
+
+.as-section { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.as-title { font-size: 12px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.as-reason { color: var(--muted); line-height: 1.35; }
+
+/* medidor de forças */
+.as-meter { display: flex; flex-direction: column; gap: 4px; }
+.as-meter-track {
+  position: relative; height: 10px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--danger), var(--warn) 50%, var(--accent));
+}
+.as-meter-track i {
+  position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: #fff; border: 3px solid #0b1a12; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.as-meter-labels { justify-content: space-between; padding: 0 36px; }
+
+/* destaques do adversário */
+.as-stars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.as-star { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); }
+.as-star-txt { display: flex; flex-direction: column; min-width: 0; gap: 2px; font-size: 12px; }
+.as-star-txt b.ellipsis { display: block; }
+
+/* recomendações */
+.as-rec { display: flex; gap: 10px; align-items: flex-start; }
+.as-rec-ico { flex: none; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--card2); border: 1px solid var(--line); font-size: 15px; }
+.as-compare { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 380px) { .as-compare { grid-template-columns: 1fr 1fr; } }
+
+/* barra V/E/D */
+.as-wdl { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+.as-wdl-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--card2); }
+.as-wdl-bar i { display: block; height: 100%; }
+.as-wdl-bar i.w { background: var(--accent); }
+.as-wdl-bar i.d { background: #9aa5a0; }
+.as-wdl-bar i.l { background: var(--danger); }
+.as-wdl-nums { display: flex; justify-content: space-between; color: var(--muted); font-variant-numeric: tabular-nums; }
+.as-wdl-nums b { color: var(--text); }
+
+/* correções de escalação */
+.as-fixes { display: flex; flex-direction: column; gap: 6px; }
+.as-fix { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); }
+.as-fix .btn.sm { flex: none; }
+.as-ok { text-align: center; color: var(--accent); font-weight: 700; padding: 6px 0; }
+
+/* simulação */
+.as-sim { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line); }
+.as-progress { height: 8px; border-radius: 4px; background: var(--card); overflow: hidden; }
+.as-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--info), var(--accent)); transition: width 0.15s; }
+.as-sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.as-sim-grid.one { grid-template-columns: 1fr; }
+.as-sim-col { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+.as-sim-col.best { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+/* resumo (tela de tática) */
+.as-summary { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-pill { padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--card2); border: 1px solid var(--line); }
+.as-pill.diff { background: color-mix(in srgb, var(--accent) 20%, var(--card2)); border-color: var(--accent); }
+
+/* dica ao vivo */
+.as-live {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--info); box-shadow: var(--shadow);
+  animation: up 0.2s ease-out;
+}
+.as-live.tone-good { border-left-color: var(--accent); }
+.as-live.tone-warn { border-left-color: var(--warn); }
+.as-live.tone-danger { border-left-color: var(--danger); }
+.as-live-ico { font-size: 18px; }
+.as-live-title { font-size: 14px; line-height: 1.25; }
+.as-live-text { color: var(--muted); line-height: 1.35; }
+.as-live-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-live-actions .btn.sm { min-height: 36px; text-align: left; }
+.as-x { flex: none; width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--muted); cursor: pointer; font-size: 14px; }
+.as-next { align-self: flex-start; border: 0; background: none; color: var(--info); padding: 2px 0; cursor: pointer; font-weight: 700; }

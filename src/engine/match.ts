@@ -39,6 +39,28 @@ const BASE = { def: 4.9, mid: 4.4, att: 3.6 }; // somatório de pesos num 4-3-3 
 // Constantes de calibração (médias do Brasileirão: ~2,4 gols e ~24 finalizações por jogo)
 export const TUNING = { shotBase: 0.23, shotExp: 1.6, xgBase: 0.066, xgSpread: 0.55, xgAttDiv: 40, penBase: 0.0017 };
 
+/**
+ * Resumo do último minuto simulado, só para a animação do jogo ao vivo (campo em pixel art).
+ * É preenchido com valores que o motor já calculou: não sorteia nada a mais nem muda o resultado.
+ */
+export interface MinutePhase {
+  min: number;
+  half: 1 | 2;
+  atk: 0 | 1 | null; // quem ficou com a bola no minuto (null no intervalo / fim)
+  shot?: {
+    side: 0 | 1;
+    shooter: number;
+    assist: number | null;
+    result: "goal" | "owngoal" | "save" | "miss" | "post" | "var";
+    og?: number; // quem fez o gol contra
+    xg: number;
+  };
+  corner?: { side: 0 | 1; taker: number | null };
+  tackle?: { side: 0 | 1; pid: number | null }; // desarme de quem estava sem a bola
+  foul?: 0 | 1; // lado que cometeu a falta
+  penalty?: { side: 0 | 1; taker: number | null; fouled: number | null; scored: boolean };
+}
+
 export interface MatchOptions {
   userSide?: 0 | 1 | null; // lado controlado pelo usuário (sem substituições automáticas)
   live?: boolean; // gera narração detalhada
@@ -58,6 +80,8 @@ export class MatchSim {
   live: boolean;
   userSide: 0 | 1 | null;
   pens?: [number, number];
+  /** O que aconteceu no último minuto (para a animação). */
+  phase: MinutePhase = { min: 0, half: 1, atk: null };
 
   constructor(w: World, f: Fixture, opts: MatchOptions = {}) {
     this.w = w;
@@ -155,6 +179,7 @@ export class MatchSim {
   step(): MatchEvent[] {
     if (this.finished) return [];
     const start = this.events.length;
+    this.phase = { min: this.minute, half: this.half, atk: null };
     if (this.half === 1 && this.minute >= 45 + this.stoppage[0]) {
       this.half = 2;
       this.minute = 45;
@@ -191,6 +216,7 @@ export class MatchSim {
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     this.stats.poss[atk]++;
+    this.phase = { min, half: this.half, atk: atk as 0 | 1 };
 
     // chance de finalização neste minuto
     const ratio = S.att / Math.max(20, O.def);
@@ -199,11 +225,17 @@ export class MatchSim {
     if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
-      if (this.live && chance(0.3)) this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("corner", { t: S.club.name, p: this.name(this.pickOnPitch(S, ASSIST_W, "pas")) }) });
+      this.phase.corner = { side: atk as 0 | 1, taker: null };
+      if (this.live && chance(0.3)) {
+        const taker = this.pickOnPitch(S, ASSIST_W, "pas");
+        this.phase.corner.taker = taker;
+        this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("corner", { t: S.club.name, p: this.name(taker) }) });
+      }
     } else {
       // desarmes contam pontos para defensores
       const d = this.pickOnPitch(O, DEF_W, "def");
       this.rate(O, d, 0.025);
+      this.phase.tackle = { side: (1 - atk) as 0 | 1, pid: d };
     }
 
     // pênalti
@@ -214,6 +246,7 @@ export class MatchSim {
       const foulSide = chance(0.62) ? 1 - atk : atk;
       const F = this.sides[foulSide];
       this.stats.fouls[foulSide]++;
+      this.phase.foul = foulSide as 0 | 1;
       if (chance(0.17)) this.card(foulSide, F);
       else if (this.live && chance(0.04)) this.ev({ min, type: "info", text: phrase("info", { t: S.club.name, p: this.name(this.pickOnPitch(S, ATT_W, "dri")) }) });
     }
@@ -246,22 +279,28 @@ export class MatchSim {
     const gkEff = O.gk;
     const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75);
     const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter) : null;
+    const shotInfo: NonNullable<MinutePhase["shot"]> = { side: atk as 0 | 1, shooter, assist: assister, result: "miss", xg };
+    this.phase.shot = shotInfo;
     if (this.live && xg > 0.3 && chance(0.6)) {
       this.ev({ min, type: "chance", side: atk as 0 | 1, pid: shooter, text: phrase("bigChance", { p: this.name(shooter), a: this.name(assister) }) });
     }
     if (rand() < pGoal) {
       if (chance(0.03)) {
         this.stats.onTarget[atk]++;
+        shotInfo.result = "var";
         this.ev({ min, type: "var", side: atk as 0 | 1, pid: shooter, text: phrase("var", { p: this.name(shooter) }) });
         return;
       }
       this.stats.onTarget[atk]++;
       if (chance(0.025)) {
         const og = this.pickOnPitch(O, DEF_W, "def");
+        shotInfo.result = "owngoal";
+        shotInfo.og = og ?? undefined;
         this.goal(atk, og ?? shooter, undefined, "owngoal");
         this.rate(O, og, -1);
         return;
       }
+      shotInfo.result = "goal";
       this.goal(atk, shooter, assister ?? undefined, "goal");
       return;
     }
@@ -270,9 +309,11 @@ export class MatchSim {
       this.stats.onTarget[atk]++;
       this.rate(S, shooter, 0.1);
       this.rate(O, gk, 0.28);
+      shotInfo.result = "save";
       if (this.live || xg > 0.25) this.ev({ min, type: "save", side: atk as 0 | 1, pid: shooter, text: phrase("save", { p: this.name(shooter), g: this.name(gk) }) });
     } else if (chance(0.06)) {
       this.rate(S, shooter, 0.05);
+      shotInfo.result = "post";
       this.ev({ min, type: "post", side: atk as 0 | 1, pid: shooter, text: phrase("post", { p: this.name(shooter) }) });
     } else {
       this.rate(S, shooter, -0.06);
@@ -319,6 +360,8 @@ export class MatchSim {
       const p = this.player(id);
       if (p.pos !== "GOL" && p.attrs.fin > best) { best = p.attrs.fin; taker = id; }
     }
+    const penInfo: NonNullable<MinutePhase["penalty"]> = { side: atk as 0 | 1, taker, fouled, scored: false };
+    this.phase.penalty = penInfo;
     if (taker == null) return;
     this.stats.shots[atk]++;
     this.stats.xg[atk] += 0.76;
@@ -326,6 +369,7 @@ export class MatchSim {
     const p = clamp(0.74 + (best - 70) / 200 - (O.gk - 70) / 250, 0.5, 0.92);
     if (rand() < p) {
       this.stats.onTarget[atk]++;
+      penInfo.scored = true;
       this.goal(atk, taker, undefined, "pen-goal");
     } else {
       this.rate(S, taker, -0.6);

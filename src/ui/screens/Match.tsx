@@ -11,6 +11,8 @@ import { forceBack, getWorld, push, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
 import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
+import { LiveAdvice, PreMatchAdvice } from "../Assistant";
+import { GoalCelebration, MatchView } from "../MatchView";
 import { Pitch } from "./Squad";
 
 function stageLabel(w: World, f: Fixture) {
@@ -53,6 +55,8 @@ export function PreMatchScreen() {
         {agg && tie && <div className="small mt8">Jogo de ida: {w.clubs[tie.a].name} {agg.a} × {agg.b} {w.clubs[tie.b].name}{tie.advantage ? ` · ${w.clubs[tie.advantage].name} joga pelo empate no agregado` : " · empate no agregado vai para os pênaltis"}</div>}
       </div>
 
+      <PreMatchAdvice fixtureId={f.id} />
+
       {out.length > 0 && (
         <div className="card flat small" style={{ borderColor: "var(--warn)" }}>
           ⚠️ Desfalques: {out.map((p) => `${p.name} (${p.injury > 0 ? "lesionado" : "suspenso"})`).join(", ")}
@@ -85,18 +89,50 @@ export function PreMatchScreen() {
 }
 
 const SPEEDS = [{ l: "1x", ms: 650 }, { l: "2x", ms: 320 }, { l: "4x", ms: 120 }, { l: "8x", ms: 45 }];
+const FIELD_KEY = "ldb.matchField";
+const INTRO_MS = 2600;
+const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
+
+/** Preferência "campo animado" x "só lances" (fica neste aparelho). */
+function readFieldPref(): boolean {
+  try {
+    return localStorage.getItem(FIELD_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+function saveFieldPref(on: boolean) {
+  try {
+    localStorage.setItem(FIELD_KEY, on ? "1" : "0");
+  } catch {
+    /* sem armazenamento local: vale só nesta partida */
+  }
+}
 
 export function MatchScreen({ quick }: { quick: boolean }) {
   const w = useWorld();
   const f = useMemo(() => (w.pendingMatch != null ? fixtureById(w, w.pendingMatch) : undefined), []);
   const simRef = useRef<MatchSim | null>(null);
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [speed, setSpeed] = useState(() => (w.settings.speed <= 150 ? 2 : w.settings.speed <= 350 ? 1 : 0));
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
   const [subs, setSubs] = useState(false);
   const [flash, setFlash] = useState<MatchEvent | null>(null);
+  const [flashTop, setFlashTop] = useState<number | null>(null);
+  const [field, setField] = useState(() => !quick && readFieldPref());
+  const [intro, setIntro] = useState(field);
+  const [hold, setHold] = useState(false); // relógio parado para mostrar o gol (1x/2x)
+  const headRef = useRef<HTMLDivElement>(null);
+  const celebrated = useRef(new Set<MatchEvent>());
+  const timers = useRef<number[]>([]);
+  const flashTimer = useRef(0);
+  const started = useRef(false);
+  const fieldRef = useRef(field);
+  fieldRef.current = field;
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
   const userSide: 0 | 1 = f && f.away === w.userClubId ? 1 : 0;
 
   if (!simRef.current && f) {
@@ -104,6 +140,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     simRef.current = new MatchSim(w, f, { live: !quick, userSide });
   }
   const sim = simRef.current;
+
+  function later(fn: () => void, ms: number) {
+    timers.current.push(window.setTimeout(fn, ms));
+  }
 
   function finish() {
     if (!sim || !f || result) return;
@@ -114,6 +154,33 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     setResult(r);
     stopCrowd();
     autosave(true);
+  }
+
+  /** Gol: grito da torcida + foto do artilheiro com confete (uma vez por gol). */
+  function celebrate(e: MatchEvent) {
+    if (!sim || celebrated.current.has(e)) return;
+    celebrated.current.add(e);
+    const homeCrowd = !sim.f.neutral && e.side === 0;
+    if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide);
+    const head = headRef.current?.getBoundingClientRect();
+    setFlashTop(fieldRef.current && head ? Math.min(head.bottom + 10, window.innerHeight * 0.56) : null);
+    setFlash(e);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      setFlash(null);
+      setHold(false);
+    }, 2000);
+  }
+
+  /** Defesa, trave, pênalti perdido: "uhhh" da torcida. */
+  function beat(e: MatchEvent) {
+    if (e.type === "post" || (e.type === "save" && Math.random() < 0.4) || e.type === "pen-miss") ooh();
+  }
+
+  function toggleField(on: boolean) {
+    setField(on);
+    saveFieldPref(on);
+    if (!on) setIntro(false);
   }
 
   // resultado rápido
@@ -128,64 +195,108 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (quick) return;
     loadMedia(`goal:${w.userClubId}`).then((d) => setCustomGoalAudio(d)).catch(() => undefined);
-    if (soundEnabled()) { startCrowd(); whistle(1); }
-    return () => stopCrowd();
+    if (soundEnabled()) startCrowd();
+    return () => {
+      stopCrowd();
+      for (const t of timers.current) window.clearTimeout(t);
+      window.clearTimeout(flashTimer.current);
+    };
   }, []);
+
+  // abertura (estádio + escudos) e apito inicial
+  useEffect(() => {
+    if (quick) return;
+    if (intro) {
+      const t = window.setTimeout(() => setIntro(false), INTRO_MS);
+      return () => window.clearTimeout(t);
+    }
+    if (!started.current) {
+      started.current = true;
+      if (soundEnabled()) whistle(1);
+    }
+  }, [intro]);
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs) return;
+    if (!sim || quick || paused || result || subs || intro || hold) return;
     const t = window.setInterval(() => {
       const evs = sim.step();
+      const slow = speedRef.current <= 1;
+      // com o campo ligado, gol e "uhhh" saem quando a bola chega (o campo avisa)
+      const viewLive = fieldRef.current && slow && !document.hidden;
       for (const e of evs) {
-        if (e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal") {
-          const homeCrowd = !sim.f.neutral && e.side === 0;
-          if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide);
-          setFlash(e);
-          window.setTimeout(() => setFlash(null), 1800);
-        } else if (e.type === "post" || (e.type === "save" && Math.random() < 0.4) || e.type === "pen-miss") ooh();
-        else if (e.type === "half") whistle(2);
+        if (isGoal(e)) {
+          if (slow) setHold(true);
+          if (viewLive) later(() => celebrate(e), 2600); // garantia, se o campo não avisar
+          else celebrate(e);
+        } else if (e.type === "post" || e.type === "save" || e.type === "pen-miss") {
+          if (!viewLive) beat(e);
+        } else if (e.type === "half") whistle(2);
         else if (e.type === "end") whistle(3);
       }
       if (sim.finished) finish();
       setTick((x) => x + 1);
     }, SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs]);
+  }, [sim, speed, paused, result, subs, intro, hold]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
   const st = sim.stats;
-  const totalPoss = st.poss[0] + st.poss[1] || 1;
-  const poss0 = Math.round((st.poss[0] / totalPoss) * 100);
+  const totalPoss = st.poss[0] + st.poss[1];
+  const poss0 = totalPoss ? Math.round((st.poss[0] / totalPoss) * 100) : 50;
   const events = sim.events.filter((e) => e.type !== "info" || !quick).slice().reverse();
+  const showField = field && !quick;
+  const awayBar = visibleColor(A.club.colors) === visibleColor(H.club.colors) ? "#9aa5a0" : visibleColor(A.club.colors);
 
   return (
     <div style={{ minHeight: "100vh", paddingBottom: 90 }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--bg2)", borderBottom: "1px solid var(--line)", paddingTop: "env(safe-area-inset-top)" }}>
-        <div className="center small muted" style={{ paddingTop: 8 }}>{COMP_META[f.comp].short} · {stageLabel(w, f)}</div>
-        <div className="scoreboard">
-          <div className="team"><Crest club={H.club} size={44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{H.club.name}</span></div>
+      <div className="mv-head" ref={headRef}>
+        <div className="mv-topline">
+          <span className="small muted ellipsis">{COMP_META[f.comp].short} · {stageLabel(w, f)}</span>
+          {!quick && (
+            <div className="mv-toggle" role="group" aria-label="Como acompanhar o jogo">
+              <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}>📺 Campo</button>
+              <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}>📜 Lances</button>
+            </div>
+          )}
+        </div>
+        <div className={`scoreboard${showField ? " mv-compact" : ""}`}>
+          <div className="team"><Crest club={H.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{H.club.name}</span></div>
           <div className="center">
             <div className="score kbd">{H.goals} : {A.goals}</div>
             {sim.pens && <div className="small">pên. {sim.pens[0]} × {sim.pens[1]}</div>}
-            <span className="minute">{result || sim.finished ? "Fim" : sim.minute === 0 ? "0'" : sim.displayMinute()}</span>
+            <span className="minute">{result || sim.finished ? "Fim" : sim.minute === 0 ? "0'" : sim.half === 2 && sim.minute === 45 ? "Intervalo" : sim.displayMinute()}</span>
           </div>
-          <div className="team"><Crest club={A.club} size={44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{A.club.name}</span></div>
+          <div className="team"><Crest club={A.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{A.club.name}</span></div>
         </div>
-        <div style={{ padding: "0 12px 10px" }}>
+        <div className={showField ? "mv-momentum" : ""} style={showField ? undefined : { padding: "0 12px 10px" }}>
           <div className="momentum">
             <i style={{ width: `${poss0}%`, background: visibleColor(H.club.colors) }} />
-            <i style={{ width: `${100 - poss0}%`, background: visibleColor(A.club.colors) === visibleColor(H.club.colors) ? "#9aa5a0" : visibleColor(A.club.colors) }} />
+            <i style={{ width: `${100 - poss0}%`, background: awayBar }} />
           </div>
-          <div className="row tiny muted mt8"><span>Posse {poss0}%</span><span className="right">{100 - poss0}%</span></div>
+          <div className={`row tiny muted${showField ? "" : " mt8"}`}><span>Posse {poss0}%</span><span className="right">{100 - poss0}%</span></div>
         </div>
+        {showField && (
+          <MatchView
+            sim={sim}
+            tick={tick}
+            msPerMin={SPEEDS[speed].ms}
+            paused={(paused || subs) && !result}
+            intro={intro}
+            goalHold={speed <= 1}
+            onGoal={celebrate}
+            onBeat={beat}
+            onSkipIntro={() => setIntro(false)}
+          />
+        )}
       </div>
 
-      {flash && (
-        <div className="center" style={{ position: "fixed", top: "38%", left: 0, right: 0, zIndex: 30, pointerEvents: "none" }}>
-          <div style={{ display: "inline-block", fontSize: 44, fontWeight: 900, color: "var(--gold)", textShadow: "0 4px 18px #000", animation: "up .3s" }}>GOOOL!</div>
-          <div style={{ fontWeight: 800, textShadow: "0 2px 6px #000" }}>{flash.pid ? sim.name(flash.pid) : ""}</div>
+      {flash && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+
+      {!quick && !result && !sim.finished && (
+        <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>
+          <LiveAdvice sim={sim} side={userSide} onApplied={() => setTick((x) => x + 1)} />
         </div>
       )}
 
@@ -201,7 +312,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         {view === "feed" && (
           <div className="feed">
             {events.map((e, i) => (
-              <div key={i} className={`ev ${e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal" ? "goal" : e.type}`}>
+              <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
                 <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
                 {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
                 <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
@@ -220,12 +331,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             <button className="btn primary block" onClick={() => { forceBack(); }}>Continuar</button>
           ) : (
             <div className="row gap8">
-              <button className="btn sm" onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
+              <button className="btn sm" aria-label={paused ? "Continuar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
               <div className="seg grow">
                 {SPEEDS.map((s, i) => <button key={s.l} className={speed === i ? "active" : ""} onClick={() => setSpeed(i)}>{s.l}</button>)}
               </div>
               <button className="btn sm" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
-              <button className="btn sm" onClick={() => { sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
+              <button className="btn sm" aria-label="Pular para o fim" onClick={() => { setIntro(false); sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
             </div>
           )}
         </div>
