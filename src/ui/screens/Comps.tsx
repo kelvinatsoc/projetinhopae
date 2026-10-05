@@ -4,6 +4,8 @@ import { clubFixtures, fixtureById, sortTable, STAGE_NAMES, tieAggregate } from 
 import type { Competition, Fixture, TableRow, Tie, World } from "../../engine/types";
 import { push, useWorld } from "../../store";
 import { CompLogo, Crest } from "../components";
+import { CompHeader } from "../CompTheme";
+import { compTheme } from "../compThemes";
 
 export function CompsScreen() {
   const w = useWorld();
@@ -24,11 +26,7 @@ export function CompsScreen() {
       {sel === "mine" && <MyFixtures w={w} />}
       {comp && (
         <>
-          <div className="row">
-            <CompLogo id={comp.id} size={40} />
-            <h2 className="grow">{comp.name} {comp.season}</h2>
-            <span className="tag" style={{ borderColor: comp.color, color: comp.color }}>{STAGE_NAMES[comp.stage]}</span>
-          </div>
+          <CompHeader id={comp.id} title={`${comp.name} ${comp.season}`} sub={compTheme(comp.id, comp.color).motto} right={<span className="ct-pill">{STAGE_NAMES[comp.stage]}</span>} />
           {comp.champion && (
             <div className="card row" style={{ borderColor: "var(--gold)" }}>
               <span style={{ fontSize: 26 }}>🏆</span><Crest club={w.clubs[comp.champion]} size={30} /><b>{w.clubs[comp.champion].name}</b><span className="muted small">campeão</span>
@@ -40,7 +38,7 @@ export function CompsScreen() {
           <TopScorers w={w} comp={comp} />
         </>
       )}
-      <div style={{ height: 50 }} />
+      
     </div>
   );
 }
