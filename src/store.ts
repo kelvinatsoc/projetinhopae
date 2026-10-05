@@ -72,7 +72,10 @@ export type Route =
   | { name: "press"; fid: number; phase: "pre" | "post" }
   | { name: "trophies" }
   | { name: "achievements" }
-  | { name: "career" };
+  | { name: "career" }
+  | { name: "sponsors" }
+  | { name: "facilities" }
+  | { name: "setpieces" };
 
 interface NavState {
   tab: Tab;

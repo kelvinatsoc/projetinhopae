@@ -44,6 +44,21 @@ export interface AdminCheats {
   noInj?: boolean; noBans?: boolean; window?: boolean; anyBid?: boolean; willing?: boolean; money?: boolean;
   noFire?: boolean; youthTurbo?: boolean; legendRain?: boolean; boost?: 0 | 0.05 | 0.1 | 0.2;
 }
+// ---------------------------------------------------------------- economia e dia de jogo (Trilha C)
+export type SponsorSlot = "shirt" | "stadium" | "kit";
+export interface SponsorBonus { kind: "title" | "top4" | "safe"; value: number }
+export interface SponsorDeal { id: string; slot: SponsorSlot; brand: string; annual: number; years: number; bonus: SponsorBonus[]; since?: number; until?: number }
+export interface SponsorState {
+  deals: Partial<Record<SponsorSlot, SponsorDeal>>;
+  offers?: { season: number; list: SponsorDeal[] };
+  paidFor?: number; // última temporada com bônus avaliados
+  log?: { season: number; brand: string; text: string; value: number }[];
+}
+export type FacilityKind = "stadium" | "training" | "youth" | "medical";
+export interface FacilityBuild { kind: FacilityKind; to: number; start: number; done: number; cost: number }
+export interface FacilityState { stadium: number; medical: number; builds: FacilityBuild[] }
+export type SetPieceRoutine = "pp" | "sp" | "curto";
+export interface SetPieceConfig { corner?: number; fk?: number; pen?: number; cap?: number; routine: SetPieceRoutine }
 export interface AdminLogEntry { season: number; day: number; text: string }
 export interface AdminState { on: boolean; pin?: string; everUsed?: boolean; seasons: number[]; cheats: AdminCheats; log: AdminLogEntry[] }
 
@@ -199,6 +214,10 @@ export interface Club {
   proj?: BoardProject[];
   expansions?: number;
   loanedOut?: number[];
+  // --- economia e dia de jogo (Trilha C, opcionais)
+  sponsors?: SponsorState;
+  fac?: FacilityState;
+  setPieces?: SetPieceConfig;
 }
 
 export interface FinanceBook {
@@ -219,6 +238,7 @@ export interface MatchEvent {
   pid?: number; // jogador principal
   pid2?: number; // assistência / quem saiu na substituição
   text: string;
+  key?: boolean; // lance importante (melhores momentos)
 }
 
 export interface MatchStats {

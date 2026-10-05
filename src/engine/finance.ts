@@ -1,6 +1,8 @@
 import { derbyCrowdMult, derbyTicketMult } from "./narrative";
 // Finanças simplificadas: TV, patrocínio, bilheteria, premiações, salários e custos.
 import { clamp, gauss } from "./rng";
+import { clubGateMult } from "./facilities";
+import { settleSponsorBonuses, sponsorAnnual } from "./sponsors";
 import { staffWageBill } from "./staff";
 import type { Club, Fixture, World } from "./types";
 
@@ -88,7 +90,9 @@ export function monthlyFinances(w: World) {
   for (const c of Object.values(w.clubs)) {
     if (c.div === "F") continue;
     addIncome(c, "tv", Math.round(annualTV(c) / 12));
-    addIncome(c, "sponsor", Math.round(annualSponsor(c) / 12));
+    // contratos de patrocínio escolhidos pelo clube (sponsors.ts); sem escolha, o valor genérico
+    addIncome(c, "sponsor", Math.round((c.sponsors ? sponsorAnnual(w, c) : annualSponsor(c)) / 12));
+    if (c.sponsors) settleSponsorBonuses(w, c);
     addExpense(c, "wages", wageBill(w, c));
     const user = c.id === w.userClubId;
     // com comissão técnica contratada, a estrutura genérica fica 15% mais barata
@@ -118,7 +122,8 @@ export function gateRevenue(w: World, f: Fixture, attendance: number) {
   const home = w.clubs[f.home];
   if (!home || home.div === "F") return;
   const mult = f.stage === "final" ? 2 : f.stage === "sf" || f.stage === "qf" ? 1.4 : 1;
-  addIncome(home, "gate", Math.round(attendance * home.ticket * mult * derbyTicketMult(f)));
+  // nível do estádio (facilities.ts): conforto e camarotes rendem mais por torcedor
+  addIncome(home, "gate", Math.round(attendance * home.ticket * mult * clubGateMult(home) * derbyTicketMult(f)));
 }
 
 // Premiações por fase alcançada (R$)

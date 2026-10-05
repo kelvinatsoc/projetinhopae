@@ -13,7 +13,7 @@ import { autosave, goToMatch } from "../actions";
 import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
-import { GoalCelebration, MatchView } from "../MatchView";
+import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
 import { Pitch } from "./Squad";
 import "../talk.css";
 import "../narrative.css";
@@ -154,6 +154,7 @@ export function PreMatchScreen() {
 
 const SPEEDS = [{ l: "1x", ms: 650 }, { l: "2x", ms: 320 }, { l: "4x", ms: 120 }, { l: "8x", ms: 45 }];
 const FIELD_KEY = "ldb.matchField";
+const HIGHLIGHT_MS = 650; // nos melhores momentos cada lance roda na velocidade 1x
 const INTRO_MS = 2600;
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 
@@ -189,6 +190,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [field, setField] = useState(() => !quick && readFieldPref());
   const [intro, setIntro] = useState(field);
   const [hold, setHold] = useState(false); // relógio parado para mostrar o gol (1x/2x)
+  const [hl, setHl] = useState(false); // "só os melhores momentos": pula direto para o próximo lance importante
+  const [gfx, setGfx] = useState<GraphicsMode>(() => readGraphics());
   const headRef = useRef<HTMLDivElement>(null);
   const celebrated = useRef(new Set<MatchEvent>());
   const timers = useRef<number[]>([]);
@@ -290,8 +293,13 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (!sim || quick || paused || result || subs || intro || hold || halfSheet) return;
     const t = window.setInterval(() => {
-      const evs = sim.step();
-      const slow = speedRef.current <= 1;
+      let evs = sim.step();
+      if (hl) {
+        // melhores momentos: simula em silêncio até o próximo lance marcado como importante
+        let guard = 0;
+        while (!sim.finished && !evs.some((e) => e.key) && guard++ < 200) evs = evs.concat(sim.step());
+      }
+      const slow = hl || speedRef.current <= 1;
       // com o campo ligado, gol e "uhhh" saem quando a bola chega (o campo avisa)
       const viewLive = fieldRef.current && slow && !document.hidden;
       for (const e of evs) {
@@ -310,9 +318,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       }
       if (sim.finished) finish();
       setTick((x) => x + 1);
-    }, SPEEDS[speed].ms);
+    }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, intro, hold, halfSheet]);
+  }, [sim, speed, paused, result, subs, intro, hold, halfSheet, hl]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -332,6 +340,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             <div className="mv-toggle" role="group" aria-label="Como acompanhar o jogo">
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}>📺 Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}>📜 Lances</button>
+              {field && (
+                <button aria-pressed={gfx === "ultra"} title="Gráficos" onClick={() => { const m = gfx === "ultra" ? "leve" : "ultra"; setGfx(m); saveGraphics(m); }}>
+                  {gfx === "ultra" ? "✨ Ultra" : "🪶 Leve"}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -355,10 +368,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           <MatchView
             sim={sim}
             tick={tick}
-            msPerMin={SPEEDS[speed].ms}
+            msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
+            ultra={gfx === "ultra"}
             paused={(paused || subs) && !result}
             intro={intro}
-            goalHold={speed <= 1}
+            goalHold={hl || speed <= 1}
             onGoal={celebrate}
             onBeat={beat}
             onSkipIntro={() => setIntro(false)}
@@ -383,7 +397,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           <button className={view === "teams" ? "active" : ""} onClick={() => setView("teams")}>Times</button>
         </div>
 
-        {result && <FinalSummary w={w} f={f} r={result} />}
+        {result && <PostMatchCard w={w} f={f} r={result} label={resultLabel(w, f, result)} />}
 
         {view === "feed" && (
           <div className="feed">
@@ -412,7 +426,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             <div className="row gap8">
               <button className="btn sm" aria-label={paused ? "Continuar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
               <div className="seg grow">
-                {SPEEDS.map((s, i) => <button key={s.l} className={speed === i ? "active" : ""} onClick={() => setSpeed(i)}>{s.l}</button>)}
+                {SPEEDS.map((s, i) => <button key={s.l} className={!hl && speed === i ? "active" : ""} onClick={() => { setHl(false); setSpeed(i); }}>{s.l}</button>)}
+                <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={() => setHl((x) => !x)}>⭐</button>
               </div>
               <button className="btn sm" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
               <button className="btn sm" aria-label="Pular para o fim" onClick={() => { setIntro(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
@@ -598,11 +613,18 @@ function SubsSheet({ sim, side, w, onClose }: { sim: MatchSim; side: 0 | 1; w: W
   );
 }
 
-function FinalSummary({ w, f, r }: { w: World; f: Fixture; r: MatchResult }) {
+function resultLabel(w: World, f: Fixture, r: MatchResult): string {
   const userHome = f.home === w.userClubId;
   const us = userHome ? r.hg : r.ag, them = userHome ? r.ag : r.hg;
-  let label = us > them ? "Vitória!" : us < them ? "Derrota" : "Empate";
-  if (r.pens) label = (userHome ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0]) ? "Classificado nos pênaltis!" : "Eliminado nos pênaltis";
+  const label = us > them ? "Vitória!" : us < them ? "Derrota" : "Empate";
+  if (r.pens) return (userHome ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0]) ? "Classificado nos pênaltis!" : "Eliminado nos pênaltis";
+  return label;
+}
+
+export function FinalSummary({ w, f, r }: { w: World; f: Fixture; r: MatchResult }) {
+  const userHome = f.home === w.userClubId;
+  const us = userHome ? r.hg : r.ag, them = userHome ? r.ag : r.hg;
+  const label = resultLabel(w, f, r);
   const motm = r.motm != null ? w.players[r.motm] : null;
   const goals = r.events.filter((e) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal");
   return (

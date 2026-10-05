@@ -7,9 +7,11 @@ import { needsPenalties } from "./competitions";
 import { lineupStrength, validLineup, autoLineup } from "./lineup";
 import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
 import { shortName } from "./player";
-import { commonFactor, freeKickXg, HEADER_W, headerXg, NEUTRAL_SIDE, playerMods, SET_PIECE, sideMult, type PMods, type SideMult } from "./matchmods";
+import { commonFactor, HEADER_W, headerXg, NEUTRAL_SIDE, playerMods, SET_PIECE, sideMult, type PMods, type SideMult } from "./matchmods";
 import { chance, clamp, gauss, pickWeighted, rand, randInt } from "./rng";
 import { aiTalk, reactions, suggest, talkCtx, talkEffect, type Reaction, type TalkPhase, type Tone } from "./teamtalk";
+import { clubInjuryMult } from "./facilities";
+import { cornerQuality, freeKickXgFor, ROUTINES, takerFor } from "./setpieces";
 import { hasTrait } from "./traits";
 import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, World } from "./types";
 
@@ -112,7 +114,7 @@ export class MatchSim {
         club, slots, onPitch: lineup.starters.slice(), bench: lineup.bench.slice(), subsLeft: 5, windowsLeft: 3,
         mentality: club.tactic.mentality, pressing: club.tactic.pressing, goals: 0,
         played: lineup.starters.filter((x): x is number => x !== null), rating: new Map(), yellows: new Set(),
-        att: 0, mid: 0, def: 0, gk: 0, auto: this.userSide !== idx, captain: lineup.captain,
+        att: 0, mid: 0, def: 0, gk: 0, auto: this.userSide !== idx, captain: lineup.captain ?? club.setPieces?.cap,
         mods: new Map(), sm: NEUTRAL_SIDE,
       };
       for (const id of side.played) side.rating.set(id, 6.0);
@@ -203,6 +205,7 @@ export class MatchSim {
   }
 
   private ev(e: MatchEvent) {
+    if (KEY_TYPES.has(e.type)) e.key = true;
     this.events.push(e);
     return e;
   }
@@ -292,11 +295,14 @@ export class MatchSim {
     if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
-      this.phase.corner = { side: atk as 0 | 1, taker: null };
-      if (chance(SET_PIECE.header * S.sm.setPiece)) this.header(atk);
+      // escanteio: quem cobra (setpieces.ts) e a jogada ensaiada mudam a chance e o perigo da cabeçada
+      const taker = takerFor(this.w, S.club, S.onPitch, "corner");
+      const routine = ROUTINES[S.club.setPieces?.routine ?? "pp"];
+      const pSet = SET_PIECE.header * S.sm.setPiece;
+      this.phase.corner = { side: atk as 0 | 1, taker };
+      if (chance(pSet * cornerQuality(taker != null ? this.player(taker) : undefined) * routine.header)) this.header(atk, taker, routine.xg);
+      else if (routine.short > 0 && chance(pSet * routine.short)) this.shortCorner(atk, taker);
       else if (this.live && chance(0.3)) {
-        const taker = this.pickOnPitch(S, ASSIST_W, "pas");
-        this.phase.corner.taker = taker;
         this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("corner", { t: S.club.name, p: this.name(taker) }) });
       }
     } else {
@@ -346,10 +352,18 @@ export class MatchSim {
     this.finishShot(atk, shooter, assister, xg, kind);
   }
 
-  /** Cabeçada de escanteio: quem cobra é o garçom, quem cabeceia é o mais alto/forte (e o Cabeceador). */
-  private header(atk: number) {
+  /** Escanteio curto: toque para o lado e finalização da entrada da área. */
+  private shortCorner(atk: number, taker: number | null) {
     const S = this.sides[atk];
-    const taker = this.pickOnPitch(S, ASSIST_W, "pas", undefined, 2, "assist");
+    const shooter = this.pickOnPitch(S, SHOOT_W, "fin", taker ?? undefined, 1.5, "shoot");
+    if (shooter == null) return;
+    const xg = clamp(0.05 * Math.exp((this.player(shooter).attrs.fin - 72) / 30), 0.02, 0.12);
+    this.finishShot(atk, shooter, taker, xg, "long");
+  }
+
+  /** Cabeçada de escanteio: quem cobra é o garçom, quem cabeceia é o mais alto/forte (e o Cabeceador). */
+  private header(atk: number, taker: number | null, xgMult = 1) {
+    const S = this.sides[atk];
     const ids: number[] = [];
     const ws: number[] = [];
     S.onPitch.forEach((id, k) => {
@@ -361,22 +375,15 @@ export class MatchSim {
     if (!ids.length) return;
     const shooter = pickWeighted(ids, ws);
     if (this.phase.corner) this.phase.corner.taker = taker;
-    this.finishShot(atk, shooter, taker, headerXg(this.player(shooter)), "header");
+    this.finishShot(atk, shooter, taker, clamp(headerXg(this.player(shooter)) * xgMult, 0.02, 0.35), "header");
   }
 
   /** Falta perto da área cobrada direto: o Cobrador de falta, senão quem tem melhor finalização + passe. */
   private freeKick(atk: number) {
     const S = this.sides[atk];
-    let taker: number | null = null, best = -1;
-    for (const id of S.onPitch) {
-      if (id == null) continue;
-      const p = this.player(id);
-      if (p.pos === "GOL") continue;
-      const v = (hasTrait(p, "FAL") ? 1000 : 0) + (p.attrs.fin + p.attrs.pas) / 2;
-      if (v > best) { best = v; taker = id; }
-    }
+    const taker = takerFor(this.w, S.club, S.onPitch, "fk");
     if (taker == null) return;
-    this.finishShot(atk, taker, null, freeKickXg(this.player(taker)), "freekick");
+    this.finishShot(atk, taker, null, freeKickXgFor(this.player(taker)), "freekick");
   }
 
   /** Daqui em diante todo chute segue o mesmo caminho: gol, defesa, trave ou para fora. */
@@ -393,7 +400,7 @@ export class MatchSim {
     if (kind) shotInfo.kind = kind;
     this.phase.shot = shotInfo;
     if (this.live && xg > 0.3 && chance(0.6)) {
-      this.ev({ min, type: "chance", side: atk as 0 | 1, pid: shooter, text: phrase("bigChance", { p: this.name(shooter), a: this.name(assister) }) });
+      this.ev({ min, type: "chance", key: true, side: atk as 0 | 1, pid: shooter, text: phrase("bigChance", { p: this.name(shooter), a: this.name(assister) }) });
     }
     if (rand() < pGoal) {
       if (chance(0.03)) {
@@ -421,7 +428,7 @@ export class MatchSim {
       this.rate(S, shooter, 0.1);
       this.rate(O, gk, 0.28);
       shotInfo.result = "save";
-      if (this.live || xg > 0.25 || kind === "freekick") this.ev({ min, type: "save", side: atk as 0 | 1, pid: shooter, text: phrase(kind === "freekick" ? "freeKickSave" : "save", { p: this.name(shooter), g: this.name(gk) }) });
+      if (this.live || xg > 0.25 || kind === "freekick") this.ev({ min, type: "save", key: xg > 0.25 || kind === "freekick" || undefined, side: atk as 0 | 1, pid: shooter, text: phrase(kind === "freekick" ? "freeKickSave" : "save", { p: this.name(shooter), g: this.name(gk) }) });
     } else if (chance(0.06)) {
       this.rate(S, shooter, 0.05);
       shotInfo.result = "post";
@@ -463,16 +470,8 @@ export class MatchSim {
     const O = this.sides[1 - atk];
     const fouled = this.pickOnPitch(S, ATT_W, "dri", undefined, 2, "fouled");
     this.ev({ min: this.minute, type: "info", side: atk as 0 | 1, text: phrase("penAward", { t: S.club.name, p: this.name(fouled) }) });
-    // cobrador: o Batedor de pênalti em campo, senão o melhor finalizador
-    let taker: number | null = null;
-    let best = -1;
-    for (const id of S.onPitch) {
-      if (id == null) continue;
-      const p = this.player(id);
-      if (p.pos === "GOL") continue;
-      const v = p.attrs.fin + (hasTrait(p, "PEN") ? 1000 : 0);
-      if (v > best) { best = v; taker = id; }
-    }
+    // cobrador: o escolhido pelo técnico (setpieces.ts), senão o Batedor de pênalti / melhor finalizador
+    const taker = takerFor(this.w, S.club, S.onPitch, "pen");
     const penInfo: NonNullable<MinutePhase["penalty"]> = { side: atk as 0 | 1, taker, fouled, scored: false };
     this.phase.penalty = penInfo;
     if (taker == null) return;
@@ -560,7 +559,8 @@ export class MatchSim {
     if (!cand.length) return;
     const id = pickWeighted(cand, cand.map((c) => this.pm(F, c).injW));
     const p = this.player(id);
-    const days = Math.max(1, Math.round(pickWeighted([randInt(3, 7), randInt(8, 21), randInt(22, 60), randInt(61, 160)], [50, 30, 15, 5]) * this.pm(F, id).injDays));
+    // departamento médico (facilities.ts) encurta as lesões
+    const days = Math.max(1, Math.round(pickWeighted([randInt(3, 7), randInt(8, 21), randInt(22, 60), randInt(61, 160)], [50, 30, 15, 5]) * this.pm(F, id).injDays * clubInjuryMult(F.club)));
     p.injury = Math.max(p.injury, days);
     p.injuryName = injuryName(days);
     this.ev({ min: this.minute, type: "injury", side: sideIdx, pid: id, text: phrase("injury", { p: this.name(id), t: F.club.name }) });
@@ -664,8 +664,12 @@ export class MatchSim {
   }
 
   private shootout() {
-    const order = (s: Side) =>
-      s.onPitch.filter((x): x is number => x != null).sort((a, b) => this.kickScore(b) - this.kickScore(a));
+    // o batedor oficial abre a série
+    const order = (s: Side) => {
+      const ids = s.onPitch.filter((x): x is number => x != null).sort((a, b) => this.kickScore(b) - this.kickScore(a));
+      const first = s.club.setPieces?.pen;
+      return first != null && ids.includes(first) ? [first, ...ids.filter((x) => x !== first)] : ids;
+    };
     const ta = order(this.sides[0]);
     const tb = order(this.sides[1]);
     let a = 0, b = 0;
@@ -739,6 +743,9 @@ export class MatchSim {
     return { att: Math.round(s.att), mid: Math.round(s.mid), def: Math.round(s.def), gk: Math.round(s.gk) };
   }
 }
+
+/** Lances que entram nos melhores momentos. */
+const KEY_TYPES = new Set<MatchEvent["type"]>(["goal", "owngoal", "pen-goal", "pen-miss", "red", "post", "var", "half", "end"]);
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
 

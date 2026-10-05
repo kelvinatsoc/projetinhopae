@@ -3,6 +3,7 @@
 // as antigas evoluções do meio e do fim da temporada (midSeasonTick e seasonEndDevelop viraram no-ops).
 import { adminCheats } from "./admin";
 import { monthOf } from "./calendar";
+import { facilitiesDaily } from "./facilities";
 import { addNews } from "./news";
 import { H, hidOf } from "./personality";
 import { age, applyDelta, devParams, FOCUS_ATTRS } from "./player";
@@ -255,7 +256,14 @@ export function recoveryBonus(w: World, _p: Player, club: Club | null): number {
 
 /** Processamento diário do treino (lesões no treino puxado, recuperação extra). */
 export function trainingDaily(w: World) {
+  facilitiesDaily(w); // obras de estrutura (facilities.ts)
   const club = w.clubs[w.userClubId];
+  // departamento médico acima do padrão: às vezes o lesionado ganha um dia de recuperação
+  const med = club?.fac ? club.fac.medical - 2 : 0;
+  if (club && med > 0) for (const id of club.players) {
+    const p = w.players[id];
+    if (p && p.injury > 1 && rand() < 0.06 * med) p.injury--;
+  }
   if (!club?.train) return;
   const t = club.train;
   if (t.int !== 2 && t.focus !== "rec") return;
