@@ -11,6 +11,8 @@ import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
 import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from "../engine/types";
 import { Avatar, Crest, StadiumPhoto } from "./components";
+import { celebrationFor, drawPitchDude, lookOf, PixelFX, setPose, shotStyle, type SpriteDude } from "./matchSprites";
+import { actorOf, playCinematic, wantsCinematic, type CineHandle, type CineOutcome, type CineSpec } from "./cinematics";
 import "./economy.css";
 import "./matchView.css";
 // [stadium-art] identidade de cada estádio (src/ui/stadiumArt.ts)
@@ -159,7 +161,7 @@ function looksOf(p: Player | undefined): { skin: string; hair: string } {
 type Mode = "kickoff" | "play" | "celebrate" | "corner" | "penalty" | "tunnel" | "stand";
 type ShotKind = NonNullable<MinutePhase["shot"]>["kind"];
 
-interface Dude {
+interface Dude extends SpriteDude {
   side: 0 | 1 | 2; // 2 = arbitragem
   k: number; // posição na formação (ou 0 árbitro, 1/2 bandeirinhas)
   pid: number | null;
@@ -205,6 +207,10 @@ interface Flight {
   peak: number;
   to: Dude | null;
   done?: () => void;
+  /** desvio lateral máximo (chute colocado com curva) */
+  curve?: number;
+  /** chute forte: rastro de velocidade */
+  power?: boolean;
 }
 
 interface Icon {
@@ -227,6 +233,8 @@ interface Callbacks {
   caption: (text: string, color: string) => void;
   goal: (e: MatchEvent) => void;
   beat: (e: MatchEvent) => void;
+  /** lance decisivo: cena de cinema (só no modo Ultra) */
+  cine?: (spec: CineSpec) => void;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -495,6 +503,12 @@ class PitchAnim {
   endAt = 0;
   carryStart = 0;
   formations: Slot[][];
+  /** Ultra: sprites com personalidade, poses, efeitos e lances decisivos */
+  rich = false;
+  /** congelado enquanto a cena de cinema está na tela */
+  frozen = false;
+  pfx = new PixelFX();
+  lastCine: number | null = null;
 
   constructor(sim: MatchSim, cb: Callbacks) {
     this.sim = sim;
@@ -579,6 +593,7 @@ class PitchAnim {
     const lk = looksOf(pid != null ? this.sim.w.players[pid] : undefined);
     d.skin = lk.skin;
     d.hair = lk.hair;
+    d.look = lookOf(pid != null ? this.sim.w.players[pid] : undefined);
     if (pid == null) d.hidden = true;
   }
 
@@ -834,7 +849,12 @@ class PitchAnim {
     b.holder = null;
     if (this.reduced) dur = 1;
     b.fl = { x0: b.x, y0: b.y, x1, y1, t0: this.now, dur: Math.max(1, dur), peak, to, done };
+    if (this.nextFx) {
+      Object.assign(b.fl, this.nextFx);
+      this.nextFx = null;
+    }
   }
+  nextFx: { curve?: number; power?: boolean } | null = null;
 
   /** Passe: o recebedor corre para o ponto onde a bola vai chegar. */
   pass(to: Dude, lob = false) {
@@ -1031,6 +1051,7 @@ class PitchAnim {
     let cur = start;
     const spot = this.shootingSpot(shooter, sh.kind);
     const assist = this.byPid(sh.assist);
+    if (this.rich && sh.kind === "freekick") this.at(t0, () => this.wall(atk, spot));
     this.at(t0, () => {
       // o finalizador dispara para a área (e o time sobe junto)
       shooter.ox = spot[0];
@@ -1074,6 +1095,7 @@ class PitchAnim {
     const dur = clamp(dist * 3.2, 110, 240) / sp * (hold ? 1.25 : 1);
     this.flashUntil = this.now + dur + 300;
     const kY = keeper ? keeper.y : CY;
+    if (this.rich) this.shotFx(shooter, sh, keeper);
     const dive = (ty: number, reach: boolean) => {
       if (!keeper) return;
       keeper.ox = gx - f * 2;
@@ -1110,6 +1132,7 @@ class PitchAnim {
         this.fly(gx - f * 2, clamp(ty, CY - POST, CY + POST), dur, rnd(0, 3), null, () => {
           if (e) this.cb.beat(e);
           if (e) this.say(e.text, atk, 1);
+          if (this.rich) this.pfx.burst(this.ball.x, this.ball.y - this.ball.h, ["#ffffff", "#bfe8ff"], 8, 0.7);
           if (!keeper || Math.random() < 0.45) {
             // espalma
             const py = CY + (Math.random() < 0.5 ? -1 : 1) * rnd(12, 24);
@@ -1124,6 +1147,7 @@ class PitchAnim {
         this.fly(gx, py, dur, rnd(0, 3), null, () => {
           if (e) this.cb.beat(e);
           if (e) this.say(e.text, atk, 1);
+          if (this.rich) this.pfx.burst(gx, py - 2, ["#fff6b0", "#ffd83a", "#ffffff"], 18, 1.2);
           this.fly(gx - f * rnd(10, 18), py + rnd(-10, 10), 180 / sp, 2, null);
         });
         break;
@@ -1147,6 +1171,59 @@ class PitchAnim {
         });
       }
     }
+  }
+
+  /** Ultra: pose do chute conforme o estilo, rastro/curva da bola e, se for lance decisivo, a cena. */
+  shotFx(shooter: Dude, sh: NonNullable<MinutePhase["shot"]>, keeper: Dude | null) {
+    const p = this.sim.w.players[sh.shooter];
+    const style = shotStyle(p, sh.kind, this.sim.minute, sh.result);
+    const pose = style === "header" ? "header" : style === "bicycle" ? "bicycle" : style === "volley" ? "volley" : "kick";
+    setPose(shooter, pose, this.now, pose === "bicycle" ? 520 : pose === "header" ? 420 : 260);
+    if (style === "power" || style === "volley" || style === "bicycle") this.nextFx = { power: true };
+    else if (style === "curl" || style === "freekick") this.nextFx = { curve: (Math.random() < 0.5 ? -1 : 1) * rnd(3, 6) };
+    const outcome: CineOutcome = sh.result === "goal" ? "goal" : sh.result === "save" ? "save" : sh.result === "post" ? "post" : "miss";
+    if (sh.result !== "var" && sh.result !== "owngoal") this.maybeCine(shooter, keeper, sh.side, outcome, style, sh.xg, false);
+  }
+
+  /** Dispara a cena de lance decisivo (só Ultra, velocidades lentas, sem "menos movimento"). */
+  maybeCine(shooter: Dude, keeper: Dude | null, atk: 0 | 1, outcome: CineOutcome, style: CineSpec["style"], xg: number, penalty: boolean) {
+    if (!this.cb.cine || this.reduced || !this.goalHold || this.ms < 300) return;
+    const min = this.sim.minute;
+    const seed = (shooter.pid ?? 0) * 131 + min;
+    if (!wantsCinematic({ outcome, penalty, xg, min, lastMin: this.lastCine, seed })) return;
+    this.lastCine = min;
+    const p = shooter.pid != null ? this.sim.w.players[shooter.pid] : undefined;
+    const def = (1 - atk) as 0 | 1;
+    const defender = this.team(def).filter((d) => d.grp === 1 || d.grp === 2).sort((a, b) => Math.hypot(a.x - shooter.x, a.y - shooter.y) - Math.hypot(b.x - shooter.x, b.y - shooter.y))[0] ?? null;
+    const dribbler = shooter.look?.style === "dribbler" || (p?.attrs.dri ?? 0) >= 80;
+    const dribble = !penalty && style !== "header" && style !== "freekick" && style !== "volley" && style !== "bicycle" && (dribbler ? (seed % 3) !== 0 : seed % 4 === 0);
+    this.cb.cine({
+      outcome, style, dribble,
+      shooter: actorOf(shooter, this.name(shooter)),
+      keeper: keeper ? actorOf(keeper, this.name(keeper)) : null,
+      defender: defender ? actorOf(defender, this.name(defender)) : null,
+      color: this.kitColor(atk),
+      defColor: this.kitColor(def),
+      celebration: celebrationFor(p, this.sim.events.length),
+      title: penalty ? "Pênalti" : outcome === "goal" ? "Lance decisivo" : "Grande chance",
+      seed,
+    });
+  }
+
+  /** Barreira na falta direta: quatro defensores entre a bola e o gol. */
+  wall(atk: 0 | 1, spot: [number, number]) {
+    const def = (1 - atk) as 0 | 1;
+    const gx = goalX(atk);
+    const dx = gx - spot[0], dy = CY - spot[1];
+    const dd = Math.hypot(dx, dy) || 1;
+    const wx = spot[0] + (dx / dd) * 9, wy = spot[1] + (dy / dd) * 9;
+    const men = this.team(def).filter((d) => d.grp !== 0).sort((a, b) => Math.hypot(a.x - wx, a.y - wy) - Math.hypot(b.x - wx, b.y - wy)).slice(0, 4);
+    men.forEach((d, i) => {
+      d.ox = wx + (-dy / dd) * (i - 1.5) * 3;
+      d.oy = wy + (dx / dd) * (i - 1.5) * 3;
+      d.oUntil = this.now + this.ms * 0.9;
+      d.speed = 1.8;
+    });
   }
 
   /** Bola na rede (ou gol anulado pelo VAR). */
@@ -1179,6 +1256,22 @@ class PitchAnim {
       if (d.grp !== 0) d.speed = d === scorer ? 1.9 : 1.6;
     }
     for (const d of this.team((1 - atk) as 0 | 1)) d.sad = true;
+    if (this.rich && scorer) {
+      const c = celebrationFor(scorer.pid != null ? this.sim.w.players[scorer.pid] : undefined, this.sim.events.length);
+      if (c === "knee") this.at(500, () => setPose(scorer, "knee", this.now, 900));
+      else if (c === "flip") this.at(450, () => setPose(scorer, "flip", this.now, 650));
+      else if (c === "pile") {
+        // todo mundo pula em cima do artilheiro
+        this.at(900, () => {
+          for (const d of this.team(atk)) if (d !== scorer && d.grp !== 0) {
+            d.ox = scorer.x + rnd(-2, 2);
+            d.oy = scorer.y + rnd(-1.5, 1.5);
+            d.oUntil = this.now + 1100;
+            d.speed = 2;
+          }
+        });
+      }
+    }
     this.kickTeam = (1 - atk) as 0 | 1;
     this.kickoffPending = true;
     const back = () => {
@@ -1232,6 +1325,11 @@ class PitchAnim {
     this.at(t0 + P * 0.68, () => {
       this.say(`${this.name(taker)} vai para a cobrança…`, atk, 1);
       const keeper = this.gk((1 - atk) as 0 | 1);
+      if (this.rich) {
+        setPose(taker, "kick", this.now, 260);
+        const saved0 = !!missE && missE.text.startsWith("Defendeu");
+        this.maybeCine(taker, keeper, atk, goalE ? "goal" : saved0 ? "save" : "miss", "penalty", 0.8, true);
+      }
       const sp = this.spd();
       const dur = 150 / sp;
       const side = Math.random() < 0.5 ? -1 : 1;
@@ -1311,6 +1409,15 @@ class PitchAnim {
           if (d) {
             this.icons.push({ kind: ev.type === "yellow" ? "Y" : "R", d, x: 0, y: 0, until: this.now + 1700 });
             const ref = this.dudes.find((x) => x.side === 2 && x.k === 0);
+            if (ref && this.rich) {
+              this.at(500, () => {
+                setPose(ref, "card", this.now, 1000);
+                ref.poseCard = ev.type === "yellow" ? "Y" : "R";
+              });
+              setPose(d, "slide", this.now, 380);
+              const victim = this.nearest((1 - (ev.side ?? 0)) as 0 | 1, d.x, d.y);
+              if (victim) setPose(victim, "fall", this.now + 150, 900);
+            }
             if (ref) {
               ref.ox = d.x + (d.x < ref.x ? 4 : -4);
               ref.oy = d.y + 2;
@@ -1341,6 +1448,11 @@ class PitchAnim {
       this.at(0.5 * B, () => {
         const d = this.nearest(side, this.ball.x, this.ball.y);
         if (d) this.icons.push({ kind: "foul", d, x: 0, y: 0, until: this.now + 900 });
+        if (d && this.rich) {
+          setPose(d, "slide", this.now, 360);
+          const victim = this.ball.holder && this.ball.holder.side !== side ? this.ball.holder : this.nearest((1 - side) as 0 | 1, d.x, d.y);
+          if (victim) setPose(victim, "fall", this.now + 120, 800);
+        }
       });
     }
   }
@@ -1433,6 +1545,7 @@ class PitchAnim {
       b.x = fl.x0 + (fl.x1 - fl.x0) * k;
       b.y = fl.y0 + (fl.y1 - fl.y0) * k;
       b.h = fl.peak * 4 * s * (1 - s);
+      if (fl.curve) b.y += Math.sin(Math.PI * s) * fl.curve;
       b.spin += dt;
       if (s >= 1) {
         b.fl = null;
@@ -1486,6 +1599,10 @@ class PitchAnim {
     };
     for (const d of this.dudes) move(d);
     for (const g of this.ghosts) move(g);
+    if (this.rich) {
+      this.pfx.streakOn = !!b.fl?.power;
+      this.pfx.update(dt, b);
+    }
     this.ghosts = this.ghosts.filter((g) => !g.hidden);
     if (this.icons.length) this.icons = this.icons.filter((i) => i.until > this.now);
   }
@@ -1526,7 +1643,11 @@ class PitchAnim {
       g.fillRect(Math.round(d.x) - (lying ? 3 : 1), Math.round(d.y), lying ? 8 : 4, 1);
     }
     all.sort((a, b) => a.y - b.y);
-    for (const d of all) this.drawDude(g, d);
+    for (const d of all) {
+      if (this.rich && d.side !== 2 || this.rich && d.pose) drawPitchDude(g, d, now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
+      else this.drawDude(g, d);
+    }
+    if (this.rich) this.pfx.draw(g);
     this.drawBall(g);
     for (const ic of this.icons) this.drawIcon(g, ic);
   }
@@ -1945,6 +2066,8 @@ export interface MatchViewProps {
   onSkipIntro?: () => void;
   /** gráficos Ultra (camada em alta resolução, câmera, efeitos) ou Leve (só o pixel art) */
   ultra?: boolean;
+  /** cena de lance decisivo na tela (true) ou acabou (false): o relógio deve segurar */
+  onCinema?: (on: boolean) => void;
 }
 
 /** Campo em pixel art com os jogadores se movendo e a legenda do lance. */
@@ -1960,6 +2083,7 @@ export function MatchView(props: MatchViewProps) {
   const propsRef = useRef(props);
   propsRef.current = props;
   const kick = useRef<() => void>(() => undefined);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   // cria a animação, o laço de desenho e o ajuste de tamanho
   useEffect(() => {
@@ -1975,7 +2099,26 @@ export function MatchView(props: MatchViewProps) {
       },
       goal: (e) => propsRef.current.onGoal?.(e),
       beat: (e) => propsRef.current.onBeat?.(e),
+      cine: (spec) => {
+        const host = stageRef.current;
+        if (!host || document.hidden) return;
+        cine?.destroy();
+        anim.frozen = true;
+        propsRef.current.onCinema?.(true);
+        const resume = () => {
+          anim.frozen = false;
+          propsRef.current.onCinema?.(false);
+          kick.current();
+        };
+        cine = playCinematic(host, spec, {
+          onEnd: resume,
+          onReplay: () => propsRef.current.onCinema?.(true),
+          onReplayEnd: () => propsRef.current.onCinema?.(false),
+        });
+      },
     });
+    let cine: CineHandle | null = null;
+    anim.rich = !!propsRef.current.ultra;
     anim.reduced = prefersReducedMotion();
     anim.ms = propsRef.current.msPerMin;
     anim.goalHold = propsRef.current.goalHold;
@@ -1998,7 +2141,7 @@ export function MatchView(props: MatchViewProps) {
       // Leve: ~30 quadros por segundo. Ultra: sem limite (acompanha a tela, até 120 Hz)
       if (dt >= (fx ? 1 : 31)) {
         last = t;
-        anim.update(Math.min(dt, 100));
+        if (!anim.frozen) anim.update(Math.min(dt, 100));
         anim.draw(g);
         if (fx && fg && fxCanvas) {
           fx.update(Math.min(dt, 100));
@@ -2050,6 +2193,10 @@ export function MatchView(props: MatchViewProps) {
       document.removeEventListener("visibilitychange", vis);
       kick.current = () => undefined;
       animRef.current = null;
+      if (cine) {
+        cine.destroy();
+        if (anim.frozen) propsRef.current.onCinema?.(false);
+      }
     };
   }, [sim, props.ultra]);
 
@@ -2077,7 +2224,7 @@ export function MatchView(props: MatchViewProps) {
   const photo = !!home.stadiumImg && !sim.f.neutral;
   return (
     <div className="mv" ref={wrapRef}>
-      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}${intro ? " sa-fly" : ""}`}>
+      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}${intro ? " sa-fly" : ""}`} ref={stageRef}>
         <div className="mv-cam" ref={camRef}>
           <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
           {props.ultra && <canvas ref={fxRef} className="mv-fx" aria-hidden="true" />}
