@@ -67,7 +67,9 @@ export type Route =
   | { name: "peneira" }
   | { name: "staff" }
   | { name: "board" }
-  | { name: "dressing" };
+  | { name: "dressing" }
+  | { name: "inbox" }
+  | { name: "press"; fid: number; phase: "pre" | "post" };
 
 interface NavState {
   tab: Tab;

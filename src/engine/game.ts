@@ -1,3 +1,5 @@
+import { syncInbox } from "./inbox";
+import { applyDerbyOutcome } from "./narrative";
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
 import { adminCheats } from "./admin";
 import { projectTick } from "./board";
@@ -48,6 +50,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
   r.attendance = attendanceFor(w, f);
   gateRevenue(w, f, r.attendance);
   recordResult(w, f);
+  applyDerbyOutcome(w, f, r);
 
   const comp = f.comp;
   const noBans = !!adminCheats(w).noBans; // trapaça do admin: o clube do usuário não leva suspensão
@@ -214,6 +217,7 @@ export function advance(w: World, maxDays = 400): AdvanceResult {
     }
     return { reason: "idle", news };
   } finally {
+    syncInbox(w);
     saveRng(w);
   }
 }
@@ -225,6 +229,7 @@ export function finishUserMatch(w: World, f: Fixture, r: MatchResult) {
   w.pendingMatch = undefined;
   simulateDay(w, f.day);
   for (const n of progressCompetitions(w)) addNews(w, "season", n, "");
+  syncInbox(w);
   saveRng(w);
 }
 

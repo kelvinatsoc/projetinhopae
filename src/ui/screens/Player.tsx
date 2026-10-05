@@ -24,11 +24,13 @@ import { LoanInSheet, LoanOutSheet } from "./Loans";
 import "../market.css";
 import { PlayerInsightCards, ScoutButton } from "./Scouting";
 import { IndividualTrainingSheet } from "./Training";
+import { interact, interactionOptions, type InteractionId, type InteractionResult } from "../../engine/interactions";
+import "../narrative.css";
 
 export function PlayerScreen({ id }: { id: number }) {
   const w = useWorld();
   const p = w.players[id];
-  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train" | "talk" | "loanOut" | "loanIn" | "option">(null);
+  const [sheet, setSheet] = useState<null | "offer" | "renew" | "photo" | "release" | "edit" | "train" | "talk" | "loanOut" | "loanIn" | "option" | "act">(null);
   if (!p) return <div className="page"><div className="empty">Este jogador se aposentou ou não existe mais.</div></div>;
   const club = p.clubId ? w.clubs[p.clubId] : null;
   const mine = p.clubId === w.userClubId;
@@ -189,6 +191,7 @@ export function PlayerScreen({ id }: { id: number }) {
               <button className="btn" onClick={() => setSheet("talk")}>💬 Conversar</button>
               <button className="btn" onClick={() => setSheet("train")}>🎯 Treino individual</button>
             </div>
+            <button className="btn block" onClick={() => setSheet("act")}>⚡ Interação rápida</button>
             <div className="grid2">
               <button className="btn" onClick={() => { update(() => { p.listed = !p.listed; }); toast(p.listed ? "Colocado na lista de transferências" : "Retirado da lista"); autosave(); }}>
                 {p.listed ? "Tirar da venda" : "💲 Colocar à venda"}
@@ -240,6 +243,7 @@ export function PlayerScreen({ id }: { id: number }) {
       )}
       {sheet === "photo" && <PhotoSheet p={p} onClose={() => setSheet(null)} />}
       {sheet === "edit" && (w.admin?.on ? <AdminPlayerEditor p={p} onClose={() => setSheet(null)} /> : <EditSheet p={p} onClose={() => setSheet(null)} />)}
+      {sheet === "act" && <InteractionSheet p={p} onClose={() => setSheet(null)} />}
       {sheet === "train" && <IndividualTrainingSheet p={p} onClose={() => setSheet(null)} />}
       {sheet === "release" && (
         <Sheet title={`Dispensar ${p.name}?`} onClose={() => setSheet(null)}>
@@ -407,5 +411,46 @@ function PhotoCredit({ p }: { p: Player }) {
     <div className="tiny mt8" style={{ opacity: 0.7 }}>
       📷 {p.legend ? "Foto do jogador original · " : ""}{credit.author || "Wikimedia Commons"} · {credit.license}
     </div>
+  );
+}
+
+/** Folha de ações rápidas: elogiar, criticar, prometer minutos, conversar sobre a fase. */
+function InteractionSheet({ p, onClose }: { p: Player; onClose: () => void }) {
+  const w = useWorld();
+  const [res, setRes] = useState<InteractionResult | null>(null);
+  const opts = interactionOptions(w, p);
+  function go(id: InteractionId) {
+    let r: InteractionResult | null = null;
+    update((x) => { const px = x.players[p.id]; if (px) r = withWorldRng(x, () => interact(x, px, id)); });
+    const got = r as InteractionResult | null;
+    if (!got) return;
+    if (!got.ok) { toast(got.text); return; }
+    setRes(got);
+    autosave();
+  }
+  return (
+    <Sheet title={`Falar com ${p.name.split(" ")[0]}`} onClose={onClose}>
+      {res ? (
+        <div className="act-result">
+          <div className="big">{res.reaction}</div>
+          <p>{res.text}</p>
+          <div className="small muted">Moral {res.delta > 0 ? `+${res.delta}` : res.delta} · agora {p.morale}</div>
+          <button className="btn primary block mt8" onClick={onClose}>Fechar</button>
+        </div>
+      ) : (
+        <>
+          <div className="small muted" style={{ marginBottom: 10 }}>Moral atual: {p.morale}. A reação depende da personalidade e da fase.</div>
+          <div className="act-grid">
+            {opts.map((o) => (
+              <button key={o.id} className="act-btn" disabled={!!o.disabled} onClick={() => go(o.id)}>
+                <span className="e">{o.emoji}</span>
+                <b className="small">{o.label}</b>
+                <small>{o.disabled ?? o.hint}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </Sheet>
   );
 }

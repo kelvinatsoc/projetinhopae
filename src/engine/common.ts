@@ -1,3 +1,4 @@
+import { isDerby } from "../data/rivalries";
 // Utilitários compartilhados pelos módulos de gestão (treino, base, vestiário, admin...).
 import { getRngState, hashString, makeRng, setRngState } from "./rng";
 import type { Club, Div, Fixture, World } from "./types";
@@ -36,7 +37,7 @@ const CLASSICO_SET = new Set(CLASSICOS.flatMap(([a, b]) => [`${a}|${b}`, `${b}|$
 
 /** Clássico: pares tradicionais, ou dois grandes (rep ≥ 70) brasileiros do mesmo estado. */
 export function isClassico(w: World, a: string, b: string): boolean {
-  if (CLASSICO_SET.has(`${a}|${b}`)) return true;
+  if (CLASSICO_SET.has(`${a}|${b}`) || isDerby(a, b)) return true;
   const ca = w.clubs[a];
   const cb = w.clubs[b];
   if (!ca || !cb) return false;
