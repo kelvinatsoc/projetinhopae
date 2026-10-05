@@ -305,6 +305,12 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; 
     radial-gradient(ellipse at 50% 100%, rgba(245, 197, 66, 0.15), transparent 60%),
     var(--bg);
 }
+/* app Android de ponta a ponta (Android 15+) e PWA no iPhone: a tela inicial passa por baixo
+   da barra de status e da barra de gestos; no navegador comum os insets são 0 e nada muda */
+.start-bg {
+  padding-top: max(24px, calc(12px + env(safe-area-inset-top)));
+  padding-bottom: max(24px, calc(12px + env(safe-area-inset-bottom)));
+}
 .logo { font-size: 40px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
 .logo span { color: var(--gold); }
 
