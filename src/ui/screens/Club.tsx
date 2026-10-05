@@ -16,6 +16,8 @@ import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
 import { AdminSettingsCard } from "./Admin";
+import { activeOffers } from "../../engine/career";
+import { OfferList } from "../Career";
 
 export function ClubScreen() {
   const w = useWorld();
@@ -57,6 +59,9 @@ export function ClubScreen() {
         <MenuItem icon="🏛️" label="Diretoria e obras" sub="Pedidos, estádio, CT e base" onClick={() => push({ name: "board" })} />
         <MenuItem icon="🤝" label="Vestiário" sub="Clima do elenco, conversas e promessas" onClick={() => push({ name: "dressing" })} />
         <MenuItem icon="💰" label="Finanças" sub="Receitas, despesas e salários" onClick={() => push({ name: "finances" })} />
+        <MenuItem icon="🏆" label="Sala de troféus" sub="Estante, linha do tempo e recordes do clube" onClick={() => push({ name: "trophies" })} />
+        <MenuItem icon="🏅" label="Conquistas" sub={`${Object.keys(w.ach?.got ?? {}).length} desbloqueadas`} onClick={() => push({ name: "achievements" })} />
+        <MenuItem icon="👔" label="Carreira" sub={`Reputação, propostas${(w.career?.offers.length ?? 0) > 0 ? " (nova!)" : ""} e trajetória`} onClick={() => push({ name: "career" })} />
         <MenuItem icon="📜" label="Histórico" sub="Campeões e suas temporadas" onClick={() => push({ name: "history" })} />
         <MenuItem icon="🔎" label="Ver página do clube" sub="Elenco e informações" onClick={() => push({ name: "club", id: c.id })} />
         <MenuItem icon="⚙️" label="Configurações" sub="Modo casual, lendas, som, escudo, créditos" onClick={() => push({ name: "settings" })} />
@@ -417,6 +422,16 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
 
 export function FiredScreen() {
   const w = useWorld();
+  if (activeOffers(w).length) {
+    return (
+      <div className="start-bg">
+        <div className="col gap12" style={{ maxWidth: 520, margin: "0 auto", width: "100%" }}>
+          <div className="center"><div style={{ fontSize: 48 }}>📉</div><h1>Você foi demitido</h1><p className="muted">Mas o futebol dá voltas. Estes clubes querem você:</p></div>
+          <OfferList w={w} onAccepted={() => { forceBack(); setTab("home"); }} />
+        </div>
+      </div>
+    );
+  }
   const offers = Object.values(w.clubs)
     .filter((c) => c.country === "BRA" && c.div !== "D" && c.id !== w.userClubId)
     .sort((a, b) => a.rep - b.rep)

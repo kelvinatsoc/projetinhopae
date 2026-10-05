@@ -69,7 +69,10 @@ export type Route =
   | { name: "board" }
   | { name: "dressing" }
   | { name: "inbox" }
-  | { name: "press"; fid: number; phase: "pre" | "post" };
+  | { name: "press"; fid: number; phase: "pre" | "post" }
+  | { name: "trophies" }
+  | { name: "achievements" }
+  | { name: "career" };
 
 interface NavState {
   tab: Tab;

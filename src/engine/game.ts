@@ -1,6 +1,7 @@
 import { syncInbox } from "./inbox";
 import { applyDerbyOutcome } from "./narrative";
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
+import { achievementsAfterMatch } from "./achievements";
 import { adminCheats } from "./admin";
 import { projectTick } from "./board";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
@@ -16,6 +17,7 @@ import { age } from "./player";
 import { clamp, getRngState, setRngState } from "./rng";
 import { scoutTick } from "./scouting";
 import { hasTrait } from "./traits";
+import { checkScenario } from "./scenarios";
 import { boardAfterMatch, endSeason } from "./season";
 import { staffMonthly } from "./staff";
 import { midSeasonTick, monthlyTraining, recoveryBonus, trainingDaily } from "./training";
@@ -118,7 +120,9 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
     const us = userIdx === 0 ? r.hg : r.ag;
     const them = userIdx === 0 ? r.ag : r.hg;
     const opp = w.clubs[userIdx === 0 ? f.away : f.home];
-    const oppStronger = clubStrength(w, opp) > clubStrength(w, w.clubs[w.userClubId]) + 1;
+    const oppStr = clubStrength(w, opp);
+    const oppStronger = oppStr > clubStrength(w, w.clubs[w.userClubId]) + 1;
+    achievementsAfterMatch(w, f, r, userIdx as 0 | 1, oppStr);
     boardAfterMatch(w, us > them, us === them, oppStronger);
     afterUserMatch(w, f, r, userIdx as 0 | 1);
   }
@@ -230,6 +234,7 @@ export function finishUserMatch(w: World, f: Fixture, r: MatchResult) {
   simulateDay(w, f.day);
   for (const n of progressCompetitions(w)) addNews(w, "season", n, "");
   syncInbox(w);
+  checkScenario(w);
   saveRng(w);
 }
 

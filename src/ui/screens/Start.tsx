@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Div } from "../../engine/types";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
+import { createScenarioWorld, SCENARIO_BY_ID, SCENARIOS } from "../../engine/scenarios";
+import "../progression.css";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
@@ -12,9 +14,9 @@ export function StartScreen() {
   // "Novo jogo" e "Carregar" entram na pilha de navegação: o botão voltar do Android (e do navegador)
   // tira essa entrada e a tela volta ao menu, em vez de minimizar o app.
   const nav = useNav();
-  const [sub, setSub] = useState<"new" | "load">("new");
-  const mode: "menu" | "new" | "load" = nav.stack.length ? sub : "menu";
-  const setMode = (m: "menu" | "new" | "load") => {
+  const [sub, setSub] = useState<"new" | "load" | "scenarios">("new");
+  const mode: "menu" | "new" | "load" | "scenarios" = nav.stack.length ? sub : "menu";
+  const setMode = (m: "menu" | "new" | "load" | "scenarios") => {
     if (m === "menu") { if (nav.stack.length) back(); return; }
     setSub(m);
     if (!nav.stack.length) push({ name: "tab" });
@@ -52,6 +54,7 @@ export function StartScreen() {
   }
 
   if (mode === "new") return <NewGame onBack={() => setMode("menu")} />;
+  if (mode === "scenarios") return <Scenarios onBack={() => setMode("menu")} />;
 
   return (
     <div className="start-bg">
@@ -69,6 +72,7 @@ export function StartScreen() {
               </button>
             )}
             <button className="btn gold block" onClick={() => setMode("new")}>＋ Novo jogo</button>
+            <button className="btn block" onClick={() => setMode("scenarios")}>🎯 Desafios</button>
             {saves.length > 0 && <button className="btn block" onClick={() => setMode("load")}>Carregar jogo salvo</button>}
             <label className="btn ghost block">
               Importar arquivo de save
@@ -178,6 +182,66 @@ function NewGame({ onBack }: { onBack: () => void }) {
         <div style={{ maxWidth: 536, margin: "0 auto" }}>
           <button className="btn primary block" disabled={!selected || creating} onClick={start}>
             {creating ? "Montando o mundo do futebol…" : selected ? `Assumir o ${selected.name}` : "Escolha um clube"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Scenarios({ onBack }: { onBack: () => void }) {
+  const [sel, setSel] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const def = sel ? SCENARIO_BY_ID[sel] : undefined;
+
+  async function start() {
+    if (!sel) return;
+    setCreating(true);
+    const db = await loadDatabase();
+    let name = "Professor";
+    try { name = localStorage.getItem("managerName")?.trim() || name; } catch { /* ignore */ }
+    setTimeout(() => {
+      try {
+        const w = createScenarioWorld(db, sel, { managerName: name });
+        resetNav();
+        startNewWorld(w);
+      } catch (e) {
+        console.error(e);
+        toast("Não foi possível montar o desafio.");
+        setCreating(false);
+      }
+    }, 30);
+  }
+
+  return (
+    <div className="page" style={{ maxWidth: 560, margin: "0 auto", paddingTop: 16, paddingBottom: 120 }}>
+      <div className="row">
+        <button className="btn sm" onClick={onBack}>← Voltar</button>
+        <h2 className="grow center">Desafios</h2>
+        <span style={{ width: 70 }} />
+      </div>
+      <p className="small muted">Cenários prontos com objetivo, vitória e derrota. Depois do desafio, a carreira continua normalmente.</p>
+      <div className="col gap8">
+        {SCENARIOS.map((s) => (
+          <div key={s.id} className="card tap" onClick={() => setSel(s.id)}
+            style={{ outline: sel === s.id ? "2px solid var(--accent)" : undefined }}>
+            <div className="row">
+              <span style={{ fontSize: 28 }}>{s.emoji}</span>
+              <div className="grow"><b>{s.title}</b><div className="tiny diff">{"★".repeat(s.difficulty)}{"☆".repeat(3 - s.difficulty)}</div></div>
+            </div>
+            {sel === s.id && (
+              <>
+                <div className="small mt8">{s.desc}</div>
+                <div className="small mt8">🎯 <b>{s.goal}</b></div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 12px calc(12px + env(safe-area-inset-bottom))", background: "var(--bg2)", borderTop: "1px solid var(--line)" }}>
+        <div style={{ maxWidth: 536, margin: "0 auto" }}>
+          <button className="btn primary block" disabled={!def || creating} onClick={start}>
+            {creating ? "Montando o cenário…" : def ? `Aceitar o desafio ${def.emoji}` : "Escolha um desafio"}
           </button>
         </div>
       </div>

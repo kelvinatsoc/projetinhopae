@@ -1,7 +1,10 @@
 // Início e fim de temporada: acessos, rebaixamentos, vagas continentais, evolução,
 // aposentadorias, contratos, premiações e diretoria.
 import { adminCheats } from "./admin";
-import { aiInfrastructure } from "./board";
+import { achievementsSeasonEnd } from "./achievements";
+import { aiInfrastructure, checkSacking } from "./board";
+import { careerNewSeason, careerSeasonEnd } from "./career";
+import { scenarioSeasonEnd } from "./scenarios";
 import { COMP_META, createSeasonCompetitions, sortTable, tablePosition, type SeasonEntrants } from "./competitions";
 import { managerChanged, seasonReset } from "./dressing";
 import { awardPrize, CUP_PRIZES, leaguePrize } from "./finance";
@@ -184,6 +187,15 @@ export function endSeason(w: World): string[] {
   w.managerHistory.push({ season: y, clubId: user.id, pos: userPos, div: user.div, titles: userTitles, admin: w.admin?.seasons.includes(y) || undefined });
   const met = objectiveMet(w, userPos, promotedUser);
   w.board.confidence = Math.max(0, Math.min(100, w.board.confidence + (met ? 20 : -25) + userTitles.length * 15));
+  recordClubSeason(w, y, userPos, userTitles, promotedUser);
+  const relegatedUser = (A.relegated ?? A.table.slice(-4).map((r) => r.club)).includes(user.id) || (B.relegated ?? B.table.slice(-4).map((r) => r.club)).includes(user.id) || (C.relegated ?? C.table.slice(-2).map((r) => r.club)).includes(user.id);
+  if (relegatedUser && w.clubLog?.length) w.clubLog[w.clubLog.length - 1].relegated = true;
+  const userRow = userLeague.table.find((r) => r.club === user.id);
+  const leagueTop = top && w.players[top.pid]?.clubId === user.id && user.div === "A";
+  const ownTop = user.div !== "A" ? topScorerOf(w, userLeague.id) === user.id : !!leagueTop;
+  achievementsSeasonEnd(w, { titles: userTitles, promoted: promotedUser, div: user.div, pos: userPos, leagueLosses: userRow && userRow.p > 0 ? userRow.l : null, topScorerOurs: ownTop });
+  careerSeasonEnd(w, { titles: userTitles, met, promoted: promotedUser, relegated: relegatedUser, pos: userPos });
+  summary.push(...scenarioSeasonEnd(w));
   summary.push(met ? `A diretoria ficou satisfeita: objetivo cumprido (${w.board.objective}).` : `A diretoria está decepcionada: o objetivo era "${w.board.objective}".`);
   if (!w.settings.casual && w.board.confidence <= 10 && !adminCheats(w).noFire) {
     w.fired = true;
@@ -356,8 +368,39 @@ export function endSeason(w: World): string[] {
   w.day = 0;
   w.seasonEnded = false;
   startSeason(w, entrants);
+  careerNewSeason(w);
   addNews(w, "season", `Resumo da temporada ${y}`, summary.join("\n"));
   return summary;
+}
+
+/** Clube do artilheiro de uma liga (gols na competição). */
+function topScorerOf(w: World, compId: string): string | null {
+  let best: { club: string; g: number } | null = null;
+  for (const p of Object.values(w.players)) {
+    const g = p.compGoals[compId] ?? 0;
+    if (p.clubId && g > 0 && (!best || g > best.g)) best = { club: p.clubId, g };
+  }
+  return best?.club ?? null;
+}
+
+/** Sala de troféus: resumo da temporada do clube do usuário (artilheiro, melhor jogador, melhor contratação). */
+export function recordClubSeason(w: World, y: number, pos: number | null, titles: string[], promoted: boolean) {
+  const club = w.clubs[w.userClubId];
+  const squad = club.players.map((id) => w.players[id]).filter((p) => p && p.stats.apps > 0);
+  const avg = (p: (typeof squad)[number]) => p.stats.ratingSum / p.stats.apps;
+  const scorer = squad.slice().sort((a, b) => b.stats.goals - a.stats.goals)[0];
+  const mvp = squad.filter((p) => p.stats.apps >= 8).sort((a, b) => avg(b) - avg(a))[0];
+  const signing = squad.filter((p) => p.joined === y && !p.youth && p.stats.apps >= 5).sort((a, b) => avg(b) - avg(a))[0];
+  const fee = signing ? w.offers.filter((o) => o.pid === signing.id && o.byUser && o.status === "done").map((o) => o.fee).pop() : undefined;
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  w.clubLog ??= [];
+  w.clubLog.push({
+    season: y, clubId: club.id, div: club.div, pos, titles, promoted: promoted || undefined,
+    topScorer: scorer && scorer.stats.goals > 0 ? { pid: scorer.id, name: scorer.name, goals: scorer.stats.goals } : undefined,
+    mvp: mvp ? { pid: mvp.id, name: mvp.name, rating: r2(avg(mvp)) } : undefined,
+    bestSigning: signing ? { pid: signing.id, name: signing.name, rating: r2(avg(signing)), fee } : undefined,
+  });
+  if (w.clubLog.length > 60) w.clubLog.shift();
 }
 
 function squadLevel(w: World, club: Club): number {
@@ -387,5 +430,6 @@ export function boardAfterMatch(w: World, won: boolean, draw: boolean, oppStrong
       : "Se os resultados não melhorarem, você pode ser demitido no fim da temporada.");
   }
   if (w.board.confidence > 40) w.board.warned = false;
+  checkSacking(w);
 }
 

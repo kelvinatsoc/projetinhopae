@@ -355,6 +355,43 @@ export interface SeasonSummary {
   bestPlayer?: { pid: number; name: string; clubId: string; rating: number };
 }
 
+// ---------------------------------------------------------------- progressão (troféus, conquistas, desafios, carreira)
+/** Resumo de uma temporada do clube do usuário (sala de troféus / linha do tempo). */
+export interface ClubSeasonLog {
+  season: number;
+  clubId: string;
+  div: Div;
+  pos: number | null;
+  titles: string[];
+  promoted?: boolean;
+  relegated?: boolean;
+  topScorer?: { pid: number; name: string; goals: number };
+  mvp?: { pid: number; name: string; rating: number };
+  bestSigning?: { pid: number; name: string; rating: number; fee?: number };
+}
+export interface AchCounters {
+  games: number; w: number; d: number; l: number;
+  ws: number; // vitórias seguidas
+  unb: number; // jogos sem perder
+  cs: number; // jogos seguidos sem sofrer gol
+  cw: number; // clássicos vencidos
+  bigWin?: { gd: number; text: string; season: number };
+}
+export interface AchState {
+  got: Record<string, { season: number; day: number; clubId: string }>;
+  c: AchCounters;
+  toasts: string[]; // avisos pendentes para a interface
+}
+export type ScenarioStatus = "active" | "won" | "lost";
+export interface ScenarioState { id: string; clubId: string; season: number; status: ScenarioStatus; note?: string }
+export interface JobOffer { id: number; clubId: string; season: number; until: number; reason: "season" | "fired" }
+export interface CareerState {
+  rep: number; // reputação do treinador 0-100
+  offers: JobOffer[];
+  moves: { season: number; day: number; from: string; to: string; fired: boolean }[];
+  sackings: number;
+}
+
 export interface World {
   version: number;
   saveId: string;
@@ -399,6 +436,11 @@ export interface World {
   // --- narrativa e mídia (trilha A, opcionais: saves antigos ganham na migração)
   narrative?: NarrativeState;
   inbox?: InboxState;
+  // --- progressão (opcionais: saves antigos ganham na migração)
+  clubLog?: ClubSeasonLog[];
+  ach?: AchState;
+  scenario?: ScenarioState;
+  career?: CareerState;
 }
 
 // ---------------------------------------------------------------- narrativa e mídia

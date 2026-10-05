@@ -2,6 +2,7 @@
 // Só o usuário faz pedidos; a IA melhora a estrutura sozinha no fim da temporada (aiInfrastructure).
 import { adminCheats } from "./admin";
 import { dateOf, formatDate } from "./calendar";
+import { careerSacked } from "./career";
 import { absDay, divMult, stars } from "./common";
 import { addExpense, addIncome, annualSponsor, annualTV, formatMoney } from "./finance";
 import { addNews } from "./news";
@@ -229,4 +230,19 @@ export function stadiumOccupancy(w: World, c: Club = w.clubs[w.userClubId]): num
     .slice(0, 5);
   if (!home.length) return null;
   return home.reduce((s, f) => s + (f.result!.attendance ?? 0) / c.capacity, 0) / home.length;
+}
+
+// ---------------------------------------------------------------- demissão no meio da temporada
+/**
+ * Depois de cada jogo: fora do modo casual, se a confiança da diretoria zerar após o primeiro
+ * trimestre, o treinador é demitido na hora e recebe propostas de outros clubes (carreira).
+ */
+export function checkSacking(w: World): boolean {
+  if (w.settings.casual || w.fired || adminCheats(w).noFire) return false;
+  if (w.scenario?.status === "active") return false; // nos desafios, quem decide é o cenário
+  if (w.day < 90 || w.board.confidence > 2) return false;
+  w.fired = true;
+  addNews(w, "board", "Você foi demitido", `A diretoria do ${w.clubs[w.userClubId].name} perdeu a paciência com os resultados. Veja as propostas de outros clubes.`);
+  careerSacked(w);
+  return true;
 }
