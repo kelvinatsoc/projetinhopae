@@ -28,6 +28,7 @@
 //    (+0,24, ≈ 9 pontos num Brasileirão de 38 rodadas). Só o pré-jogo: +0,18; as dicas ao vivo somam +0,07.
 //  RED_CARD_FINDING
 import { isAvailable, squadOf, validLineup, autoLineup } from "./lineup";
+import { aiMatchLineup, alternativeLineup, rotationIntensity, rotationTier } from "./rotation";
 import { MatchSim, TUNING } from "./match";
 import { commonFactor, NEUTRAL_SIDE, playerMods, SET_PIECE_GOALS, sideMult } from "./matchmods";
 import { FORMATIONS, MENTALITY_NAMES, ovrAt, POS_GROUP, POS_NAME, PRESSING_NAMES } from "./positions";
@@ -383,6 +384,23 @@ export interface MatchAnalysis {
   suggested: Outlook; // com a sugestão
   changed: boolean; // a sugestão difere do que está salvo
   daysToNext: number | null; // dias até o jogo seguinte (cansaço)
+  /** Estadual, primeira fase: dica de poupar titulares + time alternativo pronto (só se o usuário tocar). */
+  rotation?: RotationTip;
+}
+
+export interface RotationTip { text: string; lineup: Lineup }
+
+/** Dica do estadual: os grandes poupam titulares no começo. Não muda nada sozinha. */
+export function rotationTip(w: World, f: Fixture): RotationTip | undefined {
+  const user = w.clubs[w.userClubId];
+  const r = rotationIntensity(w, user, f);
+  if (r < 0.3) return undefined;
+  const opp = w.clubs[f.home === user.id ? f.away : f.home];
+  const oppRests = rotationIntensity(w, opp, f) >= 0.3;
+  const text = `Clubes grandes costumam poupar titulares nesta fase do estadual: o elenco volta de férias e a temporada é longa. `
+    + (oppRests ? `O ${opp.name} deve vir com time alternativo. ` : rotationTier(w, opp) ? "" : `O ${opp.name} vem com força máxima. `)
+    + `Dá para rodar o elenco e dar minutos aos garotos da base.`;
+  return { text, lineup: alternativeLineup(w, user, f.comp, r) };
 }
 
 const SECTOR_NAME: Record<"att" | "mid" | "def", string> = { att: "ataque", mid: "meio-campo", def: "defesa" };
@@ -416,7 +434,7 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
   const curForm = FORMATIONS[user.tactic.formation] ? user.tactic.formation : "4-3-3";
   const curLineup = validLineup(w, user, f.comp);
   const oppForm = opp.tactic.formation;
-  const oppLineup = autoLineup(w, opp, f.comp);
+  const oppLineup = aiMatchLineup(w, opp, f);
   const oppSlots = slotsOf(oppForm);
   const daysToNext = nextGapDays(w, f);
 
@@ -548,6 +566,7 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
     suggested: pick.o,
     changed,
     daysToNext,
+    rotation: rotationTip(w, f),
   };
 }
 

@@ -129,6 +129,15 @@ function applyLevel(c: Club, k: FacilityKind, lv: number) {
   else st.medical = lv;
 }
 
+/** Admin: conclui na hora todas as obras de um clube. Retorna quantas. */
+export function finishAllBuilds(c: Club): number {
+  const list = c.fac?.builds ?? [];
+  if (!list.length) return 0;
+  c.fac!.builds = [];
+  for (const b of list) applyLevel(c, b.kind, b.to);
+  return list.length;
+}
+
 /** Repara o estado de saves antigos/corrompidos. */
 export function migrateFacilities(c: Club) {
   const st = c.fac;

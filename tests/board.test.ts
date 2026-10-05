@@ -1,72 +1,28 @@
 import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
-import { aiInfrastructure, boardShare, canRequest, makeRequest, projectTick, requestCost } from "../src/engine/board";
+import { aiInfrastructure, canRequest, makeRequest, migrateBoardProjects, REQUESTS, requestCost } from "../src/engine/board";
 import { absDay } from "../src/engine/common";
-import { validateWorld } from "../src/engine/integrity";
+import { facilitiesDaily, facLevel } from "../src/engine/facilities";
 import { createWorld, type Database } from "../src/engine/world";
 import type { World } from "../src/engine/types";
 
 const make = (seed: number, clubId = "flamengo") => createWorld(db as Database, { managerName: "T", clubId, seed });
-/** Leva o mundo para um dia absoluto (só o relógio). */
 const goTo = (w: World, abs: number) => { w.season = Math.floor(abs / 400); w.day = abs - w.season * 400; };
+type Legacy = { proj?: unknown };
 
-describe("diretoria: pedidos e obras", () => {
-  it("a obra termina exatamente no dia previsto e aplica o nível", () => {
-    const w = make(21);
-    const c = w.clubs[w.userClubId];
-    c.facilities = 3;
-    c.balance = 1e9;
-    w.board.confidence = 60;
-    const r = makeRequest(w, "ct");
-    expect(r.ok).toBe(true);
-    const p = c.proj![0];
-    expect(p.done - p.start).toBeGreaterThanOrEqual(149);
-    goTo(w, p.done - 1);
-    projectTick(w);
-    expect(c.facilities).toBe(3);
-    goTo(w, p.done);
-    projectTick(w);
-    expect(c.facilities).toBe(4);
-    expect(c.proj).toBeUndefined();
-    expect(validateWorld(w)).toEqual([]);
-  });
-
-  it("o saldo cai custo × (1 − parte da diretoria)", () => {
-    const w = make(22);
-    const c = w.clubs[w.userClubId];
-    c.balance = 1e9;
-    w.board.confidence = 85;
-    const cost = requestCost(w, "stadium");
-    expect(boardShare(w, "stadium")).toBe(0.3);
-    const bal = c.balance;
-    const cap = c.capacity;
-    expect(makeRequest(w, "stadium").ok).toBe(true);
-    expect(bal - c.balance).toBe(Math.round(cost * 0.7));
-    expect(c.finance.expense.infra).toBe(Math.round(cost * 0.7));
-    goTo(w, c.proj![0].done);
-    projectTick(w);
-    expect(c.capacity).toBeGreaterThan(cap);
-    expect(c.expansions).toBe(1);
+describe("diretoria: pedidos (obras só em Estrutura)", () => {
+  it("a diretoria não oferece mais obras", () => {
+    expect(REQUESTS.map((r) => r.kind)).toEqual(["grant"]);
   });
 
   it("pedido negado coloca o pedido em espera", () => {
     const w = make(23);
-    w.clubs[w.userClubId].facilities = 2;
     w.board.confidence = 10;
-    const r = makeRequest(w, "ct");
+    const r = makeRequest(w, "grant");
     expect(r.ok).toBe(false);
     expect(r.msg).toContain("confiança");
-    expect(w.board.cool?.ct).toBe(absDay(w) + 60);
-    expect(canRequest(w, "ct").ok).toBe(false);
-    expect(canRequest(w, "ct").reason).toContain("Peça de novo");
-    // sem caixa
-    const w2 = make(24);
-    w2.board.confidence = 90;
-    w2.clubs[w2.userClubId].balance = 0;
-    w2.clubs[w2.userClubId].youthFac = 2;
-    const r2 = makeRequest(w2, "yfac");
-    expect(r2.ok).toBe(false);
-    expect(r2.msg).toContain("caixa");
+    expect(w.board.cool?.grant).toBe(absDay(w) + 60);
+    expect(canRequest(w, "grant").reason).toContain("Peça de novo");
   });
 
   it("a verba extra sai só uma vez por temporada", () => {
@@ -82,18 +38,48 @@ describe("diretoria: pedidos e obras", () => {
     expect(canRequest(w, "grant").ok).toBe(true);
   });
 
-  it("no máximo 2 obras ao mesmo tempo, uma por tipo", () => {
-    const w = make(26);
-    const uc = w.clubs[w.userClubId];
-    uc.balance = 1e10;
-    uc.youthFac = 3;
-    uc.youthCoach = 3;
-    uc.facilities = 3;
-    w.board.confidence = 100;
-    expect(makeRequest(w, "yfac").ok).toBe(true);
-    expect(makeRequest(w, "yfac").ok).toBe(false);
-    expect(makeRequest(w, "ycoach").ok).toBe(true);
-    expect(canRequest(w, "ct").ok).toBe(false);
+  it("migra obras antigas da diretoria para Estrutura (ou reembolsa)", () => {
+    const w = make(28);
+    const c = w.clubs[w.userClubId];
+    c.facilities = 3;
+    c.youthFac = 2;
+    const now = absDay(w);
+    const bal = c.balance;
+    (c as Legacy).proj = [
+      { kind: "ct", start: now - 10, done: now + 20, cost: 1_000_000 },
+      { kind: "yrec", start: now - 10, done: now + 20, cost: 500_000 },
+    ];
+    migrateBoardProjects(w);
+    expect((c as Legacy).proj).toBeUndefined();
+    expect(c.fac!.builds).toEqual([{ kind: "training", to: 4, start: now - 10, done: now + 20, cost: 1_000_000 }]);
+    expect(c.balance - bal).toBe(500_000); // captação não tem equivalente: reembolso
+    goTo(w, now + 20);
+    facilitiesDaily(w);
+    expect(facLevel(c, "training")).toBe(4);
+    expect(c.facilities).toBe(4);
+    expect(c.fac!.builds).toHaveLength(0);
+  });
+
+  it("obra antiga que não cabe é reembolsada; estádio vira obra de estádio", () => {
+    const w = make(29);
+    const c = w.clubs[w.userClubId];
+    c.facilities = 5;
+    c.capacity = 20_000;
+    const now = absDay(w);
+    const bal = c.balance;
+    (c as Legacy).proj = [
+      { kind: "ct", start: now, done: now + 5, cost: 2_000_000 },
+      { kind: "stadium", start: now, done: now + 5, cost: 3_000_000, add: 5000 },
+    ];
+    const cap = c.capacity;
+    const lv = facLevel(c, "stadium");
+    migrateBoardProjects(w);
+    expect(c.balance - bal).toBe(2_000_000);
+    expect(c.fac!.builds.map((b) => b.kind)).toEqual(["stadium"]);
+    goTo(w, now + 5);
+    facilitiesDaily(w);
+    expect(facLevel(c, "stadium")).toBe(lv + 1);
+    expect(c.capacity).toBeGreaterThan(cap);
   });
 
   it("aiInfrastructure nunca passa de 5 e não mexe no clube do usuário", () => {

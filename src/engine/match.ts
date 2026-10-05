@@ -5,6 +5,7 @@ import { phrase } from "./commentary";
 import { isBigMatch } from "./common";
 import { needsPenalties } from "./competitions";
 import { lineupStrength, validLineup, autoLineup } from "./lineup";
+import { aiMatchLineup } from "./rotation";
 import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
 import { shortName } from "./player";
 import { commonFactor, HEADER_W, headerXg, NEUTRAL_SIDE, playerMods, SET_PIECE, sideMult, type PMods, type SideMult } from "./matchmods";
@@ -97,6 +98,8 @@ export class MatchSim {
   /** Lado do usuário recebe a sugestão do auxiliar no intervalo (resultado rápido / ⏭). */
   autoTalk = false;
   private big: boolean;
+  /** Estadual: < 1 comprime a diferença de força (pequeno se fecha, pré-temporada, jogo truncado). */
+  private tempo: number;
 
   constructor(w: World, f: Fixture, opts: MatchOptions = {}) {
     this.w = w;
@@ -104,11 +107,12 @@ export class MatchSim {
     this.live = !!opts.live;
     this.userSide = opts.userSide ?? null;
     this.big = isBigMatch(w, f);
+    this.tempo = f.comp.startsWith("est-") ? 0.6 : 1;
     const mk = (clubId: string, idx: 0 | 1): Side => {
       const club = w.clubs[clubId];
       const isUser = clubId === w.userClubId;
       if (!isUser) aiTactics(w, club, w.clubs[idx === 0 ? f.away : f.home], idx === 0 && !f.neutral);
-      const lineup: Lineup = isUser ? validLineup(w, club, f.comp) : autoLineup(w, club, f.comp);
+      const lineup: Lineup = isUser ? validLineup(w, club, f.comp) : aiMatchLineup(w, club, f);
       const slots = (FORMATIONS[club.tactic.formation] ?? FORMATIONS["4-3-3"]).map((s) => s.pos);
       const side: Side = {
         club, slots, onPitch: lineup.starters.slice(), bench: lineup.bench.slice(), subsLeft: 5, windowsLeft: 3,
@@ -291,7 +295,11 @@ export class MatchSim {
     // chance de finalização neste minuto
     const ratio = S.att / Math.max(20, O.def);
     const openness = 1 + 0.06 * S.mentality + 0.03 * O.mentality;
-    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp) * openness;
+    // estadual: quem vence por 2+ tira o pé e quem perde fecha a casinha (evita 10 x 0 contra os pequenos);
+    // o 1,5 repõe o volume de chutes perdido na compressão (média ~2,6 gols/jogo)
+    const lead = S.goals - O.goals;
+    const ease = this.tempo < 1 && lead >= 2 ? Math.pow(0.5, lead - 1) : 1;
+    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp * this.tempo) * openness * ease * (this.tempo < 1 ? 1.5 : 1);
     if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
@@ -346,7 +354,7 @@ export class MatchSim {
     if (shooter == null) return;
     const sp = this.player(shooter);
     const z = gauss(0, 1);
-    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + (S.att - O.def) / TUNING.xgAttDiv) * this.pm(S, shooter).xg, 0.02, 0.6);
+    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg, 0.02, 0.6);
     const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter, 2, "assist") : null;
     const kind = hasTrait(sp, "CHF") && !hasTrait(sp, "MAT") ? "long" : undefined;
     this.finishShot(atk, shooter, assister, xg, kind);
