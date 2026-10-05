@@ -59,7 +59,7 @@ PT_API = "https://pt.wikipedia.org/w/api.php"
 WIKI_API = {"commons.wikimedia.org": wm.COMMONS_API, "en.wikipedia.org": EN_API, "pt.wikipedia.org": PT_API}
 FOOTBALLER = "Q937857"
 OUT_SIZE = 160
-MAX_TRIES = 4  # imagens tentadas por jogador
+MAX_TRIES = 3  # imagens tentadas por jogador
 
 PROTO_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
 MODEL_URL = ("https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/"
@@ -278,6 +278,53 @@ def phase_qids(st):
     print(f"QIDs extras: {len(extra)} (via pt: {n_pt}); alternativas pt para quem tem QID: {len(alt)}")
 
 
+SPARQL_P54 = """
+SELECT DISTINCT ?club ?p ?lab ?dob WHERE {
+  VALUES ?club { %s }
+  ?p wdt:P54 ?club; wdt:P106 wd:Q937857; wdt:P18 ?img.
+  OPTIONAL { ?p wdt:P569 ?dob }
+  { ?p rdfs:label ?lab } UNION { ?p skos:altLabel ?lab }
+  FILTER(LANG(?lab) IN ("pt", "en", "es", "pt-br"))
+}
+"""
+
+
+def phase_p54(st):
+    """Jogadores sem QID: procura no Wikidata futebolistas COM FOTO que passaram pelo clube (P54)
+    e cujo nome (rótulo ou apelido) é exatamente o do elenco — e único no clube."""
+    raw = load(RAW, {})["clubs"]
+    cm = load(os.path.join(CACHE, "club_media.json"), {}).get("clubs", {})
+    cq = {cid: (v or {}).get("qid") for cid, v in cm.items() if (v or {}).get("qid")}
+    by_club = {}  # cid -> {nome normalizado: {qid: ano}}
+    cids = [c for c in raw if c in cq]
+    for batch in chunks(cids, 15):
+        rows = wm.sparql(SPARQL_P54 % " ".join("wd:" + cq[c] for c in batch))
+        inv = {cq[c]: c for c in batch}
+        for r in rows:
+            cid = inv.get(r["club"]["value"].rsplit("/", 1)[-1])
+            q = r["p"]["value"].rsplit("/", 1)[-1]
+            n = " ".join(norm(r["lab"]["value"]).split())
+            by = year_of((r.get("dob") or {}).get("value"))
+            if cid and n:
+                by_club.setdefault(cid, {}).setdefault(n, {})[q] = by
+        print(f"  P54: {len(by_club)} clubes com candidatos", flush=True)
+    p54 = {}
+    for cid, c in raw.items():
+        names = by_club.get(cid) or {}
+        for p in c["players"]:
+            key = f"{cid}|{p['name']}"
+            if key in st["players"]:
+                continue
+            m = names.get(" ".join(norm(clean_name(p["name"])).split())) or {}
+            py = year_of(p.get("dob"))
+            ok = {q: by for q, by in m.items() if by and (abs(by - py) <= 1 if py else by >= 1980)}
+            if len(ok) == 1:
+                p54[key] = next(iter(ok))
+    st["p54"] = p54
+    save(STATE, st)
+    print(f"P54: {len(p54)} jogadores sem QID casados com futebolistas com foto")
+
+
 def player_candidates(st, all_qids=False):
     """Lista (chave 'clube|nome', jogador, QID candidato). Com all_qids=True o terceiro item é a
     lista de todos os candidatos em ordem de preferência (raw.json, extra, elenco pt, P54)."""
@@ -429,8 +476,8 @@ def check_identity(e, p, q):
     by = e.get("by")
     if py and by and abs(py - by) > 1:
         return "nascimento"
-    # sem data em raw.json: quem está num elenco de 2026 nasceu depois de ~1981
-    if not py and by and not (1981 <= by <= 2012):
+    # sem data em raw.json: quem está num elenco de 2026 nasceu depois de ~1978
+    if not py and by and not (1978 <= by <= 2012):
         return "nascimento"
     return None
 
@@ -668,7 +715,7 @@ def try_file(name, wiki):
     faces = detect_faces(arr)
     if faces:
         big = max(b[3] - b[1] for b in faces)
-        if big < 72 and max(im.size) < 1500:
+        if big < 52 and max(im.size) < 1500:
             data2 = wm.download(name, 960, wiki=wiki)
             if data2:
                 try:
@@ -771,16 +818,18 @@ def process_qid(st, q, name):
 
 def phase_photos(st, limit=None, only=None, redo=False):
     media = st["media"]
-    names = {}
+    names, rank = {}, {}
+    divs = {c["id"]: "ABCDF".index(c["div"]) for c in ALL_CLUBS}
     for key, q in st["players"].items():
         names.setdefault(q, key.split("|", 1)[1])
+        rank[q] = min(rank.get(q, 9), divs.get(key.split("|", 1)[0], 9))
     rows = {r["id"]: r for r in legend_rows()}
     for lid, q in st["legends"].items():
         names[q] = rows[lid]["name"] if lid in rows else lid
     todo = [q for q in names if (redo or q not in media) and (not only or q in only)]
     # lendas primeiro, depois jogadores da Série A ... estrangeiros
     leg = set(st["legends"].values())
-    todo.sort(key=lambda q: (q not in leg, q))
+    todo.sort(key=lambda q: (q not in leg, rank.get(q, 9), q))
     if limit:
         todo = todo[:limit]
     print(f"fotos a processar: {len(todo)} (já feitas: {sum(1 for v in media.values() if v.get('status') == 'ok')})")
@@ -793,7 +842,7 @@ def phase_photos(st, limit=None, only=None, redo=False):
             media[q] = {"status": "error", "reasons": [repr(ex)[:200]]}
             res = "error"
         cnt[res] = cnt.get(res, 0) + 1
-        if n % 20 == 19:
+        if n % 5 == 4:
             save(STATE, st)
             print(f"  {n + 1}/{len(todo)} {cnt} {time.time() - t0:.0f}s", flush=True)
     save(STATE, st)
@@ -953,6 +1002,8 @@ def main():
     phase = args[0]
     if phase in ("qids", "all"):
         phase_qids(st)
+    if phase in ("p54", "all"):
+        phase_p54(st)
     if phase in ("entities", "all"):
         phase_entities(st)
     if phase in ("validate", "all"):

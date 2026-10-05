@@ -9,6 +9,9 @@ dados inicial do jogo: src/data/database.json
     força do clube + fama (nº de idiomas com artigo na Wikipedia) + idade.
   Depois o elenco é normalizado para a média do clube (campo "level" do catálogo).
 - OVERRIDES permite corrigir à mão as notas de quem você achar injustiçado :)
+- mídia real (opcional): escudo ("logo"), foto do estádio ("stadiumImg"), fundação e apelidos
+  vêm de scripts/cache/club_media.json (fetch_club_media.py); o item do Wikidata ("q") e a foto
+  ("img") dos jogadores vêm de raw.json / player_qids_extra.json e de public/media/players/.
 
 Uso:
     python3 scripts/build_database.py
@@ -26,6 +29,9 @@ from clubs_catalog import ALL_CLUBS  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "scripts", "cache", "raw.json")
 OUT = os.path.join(ROOT, "src", "data", "database.json")
+CLUB_MEDIA = os.path.join(ROOT, "scripts", "cache", "club_media.json")
+QIDS_EXTRA = os.path.join(ROOT, "scripts", "cache", "player_qids_extra.json")
+MEDIA = os.path.join(ROOT, "public", "media")
 SEASON = 2026
 REF_DATE = (2026, 1, 15)  # data de referência para idades (início da temporada)
 
@@ -132,6 +138,8 @@ STADIUMS = {
     "santa-cruz": ("Arruda", 60044), "remo": ("Mangueirão", 53635), "vasco": ("São Januário", 21880),
     "mirassol": ("Maião", 15023), "botafogo": ("Nilton Santos", 46831), "vitoria": ("Barradão", 30793),
     "corinthians": ("Neo Química Arena", 48905), "santos": ("Vila Belmiro", 16068), "bahia": ("Arena Fonte Nova", 50025),
+    # o artigo do catálogo é o do Barra de Teresópolis (RJ); o Barra do jogo é o de Santa Catarina
+    "barra-sc": ("Arena Barra FC", 5500),
 }
 
 # posições secundárias plausíveis para cada posição principal
@@ -273,9 +281,79 @@ def potential(ovr, age, fame, name):
     return int(min(94, max(ovr, round(ovr + g))))
 
 
+def load_json(path, default):
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return default
+
+
+def has_media(path):
+    return os.path.exists(os.path.join(MEDIA, path))
+
+
+def year_only(s):
+    """Ano de fundação a partir do texto bruto da infobox ("1895", "12 April 1925; ...")."""
+    m = re.search(r"(?<!\d)(1[89]\d\d|20[0-2]\d)(?!\d)", s or "")
+    return m.group(1) if m else ""
+
+
+def clean_nicks(s):
+    """Apelidos sem as glosas em inglês entre parênteses, no máximo 3."""
+    s = re.sub(r"\([^)]*\)|\{\{[^}]*\}\}?|\[[^\]]*\]", "", s or "")
+    out = []
+    for part in re.split(r"[,;]", s):
+        p = re.sub(r"\s+", " ", part).strip(" .:-'\"")
+        if p and len(p) <= 32 and p.lower() not in (x.lower() for x in out):
+            out.append(p)
+    return out[:3]
+
+
+def join_max(items, limit):
+    """Junta os itens com ", " sem cortar nenhum no meio (até o limite de caracteres)."""
+    out = ""
+    for it in items:
+        nxt = f"{out}, {it}" if out else it
+        if len(nxt) > limit:
+            break
+        out = nxt
+    return out or (items[0][:limit] if items else "")
+
+
+def stadium_of(c, info):
+    """Nome e capacidade do estádio vindos da Wikipedia (ou provisórios), como antes."""
+    ground = (info.get("ground") or "").split(",")[0].strip()
+    stadium = ground or f"Estádio de {c['city'] or c['name']}"
+    stadium = re.sub(r"\s*\(.*?\)\s*", " ", stadium).strip()
+    capacity = info.get("capacity") or int(4000 + c["rep"] * 300)
+    cap_ok = True
+    if capacity < 1500 or capacity > 120000:
+        capacity = int(4000 + c["rep"] * 300)
+        cap_ok = False
+    if not info.get("capacity"):
+        cap_ok = False
+    fixed = c["id"] in STADIUMS
+    if fixed:
+        stadium, capacity = STADIUMS[c["id"]]
+    return stadium, capacity, fixed or bool(ground), fixed or cap_ok
+
+
 def main():
     with open(RAW, encoding="utf-8") as f:
         raw = json.load(f)
+    media = load_json(CLUB_MEDIA, {})
+    m_clubs, m_venues = media.get("clubs", {}), media.get("venues", {})
+    qids_extra = load_json(QIDS_EXTRA, {})
+    # nome/capacidade do estádio já conhecidos (de outro clube que joga no mesmo estádio)
+    venue_known = {}
+    for c in ALL_CLUBS:
+        info = raw["clubs"].get(c["id"], {}).get("infobox", {})
+        st, cap, name_ok, cap_ok = stadium_of(c, info)
+        vq = m_clubs.get(c["id"], {}).get("venue")
+        if vq and name_ok:
+            venue_known.setdefault(vq, {}).setdefault("name", st)
+        if vq and cap_ok:
+            venue_known.setdefault(vq, {}).setdefault("capacity", cap)
     pt_all = {}
     if os.path.exists(PT):
         with open(PT, encoding="utf-8") as f:
@@ -294,21 +372,32 @@ def main():
             colors = [body, sec]
         while len(colors) < 3:
             colors = colors + ["#FFFFFF" if colors[0].upper() != "#FFFFFF" else "#111111"]
-        stadium = (info.get("ground") or "").split(",")[0].strip() or f"Estádio de {c['city'] or c['name']}"
-        stadium = re.sub(r"\s*\(.*?\)\s*", " ", stadium).strip()
-        capacity = info.get("capacity") or int(4000 + c["rep"] * 300)
-        if capacity < 1500 or capacity > 120000:
-            capacity = int(4000 + c["rep"] * 300)
-        if c["id"] in STADIUMS:
-            stadium, capacity = STADIUMS[c["id"]]
+        stadium, capacity, name_ok, cap_ok = stadium_of(c, info)
+        mc = m_clubs.get(c["id"], {})
+        vq = mc.get("venue")
+        mv = m_venues.get(vq or "", {})
+        known = venue_known.get(vq or "", {})
+        # nome/capacidade provisórios ("Estádio de <cidade>") -> nome e capacidade reais do Wikidata
+        if vq and not name_ok:
+            stadium = known.get("name") or mv.get("labelPt") or mv.get("labelEn") or stadium
+        if vq and not cap_ok:
+            wd_cap = mv.get("capacity") or 0
+            capacity = known.get("capacity") or (wd_cap if 1500 <= wd_cap <= 120000 else capacity)
+        founded = mc.get("founded") or year_only(info.get("founded"))
+        nicks = mc.get("nicknames") or clean_nicks(info.get("nickname"))
         country = "BRA" if c["div"] != "F" else c["region"]
-        clubs_out.append({
+        club = {
             "id": c["id"], "name": c["name"], "full": c["full"] or info.get("fullname") or c["name"],
             "abbr": c["abbr"], "region": c["region"], "city": c["city"] or "", "country": country,
             "div": c["div"], "level": c["level"], "rep": c["rep"], "colors": colors[:3],
             "crest": c["crest"], "stadium": stadium, "capacity": capacity,
-            "founded": (info.get("founded") or "")[:40], "nickname": (info.get("nickname") or "")[:60],
-        })
+            "founded": founded or "", "nickname": join_max(nicks or [], 60),
+        }
+        if has_media(f"crests/{c['id']}.webp"):
+            club["logo"] = 1
+        if vq and has_media(f"stadiums/{vq}.webp"):
+            club["stadiumImg"] = vq
+        clubs_out.append(club)
 
         # ---------------- jogadores
         cand = []
@@ -340,6 +429,8 @@ def main():
                 "name": name, "nat": map_nat(p.get("nat")), "grp": grp, "pos": primary, "sec": sec,
                 "age": age, "born": born, "foot": foot, "height": p.get("height") or None,
                 "fame": int(p.get("sl") or 0), "kind": kind, "no": p.get("no") or "",
+                "q": p.get("qid") or qids_extra.get(c["id"] + "|" + p["name"]),
+                "qsrc": "raw" if p.get("qid") else "extra",
             })
         # posições detalhadas da Wikipedia em português
         pt_list = pt_all.get(c["id"]) or []
@@ -424,13 +515,36 @@ def main():
                 "b": x["born"], "h": x["height"], "f": x["foot"], "o": x["ovr"], "pt": x["pot"],
                 "fm": x["fame"], "y": 1 if x["kind"] == "youth" else 0,
                 **({"no": int(num)} if num and int(num) < 100 else {}),
+                **({"q": x["q"]} if x["q"] else {}),
+                "_qsrc": x["qsrc"],
             })
+
+    uses = {}
+    for p in players_out:
+        if p.get("q"):
+            uses.setdefault(p["q"], []).append(p)
+    for q, ps in uses.items():
+        if len(ps) > 1:
+            for p in ps:
+                if p["_qsrc"] == "extra":
+                    print(f"  aviso: {q} repetido ({', '.join(x['c'] + ':' + x['n'] for x in ps)}) — "
+                          f"ignorado em {p['c']}:{p['n']}")
+                    del p["q"]
+    n_img = 0
+    for p in players_out:
+        del p["_qsrc"]
+        if p.get("q") and has_media(f"players/{p['q']}.webp"):
+            p["img"] = 1
+            n_img += 1
+    n_logo = sum(1 for c in clubs_out if c.get("logo"))
+    n_st = sum(1 for c in clubs_out if c.get("stadiumImg"))
 
     db = {"fetchedAt": raw.get("fetchedAt"), "season": SEASON, "clubs": clubs_out, "players": players_out}
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
     print(f"ok -> {OUT}: {len(clubs_out)} clubes, {len(players_out)} jogadores "
-          f"({os.path.getsize(OUT) // 1024} KB)")
+          f"({os.path.getsize(OUT) // 1024} KB); escudos: {n_logo}, fotos de estádio: {n_st}, "
+          f"jogadores com QID: {sum(1 for p in players_out if p.get('q'))}, com foto: {n_img}")
 
 
 if __name__ == "__main__":

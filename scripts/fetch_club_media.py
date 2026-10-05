@@ -68,7 +68,11 @@ TITLE_OVERRIDES = {
 
 # Correções manuais depois da conferência visual.
 # Escudo: clubId -> (arquivo, "commons" | "en")
-CREST_OVERRIDES: dict[str, tuple[str, str]] = {}
+CREST_OVERRIDES: dict[str, tuple[str, str]] = {
+    "corinthians": ("Sport Club Corinthians Paulista crest.svg", "en"),  # a P154 é uma foto
+    "maringa": ("Mfc monocromia verde paixao.png", "commons"),  # a P154 é a versão cinza (monocromia)
+    "tombense": ("Tombense FC.png", "en"),  # a P154 é só o monograma "TFC"
+}
 # Estádio do clube: clubId -> QID do estádio (quando o link da Wikipedia/P115 não bate com o
 # estádio usado no banco de dados, inclusive os nomes fixados em build_database.STADIUMS)
 VENUE_OVERRIDES: dict[str, str] = {
