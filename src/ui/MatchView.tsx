@@ -10,7 +10,9 @@ import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
 import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from "../engine/types";
-import { Avatar, Crest, StadiumPhoto } from "./components";
+import { Avatar, CompLogo, Crest, StadiumPhoto } from "./components";
+import { COMP_META } from "../engine/competitions";
+import { compTheme, themeClass, themeVars } from "./compThemes";
 import { celebrationFor, drawPitchDude, lookOf, PixelFX, setPose, shotStyle, type SpriteDude } from "./matchSprites";
 import { actorOf, playCinematic, wantsCinematic, type CineHandle, type CineOutcome, type CineSpec } from "./cinematics";
 import "./economy.css";
@@ -2094,6 +2096,8 @@ export interface MatchViewProps {
   ps1?: boolean;
   /** cena de lance decisivo na tela (true) ou acabou (false): o relógio deve segurar */
   onCinema?: (on: boolean) => void;
+  /** cores da competição para o placar do modo PS1: [fundo, borda] */
+  hudFrame?: [string, string];
 }
 
 /** Campo em pixel art com os jogadores se movendo e a legenda do lance. */
@@ -2172,6 +2176,7 @@ export function MatchView(props: MatchViewProps) {
         color: [anim.colors.home.shirt, anim.colors.away.shirt] as [string, string],
         score: [sim.sides[0].goals, sim.sides[1].goals] as [number, number],
         clock: `${String(mm).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
+        frame: propsRef.current.hudFrame,
       };
     };
     const fxCanvas = fxRef.current;
@@ -2212,12 +2217,12 @@ export function MatchView(props: MatchViewProps) {
     const resize = () => {
       if (ps1) {
         const w = wrap.clientWidth;
-        ps1.resize(w, Math.min(w * 0.75, Math.max(190, window.innerHeight * 0.58)));
+        ps1.resize(w, Math.min(w * 0.75, Math.max(190, (landscape() ? window.innerHeight - 118 : window.innerHeight * 0.58))));
         return;
       }
       const dpr = window.devicePixelRatio || 1;
       const avail = wrap.clientWidth;
-      const maxH = Math.max(170, window.innerHeight * 0.36);
+      const maxH = Math.max(170, landscape() ? window.innerHeight - 118 : window.innerHeight * 0.36);
       let k = Math.max(1, Math.floor((avail * dpr) / W));
       while (k > 1 && (H * k) / dpr > maxH) k--;
       canvas.style.width = `${(W * k) / dpr}px`;
@@ -2333,6 +2338,11 @@ export function MatchView(props: MatchViewProps) {
   );
 }
 
+/** Celular deitado: campo ocupa quase toda a altura, controles ficam ao lado. */
+function landscape() {
+  return window.innerWidth > window.innerHeight && window.innerHeight < 560;
+}
+
 // ---------------------------------------------------------------- comemoração do gol
 const CONFETTI = 34;
 
@@ -2386,6 +2396,7 @@ export function GoalCelebration({ e, sim, top }: { e: MatchEvent; sim: MatchSim;
 /** Cartão do fim de jogo: placar, xG, craque do jogo e as notas dos dois times. */
 export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: MatchResult; label: string }) {
   const H = w.clubs[f.home], A = w.clubs[f.away];
+  const theme = compTheme(f.comp, COMP_META[f.comp]?.color);
   const xg = r.stats.xg;
   const xgTot = xg[0] + xg[1] || 1;
   const motm = r.motm != null ? w.players[r.motm] : null;
@@ -2393,7 +2404,8 @@ export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: Mat
   const rows = (side: 0 | 1) =>
     r.lineups[side].filter((id) => w.players[id] && r.ratings[id] != null).sort((a, b) => r.ratings[b] - r.ratings[a]);
   return (
-    <div className="pm-card" style={{ "--h": H.colors[0], "--a": A.colors[0] } as CSSProperties} role="region" aria-label="Resumo da partida">
+    <div className={`pm-card ct-card ${themeClass(theme)}`} style={{ "--h": H.colors[0], "--a": A.colors[0], ...themeVars(theme) } as CSSProperties} role="region" aria-label="Resumo da partida">
+      <div className="ct-card-band"><CompLogo id={f.comp} size={18} /><span className="grow">{COMP_META[f.comp]?.name ?? f.comp}</span><span aria-hidden="true">{theme.trophy}</span></div>
       <div className="center small" style={{ fontWeight: 700 }}>{label}</div>
       <div className="pm-score mt8">
         <Crest club={H} size={40} />

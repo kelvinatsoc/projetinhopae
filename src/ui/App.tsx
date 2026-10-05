@@ -1,7 +1,8 @@
 import { SponsorsScreen } from "./Sponsors";
 import { FacilitiesScreen } from "./Facilities";
 import { SetPiecesScreen } from "./SetPieces";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { markTitleSeen, TitleCelebration, titlesSeen } from "./CompTheme";
 import { installTapHaptics } from "./haptics";
 import { nextFixture } from "../engine/competitions";
 import { formatDate } from "../engine/calendar";
@@ -71,6 +72,19 @@ function routeTitle(r: Route): string {
   }
 }
 
+let navAt = 0;
+let lastRouteKey = "";
+const GHOST_MS = 380;
+const GHOST_SEL = ".bottomnav, .pm-dock, .fab, .mv-ctrl, .sticky-cta, .action-dock";
+if (typeof document !== "undefined") {
+  const guard = (e: Event) => {
+    if (performance.now() - navAt > GHOST_MS) return;
+    const el = e.target as Element | null;
+    if (el?.closest?.(GHOST_SEL)) { e.preventDefault(); e.stopPropagation(); }
+  };
+  document.addEventListener("click", guard, true);
+}
+
 export function App() {
   useVersion();
   const nav = useNav();
@@ -81,6 +95,26 @@ export function App() {
   }, [w?.settings.theme]);
 
   useEffect(() => installTapHaptics(), []);
+
+  // botão flutuante: some ao rolar para baixo, volta ao rolar para cima (não cobre tabelas)
+  const [fabHidden, setFabHidden] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const nearEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 24;
+      if (y < 60 || nearEnd || y < lastY - 6) setFabHidden(false);
+      else if (y > lastY + 6) setFabHidden(true);
+      if (Math.abs(y - lastY) > 6) lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // festa do título: uma vez por taça conquistada pelo clube do usuário
+  const [, bumpSeen] = useState(0);
+  const seen = titlesSeen();
+  const wonComp = w ? Object.values(w.comps).find((c) => c.champion === w.userClubId && !seen.has(`${w.userClubId}:${c.season}:${c.id}`)) : undefined;
 
   // o app inteiro veste as cores do clube comandado
   const colors = w ? w.clubs[w.userClubId]?.colors : undefined;
@@ -113,6 +147,8 @@ export function App() {
 
   const top = nav.stack[nav.stack.length - 1];
   const fullScreen = top && (top.name === "match" || top.name === "seasonEnd" || top.name === "fired");
+  // pré-jogo: sem a navegação flutuante para não disputar o toque com "Jogar"
+  const hideNav = top?.name === "prematch";
   const club = w.clubs[w.userClubId];
   const unread = inboxUnread(w);
 
@@ -162,9 +198,11 @@ export function App() {
   const nf = nextFixture(w, w.userClubId);
   const matchToday = !!nf && nf.day === w.day;
   const routeKey = top ? `${nav.stack.length}:${top.name}:${"id" in top ? top.id : ""}` : `tab:${nav.tab}`;
+  // anti "toque fantasma": logo após trocar de tela, ignora toques nas barras de ação/navegação
+  if (routeKey !== lastRouteKey) { lastRouteKey = routeKey; navAt = performance.now(); }
 
   return (
-    <div className={`app${fullScreen ? " no-chrome" : ""}`}>
+    <div className={`app${fullScreen ? " no-chrome" : ""}${showFab ? " has-fab" : ""}${hideNav ? " no-nav" : ""}`}>
       {!fullScreen && (
         <header className="topbar">
           {top ? (
@@ -186,12 +224,16 @@ export function App() {
         </header>
       )}
       <div className={`screen${top ? "" : " from-tab"}`} key={routeKey}>{content}</div>
+      {wonComp && w && !(top?.name === "match") && (
+        <TitleCelebration id={wonComp.id} club={club} season={wonComp.season}
+          onClose={() => { markTitleSeen(`${w.userClubId}:${wonComp.season}:${wonComp.id}`); bumpSeen((x) => x + 1); }} />
+      )}
       {showFab && (
-        <button className="fab" onClick={continueGame}>
+        <button className={`fab${fabHidden ? " fab-hide" : ""}`} onClick={continueGame}>
           <Icon name="play" fill size={20} /> {matchToday ? "Jogar" : "Continuar"}
         </button>
       )}
-      {!fullScreen && (
+      {!fullScreen && !hideNav && (
         <nav className="bottomnav">
           {TABS.map((t) => (
             <button key={t.id} className={!top && nav.tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>

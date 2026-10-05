@@ -106,11 +106,15 @@ export function continueGame() {
     return;
   }
   let res: ReturnType<typeof advance> | null = null;
+  const day0 = w.day;
   update((world) => {
     res = advance(world);
   });
   const r = res as ReturnType<typeof advance> | null;
   if (!r) return;
+  // resumo rápido do que foi simulado até o próximo compromisso
+  const days = (getWorld()?.day ?? day0) - day0;
+  if (days > 1) toast(`⏩ ${days} dias simulados${r.reason === "match" ? " · dia de jogo!" : ""}`);
   if (r.reason === "match") {
     // admin: ponto de restauração antes de cada jogo (cópia síncrona; gravação em segundo plano)
     if (w.admin?.on && r.fixture) {

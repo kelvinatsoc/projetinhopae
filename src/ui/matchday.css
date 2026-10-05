@@ -1,0 +1,40 @@
+/* Dia de jogo: barra de controle fixa sob o placar, CTA grudado e layout deitado. */
+.mx { min-height: 100vh; min-height: 100dvh; }
+.mv-ctrl { display: flex; align-items: center; gap: 6px; padding: 6px 10px 8px; }
+.mv-ctrl .btn.sm { min-height: 38px; padding: 6px 10px; flex: none; }
+.mv-ctrl .seg { min-width: 0; }
+.mv-ctrl .seg button { min-height: 34px; padding: 4px 0; font-size: 13px; }
+.mv-ctrl .mv-go { min-height: 42px; font-size: 16px; font-weight: 900; }
+.mv-ctrl .mv-pp { width: 42px; justify-content: center; }
+.mv-head .mv-momentum { padding: 0 12px 2px; }
+.mx-cta { background: linear-gradient(180deg, transparent, var(--bg) 40%); }
+.mx-cta .btn { box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); }
+.ct-pill { max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .app.no-chrome:has(.mx) { max-width: none; }
+  .mx { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 36vw, 380px); }
+  .mx .mv-head { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; border-right: 1px solid var(--line); }
+  .mx .mv-head .mv-ctrl {
+    position: fixed; top: 0; right: 0; z-index: 20; width: clamp(280px, 36vw, 380px);
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px; flex-wrap: wrap;
+    background: var(--ct-base, var(--bg2)); border-bottom: 2px solid var(--ct-p, var(--line));
+  }
+  .mx .mv-ctrl .seg { order: 3; flex-basis: 100%; }
+  .mx .mx-side { height: 100vh; height: 100dvh; overflow-y: auto; padding-top: 92px; overscroll-behavior: contain; }
+  .mx.mx-over .mx-side { padding-top: 60px; }
+  .mx .mx-side .page { padding-top: 6px; }
+}
+
+/* pré-jogo: dock fixo, único e sem nada por cima (sem nav flutuante nesta tela) */
+.app.no-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.pm-dock {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 40;
+  width: 100%; max-width: 560px; display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, var(--bg) 35%);
+}
+.pm-dock .btn { min-height: 56px; touch-action: manipulation; }
+.pm-dock .btn:active, .mv-ctrl .btn:active, .sticky-cta .btn:active { transform: none; filter: brightness(1.15); }
+button, .btn { touch-action: manipulation; }
+.ct-confetti, .ct-head::after, .ct-tw-bg { pointer-events: none; }

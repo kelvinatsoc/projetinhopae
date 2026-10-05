@@ -19,6 +19,8 @@ export interface Ps1Hud {
   color: [string, string];
   score: [number, number];
   clock: string;
+  /** cores da competição para a caixa do placar: [fundo, borda] (opcional) */
+  frame?: [string, string];
 }
 
 export interface Ps1Options {
@@ -1026,9 +1028,9 @@ export class Ps1Renderer {
     const line = `${hud.abbr[0]} ${sc} ${hud.abbr[1]}`;
     const bw = textWidth(line) + 18;
     const bx = 6, by = 6;
-    g.fillStyle = "rgba(8,16,48,0.82)";
+    g.fillStyle = hud.frame?.[0] ?? "rgba(8,16,48,0.82)";
     g.fillRect(bx, by, bw, 22);
-    g.fillStyle = "#c9d6ff";
+    g.fillStyle = hud.frame?.[1] ?? "#c9d6ff";
     g.fillRect(bx, by, bw, 1);
     g.fillRect(bx, by + 21, bw, 1);
     g.fillStyle = hud.color[0];
