@@ -46,7 +46,7 @@ const ATT_W: Record<Pos, number> = { GOL: 0, ZAG: 0, LD: 0.15, LE: 0.15, VOL: 0.
 const BASE = { def: 4.9, mid: 4.4, att: 3.6 }; // somatório de pesos num 4-3-3 típico
 
 // Constantes de calibração (médias do Brasileirão: ~2,4 gols e ~24 finalizações por jogo)
-export const TUNING = { shotBase: 0.227, shotExp: 1.6, xgBase: 0.066, xgSpread: 0.55, xgAttDiv: 40, penBase: 0.0017 };
+export const TUNING = { shotBase: 0.222, shotExp: 1.6, xgBase: 0.066, xgSpread: 0.55, xgAttDiv: 40, penBase: 0.0017 };
 
 /**
  * Resumo do último minuto simulado, só para a animação do jogo ao vivo (campo em pixel art).
