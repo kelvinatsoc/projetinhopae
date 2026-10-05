@@ -1,5 +1,6 @@
 // Criação, evolução e valor de jogadores.
 import { generateName, natForClub, raceForNat } from "../data/names";
+import { assignRegenFace } from "./media";
 import { PROFILE, POS_GROUP, rawOvr, recalcOvr, WEIGHTS } from "./positions";
 import { clamp, gauss, pickWeighted, rand, randInt } from "./rng";
 import type { Attrs, Club, Player, Pos, SeasonStats, World } from "./types";
@@ -102,6 +103,7 @@ export function newPlayerBase(w: World, fields: Partial<Player> & Pick<Player, "
   };
   recalcOvr(p);
   w.players[p.id] = p;
+  assignRegenFace(w, p);
   return p;
 }
 

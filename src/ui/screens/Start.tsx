@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Div } from "../../engine/types";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
-import { setWorld, toast } from "../../store";
-import { loadDatabase, startNewWorld } from "../actions";
+import { toast } from "../../store";
+import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
 import { clubStars, Crest, Stars } from "../components";
 import { flag } from "../flags";
 import type { Club } from "../../engine/types";
@@ -23,7 +23,7 @@ export function StartScreen() {
     setBusy(true);
     try {
       const w = await loadWorld(id);
-      if (w) setWorld(w);
+      if (w) await openWorld(w);
       else toast("Jogo salvo não encontrado.");
     } finally {
       setBusy(false);
@@ -33,7 +33,8 @@ export function StartScreen() {
   async function importFile(f: File) {
     try {
       const w = await importWorldFile(f);
-      startNewWorld(w);
+      await openWorld(w);
+      autosave(true);
     } catch {
       toast("Arquivo inválido.");
     }

@@ -67,6 +67,7 @@ export interface Player {
   yel: Record<string, number>; // amarelos acumulados por competição
   face: Face;
   photo?: string; // foto personalizada (URL ou dataURL)
+  img?: string; // foto empacotada: "Q123" (jogador real, media/players) ou "r45" (rosto de regen, media/regens)
   legend?: string; // id da lenda, se for uma lenda renascida
   real?: boolean; // jogador real (dados da Wikipedia)
   listed?: boolean; // na lista de transferências
@@ -134,6 +135,8 @@ export interface Club {
   history: ClubSeasonRecord[];
   trophies: Trophy[];
   customCrest?: string;
+  logo?: boolean; // escudo oficial em media/crests/<id>.webp
+  stadiumImg?: string; // foto do estádio em media/stadiums/<id>.webp
   finance: FinanceBook;
   founded?: string;
   nickname?: string;
@@ -280,6 +283,7 @@ export interface Settings {
   speed: number; // velocidade padrão da partida (ms por minuto)
   theme: "dark" | "light";
   autoSave: boolean;
+  cartoonFaces?: boolean; // rosto ilustrado (em vez da silhueta) para jogadores reais sem foto
 }
 
 export interface SeasonSummary {

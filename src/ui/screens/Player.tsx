@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LEGEND_BY_ID, TIER_NAMES } from "../../data/legends";
 import { inWindow } from "../../engine/calendar";
 import { COMP_META } from "../../engine/competitions";
@@ -11,6 +11,7 @@ import type { Attrs, Player, World } from "../../engine/types";
 import { back, push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Avatar, Bar, Crest, Flag, Ovr, PosBadge, Sheet } from "../components";
+import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME } from "../flags";
 import { potLabel } from "./Squad";
 
@@ -50,6 +51,7 @@ export function PlayerScreen({ id }: { id: number }) {
             <span className="tiny" style={{ opacity: 0.85 }}>pot. {potLabel(p)}</span>
           </div>
         </div>
+        <PhotoCredit p={p} />
         {club && (
           <div className="row mt12 small" style={{ cursor: "pointer" }} onClick={() => push({ name: "club", id: club.id })}>
             <Crest club={club} size={20} /> <b>{club.name}</b>{p.youth && <span className="tag">base</span>}{p.shirt && <span>· camisa {p.shirt}</span>}
@@ -340,5 +342,24 @@ function EditSheet({ p, onClose }: { p: Player; onClose: () => void }) {
         autosave(); onClose();
       }}>Salvar</button>
     </Sheet>
+  );
+}
+
+/** Linha discreta com o autor e a licença da foto (exigência das licenças livres). */
+function PhotoCredit({ p }: { p: Player }) {
+  const [credit, setCredit] = useState<Credit | null>(null);
+  const real = !p.photo && p.img && !p.img.startsWith("r") ? p.img : null;
+  useEffect(() => {
+    if (!real) return;
+    let alive = true;
+    loadCredits().then((c) => { if (alive) setCredit(c[`players/${real}.webp`] ?? null); });
+    return () => { alive = false; };
+  }, [real]);
+  if (!p.photo && p.img?.startsWith("r")) return <div className="tiny mt8" style={{ opacity: 0.7 }}>Rosto gerado por IA (pessoa que não existe).</div>;
+  if (!real || !credit) return null;
+  return (
+    <div className="tiny mt8" style={{ opacity: 0.7 }}>
+      📷 {p.legend ? "Foto do jogador original · " : ""}{credit.author || "Wikimedia Commons"} · {credit.license}
+    </div>
   );
 }

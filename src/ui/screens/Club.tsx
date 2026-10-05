@@ -10,7 +10,8 @@ import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
 import { loadMedia, saveMedia, setSoundEnabled, soundEnabled } from "../audio";
-import { Avatar, Bar, clubStars, Crest, PlayerRow, Stars } from "../components";
+import { Avatar, Bar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, Stars } from "../components";
+import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
 
@@ -38,6 +39,8 @@ export function ClubScreen() {
         <div className="stat-box"><b>{titles}</b><span>títulos (no jogo)</span></div>
       </div>
 
+      <StadiumPhoto club={c} />
+
       <div className="card">
         <div className="card-title"><h3>Diretoria</h3><span className="small">{Math.round(w.board.confidence)}%</span></div>
         <Bar v={w.board.confidence} />
@@ -50,7 +53,7 @@ export function ClubScreen() {
         <MenuItem icon="💰" label="Finanças" sub="Receitas, despesas e salários" onClick={() => push({ name: "finances" })} />
         <MenuItem icon="📜" label="Histórico" sub="Campeões e suas temporadas" onClick={() => push({ name: "history" })} />
         <MenuItem icon="🔎" label="Ver página do clube" sub="Elenco e informações" onClick={() => push({ name: "club", id: c.id })} />
-        <MenuItem icon="⚙️" label="Configurações" sub="Modo casual, lendas, som, escudo, áudio da torcida" onClick={() => push({ name: "settings" })} />
+        <MenuItem icon="⚙️" label="Configurações" sub="Modo casual, lendas, som, escudo, créditos" onClick={() => push({ name: "settings" })} />
       </div>
 
       <div className="grid2">
@@ -91,6 +94,7 @@ export function ClubInfoScreen({ id }: { id: string }) {
         </div>
         <div className="small mt12">🏟️ {c.stadium} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
       </div>
+      <StadiumPhoto club={c} />
       <div className="grid3">
         <div className="stat-box"><b>{Math.round(clubStrength(w, c))}</b><span>força</span></div>
         <div className="stat-box"><b>{squad.length}</b><span>jogadores</span></div>
@@ -247,6 +251,8 @@ export function SettingsScreen() {
           <input type="checkbox" checked={w.settings.autoSave} onChange={(e) => { update((x) => { x.settings.autoSave = e.target.checked; }); }} /></div>
         <div className="switch"><div><b>Sons da partida</b><div className="small muted">Torcida, apito e gol (sintetizados).</div></div>
           <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); setSoundEnabled(e.target.checked); }} /></div>
+        <div className="switch"><div><b>Rostos ilustrados</b><div className="small muted">Para jogadores reais sem foto livre (em vez da silhueta).</div></div>
+          <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
         <div className="switch"><div><b>Tema claro</b></div>
           <input type="checkbox" checked={w.settings.theme === "light"} onChange={(e) => { update((x) => { x.settings.theme = e.target.checked ? "light" : "dark"; }); autosave(); }} /></div>
         <div className="col gap8" style={{ paddingTop: 10 }}>
@@ -300,8 +306,61 @@ export function SettingsScreen() {
           <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
           <button className="btn sm" onClick={saveNow}>💾 Salvar agora</button>
         </div>
-        <p className="tiny muted mt8">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}). Rostos: facesjs. Notas estimadas pelo jogo — edite no perfil do jogador.</p>
+        <p className="tiny muted mt8">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}). Notas estimadas pelo jogo — edite no perfil do jogador.</p>
+        <button className="btn sm block mt8" onClick={() => push({ name: "credits" })}>📜 Créditos das fotos, escudos e sons</button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- créditos
+const CREDIT_GROUPS: { prefix: string; title: string }[] = [
+  { prefix: "players/", title: "Fotos de jogadores e lendas" },
+  { prefix: "crests/", title: "Escudos" },
+  { prefix: "comps/", title: "Logos das competições" },
+  { prefix: "stadiums/", title: "Estádios" },
+  { prefix: "kits/", title: "Uniformes" },
+  { prefix: "audio/", title: "Sons" },
+];
+
+export function CreditsScreen() {
+  const [credits, setCredits] = useState<Record<string, Credit> | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => { loadCredits().then(setCredits); }, []);
+  if (!credits) return <div className="page"><div className="empty">Carregando…</div></div>;
+  const entries = Object.entries(credits);
+  return (
+    <div className="page">
+      <div className="card small">
+        <p>Elencos, estádios e datas: <b>Wikipedia</b> (CC BY-SA) e <b>Wikidata</b> (CC0).</p>
+        <p className="mt8">Fotos de jogadores e estádios: <b>Wikimedia Commons</b>, com licenças livres. Cada autor está listado abaixo.</p>
+        <p className="mt8">Rostos dos jogadores criados pelo jogo (regens): pessoas que não existem, geradas por IA (StyleGAN, thispersondoesnotexist.com).</p>
+        <p className="mt8">Escudos, logos e uniformes são marcas dos respectivos clubes e entidades. Este é um projeto pessoal, sem fins lucrativos.</p>
+      </div>
+      {CREDIT_GROUPS.map((g) => {
+        const list = entries.filter(([k]) => k.startsWith(g.prefix));
+        if (!list.length) return null;
+        const isOpen = open === g.prefix;
+        return (
+          <div className="card" key={g.prefix}>
+            <button className="row" style={{ width: "100%", background: "none", border: 0, color: "inherit", padding: 0 }} onClick={() => setOpen(isOpen ? null : g.prefix)}>
+              <b className="grow" style={{ textAlign: "left" }}>{g.title}</b>
+              <span className="muted small">{list.length} {isOpen ? "▲" : "▼"}</span>
+            </button>
+            {isOpen && (
+              <div className="list mt8">
+                {list.map(([k, c]) => (
+                  <div key={k} className="tiny" style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}>
+                    <div><b>{c.file.replace(/_/g, " ")}</b></div>
+                    <div className="muted">{c.author || "Autor desconhecido"} · {c.license}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div style={{ height: 30 }} />
     </div>
   );
 }
@@ -328,7 +387,7 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
         {last && (
           <div className="card">
             {Object.entries(last.champions).map(([comp, club]) => (
-              <div key={comp} className="row gap8" style={{ padding: "4px 0" }}><span className="muted small" style={{ width: 110 }}>{COMP_META[comp]?.short}</span><Crest club={w.clubs[club]} size={20} /><b>{w.clubs[club]?.name}</b></div>
+              <div key={comp} className="row gap8" style={{ padding: "4px 0" }}><CompLogo id={comp} size={20} /><span className="muted small" style={{ width: 96 }}>{COMP_META[comp]?.short}</span><Crest club={w.clubs[club]} size={20} /><b>{w.clubs[club]?.name}</b></div>
             ))}
             {last.topScorer && <div className="small mt8">⚽ Artilheiro: {last.topScorer.name} ({last.topScorer.goals} gols)</div>}
           </div>

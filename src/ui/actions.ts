@@ -1,16 +1,47 @@
 // Ações de alto nível disparadas pela interface.
-import type { Database } from "../engine/world";
+import { migrateWorld, type Database } from "../engine/world";
 import { advance, runEndOfSeason } from "../engine/game";
+import { registerMedia, type RegenFace } from "../engine/media";
 import type { World } from "../engine/types";
 import { saveWorld } from "../save";
 import { getWorld, push, replace, setWorld, toast, update } from "../store";
 
 let dbPromise: Promise<Database> | null = null;
 
-/** O banco de dados (elencos reais) só é baixado quando o usuário cria um novo jogo. */
+// índices da mídia empacotada (rostos dos regens, fotos das lendas); glob não quebra se faltar arquivo
+const mediaIndex = import.meta.glob<{ default: unknown }>(["../data/regenFaces.json", "../data/media.json"]);
+
+async function loadMediaIndex() {
+  const load = async <T,>(path: string): Promise<T | null> => {
+    const mod = mediaIndex[path];
+    if (!mod) return null;
+    try {
+      return (await mod()).default as T;
+    } catch {
+      return null;
+    }
+  };
+  const [faces, media] = await Promise.all([
+    load<{ faces: RegenFace[] }>("../data/regenFaces.json"),
+    load<{ legends?: Record<string, string> }>("../data/media.json"),
+  ]);
+  registerMedia({ regenFaces: faces?.faces, legends: media?.legends });
+}
+
+/** O banco de dados (elencos reais + índice de mídia) só é carregado quando o usuário abre ou cria um jogo. */
 export function loadDatabase(): Promise<Database> {
-  dbPromise ??= import("../data/database.json").then((m) => m.default as unknown as Database);
+  dbPromise ??= Promise.all([import("../data/database.json"), loadMediaIndex()]).then(([m]) => m.default as unknown as Database);
   return dbPromise;
+}
+
+/** Abre um jogo salvo (ou importado), atualizando-o com as fotos/escudos do banco atual. */
+export async function openWorld(w: World) {
+  try {
+    migrateWorld(w, await loadDatabase());
+  } catch (e) {
+    console.error(e);
+  }
+  setWorld(w);
 }
 
 let saveTimer: number | undefined;

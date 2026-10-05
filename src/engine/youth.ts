@@ -1,5 +1,6 @@
 // Categorias de base: novos talentos (regens) e lendas renascidas.
 import { LEGENDS, TIER_NAMES, type LegendDef } from "../data/legends";
+import { legendImage } from "./media";
 import { addNews } from "./news";
 import { fitAttrs, generatePlayer, newPlayerBase, wageFor } from "./player";
 import { POS_NAME, rawOvr } from "./positions";
@@ -117,6 +118,7 @@ export function spawnLegend(w: World, def: LegendDef, club?: Club): Player {
     },
   });
   p.ovr = rawOvr(p.attrs, p.pos);
+  p.img = legendImage(def.id);
   p.clubId = c.id;
   c.players.push(p.id);
   p.wage = Math.round(wageFor(p.ovr, c.rep, ageY) * 1.5);

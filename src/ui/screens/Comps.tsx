@@ -3,7 +3,7 @@ import { formatDate } from "../../engine/calendar";
 import { clubFixtures, fixtureById, sortTable, STAGE_NAMES, tieAggregate } from "../../engine/competitions";
 import type { Competition, Fixture, TableRow, Tie, World } from "../../engine/types";
 import { push, useWorld } from "../../store";
-import { Crest } from "../components";
+import { CompLogo, Crest } from "../components";
 
 export function CompsScreen() {
   const w = useWorld();
@@ -18,13 +18,14 @@ export function CompsScreen() {
       <div className="chips">
         <button className={`chip${sel === "mine" ? " active" : ""}`} onClick={() => setSel("mine")}>📅 Meus jogos</button>
         {[...mine, ...comps.filter((c) => !mine.includes(c))].map((c) => (
-          <button key={c.id} className={`chip${sel === c.id ? " active" : ""}`} onClick={() => setSel(c.id)}>{c.short}{mine.includes(c) ? " •" : ""}</button>
+          <button key={c.id} className={`chip${sel === c.id ? " active" : ""}`} onClick={() => setSel(c.id)}><CompLogo id={c.id} size={16} /> {c.short}{mine.includes(c) ? " •" : ""}</button>
         ))}
       </div>
       {sel === "mine" && <MyFixtures w={w} />}
       {comp && (
         <>
           <div className="row">
+            <CompLogo id={comp.id} size={40} />
             <h2 className="grow">{comp.name} {comp.season}</h2>
             <span className="tag" style={{ borderColor: comp.color, color: comp.color }}>{STAGE_NAMES[comp.stage]}</span>
           </div>

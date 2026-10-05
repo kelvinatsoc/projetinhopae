@@ -10,7 +10,7 @@ import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types
 import { forceBack, getWorld, push, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
 import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
-import { Avatar, Bar, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
+import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
 import { Pitch } from "./Squad";
 
 function stageLabel(w: World, f: Fixture) {
@@ -39,7 +39,7 @@ export function PreMatchScreen() {
   return (
     <div className="page">
       <div className="hero" style={{ background: `linear-gradient(135deg, ${meta.color}, #0b1a12)` }}>
-        <div className="small"><b>{meta.name}</b> · {stageLabel(w, f)}</div>
+        <div className="row small gap8"><CompLogo id={f.comp} size={22} /><span><b>{meta.name}</b> · {stageLabel(w, f)}</span></div>
         <div className="row" style={{ justifyContent: "space-around", margin: "12px 0" }}>
           {[f.home, f.away].map((id) => (
             <div key={id} className="col center" style={{ alignItems: "center", width: 130 }}>

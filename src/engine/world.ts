@@ -1,6 +1,7 @@
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
 import { formatDate } from "./calendar";
 import { addNews } from "./news";
+import { assignRegenFace, legendImage } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
 import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } from "./rng";
 import { initialEntrants, startSeason } from "./season";
@@ -11,11 +12,15 @@ export interface DbClub {
   id: string; name: string; full: string; abbr: string; region: string; city: string; country: string;
   div: Div; level: number; rep: number; colors: string[]; crest: string; stadium: string; capacity: number;
   founded?: string; nickname?: string;
+  logo?: 1; // escudo oficial em public/media/crests/<id>.webp
+  stadiumImg?: string; // foto do estádio em public/media/stadiums/<stadiumImg>.webp
 }
 
 export interface DbPlayer {
   c: string; n: string; nat: string; p: Pos; s: Pos[]; b: number; h: number; f: "D" | "E" | "A";
   o: number; pt: number; fm: number; y: 0 | 1; no?: number;
+  q?: string; // item do Wikidata
+  img?: 1; // foto real em public/media/players/<q>.webp
 }
 
 export interface Database {
@@ -25,7 +30,7 @@ export interface Database {
   players: DbPlayer[];
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 const FAMOUS_ACADEMIES = new Set(["sao-paulo", "fluminense", "santos", "flamengo", "gremio", "internacional", "vasco", "athletico-pr", "palmeiras", "cruzeiro", "river-plate", "boca-juniors", "independiente-del-valle", "argentinos-juniors"]);
 const JERSEYS = ["football", "football2", "football4", "football5", "football3"];
@@ -85,6 +90,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
       shirt: dp.no,
     });
     p.ovr = dp.o;
+    if (dp.img && dp.q) p.img = dp.q;
     p.clubId = club.id;
     club.players.push(p.id);
     const foreignMult = club.country === "BRA" ? 1 : 0.5;
@@ -131,9 +137,41 @@ function makeClub(c: DbClub): Club {
     ticket: c.div === "A" ? Math.round(40 + rep * 0.4) : c.div === "B" ? 30 : c.div === "C" ? 20 : c.div === "D" ? 15 : 25,
     history: [], trophies: [],
     finance: { income: {}, expense: {} },
+    logo: c.logo === 1 || undefined,
+    stadiumImg: c.stadiumImg,
     founded: c.founded, nickname: c.nickname,
     jersey: JERSEYS[hashString(c.id) % JERSEYS.length],
   };
+}
+
+/**
+ * Atualiza um jogo salvo com a mídia do banco de dados atual (fotos reais, escudos, estádios,
+ * rostos dos regens). Roda a cada carregamento: é barato e faz jogos antigos ganharem as fotos novas.
+ */
+export function migrateWorld(w: World, db: Database) {
+  const dbClubs = new Map(db.clubs.map((c) => [c.id, c]));
+  for (const c of Object.values(w.clubs)) {
+    const d = dbClubs.get(c.id);
+    if (!d) continue;
+    c.logo = d.logo === 1 || undefined;
+    c.stadiumImg = d.stadiumImg;
+    if (d.stadium && /^Estádio (de|do|da) /.test(c.stadium) && c.stadium !== d.stadium) {
+      c.stadium = d.stadium;
+      c.capacity = d.capacity;
+    }
+  }
+  const photos = new Map<string, string>();
+  for (const dp of db.players) if (dp.img && dp.q) photos.set(`${dp.n}|${dp.b}`, dp.q);
+  for (const p of Object.values(w.players)) {
+    if (p.legend) {
+      p.img ??= legendImage(p.legend);
+    } else if (p.real) {
+      if (!p.img) p.img = photos.get(`${p.name}|${p.born}`);
+    } else {
+      assignRegenFace(w, p);
+    }
+  }
+  w.version = SAVE_VERSION;
 }
 
 const MIN_BY_POS: Record<Pos, number> = { GOL: 3, ZAG: 4, LD: 2, LE: 2, VOL: 2, MC: 2, MEI: 2, PD: 2, PE: 2, ATA: 3 };

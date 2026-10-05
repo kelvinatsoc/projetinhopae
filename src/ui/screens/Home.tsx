@@ -3,7 +3,7 @@ import { COMP_META, leagueOf, nextFixture, sortTable, STAGE_NAMES } from "../../
 import { LEGENDS } from "../../data/legends";
 import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
-import { Bar, Crest } from "../components";
+import { Bar, CompLogo, Crest } from "../components";
 
 export function HomeScreen() {
   const w = useWorld();
@@ -68,7 +68,7 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
   return (
     <div className="hero" style={{ background: `linear-gradient(135deg, ${meta.color}cc, ${home.colors[0]}99 60%, ${away.colors[0]}99)` }}>
       <div className="row small" style={{ opacity: 0.9 }}>
-        <b>{meta.short}</b><span>· {stage}</span>
+        <CompLogo id={f.comp} size={18} /><b>{meta.short}</b><span>· {stage}</span>
         <span className="right">{days === 0 ? "Hoje" : days === 1 ? "Amanhã" : `em ${days} dias`}</span>
       </div>
       <div className="row" style={{ justifyContent: "space-around", margin: "14px 0" }}>

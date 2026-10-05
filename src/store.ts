@@ -55,6 +55,7 @@ export type Route =
   | { name: "news" }
   | { name: "legends" }
   | { name: "settings" }
+  | { name: "credits" }
   | { name: "finances" }
   | { name: "youth" }
   | { name: "history" }
@@ -80,6 +81,11 @@ export function useNav(): NavState {
     },
     () => nav,
   );
+}
+
+/** Estado atual da navegação (fora do React, ex.: botão voltar do Android). */
+export function getNav(): Readonly<NavState> {
+  return nav;
 }
 
 export function setTab(tab: Tab) {

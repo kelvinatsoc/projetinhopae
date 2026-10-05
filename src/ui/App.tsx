@@ -5,7 +5,7 @@ import { unreadCount } from "../engine/news";
 import { back, push, setTab, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
 import { continueGame } from "./actions";
 import { Crest, Icon } from "./components";
-import { ClubInfoScreen, ClubScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
+import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
 import { CompsScreen } from "./screens/Comps";
 import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
@@ -31,6 +31,7 @@ function routeTitle(r: Route): string {
     case "news": return "Notícias";
     case "legends": return "Álbum de Lendas";
     case "settings": return "Configurações";
+    case "credits": return "Créditos";
     case "finances": return "Finanças";
     case "youth": return "Categorias de base";
     case "history": return "Histórico";
@@ -72,6 +73,7 @@ export function App() {
       case "news": content = <NewsScreen />; break;
       case "legends": content = <LegendsScreen />; break;
       case "settings": content = <SettingsScreen />; break;
+      case "credits": content = <CreditsScreen />; break;
       case "finances": content = <FinancesScreen />; break;
       case "youth": content = <YouthScreen />; break;
       case "history": content = <HistoryScreen />; break;

@@ -1,10 +1,13 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { formatMoney } from "../engine/finance";
+import { playerImageUrl } from "../engine/media";
 import { age } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
 import type { Club, Player, Pos } from "../engine/types";
+import { getWorld } from "../store";
 import { faceSvg } from "./faces";
 import { flag } from "./flags";
+import "./media.css";
 
 // ---------------------------------------------------------------- escudo
 function luminance(hex: string) {
@@ -37,10 +40,12 @@ function starPath(cx: number, cy: number, r: number) {
 }
 
 export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
-  if (club.customCrest) {
+  const [broken, setBroken] = useState<string | null>(null);
+  const src = club.customCrest ?? (club.logo ? `media/crests/${club.id}.webp` : null);
+  if (src && broken !== src) {
     return (
       <span className="crest" style={{ width: size, height: size * 1.15 }}>
-        <img src={club.customCrest} alt={club.name} />
+        <img src={src} alt={club.name} loading="lazy" decoding="async" draggable={false} onError={() => setBroken(src)} />
       </span>
     );
   }
@@ -106,12 +111,72 @@ export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
 }
 
 // ---------------------------------------------------------------- avatar
+/**
+ * Foto do jogador: foto do usuário > foto real empacotada (Wikimedia Commons) > rosto realista
+ * de regen. Jogador real sem foto livre aparece como silhueta com a camisa do clube (como nos apps
+ * oficiais), a não ser que o usuário prefira rostos ilustrados.
+ */
 export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club | null; season: number; size?: number }) {
-  const svg = p.photo ? "" : faceSvg(p, club, season);
+  const [broken, setBroken] = useState<string | null>(null);
+  const src = p.photo ?? playerImageUrl(p);
+  const cls = `avatar${p.legend ? " legend" : ""}`;
+  if (src && broken !== src) {
+    return (
+      <div className={cls} style={{ width: size, height: size }}>
+        <img src={src} alt={p.name} loading="lazy" decoding="async" draggable={false} onError={() => setBroken(src)} />
+      </div>
+    );
+  }
+  if (p.real && !p.legend && !getWorld()?.settings.cartoonFaces) {
+    return (
+      <div className={cls} style={{ width: size, height: size }}>
+        <Silhouette club={club} />
+      </div>
+    );
+  }
+  const svg = faceSvg(p, club, season);
   return (
-    <div className={`avatar${p.legend ? " legend" : ""}`} style={{ width: size, height: size }}>
-      {p.photo ? <img src={p.photo} alt={p.name} /> : <div style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: svg }} />}
+    <div className={cls} style={{ width: size, height: size }}>
+      <div style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: svg }} />
     </div>
+  );
+}
+
+/** Silhueta neutra vestindo a cor principal do clube. */
+export function Silhouette({ club }: { club?: Club | null }) {
+  const shirt = club?.colors[0] ?? "#5a6b62";
+  const trim = club ? (luminance(club.colors[1]) !== luminance(shirt) ? club.colors[1] : club.colors[2]) : "#d9e2dc";
+  return (
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="43" y="46" width="14" height="14" rx="5" fill="#8f9c95" />
+      <ellipse cx="50" cy="36" rx="16" ry="18.5" fill="#a7b3ad" />
+      <path d="M50 57C29 57 15 66 11 83L8 100H92L89 83C85 66 71 57 50 57Z" fill={shirt} stroke="#0005" strokeWidth="1.2" />
+      <path d="M41 58L50 68L59 58" fill="none" stroke={trim} strokeWidth="4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Foto real do estádio (Wikimedia Commons), com nome e capacidade por cima. */
+export function StadiumPhoto({ club }: { club: Club }) {
+  const [broken, setBroken] = useState(false);
+  if (!club.stadiumImg || broken) return null;
+  return (
+    <div className="stadium-photo">
+      <img src={`media/stadiums/${club.stadiumImg}.webp`} alt={club.stadium} loading="lazy" decoding="async" onError={() => setBroken(true)} />
+      <div className="stadium-caption">
+        <b>{club.stadium}</b>
+        <span>{club.capacity ? `${club.capacity.toLocaleString("pt-BR")} lugares · ` : ""}{club.city}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Logo oficial de uma competição (ou nada, se não houver arquivo). */
+export function CompLogo({ id, size = 24 }: { id: string; size?: number }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return (
+    <img className="comp-logo" src={`media/comps/${id}.webp`} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setBroken(true)} />
   );
 }
 
