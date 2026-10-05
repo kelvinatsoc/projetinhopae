@@ -190,6 +190,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [field, setField] = useState(() => !quick && readFieldPref());
   const [intro, setIntro] = useState(field);
   const [hold, setHold] = useState(false); // relógio parado para mostrar o gol (1x/2x)
+  const [cine, setCine] = useState(false); // cena de lance decisivo na tela (relógio segura)
+  const cineRef = useRef(false);
+  cineRef.current = cine;
   const [hl, setHl] = useState(false); // "só os melhores momentos": pula direto para o próximo lance importante
   const [gfx, setGfx] = useState<GraphicsMode>(() => readGraphics());
   const headRef = useRef<HTMLDivElement>(null);
@@ -291,7 +294,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs || intro || hold || halfSheet) return;
+    if (!sim || quick || paused || result || subs || intro || hold || halfSheet || cine) return;
     const t = window.setInterval(() => {
       let evs = sim.step();
       if (hl) {
@@ -305,7 +308,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       for (const e of evs) {
         if (isGoal(e)) {
           if (slow) setHold(true);
-          if (viewLive) later(() => celebrate(e), 2600); // garantia, se o campo não avisar
+          if (viewLive) {
+            // garantia, se o campo não avisar (espera a cena de lance decisivo acabar)
+            const fallback = () => (cineRef.current ? later(fallback, 700) : celebrate(e));
+            later(fallback, 2600);
+          }
           else celebrate(e);
         } else if (e.type === "post" || e.type === "save" || e.type === "pen-miss") {
           if (!viewLive) beat(e);
@@ -320,7 +327,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       setTick((x) => x + 1);
     }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, intro, hold, halfSheet, hl]);
+  }, [sim, speed, paused, result, subs, intro, hold, halfSheet, hl, cine]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -376,6 +383,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             onGoal={celebrate}
             onBeat={beat}
             onSkipIntro={() => setIntro(false)}
+            onCinema={setCine}
           />
         )}
       </div>
