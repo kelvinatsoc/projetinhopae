@@ -142,12 +142,8 @@ export function Bar({ v, color }: { v: number; color?: string }) {
 }
 
 export function Stars({ n, max = 5 }: { n: number; max?: number }) {
-  const full = Math.round(n * 2) / 2;
-  return (
-    <span style={{ color: "var(--gold)", letterSpacing: 1 }}>
-      {Array.from({ length: max }, (_, i) => (i + 1 <= full ? "★" : i + 0.5 === full ? "⯪" : "☆")).join("")}
-    </span>
-  );
+  const full = Math.max(1, Math.round(n));
+  return <span style={{ color: "var(--gold)", letterSpacing: 1 }}>{"★".repeat(full)}{"☆".repeat(Math.max(0, max - full))}</span>;
 }
 
 export function clubStars(level: number) {

@@ -226,7 +226,7 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
       {resp?.status === "accepted" && willing.ok && (
         <div className="col gap8 mt12">
           <div className="small">Salário pedido: <b>{formatMoney(demand)}/mês</b> {demand > wageFor(p.ovr, user.rep) * 1.2 ? "(acima da média do seu clube)" : ""}</div>
-          <div className="row gap8 small">
+          <div className="row gap8 small wrap">
             <span>Contrato:</span>
             {[1, 2, 3, 4, 5].map((y) => <button key={y} className={`chip${years === y ? " active" : ""}`} onClick={() => setYears(y)}>{y} {y === 1 ? "ano" : "anos"}</button>)}
           </div>
@@ -249,7 +249,7 @@ function RenewSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
       ) : (
         <>
           <p className="small">Salário atual: {formatMoney(p.wage)}/mês · pedido: <b>{formatMoney(demand)}/mês</b></p>
-          <div className="row gap8 small">
+          <div className="row gap8 small wrap">
             {[1, 2, 3, 4, 5].map((y) => <button key={y} className={`chip${years === y ? " active" : ""}`} onClick={() => setYears(y)}>{y} {y === 1 ? "ano" : "anos"}</button>)}
           </div>
           <button className="btn primary block mt12" onClick={() => {

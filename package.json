@@ -10,7 +10,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dados": "python3 scripts/fetch_squads.py && python3 scripts/build_database.py"
+    "dados": "python3 scripts/fetch_squads.py && python3 scripts/fetch_pt_positions.py && python3 scripts/build_database.py"
   },
   "dependencies": {
     "facesjs": "^5.0.3",
