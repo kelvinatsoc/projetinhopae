@@ -1,0 +1,22 @@
+/* Trilha B: sala de troféus, conquistas, carreira e desafios */
+.cabinet { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.cabinet-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px 8px; border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 14%, var(--card2)), var(--card2)); border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--line)); text-align: center; cursor: pointer; }
+.cabinet-item .cup { font-size: 30px; line-height: 1; min-height: 32px; display: flex; align-items: center; }
+.cabinet-item .count { position: absolute; top: 6px; right: 8px; font-weight: 800; color: var(--gold); font-size: 13px; }
+.cabinet-item.empty { opacity: 0.35; filter: grayscale(1); }
+.timeline { position: relative; padding-left: 18px; }
+.timeline::before { content: ""; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
+.tl-item { position: relative; padding: 6px 0 10px; }
+.tl-item::before { content: ""; position: absolute; left: -16px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: var(--card2); border: 2px solid var(--muted); }
+.tl-item.gold::before { background: var(--gold); border-color: var(--gold); }
+.tl-item.up::before { border-color: var(--accent); }
+.tl-item.down::before { border-color: #ef4444; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ach { display: flex; gap: 8px; align-items: flex-start; padding: 10px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line); }
+.ach .em { font-size: 24px; line-height: 1; }
+.ach.locked { opacity: 0.45; }
+.ach.locked .em { filter: grayscale(1); }
+.ach.got { border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); }
+.rep-meter { height: 10px; border-radius: 6px; background: var(--card2); overflow: hidden; }
+.rep-meter > div { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+.diff { letter-spacing: 1px; color: var(--gold); }

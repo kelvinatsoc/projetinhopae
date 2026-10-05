@@ -2,7 +2,11 @@ import { useEffect } from "react";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
 import { unreadCount } from "../engine/news";
-import { back, push, setTab, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
+import { back, push, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
+import { popToast } from "../engine/achievements";
+import { AchievementsScreen } from "./Achievements";
+import { CareerScreen } from "./Career";
+import { TrophyRoomScreen } from "./TrophyRoom";
 import { continueGame } from "./actions";
 import { Crest, Icon } from "./components";
 import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
@@ -48,6 +52,9 @@ function routeTitle(r: Route): string {
     case "staff": return "Comissão técnica";
     case "board": return "Diretoria e obras";
     case "dressing": return "Vestiário";
+    case "trophies": return "Sala de troféus";
+    case "achievements": return "Conquistas";
+    case "career": return "Carreira";
     default: return "";
   }
 }
@@ -60,6 +67,19 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = w?.settings.theme ?? "dark";
   }, [w?.settings.theme]);
+
+  // conquistas e desafios: avisos pendentes viram toasts, um de cada vez
+  const pending = w?.ach?.toasts.length ?? 0;
+  const toastBusy = !!nav.toast;
+  useEffect(() => {
+    if (!pending || toastBusy) return;
+    const t = window.setTimeout(() => {
+      const wd = getWorld();
+      const msg = wd && popToast(wd);
+      if (msg) toast(msg);
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [pending, toastBusy]);
 
   if (!w) return <StartScreen />;
 
@@ -98,6 +118,9 @@ export function App() {
       case "staff": content = <StaffScreen />; break;
       case "board": content = <BoardScreen />; break;
       case "dressing": content = <DressingScreen />; break;
+      case "trophies": content = <TrophyRoomScreen />; break;
+      case "achievements": content = <AchievementsScreen />; break;
+      case "career": content = <CareerScreen />; break;
       default: content = null;
     }
   }

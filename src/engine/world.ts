@@ -1,5 +1,8 @@
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
+import { ensureAch } from "./achievements";
 import { formatDate } from "./calendar";
+import { ensureCareer } from "./career";
+import { SCENARIO_BY_ID } from "./scenarios";
 import { fillExtras, initPlayerExtras, migrateTo3 } from "./extras";
 import { repairWorld } from "./integrity";
 import { addNews } from "./news";
@@ -187,9 +190,21 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   }
   if (from < 3) migrateTo3(w);
   fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
+  migrateProgression(w);
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };
+}
+
+/** Progressão (troféus, conquistas, desafios, carreira): campos opcionais que saves antigos não têm. */
+export function migrateProgression(w: World) {
+  if (!w.clubLog) {
+    // saves antigos: a linha do tempo nasce do histórico do treinador
+    w.clubLog = (w.managerHistory ?? []).map((h) => ({ season: h.season, clubId: h.clubId, div: h.div, pos: h.pos, titles: [...h.titles] }));
+  }
+  if (w.ach) ensureAch(w);
+  if (w.career) ensureCareer(w);
+  if (w.scenario && !SCENARIO_BY_ID[w.scenario.id]) w.scenario = undefined;
 }
 
 const MIN_BY_POS: Record<Pos, number> = { GOL: 3, ZAG: 4, LD: 2, LE: 2, VOL: 2, MC: 2, MEI: 2, PD: 2, PE: 2, ATA: 3 };
