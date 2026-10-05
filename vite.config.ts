@@ -28,7 +28,22 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,json,webmanifest}"],
+        // a mídia (fotos, escudos, estádios, sons) é grande demais para baixar toda na instalação:
+        // cada arquivo é guardado no cache na primeira vez que aparece na tela
+        globIgnores: ["media/**"],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.includes("/media/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "lendas-midia",
+              expiration: { maxEntries: 5000, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
+            },
+          },
+        ],
       },
     }),
   ],
