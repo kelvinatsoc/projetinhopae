@@ -2215,12 +2215,21 @@ export function MatchView(props: MatchViewProps) {
     anim.draw(g);
     start();
 
+    const ps1H = (w: number) => Math.min(w * 0.75, Math.max(190, landscape() ? window.innerHeight - 118 : window.innerHeight * 0.58));
     const resize = () => {
       if (ps1) {
         const w = wrap.clientWidth;
-        ps1.resize(w, Math.min(w * 0.75, Math.max(190, (landscape() ? window.innerHeight - 118 : window.innerHeight * 0.58))));
+        ps1.resize(w, ps1H(w));
         return;
       }
+      if (ps1On && !ps1Dead) {
+        // PS1 ainda carregando: reserva o tamanho final e não mostra o pixel art (evita piscar 2D -> 3D)
+        canvas.style.visibility = "hidden";
+        canvas.style.width = `${wrap.clientWidth}px`;
+        canvas.style.height = `${ps1H(wrap.clientWidth)}px`;
+        return;
+      }
+      canvas.style.visibility = "";
       const dpr = window.devicePixelRatio || 1;
       const avail = wrap.clientWidth;
       const maxH = Math.max(170, landscape() ? window.innerHeight - 118 : window.innerHeight * 0.36);
@@ -2236,6 +2245,7 @@ export function MatchView(props: MatchViewProps) {
         fxCanvas.style.height = canvas.style.height;
       }
     };
+    if (ps1On && !ps1HostRef.current) ps1Dead = true;
     resize();
     if (ps1On && ps1HostRef.current) {
       const host = ps1HostRef.current;
@@ -2256,6 +2266,7 @@ export function MatchView(props: MatchViewProps) {
         .catch(() => {
           // sem WebGL (ou falhou o download): volta para o pixel art
           ps1Dead = true;
+          resize();
           anim.draw(g);
         });
     }
@@ -2277,6 +2288,7 @@ export function MatchView(props: MatchViewProps) {
       ps1?.dispose();
       ps1 = null;
       canvas.style.display = "";
+      canvas.style.visibility = "";
       if (cine) {
         cine.destroy();
         if (anim.frozen) propsRef.current.onCinema?.(false);

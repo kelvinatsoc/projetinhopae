@@ -457,7 +457,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       <div className="mx-side">
         <DerbyBanner home={f.home} away={f.away} />
 
-        {flash && !over && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+        {/* No PS1 o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
+        {flash && !over && !(showField && gfx === "ps1") && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
         {!quick && !over && (
           <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>
