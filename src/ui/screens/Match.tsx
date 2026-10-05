@@ -143,9 +143,9 @@ export function PreMatchScreen() {
         <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}>🎤 Coletiva pré-jogo (opcional)</button>
       )}
 
-      <div className="grid2" style={{ position: "sticky", bottom: "calc(var(--nav-h) + 8px + env(safe-area-inset-bottom))" }}>
-        <button className="btn" onClick={() => goToMatch(true)}>⏩ Resultado rápido</button>
-        <button className="btn primary" onClick={() => goToMatch(false)}>▶ Assistir ao jogo</button>
+      <div className="grid2 action-dock">
+        <button className="btn" onClick={() => goToMatch(true)}>⏩ Rápido</button>
+        <button className="btn primary" onClick={() => goToMatch(false)}>▶ Jogar</button>
       </div>
       <div style={{ height: 20 }} />
     </div>

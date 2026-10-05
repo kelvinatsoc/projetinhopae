@@ -14,7 +14,7 @@ import "./progression.css";
 export function OfferList({ w, onAccepted }: { w: World; onAccepted?: () => void }) {
   const [confirm, setConfirm] = useState<number | null>(null);
   const offers = activeOffers(w);
-  if (!offers.length) return <div className="small muted">Nenhuma proposta no momento. Bons resultados atraem clubes maiores.</div>;
+  if (!offers.length) return <div className="empty-state center"><b>Nenhuma proposta por enquanto</b><div className="small muted">Bons resultados atraem clubes maiores — o telefone vai tocar.</div></div>;
   const accept = (o: JobOffer) => {
     const name = w.clubs[o.clubId].name;
     let ok = false;

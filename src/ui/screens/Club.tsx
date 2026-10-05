@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { LEGENDS, TIER_NAMES } from "../../data/legends";
 import { COMP_META } from "../../engine/competitions";
 import { estadualTitles } from "../../engine/estaduais";
@@ -12,7 +12,7 @@ import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
 import { loadMedia, saveMedia, setSoundEnabled, soundEnabled } from "../audio";
-import { Avatar, Bar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, Stars } from "../components";
+import { Avatar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, stadiumSrc, Stars } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
@@ -24,54 +24,56 @@ export function ClubScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
   const titles = c.trophies.length;
+  const photo = stadiumSrc(c);
+  const offers = w.career?.offers.length ?? 0;
+  const youth = c.players.filter((id) => w.players[id]?.youth).length;
+  const achs = Object.keys(w.ach?.got ?? {}).length;
   return (
     <div className="page">
-      <div className="hero" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
-        <div className="row">
-          <Crest club={c} size={64} />
-          <div className="grow">
-            <h2>{c.full}</h2>
-            <div className="small" style={{ opacity: 0.9 }}>{c.city}/{c.region} · {c.nickname || ""}</div>
-            <div className="small mt8"><Stars n={clubStars(clubStrength(w, c))} /></div>
+      <div className="club-hero">
+        {photo && <img className="bgimg" src={photo} alt="" loading="lazy" decoding="async" />}
+        <div className="row" style={{ alignItems: "flex-end" }}>
+          <Crest club={c} size={72} />
+          <div className="grow" style={{ minWidth: 0 }}>
+            <h2 className="ellipsis">{c.name}</h2>
+            <div className="small" style={{ opacity: 0.9 }}>{c.city}/{c.region}{c.nickname ? ` · ${c.nickname.split(",")[0]}` : ""}</div>
+            <div className="small"><Stars n={clubStars(clubStrength(w, c))} /></div>
           </div>
         </div>
-        <div className="small mt12">🏟️ {c.stadium} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
+        <div className="small mt8" style={{ opacity: 0.85 }}>🏟️ {c.stadium} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
       </div>
 
       <div className="grid3">
-        <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(c.balance)}</b><span>saldo</span></div>
-        <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, c))}</b><span>folha/mês</span></div>
-        <div className="stat-box"><b>{titles}</b><span>títulos (no jogo)</span></div>
+        <div className="stat-box tap" onClick={() => push({ name: "finances" })}><b style={{ fontSize: 17 }}>{formatMoney(c.balance)}</b><span>saldo</span></div>
+        <div className="stat-box"><b style={{ fontSize: 17 }}>{formatMoney(wageBill(w, c))}</b><span>folha/mês</span></div>
+        <div className="stat-box tap" onClick={() => push({ name: "trophies" })}><b>{titles}</b><span>títulos</span></div>
       </div>
 
-      <StadiumPhoto club={c} />
-
-      <div className="card tap" onClick={() => push({ name: "board" })}>
-        <div className="card-title"><h3>Diretoria</h3><span className="small">{Math.round(w.board.confidence)}%</span></div>
-        <Bar v={w.board.confidence} />
-        <div className="small mt8">🎯 {w.board.objective}</div>
+      <h3>Gestão</h3>
+      <div className="tiles">
+        <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
+        <Tile icon="👔" label="Comissão" sub="Staff técnico" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
+        <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
+        <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
+        <Tile icon="🤝" label="Patrocínios" sub="Camisa e estádio" tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
+        <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
+        <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
+        <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
+        <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
       </div>
 
-      <div className="col gap8">
-        <MenuItem icon="⭐" label="Álbum de Lendas" sub="Lendas que renasceram nas bases" onClick={() => push({ name: "legends" })} />
-        <MenuItem icon="🌱" label="Categorias de base" sub={`${c.players.filter((id) => w.players[id]?.youth).length} jogadores`} onClick={() => push({ name: "youth" })} />
-        <MenuItem icon="🏋️" label="Treino" sub="Foco do time, intensidade e treino individual" onClick={() => push({ name: "training" })} />
-        <MenuItem icon="👔" label="Comissão técnica" sub="Auxiliar, treinador, preparador, olheiro e base" onClick={() => push({ name: "staff" })} />
-        <MenuItem icon="🏛️" label="Diretoria e obras" sub="Pedidos, estádio, CT e base" onClick={() => push({ name: "board" })} />
-        <MenuItem icon="🤝" label="Vestiário" sub="Clima do elenco, conversas e promessas" onClick={() => push({ name: "dressing" })} />
-        <MenuItem icon="🤝" label="Patrocínios" sub="Camisa, nome do estádio e material esportivo" onClick={() => push({ name: "sponsors" })} />
-        <MenuItem icon="🏗️" label="Estrutura" sub="Estádio, CT, base e departamento médico" onClick={() => push({ name: "facilities" })} />
-        <MenuItem icon="💰" label="Finanças" sub="Receitas, despesas e salários" onClick={() => push({ name: "finances" })} />
-        <MenuItem icon="🏆" label="Sala de troféus" sub="Estante, linha do tempo e recordes do clube" onClick={() => push({ name: "trophies" })} />
-        <MenuItem icon="🏅" label="Conquistas" sub={`${Object.keys(w.ach?.got ?? {}).length} desbloqueadas`} onClick={() => push({ name: "achievements" })} />
-        <MenuItem icon="👔" label="Carreira" sub={`Reputação, propostas${(w.career?.offers.length ?? 0) > 0 ? " (nova!)" : ""} e trajetória`} onClick={() => push({ name: "career" })} />
-        <MenuItem icon="📜" label="Histórico" sub="Campeões e suas temporadas" onClick={() => push({ name: "history" })} />
-        <MenuItem icon="🔎" label="Ver página do clube" sub="Elenco e informações" onClick={() => push({ name: "club", id: c.id })} />
-        <MenuItem icon="⚙️" label="Configurações" sub="Modo casual, lendas, som, escudo, créditos" onClick={() => push({ name: "settings" })} />
-        {w.admin?.on && <MenuItem icon="🛠️" label="Painel do administrador" sub="Editor, trapaças e ponto de restauração" onClick={() => push({ name: "admin" })} />}
+      <h3>Glória</h3>
+      <div className="tiles">
+        <Tile icon="🏆" label="Sala de troféus" sub={`${titles} no jogo`} tint="#f5c542" wide onClick={() => push({ name: "trophies" })} />
+        <Tile icon="⭐" label="Lendas" sub="Álbum" tint="#ffcf3f" onClick={() => push({ name: "legends" })} />
+        <Tile icon="🏅" label="Conquistas" sub={`${achs} desbloqueadas`} tint="#4fa3ff" onClick={() => push({ name: "achievements" })} />
+        <Tile icon="🧭" label="Carreira" sub={offers > 0 ? `${offers} proposta${offers > 1 ? "s" : ""}!` : "Reputação"} tint="#ff5d8f" hot={offers > 0} onClick={() => push({ name: "career" })} />
+        <Tile icon="📜" label="Histórico" sub="Campeões" tint="#9aa6c4" onClick={() => push({ name: "history" })} />
+        <Tile icon="🔎" label="Página do clube" sub="Elenco e informações" tint="#34d27b" wide onClick={() => push({ name: "club", id: c.id })} />
+        {w.admin?.on && <Tile icon="🛠️" label="Admin" sub="Editor" tint="#f5c542" onClick={() => push({ name: "admin" })} />}
       </div>
 
-      <div className="grid2">
+      <div className="grid2 mt8">
         <button className="btn" onClick={saveNow}>💾 Salvar</button>
         <button className="btn" onClick={async () => { await saveWorld(w); setWorld(null); resetNav(); }}>🚪 Sair para o menu</button>
       </div>
@@ -80,13 +82,12 @@ export function ClubScreen() {
   );
 }
 
-function MenuItem({ icon, label, sub, onClick }: { icon: string; label: string; sub: string; onClick: () => void }) {
+function Tile({ icon, label, sub, tint, wide, hot, onClick }: { icon: string; label: string; sub: string; tint: string; wide?: boolean; hot?: boolean; onClick: () => void }) {
   return (
-    <div className="card tap row" onClick={onClick} style={{ padding: 12 }}>
-      <span style={{ fontSize: 24 }}>{icon}</span>
-      <div className="grow"><b>{label}</b><div className="small muted">{sub}</div></div>
-      <span className="muted">›</span>
-    </div>
+    <button className={`tile${wide ? " wide" : ""}${hot ? " hot" : ""}`} style={{ "--tint": tint } as CSSProperties} onClick={onClick}>
+      <span className="ti">{icon}</span>
+      <span><b>{label}</b><small>{sub}</small></span>
+    </button>
   );
 }
 
@@ -190,7 +191,7 @@ export function HistoryScreen() {
     <div className="page">
       <div className="card">
         <h3>Sua carreira</h3>
-        {w.managerHistory.length === 0 && <div className="small muted mt8">Complete uma temporada para ver o histórico.</div>}
+        {w.managerHistory.length === 0 && <div className="empty-state center mt8"><b>Sua história começa agora</b><div className="small muted">Complete a primeira temporada e cada campanha ficará registrada aqui.</div></div>}
         {w.managerHistory.slice().reverse().map((h, i) => (
           <div key={i} className="row small" style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
             <b style={{ width: 44 }}>{h.season}</b>

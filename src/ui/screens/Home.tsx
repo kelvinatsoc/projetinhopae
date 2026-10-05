@@ -1,12 +1,59 @@
+import type { CSSProperties } from "react";
 import { formatDate } from "../../engine/calendar";
 import { COMP_META, leagueOf, nextFixture, sortTable, STAGE_NAMES } from "../../engine/competitions";
+import { chemOf } from "../../engine/dressing";
+import { inboxUnread } from "../../engine/inbox";
+import { fanMood } from "../../engine/narrative";
 import { LEGENDS } from "../../data/legends";
 import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
-import { Bar, CompLogo, Crest } from "../components";
+import { CompLogo, Crest, visibleColor } from "../components";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
 import { SquadMoodHomeCard } from "./Dressing";
+
+/** Últimos resultados do clube (mais recente por último). */
+function formOf(w: World, clubId: string, n = 5): ("V" | "E" | "D")[] {
+  return w.fixtures
+    .filter((f) => f.result && (f.home === clubId || f.away === clubId))
+    .sort((a, b) => a.day - b.day)
+    .slice(-n)
+    .map((f) => {
+      const r = f.result!;
+      const us = f.home === clubId ? r.hg : r.ag, them = f.home === clubId ? r.ag : r.hg;
+      return us > them ? "V" : us < them ? "D" : "E";
+    });
+}
+
+export function FormPills({ w, clubId }: { w: World; clubId: string }) {
+  const form = formOf(w, clubId);
+  return (
+    <div className="form-row" aria-label="Últimos jogos">
+      {Array.from({ length: 5 }, (_, i) => {
+        const r = form[i - (5 - form.length)];
+        return <span key={i} className={`form-pill ${r ?? "none"}`}>{r ?? "·"}</span>;
+      })}
+    </div>
+  );
+}
+
+/** Anel de progresso animado (0-100). */
+export function Ring({ v, size = 58, color }: { v: number; size?: number; color?: string }) {
+  const r = size / 2 - 5;
+  const full = 2 * Math.PI * r;
+  const val = Math.max(0, Math.min(100, v));
+  const col = color ?? (val >= 66 ? "#1fbf68" : val >= 40 ? "#f5a524" : "#e5484d");
+  return (
+    <div className="ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={6} />
+        <circle className="v" cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={6} strokeLinecap="round"
+          strokeDasharray={full} strokeDashoffset={full * (1 - val / 100)} style={{ "--full": full } as CSSProperties} />
+      </svg>
+      <b>{Math.round(val)}</b>
+    </div>
+  );
+}
 
 export function HomeScreen() {
   const w = useWorld();
@@ -16,16 +63,54 @@ export function HomeScreen() {
   const last = [...w.fixtures].filter((f) => f.result && (f.home === user.id || f.away === user.id)).sort((a, b) => b.day - a.day)[0];
   const appeared = Object.keys(w.legends).length;
   const myLegends = user.players.filter((id) => w.players[id]?.legend).length;
+  const unread = inboxUnread(w);
+  const offers = w.career?.offers.length ?? 0;
 
   return (
     <div className="page">
       {next ? <NextMatchCard w={w} f={next} /> : (
-        <div className="card center"><b>Sem jogos marcados</b><div className="small muted">Toque em Continuar para encerrar a temporada.</div></div>
+        <div className="match-hero center" style={{ "--h": visibleColor(user.colors), "--a": "#1f6fd1" } as CSSProperties}>
+          <div style={{ fontSize: 44 }}>🏁</div>
+          <h2>Sem jogos marcados</h2>
+          <div className="small" style={{ opacity: 0.85 }}>Toque em Continuar para encerrar a temporada.</div>
+        </div>
       )}
+
+      <div className="row">
+        <h3 className="grow">Forma</h3>
+        <FormPills w={w} clubId={user.id} />
+      </div>
+
+      <div className="rings">
+        <div className="ring-card" onClick={() => push({ name: "board" })}>
+          <Ring v={w.board.confidence} />
+          <span>Diretoria</span>
+        </div>
+        <div className="ring-card" onClick={() => push({ name: "inbox" })}>
+          <Ring v={fanMood(w)} />
+          <span>Torcida</span>
+        </div>
+        <div className="ring-card" onClick={() => push({ name: "dressing" })}>
+          <Ring v={chemOf(w, user)} />
+          <span>Entrosamento</span>
+        </div>
+      </div>
+      <div className="small muted" style={{ marginTop: -6, padding: "0 4px" }}>🎯 {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</div>
 
       <PeneiraHomeCard />
       <SquadMoodHomeCard />
       <BoardHomeCard />
+
+      <div className="quick">
+        <button onClick={() => push({ name: "tactics" })}><span className="qi">📋</span>Tática</button>
+        <button onClick={() => push({ name: "training" })}><span className="qi">🏋️</span>Treino</button>
+        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi">📨</span>Mensagens</button>
+        <button onClick={() => push({ name: "youth" })}><span className="qi">🌱</span>Base</button>
+        <button onClick={() => push({ name: "dressing" })}><span className="qi">🤝</span>Vestiário</button>
+        <button onClick={() => push({ name: "finances" })}><span className="qi">💰</span>Finanças</button>
+        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi">👔</span>Carreira</button>
+        <button onClick={() => push({ name: "legends" })}><span className="qi">⭐</span>Lendas</button>
+      </div>
 
       {last && <LastResult w={w} f={last} />}
 
@@ -36,28 +121,20 @@ export function HomeScreen() {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-title"><h3>Diretoria</h3><span className="small muted">{Math.round(w.board.confidence)}% de confiança</span></div>
-        <Bar v={w.board.confidence} />
-        <div className="small mt8">🎯 {w.board.objective}</div>
-        {w.settings.casual && <div className="tiny muted mt8">Modo casual: sem demissões.</div>}
+      <div className="section-head"><h3>Últimas notícias</h3><button onClick={() => push({ name: "news" })}>ver todas ›</button></div>
+      <div className="hscroll">
+        {w.news.slice(0, 6).map((n) => <NewsCard key={n.id} n={n} w={w} />)}
+        {!w.news.length && <div className="news-card"><span className="ic">📰</span><b>Nenhuma notícia ainda</b><span className="tiny muted">A imprensa está de olho no seu trabalho.</span></div>}
       </div>
 
-      <div className="card tap" onClick={() => push({ name: "legends" })} style={{ background: "linear-gradient(135deg, #3b2e05, #172a21)" }}>
+      <div className="card tap" onClick={() => push({ name: "legends" })} style={{ background: "linear-gradient(135deg, rgba(120,90,10,0.55), var(--card))", borderColor: "rgba(255,207,63,0.35)" }}>
         <div className="row">
-          <div style={{ fontSize: 30 }}>⭐</div>
+          <div style={{ fontSize: 32 }}>⭐</div>
           <div className="grow">
-            <b>Álbum de Lendas</b>
+            <b className="display" style={{ fontSize: 19 }}>Álbum de Lendas</b>
             <div className="small muted">{appeared} de {LEGENDS.length} lendas já renasceram · {myLegends} no seu clube</div>
           </div>
           <span className="muted">›</span>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-title"><h3>Últimas notícias</h3><button className="btn sm ghost" onClick={() => push({ name: "news" })}>ver todas</button></div>
-        <div className="list">
-          {w.news.slice(0, 4).map((n) => <NewsRow key={n.id} n={n} w={w} />)}
         </div>
       </div>
       <div style={{ height: 40 }} />
@@ -71,31 +148,26 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
   const away = w.clubs[f.away];
   const meta = COMP_META[f.comp];
   const days = f.day - w.day;
+  const opp = f.home === w.userClubId ? away : home;
   const stage = f.stage === "league" ? `Rodada ${f.round}` : f.stage === "group" ? `${comp?.groups[f.group ?? 0]?.name ?? "Grupos"} · ${f.round}ª rodada` : `${STAGE_NAMES[f.stage]}${f.leg ? ` · jogo ${f.leg}` : ""}`;
   return (
-    <div className="hero" style={{ background: `linear-gradient(135deg, ${meta.color}cc, ${home.colors[0]}99 60%, ${away.colors[0]}99)` }}>
-      <div className="row small" style={{ opacity: 0.9 }}>
-        <CompLogo id={f.comp} size={18} /><b>{meta.short}</b><span>· {stage}</span>
-        <span className="right">{days === 0 ? "Hoje" : days === 1 ? "Amanhã" : `em ${days} dias`}</span>
+    <div className="match-hero" style={{ "--h": `${visibleColor(home.colors)}cc`, "--a": `${visibleColor(away.colors)}cc` } as CSSProperties}>
+      <div className="mh-top">
+        <CompLogo id={f.comp} size={20} /><b>{meta.short}</b><span style={{ opacity: 0.8 }}>· {stage}</span>
+        <span className={`mh-when${days === 0 ? " today" : ""}`}>{days === 0 ? "Hoje" : days === 1 ? "Amanhã" : `em ${days} dias`}</span>
       </div>
-      <div className="row" style={{ justifyContent: "space-around", margin: "14px 0" }}>
-        <div className="col center" style={{ alignItems: "center", width: 120 }}>
-          <Crest club={home} size={54} />
-          <b className="ellipsis" style={{ maxWidth: 120 }}>{home.name}</b>
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 900, opacity: 0.85 }}>×</div>
-        <div className="col center" style={{ alignItems: "center", width: 120 }}>
-          <Crest club={away} size={54} />
-          <b className="ellipsis" style={{ maxWidth: 120 }}>{away.name}</b>
-        </div>
+      <div className="mh-teams">
+        <div className="mh-team"><Crest club={home} size={74} /><b>{home.name}</b></div>
+        <div className="mh-vs">VS</div>
+        <div className="mh-team"><Crest club={away} size={74} /><b>{away.name}</b></div>
       </div>
-      <div className="row small" style={{ opacity: 0.9 }}>
+      <div className="mh-info">
         <span>📅 {formatDate(w.season, f.day)}</span>
-        <span className="right ellipsis">🏟️ {f.neutral ? "Campo neutro" : home.stadium}</span>
+        <span className="ellipsis" style={{ maxWidth: "60%" }}>🏟️ {f.neutral ? "Campo neutro" : home.stadium}</span>
       </div>
-      <div className="row mt12">
-        <button className="btn sm" style={{ background: "#0006", color: "#fff", border: 0 }} onClick={() => push({ name: "tactics" })}>⚙️ Tática</button>
-        <button className="btn sm" style={{ background: "#0006", color: "#fff", border: 0 }} onClick={() => push({ name: "club", id: f.home === w.userClubId ? f.away : f.home })}>🔎 Adversário</button>
+      <div className="mh-actions">
+        <button onClick={() => push({ name: "tactics" })}>📋 Escalação</button>
+        <button onClick={() => push({ name: "club", id: opp.id })}>🔎 {opp.name.length > 12 ? opp.abbr : opp.name}</button>
       </div>
     </div>
   );
@@ -149,14 +221,12 @@ export function MiniTable({ w, compId }: { w: World; compId: string }) {
 
 const ICON: Record<string, string> = { legend: "⭐", youth: "🌱", transfer: "💼", offer: "💰", board: "🏛️", injury: "🚑", contract: "📝", season: "🏆", match: "⚽", info: "📣", training: "🏋️", staff: "👔", scout: "🔭", dressing: "💬", admin: "🛠️" };
 
-function NewsRow({ n, w }: { n: NewsItem; w: World }) {
+function NewsCard({ n, w }: { n: NewsItem; w: World }) {
   return (
-    <div className="list-item" onClick={() => { update(() => { n.read = true; }); if (n.pid && w.players[n.pid]) push({ name: "player", id: n.pid }); else push({ name: "news" }); }}>
-      <span style={{ fontSize: 20 }}>{ICON[n.kind] ?? "📣"}</span>
-      <div className="grow">
-        <div className={n.read ? "" : "bold"}>{n.title}</div>
-        <div className="tiny muted">{formatDate(n.season, n.day)} {n.season}</div>
-      </div>
+    <div className={`news-card${n.read ? "" : " unread"}`} onClick={() => { update(() => { n.read = true; }); if (n.pid && w.players[n.pid]) push({ name: "player", id: n.pid }); else push({ name: "news" }); }}>
+      <span className="ic">{ICON[n.kind] ?? "📣"}</span>
+      <b>{n.title}</b>
+      <span className="tiny muted">{formatDate(n.season, n.day)} {n.season}{n.read ? "" : " · novo"}</span>
     </div>
   );
 }

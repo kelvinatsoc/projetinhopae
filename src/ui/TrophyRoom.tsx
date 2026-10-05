@@ -98,7 +98,7 @@ export function TrophyRoomScreen() {
 
       <div className="card">
         <div className="card-title"><h3>Linha do tempo</h3></div>
-        {timeline.length === 0 && <div className="small muted">Complete uma temporada para começar a história.</div>}
+        {timeline.length === 0 && <div className="empty-state center"><b>A estante está esperando</b><div className="small muted">Cada título conquistado ganha seu lugar aqui. Bora levantar a primeira taça?</div></div>}
         <div className="timeline">
           {timeline.map((h) => {
             const log = logs.get(h.season);
