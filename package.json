@@ -1,0 +1,29 @@
+{
+  "name": "lendas-da-base",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Manager de futebol casual para celular com as ligas brasileiras e lendas renascendo nas bases",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dados": "python3 scripts/fetch_squads.py && python3 scripts/build_database.py"
+  },
+  "dependencies": {
+    "facesjs": "^5.0.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.3"
+  }
+}

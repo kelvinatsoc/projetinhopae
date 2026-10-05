@@ -1,0 +1,168 @@
+// Criação de um novo jogo a partir do banco de dados (src/data/database.json).
+import { formatDate } from "./calendar";
+import { addNews } from "./news";
+import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
+import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } from "./rng";
+import { initialEntrants, startSeason } from "./season";
+import { freeShirt } from "./transfers";
+import type { Club, CrestPattern, Div, Pos, Settings, World } from "./types";
+
+export interface DbClub {
+  id: string; name: string; full: string; abbr: string; region: string; city: string; country: string;
+  div: Div; level: number; rep: number; colors: string[]; crest: string; stadium: string; capacity: number;
+  founded?: string; nickname?: string;
+}
+
+export interface DbPlayer {
+  c: string; n: string; nat: string; p: Pos; s: Pos[]; b: number; h: number; f: "D" | "E" | "A";
+  o: number; pt: number; fm: number; y: 0 | 1; no?: number;
+}
+
+export interface Database {
+  fetchedAt: string;
+  season: number;
+  clubs: DbClub[];
+  players: DbPlayer[];
+}
+
+export const SAVE_VERSION = 1;
+
+const FAMOUS_ACADEMIES = new Set(["sao-paulo", "fluminense", "santos", "flamengo", "gremio", "internacional", "vasco", "athletico-pr", "palmeiras", "cruzeiro", "river-plate", "boca-juniors", "independiente-del-valle", "argentinos-juniors"]);
+const JERSEYS = ["football", "football2", "football4", "football5", "football3"];
+
+export const defaultSettings = (): Settings => ({ casual: true, legendFreq: 2, speed: 250, theme: "dark", autoSave: true });
+
+export function createWorld(db: Database, opts: { managerName: string; clubId: string; seed?: number; settings?: Partial<Settings> }): World {
+  const seed = opts.seed ?? (Date.now() % 2147483647);
+  setRngState(seed);
+  const w: World = {
+    version: SAVE_VERSION,
+    saveId: `save-${Date.now()}`,
+    createdAt: Date.now(),
+    seed,
+    rng: seed,
+    season: db.season,
+    day: 0,
+    managerName: opts.managerName || "Treinador",
+    userClubId: opts.clubId,
+    clubs: {},
+    players: {},
+    nextPid: 1,
+    nextId: 1,
+    fixtures: [],
+    comps: {},
+    news: [],
+    offers: [],
+    shortlist: [],
+    legends: {},
+    settings: { ...defaultSettings(), ...opts.settings },
+    history: [],
+    board: { confidence: 60, objective: "", objectiveCode: "" },
+    managerHistory: [],
+    dataDate: db.fetchedAt,
+  };
+
+  for (const c of db.clubs) w.clubs[c.id] = makeClub(c);
+
+  // jogadores reais
+  for (const dp of db.players) {
+    const club = w.clubs[dp.c];
+    if (!club) continue;
+    const ageY = w.season - dp.b;
+    const p = newPlayerBase(w, {
+      name: dp.n,
+      nat: dp.nat,
+      born: dp.b,
+      pos: dp.p,
+      sec: dp.s ?? [],
+      foot: dp.f,
+      height: dp.h,
+      attrs: makeAttrs(dp.p, dp.o, { height: dp.h, age: ageY }),
+      pot: Math.max(dp.pt, dp.o),
+      youth: dp.y === 1 && ageY <= 20,
+      real: true,
+      fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
+      shirt: dp.no,
+    });
+    p.ovr = dp.o;
+    p.clubId = club.id;
+    club.players.push(p.id);
+    const foreignMult = club.country === "BRA" ? 1 : 0.5;
+    p.wage = Math.round(wageFor(p.ovr, club.rep, ageY) * foreignMult * (0.85 + rand() * 0.3));
+    p.contractEnd = w.season + randInt(1, 3);
+  }
+
+  // completa elencos e categorias de base
+  for (const club of Object.values(w.clubs)) fillSquad(w, club);
+
+  // jogadores livres no mercado
+  for (let i = 0; i < 160; i++) generatePlayer(w, null, randInt(50, 68), randInt(22, 32));
+
+  startSeason(w, initialEntrants(w));
+  const user = w.clubs[w.userClubId];
+  addNews(w, "info", `Bem-vindo ao ${user.name}!`,
+    `${w.managerName}, você é o novo técnico do ${user.full}. Hoje é ${formatDate(w.season, w.day)} de ${w.season}. ` +
+    `Monte o time em Elenco › Tática e toque em "Continuar" para avançar até o próximo jogo. ` +
+    `Fique de olho nas categorias de base: lendas do futebol podem renascer por lá!`);
+  w.rng = getRngState();
+  return w;
+}
+
+function makeClub(c: DbClub): Club {
+  const rep = c.rep;
+  const balance =
+    c.div === "A" ? 20_000_000 + rep * rep * 8_000
+      : c.div === "B" ? 4_000_000 + rep * rep * 1_500
+        : c.div === "C" ? 800_000 + rep * rep * 400
+          : c.div === "D" ? 500_000 + rep * rep * 200
+            : 5_000_000 + rep * rep * 5_000;
+  const colors = [...c.colors];
+  while (colors.length < 3) colors.push("#FFFFFF");
+  const youthLevel = FAMOUS_ACADEMIES.has(c.id) ? 5 : clamp(Math.round(rep / 22), 1, 5);
+  return {
+    id: c.id, name: c.name, full: c.full, abbr: c.abbr, region: c.region, city: c.city, country: c.country,
+    colors: colors.slice(0, 3) as [string, string, string],
+    crest: (c.crest || "solid") as CrestPattern,
+    stadium: c.stadium, capacity: c.capacity, rep, level: c.level, div: c.div, balance: Math.round(balance),
+    players: [],
+    tactic: { formation: "4-3-3", mentality: 0, pressing: 1 },
+    youthLevel,
+    facilities: clamp(Math.round(rep / 22), 1, 5),
+    ticket: c.div === "A" ? Math.round(40 + rep * 0.4) : c.div === "B" ? 30 : c.div === "C" ? 20 : c.div === "D" ? 15 : 25,
+    history: [], trophies: [],
+    finance: { income: {}, expense: {} },
+    founded: c.founded, nickname: c.nickname,
+    jersey: JERSEYS[hashString(c.id) % JERSEYS.length],
+  };
+}
+
+const MIN_BY_POS: Record<Pos, number> = { GOL: 3, ZAG: 4, LD: 2, LE: 2, VOL: 2, MC: 2, MEI: 2, PD: 2, PE: 2, ATA: 3 };
+
+function fillSquad(w: World, club: Club) {
+  const first = () => club.players.map((id) => w.players[id]).filter((p) => p && !p.youth);
+  const target = club.div === "A" || club.div === "B" ? 27 : 24;
+  // mínimo por posição
+  for (const pos of Object.keys(MIN_BY_POS) as Pos[]) {
+    const have = first().filter((p) => p.pos === pos).length;
+    for (let i = have; i < MIN_BY_POS[pos]; i++) generatePlayer(w, club, club.level - 7 + gauss(0, 2), randInt(19, 31), pos);
+  }
+  // completa até o tamanho alvo
+  let guard = 0;
+  while (first().length < target && guard++ < 40) {
+    const pos = randomPos();
+    generatePlayer(w, club, club.level - 6, randInt(19, 32), pos);
+  }
+  // base
+  const youthTarget = club.country === "BRA" ? 4 + club.youthLevel : 3;
+  const youth = club.players.map((id) => w.players[id]).filter((p) => p?.youth).length;
+  for (let i = youth; i < youthTarget; i++) {
+    const ageY = randInt(15, 18);
+    const ovr = clamp(Math.round(40 + club.youthLevel * 2.5 + (ageY - 15) * 3 + gauss(0, 4)), 32, 70);
+    const p = generatePlayer(w, club, ovr, ageY, undefined, true);
+    p.pot = clamp(Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7)), ovr + 5, 90);
+    p.fame = 1;
+  }
+  // camisas
+  for (const p of first()) if (!p.shirt) p.shirt = freeShirt(w, club, p.pos);
+  for (const p of club.players.map((id) => w.players[id])) if (!p.shirt) p.shirt = freeShirt(w, club, p.pos);
+}
