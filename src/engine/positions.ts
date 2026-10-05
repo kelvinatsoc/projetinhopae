@@ -89,15 +89,22 @@ export function familiarityPenalty(p: Player, pos: Pos): number {
   if (p.pos === pos) return 0;
   if (p.sec.includes(pos)) return 1;
   if (pos === "GOL" || p.pos === "GOL") return 25;
+  // Polivalente: adapta-se melhor às posições vizinhas
+  const ver = !!p.traits?.includes("VER");
+  const adj = (n: number) => (ver ? Math.max(1, n - 2) : n);
+  let pen = 14;
   const near = NEAR[p.pos][pos];
-  if (near !== undefined) return near;
-  // vizinho via posição secundária
-  let best = 14;
-  for (const s of p.sec) {
-    const n = NEAR[s]?.[pos];
-    if (n !== undefined) best = Math.min(best, n + 2);
+  if (near !== undefined) pen = adj(near);
+  else {
+    // vizinho via posição secundária
+    for (const s of p.sec) {
+      const n = NEAR[s]?.[pos];
+      if (n !== undefined) pen = Math.min(pen, adj(n) + 2);
+    }
   }
-  return best;
+  // treinando a posição nova no treino individual: a penalidade cai conforme o progresso
+  if (p.tf?.k === "pos" && p.tf.pos === pos) pen = Math.max(1, Math.round(pen * (1 - p.tf.prog / 100)));
+  return pen;
 }
 
 /** Overall do jogador numa posição específica (considera atributos + adaptação). */

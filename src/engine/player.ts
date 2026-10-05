@@ -175,35 +175,51 @@ export function generatePlayer(w: World, club: Club | null, level: number, ageYe
 
 // ------------------------------------------------------------ evolução
 /**
- * Evolução de meia temporada. Jovens crescem rumo ao potencial (mais rápido se jogam),
- * veteranos caem. Lendas renascidas crescem de forma mais confiável.
+ * Fórmula clássica da evolução de MEIA temporada (média e desvio), sem o sorteio.
+ * A evolução mensal (training.ts) usa esta mesma fórmula fatiada em 11 pedaços.
  */
-export function developPlayer(p: Player, season: number, facilities: number) {
+export function devParams(p: Player, season: number, facilities: number, playFactor: number): { mean: number; sd: number } {
+  const a = age(p, season);
+  const gap = p.pot - p.ovr;
+  const facFactor = 0.85 + facilities * 0.06;
+  if (a <= 23) {
+    const rate = a <= 18 ? 0.22 : a <= 20 ? 0.2 : a <= 22 ? 0.17 : 0.13;
+    return { mean: gap * rate * playFactor * facFactor, sd: p.legend ? 0.6 : 1.1 };
+  }
+  if (a <= 28) return { mean: gap * 0.12 * playFactor, sd: 0.7 };
+  if (a <= 31) return { mean: -0.35, sd: 0.8 };
+  if (a <= 33) return { mean: -1.3, sd: 0.9 };
+  return { mean: -2.2, sd: 1.1 };
+}
+
+/**
+ * Evolução clássica de meia temporada (antiga, antes da evolução mensal).
+ * Mantida só para comparação nos testes de calibragem.
+ */
+export function developPlayerHalf(p: Player, season: number, facilities: number) {
   const a = age(p, season);
   const gap = p.pot - p.ovr;
   const played = p.stats.apps;
   const playFactor = p.youth ? 0.8 : played >= 12 ? 1.25 : played >= 5 ? 1.05 : 0.85;
-  const facFactor = 0.85 + facilities * 0.06;
-  let delta = 0;
-  if (a <= 23) {
-    const rate = a <= 18 ? 0.22 : a <= 20 ? 0.2 : a <= 22 ? 0.17 : 0.13;
-    delta = gap * rate * playFactor * facFactor + gauss(0, p.legend ? 0.6 : 1.1);
-    if (p.legend) delta = Math.max(delta, Math.min(gap, 2.5));
-  } else if (a <= 28) {
-    delta = gap * 0.12 * playFactor + gauss(0, 0.7);
-  } else if (a <= 31) {
-    delta = gauss(-0.35, 0.8);
-  } else if (a <= 33) {
-    delta = gauss(-1.3, 0.9);
-  } else {
-    delta = gauss(-2.2, 1.1);
-  }
+  const { mean, sd } = devParams(p, season, facilities, playFactor);
+  let delta = mean + gauss(0, sd);
+  if (a <= 23 && p.legend) delta = Math.max(delta, Math.min(gap, 2.5));
   delta = clamp(delta, -6, 8);
   if (delta > 0 && p.ovr + delta > p.pot) delta = Math.max(0, p.pot - p.ovr);
   applyDelta(p, delta, a);
 }
 
-function applyDelta(p: Player, delta: number, ageYears: number) {
+/** Atributos puxados por cada foco de treino do time (ganham um pouco mais quando o jogador evolui). */
+export const FOCUS_ATTRS: Partial<Record<string, (keyof Attrs)[]>> = {
+  fis: ["vel", "fis"], atk: ["fin", "dri"], def: ["def", "fis"], tat: ["pas"], bola: ["pas", "fin"],
+};
+
+/**
+ * Aplica uma variação de overall redistribuindo os atributos.
+ * focus: atributos do foco de treino do time, que ganham +0,5 por ponto antes do ajuste
+ * (o overall final é o mesmo; só o perfil muda).
+ */
+export function applyDelta(p: Player, delta: number, ageYears: number, focus?: (keyof Attrs)[]) {
   if (Math.abs(delta) < 0.3) return;
   const target = clamp(Math.round(p.ovr + delta), 20, 99);
   // veteranos perdem velocidade e físico primeiro; jovens ganham físico
@@ -213,6 +229,7 @@ function applyDelta(p: Player, delta: number, ageYears: number) {
   } else if (delta > 0 && ageYears <= 21) {
     p.attrs.fis = clamp(p.attrs.fis + delta * 0.8, 10, 99);
   }
+  if (delta > 0 && focus) for (const k of focus) p.attrs[k] = clamp(p.attrs[k] + 0.5 * delta, 5, 99);
   fitAttrs(p.attrs, p.pos, target);
   recalcOvr(p);
   if (p.pot < p.ovr) p.pot = p.ovr;
@@ -224,6 +241,7 @@ export function retireChance(p: Player, season: number): number {
   let base = a < 32 ? 0 : a === 32 ? 0.05 : a === 33 ? 0.1 : a === 34 ? 0.2 : a === 35 ? 0.35 : a === 36 ? 0.55 : a === 37 ? 0.75 : 0.92;
   if (!p.clubId && a >= 30) base += 0.35;
   if (p.ovr >= 80) base *= 0.7;
+  if ((p.hid?.[0] ?? 10) >= 15) base *= 0.85; // profissional exemplar cuida do corpo e joga mais tempo
   return clamp(base, 0, 0.98);
 }
 

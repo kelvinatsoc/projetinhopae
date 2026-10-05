@@ -1,0 +1,24 @@
+/* Telas de gestão da Trilha A: treino, base, peneira e olheiros. */
+.pn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pn-card { perspective: 900px; min-width: 0; }
+.pn-inner { position: relative; height: 218px; transition: transform 400ms ease; transform-style: preserve-3d; }
+.pn-inner.flipped { transform: rotateY(180deg); }
+.pn-face {
+  position: absolute; inset: 0; border-radius: 14px; border: 1px solid var(--line); background: var(--card);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; overflow: hidden;
+}
+.pn-back {
+  background: repeating-linear-gradient(45deg, #1d3a2a 0 10px, #183022 10px 20px); cursor: pointer; justify-content: center;
+}
+.pn-front { transform: rotateY(180deg); }
+.pn-front.gem { border: 2px solid var(--gold); box-shadow: 0 0 14px rgba(245, 197, 66, 0.45); }
+.pn-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.pn-actions .btn { min-height: 40px; padding: 6px 2px; font-size: 12px; white-space: nowrap; }
+.trait-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card2); color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.trait-chip.locked { opacity: 0.6; border-style: dashed; cursor: default; }
+.rating-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.rating-row:last-of-type { border-bottom: 0; }
