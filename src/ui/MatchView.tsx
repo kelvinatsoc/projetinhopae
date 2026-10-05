@@ -13,6 +13,9 @@ import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from
 import { Avatar, Crest, StadiumPhoto } from "./components";
 import "./economy.css";
 import "./matchView.css";
+// [stadium-art] identidade de cada estádio (src/ui/stadiumArt.ts)
+import { paintPitch, paintStadium, stadiumArt } from "./stadiumArt";
+import { StadiumBanner } from "./StadiumBanner";
 
 // ---------------------------------------------------------------- geometria (pixels de jogo)
 const W = 196;
@@ -284,6 +287,8 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   const away = sim.sides[1].club;
   const rng = makeRng(home.id.split("").reduce((s, c) => s * 31 + c.charCodeAt(0), 7) >>> 0);
   const [bg, g] = makeCanvas();
+  // [stadium-art]
+  const art = stadiumArt({ home, away, neutral: !!sim.f.neutral, stage: sim.f.stage });
 
   // estrutura da arquibancada
   g.fillStyle = "#1a2320";
@@ -294,10 +299,7 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   g.fillRect(0, 1, W, 1);
 
   // gramado listrado (faixas de 10 px alinhadas com a linha de fundo)
-  for (let x = 13; x <= 183; x++) {
-    g.fillStyle = Math.floor((x - PX0 + 100) / 10) % 2 ? GRASS_B : GRASS_A;
-    g.fillRect(x, 16, 1, 105);
-  }
+  paintPitch(g, art, GRASS_A, GRASS_B); // [stadium-art]
   // placas laterais (atrás dos gols) — as de cima e de baixo são animadas
   const boardPal = ["#1d4ed8", "#dc2626", "#f59e0b", "#059669", "#7c3aed", "#e5e5e5"];
   for (let y = 16; y <= 120; y += 8) {
@@ -374,11 +376,10 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   g.fillRect(93, 6, 10, 1);
 
   // torcida (cada torcedor = 1 px de cabeça + 1 px de corpo, fileiras a cada 3 px)
-  const density = clamp(0.48 + home.rep / 210 + Math.min(home.capacity, 80000) / 400000, 0.5, 0.97);
+  const density = art.density; // [stadium-art]
   const pal = (c: Club) => [c.colors[0], c.colors[0], c.colors[0], c.colors[0], c.colors[1], c.colors[1], c.colors[2], "#e9e9e9", "#2a2a2a", c.colors[0]];
   const homePal = pal(home);
   const awayPal = pal(away);
-  const seat = "#34404a";
   const step = "#202925";
   const fans: Fan[] = [];
   const isAway = (x: number, y: number) => !sim.f.neutral && ((y >= 123 && x >= 150) || (x >= 185 && y >= 88));
@@ -392,11 +393,11 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
     g.fillStyle = step;
     g.fillRect(x0, y + 2, x1 - x0 + 1, 1);
     for (let x = x0; x <= x1; x++) {
-      if (blocked(x, y) || blocked(x, y + 1)) continue;
+      if (blocked(x, y) || blocked(x, y + 1) || art.mask(x, y)) continue; // [stadium-art]
       const awaySec = isAway(x, y);
       const dens = awaySec ? Math.min(density, 0.75) : density;
       if (isGap(x, y) || rng() > dens) {
-        g.fillStyle = seat;
+        g.fillStyle = art.seatAt(x, y); // [stadium-art]
         g.fillRect(x, y, 1, 2);
         continue;
       }
@@ -421,20 +422,8 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
     g.fillRect(fx + 3, fy, 3, 4);
   }
 
-  // torres de iluminação nos cantos
-  for (const [lx, ly] of [[1, 0], [W - 6, 0], [1, H - 5], [W - 6, H - 5]]) {
-    g.fillStyle = "#59636a";
-    g.fillRect(lx, ly, 5, 5);
-    g.fillStyle = "#fff8d8";
-    g.fillRect(lx + 1, ly + 1, 3, 2);
-    g.fillStyle = "#ffe98a";
-    g.fillRect(lx + 1, ly + 3, 3, 1);
-    const glow = g.createRadialGradient(lx + 2.5, ly + 2.5, 1, lx + 2.5, ly + 2.5, 34);
-    glow.addColorStop(0, "rgba(255,250,220,0.32)");
-    glow.addColorStop(1, "rgba(255,250,220,0)");
-    g.fillStyle = glow;
-    g.fillRect(lx - 34, ly - 34, 72, 72);
-  }
+  // [stadium-art] estrutura, teto, marcos, luzes, telão e mosaico
+  paintStadium(g, art, { home, away, neutral: !!sim.f.neutral, stage: sim.f.stage }, rng);
   // goleiras (redes) por cima do gramado
   for (const s of [0, 1] as const) {
     const gx = s === 0 ? PX0 : PX1;
@@ -2088,11 +2077,12 @@ export function MatchView(props: MatchViewProps) {
   const photo = !!home.stadiumImg && !sim.f.neutral;
   return (
     <div className="mv" ref={wrapRef}>
-      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}`}>
+      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}${intro ? " sa-fly" : ""}`}>
         <div className="mv-cam" ref={camRef}>
           <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
           {props.ultra && <canvas ref={fxRef} className="mv-fx" aria-hidden="true" />}
         </div>
+        {intro && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
         {intro && (
           <div className="mv-intro" onClick={props.onSkipIntro}>
             <div className="mv-intro-fallback">

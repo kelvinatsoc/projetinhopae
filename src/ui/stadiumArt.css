@@ -1,0 +1,32 @@
+/* sobrevoo do estádio na entrada dos times (anima .mv-cam; animação vence o transform inline do Ultra) */
+.mv-stage.sa-fly { overflow: hidden; }
+.mv-stage.sa-fly > .mv-cam { animation: sa-fly 5.2s cubic-bezier(0.45, 0, 0.2, 1) both; }
+@keyframes sa-fly {
+  0% { transform: scale(2.1) translate(18%, 16%) rotate(-3deg); }
+  40% { transform: scale(1.7) translate(-14%, 8%) rotate(1deg); }
+  75% { transform: scale(1.25) translate(0, -6%); }
+  100% { transform: none; }
+}
+.sa-banner {
+  position: absolute; left: 50%; bottom: 10%; z-index: 3; pointer-events: none;
+  transform: translateX(-50%); min-width: 62%; max-width: 92%; padding: 6px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.2; text-align: center;
+  color: #fff; background: rgba(8, 12, 10, 0.86); border: 2px solid var(--sa-c0); border-radius: 3px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+  animation: sa-banner 5.4s ease both;
+}
+.sa-banner b { font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase; text-shadow: 2px 2px 0 #000; }
+.sa-banner span { font-size: 11px; opacity: 0.88; }
+.sa-banner-stripe {
+  position: absolute; left: 0; right: 0; top: -6px; height: 4px;
+  background: repeating-linear-gradient(90deg, var(--sa-c0) 0 10px, var(--sa-c1) 10px 20px);
+}
+@keyframes sa-banner {
+  0%, 44% { opacity: 0; transform: translate(-50%, 14px); }
+  52%, 88% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 0); visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-stage.sa-fly > .mv-cam { animation: none; }
+  .sa-banner { animation: sa-banner 3s step-end both; }
+}
