@@ -4,6 +4,7 @@
 // inteira com image-rendering: pixelated, então fica nítido em qualquer tela.
 // A animação roda fora do React (requestAnimationFrame + refs) e usa Math.random: nunca mexe no
 // gerador do mundo, então o resultado da partida é exatamente o mesmo com ou sem o campo.
+import { chaseStep, RUN_PX_S } from "./animTime";
 import { kitsOf, type Kit } from "./Kit";
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { MatchSim, MinutePhase } from "../engine/match";
@@ -854,7 +855,7 @@ class PitchAnim {
     const b = this.ball;
     const dist0 = Math.hypot(to.tx - b.x, to.ty - b.y);
     const dur = clamp(dist0 * 6.5, 110, 360) / this.spd();
-    const reach = (34 * this.spd() * to.speed * dur) / 1000;
+    const reach = (RUN_PX_S * this.spd() * to.speed * dur) / 1000;
     const dx = to.tx - to.x, dy = to.ty - to.y;
     const dd = Math.hypot(dx, dy) || 1;
     const k = Math.min(1, (reach * 0.9) / dd);
@@ -1577,8 +1578,8 @@ class PitchAnim {
       const dist = Math.hypot(dx, dy);
       let step = 0;
       if (dist > 0.01) {
-        const vmax = (34 * sp * d.speed * (d.sad ? 0.55 : 1) * (d.leaving ? 0.8 : 1) * dt) / 1000;
-        step = this.reduced ? dist : Math.min(dist, vmax, dist * ease + 0.12);
+        const vmax = RUN_PX_S * sp * d.speed * (d.sad ? 0.55 : 1) * (d.leaving ? 0.8 : 1);
+        step = this.reduced ? dist : chaseStep(dist, dt, vmax, 150 / sp);
         d.x += (dx / dist) * step;
         d.y += (dy / dist) * step;
       }
@@ -1909,7 +1910,7 @@ class UltraFX {
     // câmera: segue a bola; perto do gol (lance de perigo) aproxima suavemente
     const danger = b.x < PX0 + BOX_D + 12 || b.x > PX1 - BOX_D - 12;
     const tz = a.celebr ? 1.18 : danger && a.mode === "play" ? 1.32 : 1.12;
-    const e = Math.min(1, 0.0035 * dt);
+    const e = 1 - Math.exp(-dt / 285);
     this.cam.z += (tz - this.cam.z) * e;
     this.cam.x += (b.x - this.cam.x) * Math.min(1, e * 1.6);
     this.cam.y += (b.y - this.cam.y) * Math.min(1, e * 1.6);
@@ -2191,11 +2192,11 @@ export function MatchView(props: MatchViewProps) {
       // Leve: ~30 quadros por segundo. Ultra/PS1: sem limite (acompanha a tela, até 120 Hz)
       if (dt >= (fx || ps1On ? 1 : 31)) {
         last = t;
-        if (!anim.frozen) anim.update(Math.min(dt, 100));
-        if (ps1) ps1.render(ps1Snapshot(anim), Math.min(dt, 100), ps1Hud());
+        if (!anim.frozen) anim.update(Math.min(dt, 50));
+        if (ps1) ps1.render(ps1Snapshot(anim), Math.min(dt, 50), ps1Hud());
         else if (!ps1On || ps1Dead) anim.draw(g);
         if (fx && fg && fxCanvas) {
-          fx.update(Math.min(dt, 100));
+          fx.update(Math.min(dt, 50));
           fx.draw(fg, fxCanvas.width, fxCanvas.height);
           if (camRef.current) camRef.current.style.transform = fx.cameraCss();
         }

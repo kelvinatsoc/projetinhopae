@@ -761,7 +761,7 @@ export function playCinematic(host: HTMLElement, spec: CineSpec, hooks: CineHook
 
   const loop = (ts: number) => {
     raf = 0;
-    const dt = last ? Math.min(60, ts - last) : 16;
+    const dt = last ? Math.min(50, ts - last) : 16;
     last = ts;
     scene.update(dt);
     scene.draw(g);
