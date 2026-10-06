@@ -6,6 +6,7 @@ import { advance, applyResult, finishUserMatch, loadRng, runEndOfSeason, saveRng
 import { simulateFixture } from "../src/engine/match";
 import { createWorld, type Database } from "../src/engine/world";
 import { fastFixture } from "../src/engine/worldLeagues";
+import { intlDaily, simulateIntlDay } from "../src/engine/international";
 import type { Fixture, World } from "../src/engine/types";
 import { makeWorldFixture } from "./fixtures/worldFixture";
 
@@ -73,5 +74,29 @@ describe("mundo R3: Mundial de Clubes", () => {
     expect(cwc.ties.filter((t) => t.stage === "r16")).toHaveLength(8);
     expect(dup(w.fixtures)).toEqual([]);
     expect(w.clubs[cwc.champion!].trophies.some((t) => t.comp === "cwc")).toBe(true);
+  });
+});
+
+describe("mundo R3: Euro e Copa América 2028 (+ eliminatórias da Euro em 2027)", () => {
+  it("eliminatórias em 2027 e os dois torneios em junho/julho de 2028, com campeões", () => {
+    const w = createWorld(db as Database, { managerName: "T", clubId: "flamengo", seed: 8, world: makeWorldFixture() });
+    loadRng(w);
+    for (const y of [2027, 2028]) {
+      w.season = y;
+      w.intl!.year = undefined;
+      w.intl!.fixtures = w.intl!.fixtures.filter((f) => !f.result && w.intl!.comps[f.comp]?.carry);
+      for (const id of Object.keys(w.intl!.comps)) if (!w.intl!.comps[id].carry) delete w.intl!.comps[id];
+      for (let d = 1; d < 330; d++) { w.day = d; intlDaily(w); simulateIntlDay(w, d); }
+      if (y === 2027) expect(w.intl!.comps["euroq-2028"]?.done).toBe(true);
+    }
+    saveRng(w);
+    const euro = w.intl!.comps["euro-2028"], ca = w.intl!.comps["ca-2028"];
+    expect(euro.done && ca.done).toBe(true);
+    expect(euro.teams.every((id) => w.intl!.nts[id].confed === "UEFA")).toBe(true);
+    expect(ca.teams).toHaveLength(16);
+    expect(ca.teams.filter((id) => w.intl!.nts[id].confed === "CONMEBOL")).toHaveLength(10);
+    expect(w.intl!.honors.map((h) => h.comp)).toEqual(expect.arrayContaining(["euro", "ca"]));
+    expect(dup(w.intl!.fixtures)).toEqual([]);
+    expect(Object.values(w.players).some((p) => p.away)).toBe(false);
   });
 });

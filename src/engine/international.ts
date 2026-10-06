@@ -2,7 +2,7 @@
 // e Copa do Mundo (48 seleções: 12 grupos de 4, 2 primeiros + 8 melhores terceiros, mata-mata desde os 32 avos).
 // As seleções ficam em w.intl.nts e os jogos em w.intl.fixtures (fora de w.fixtures, que é só de clubes).
 import type { NationalTeamDef } from "../data/worldTypes";
-import { dayOf, intlWindows, isWorldCupYear, yearLen } from "./calendar";
+import { dayOf, intlWindows, isContinentalYear, isWorldCupYear, yearLen } from "./calendar";
 import { applyToTable, newRow, roundRobin, sortTable } from "./competitions";
 import { elevenStrength, quickEleven, quickResult } from "./fastsim";
 import { chance, randInt, rand, shuffle } from "./rng";
@@ -13,6 +13,9 @@ export const INTL_META: Record<string, { name: string; short: string; color: str
   fr: { name: "Amistosos internacionais", short: "Amistosos", color: "#64748b" },
   wc: { name: "Copa do Mundo FIFA", short: "Copa do Mundo", color: "#c9a227" },
   wcq: { name: "Eliminatórias Sul-Americanas", short: "Eliminatórias", color: "#0f9d58" },
+  euro: { name: "UEFA Euro", short: "Euro", color: "#143cdb" },
+  ca: { name: "Copa América", short: "Copa América", color: "#d4a017" },
+  euroq: { name: "Eliminatórias da Euro", short: "Elim. Euro", color: "#143cdb" },
 };
 export const intlKind = (compId: string) => compId.split("-")[0];
 
@@ -146,7 +149,9 @@ export function ensureIntlYear(w: World) {
   if (!intl || intl.year === w.season) return;
   const y = w.season;
   intl.year = y;
-  if (isWorldCupYear(y)) createWorldCup(w, y);
+  if (isWorldCupYear(y)) createTournament(w, "wc", y);
+  if (isContinentalYear(y)) { createTournament(w, "euro", y); createTournament(w, "ca", y); }
+  if (isContinentalYear(y + 1)) createEuroQualifiers(w, y + 1);
   // eliminatórias sul-americanas da próxima Copa: começam no ano seguinte à Copa, 18 rodadas em 2 anos
   if (isWorldCupYear(y - 1)) createQualifiers(w, y + 3);
   // amistosos para quem não joga nas datas FIFA
@@ -190,16 +195,34 @@ function createQualifiers(w: World, wcYear: number) {
   });
 }
 
-// ---------------------------------------------------------------- Copa do Mundo
-/** Dias da Copa (relativos a 1º/jan do ano): abertura 11/jun, final 19/jul. */
-export function worldCupDays(y: number) {
-  const d0 = dayOf(y, y, 5, 11);
-  return {
-    callup: d0 - 10,
-    md: [d0, d0 + 5, d0 + 10], // + (grupo % 4) dias
-    r32: d0 + 16, r16: d0 + 21, qf: d0 + 26, sf: d0 + 30, third: d0 + 37, final: d0 + 38,
-  };
+// ---------------------------------------------------------------- torneios (Copa do Mundo, Euro, Copa América)
+export type TourKind = "wc" | "euro" | "ca";
+export interface TourSpec {
+  kind: TourKind; size: number; d0: number; callup: number; md: number[];
+  ko: Record<string, number>; perDay: Record<string, number>; third: boolean; region: string;
 }
+
+/** Calendário de cada torneio (dias relativos a 1º/jan do ano). */
+export function tourSpec(kind: TourKind, y: number): TourSpec {
+  if (kind === "wc") {
+    const d0 = dayOf(y, y, 5, 11); // abertura 11/jun, final 19/jul
+    return { kind, size: 48, d0, callup: d0 - 10, md: [0, 5, 10], ko: { r32: d0 + 16, r16: d0 + 21, qf: d0 + 26, sf: d0 + 30, third: d0 + 37, final: d0 + 38 }, perDay: { r32: 4, r16: 2 }, third: true, region: "FIFA" };
+  }
+  if (kind === "euro") {
+    const d0 = dayOf(y, y, 5, 9); // 9/jun a 9/jul
+    return { kind, size: 24, d0, callup: d0 - 10, md: [0, 5, 10], ko: { r16: d0 + 16, qf: d0 + 21, sf: d0 + 25, final: d0 + 30 }, perDay: { r16: 2 }, third: false, region: "UEFA" };
+  }
+  const d0 = dayOf(y, y, 5, 12); // Copa América: 12/jun a 4/jul
+  return { kind, size: 16, d0, callup: d0 - 10, md: [0, 4, 8], ko: { qf: d0 + 13, sf: d0 + 17, third: d0 + 21, final: d0 + 22 }, perDay: { qf: 2 }, third: true, region: "CONMEBOL" };
+}
+
+/** Compatibilidade: dias da Copa do Mundo. */
+export function worldCupDays(y: number) {
+  const t = tourSpec("wc", y);
+  return { callup: t.callup, md: t.md.map((m) => t.d0 + m), r32: t.ko.r32, r16: t.ko.r16, qf: t.ko.qf, sf: t.ko.sf, third: t.ko.third, final: t.ko.final };
+}
+
+const byLevel = (a: NationalTeam, b: NationalTeam) => b.level - a.level || a.id.localeCompare(b.id);
 
 /** As 48 seleções da Copa: lista oficial (wc2026) ou as melhores por confederação (eliminatórias para a CONMEBOL). */
 export function worldCupEntrants(w: World, y: number): string[] {
@@ -218,22 +241,49 @@ export function worldCupEntrants(w: World, y: number): string[] {
       const pos = new Map(sortTable(q.table.slice()).map((r, i) => [r.club, i]));
       return list.sort((a, b) => (pos.get(a.id) ?? 99) - (pos.get(b.id) ?? 99));
     }
-    return list.sort((a, b) => b.level - a.level || a.id.localeCompare(b.id));
+    return list.sort(byLevel);
   };
   for (const [confed, n] of Object.entries(quota)) out.push(...order(confed).slice(0, n).map((x) => x.id));
-  const rest = all.filter((n) => !out.includes(n.id)).sort((a, b) => b.level - a.level || a.id.localeCompare(b.id));
+  const rest = all.filter((n) => !out.includes(n.id)).sort(byLevel);
   while (out.length < 48 && rest.length) out.push(rest.shift()!.id);
   return out.slice(0, 48);
 }
 
-export function createWorldCup(w: World, y: number) {
+/** Euro: anfitriões + os melhores das eliminatórias (ou por força). */
+export function euroEntrants(w: World, y: number): string[] {
   const intl = w.intl!;
-  const d = worldCupDays(y);
-  if (d.callup <= w.day) return; // save migrado com a Copa já começada: fica para a próxima
-  const teams = worldCupEntrants(w, y);
+  const uefa = Object.values(intl.nts).filter((n) => n.confed === "UEFA");
+  const hosts = ["nt-ENG", "nt-SCO", "nt-WAL", "nt-IRL"].filter((id) => intl.nts[id]);
+  const q = intl.comps[`euroq-${y}`];
+  let order: string[];
+  if (q?.groups.length) {
+    const rows = q.groups.flatMap((g) => sortTable(g.table.slice()).map((r, pos) => ({ id: r.club, pos, pts: r.pts, gd: r.gf - r.ga })));
+    rows.sort((a, b) => a.pos - b.pos || b.pts - a.pts || b.gd - a.gd || a.id.localeCompare(b.id));
+    order = rows.map((r) => r.id);
+  } else order = uefa.sort(byLevel).map((n) => n.id);
+  const out = [...hosts];
+  for (const id of order) if (out.length < 24 && !out.includes(id)) out.push(id);
+  return out;
+}
+
+/** Copa América: as 10 da CONMEBOL + 6 convidadas da CONCACAF. */
+export function copaAmericaEntrants(w: World): string[] {
+  const all = Object.values(w.intl!.nts);
+  const sa = all.filter((n) => n.confed === "CONMEBOL").sort(byLevel).map((n) => n.id);
+  const guests = all.filter((n) => n.confed === "CONCACAF").sort(byLevel).map((n) => n.id).slice(0, Math.max(0, 16 - sa.length));
+  return [...sa, ...guests].slice(0, 16);
+}
+
+const TOUR_ID: Record<TourKind, string> = { wc: "wc", euro: "euro", ca: "ca" };
+
+export function createTournament(w: World, kind: TourKind, y: number) {
+  const intl = w.intl!;
+  const spec = tourSpec(kind, y);
+  if (spec.callup <= w.day) return; // save migrado com o torneio já começado: fica para o próximo
+  const teams = kind === "wc" ? worldCupEntrants(w, y) : kind === "euro" ? euroEntrants(w, y) : copaAmericaEntrants(w);
   const nGroups = Math.floor(teams.length / 4);
   if (nGroups < 2) return;
-  const comp = intlComp(w, `wc-${y}`, "groups", teams.slice(0, nGroups * 4), String(y), "FIFA");
+  const comp = intlComp(w, `${TOUR_ID[kind]}-${y}`, "groups", teams.slice(0, nGroups * 4), String(y), spec.region);
   const sorted = comp.teams.slice().sort((a, b) => intl.nts[b].level - intl.nts[a].level || a.localeCompare(b));
   const pots = [0, 1, 2, 3].map((i) => shuffle(sorted.slice(i * nGroups, (i + 1) * nGroups)));
   let best: string[][] = [];
@@ -242,7 +292,7 @@ export function createWorldCup(w: World, y: number) {
     const groups: string[][] = Array.from({ length: nGroups }, () => []);
     for (const pot of pots) shuffle(pot.slice()).forEach((t, i) => groups[i].push(t));
     let score = 0;
-    for (const g of groups) {
+    if (kind === "wc") for (const g of groups) {
       const conf: Record<string, number> = {};
       for (const t of g) conf[intl.nts[t].confed] = (conf[intl.nts[t].confed] ?? 0) + 1;
       for (const [c, k] of Object.entries(conf)) score += Math.max(0, k - (c === "UEFA" ? 2 : 1));
@@ -255,10 +305,13 @@ export function createWorldCup(w: World, y: number) {
   comp.groups.forEach((g, gi) => {
     const rr = roundRobin(g.teams); // 3 rodadas
     rr.forEach((pairs, ri) => {
-      for (const [home, away] of pairs) addIntlFixture(w, { comp: comp.id, stage: "group", round: ri + 1, day: d.md[ri] + (gi % 4), home, away, group: gi, neutral: true });
+      for (const [home, away] of pairs) addIntlFixture(w, { comp: comp.id, stage: "group", round: ri + 1, day: spec.d0 + spec.md[ri] + (gi % 4), home, away, group: gi, neutral: true });
     });
   });
 }
+
+/** Compatibilidade: cria a Copa do Mundo do ano. */
+export const createWorldCup = (w: World, y: number) => createTournament(w, "wc", y);
 
 function intlTie(w: World, comp: Competition, stage: string, a: string, b: string, day: number) {
   const tie: Tie = { id: w.nextId++, comp: comp.id, stage, a, b, legs: 1, fixtures: [] };
@@ -270,25 +323,28 @@ function intlTie(w: World, comp: Competition, stage: string, a: string, b: strin
 const tieRound = (comp: Competition, stage: string) => comp.ties.filter((t) => t.stage === stage);
 const roundDone = (comp: Competition, stage: string) => { const t = tieRound(comp, stage); return t.length > 0 && t.every((x) => x.winner); };
 const loserOf = (t: Tie) => (t.winner === t.a ? t.b : t.a);
+const STAGE_FOR: Record<number, string> = { 32: "r32", 16: "r16", 8: "qf", 4: "sf", 2: "final" };
+const NEXT: Record<string, string> = { r32: "r16", r16: "qf", qf: "sf", sf: "final" };
+export const tourKindOf = (compId: string): TourKind | null => (["wc", "euro", "ca"].includes(intlKind(compId)) ? (intlKind(compId) as TourKind) : null);
 
-function progressWorldCup(w: World, comp: Competition) {
+function progressTournament(w: World, comp: Competition, kind: TourKind) {
   const intl = w.intl!;
-  const d = worldCupDays(comp.season);
+  const spec = tourSpec(kind, comp.season);
   const shift = w.season > comp.season ? -yearLen(comp.season) : 0;
   const name = (id: string) => ntName(w, id);
-  // jogos espalhados em dias seguidos: metade num dia, metade no outro
-  const spread = (pairs: [string, string][], stage: string, day: number, perDay: number) =>
-    pairs.forEach(([a, b], i) => intlTie(w, comp, stage, a, b, day + shift + Math.floor(i / perDay)));
+  const spread = (pairs: [string, string][], stage: string) =>
+    pairs.forEach(([a, b], i) => intlTie(w, comp, stage, a, b, spec.ko[stage] + shift + Math.floor(i / (spec.perDay[stage] ?? 1))));
   if (comp.stage === "group" && intl.fixtures.every((f) => f.comp !== comp.id || f.stage !== "group" || f.result)) {
     type Row = { club: string; pos: number; g: number; pts: number; gd: number; gf: number };
     const rows: Row[] = [];
     comp.groups.forEach((g, gi) => sortTable(g.table).forEach((r, pos) => rows.push({ club: r.club, pos, g: gi, pts: r.pts, gd: r.gf - r.ga, gf: r.gf })));
     const rank = (a: Row, b: Row) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.club.localeCompare(b.club);
+    const bracket = 2 ** Math.floor(Math.log2(3 * comp.groups.length));
     const firsts = rows.filter((r) => r.pos === 0).sort(rank);
     const seconds = rows.filter((r) => r.pos === 1).sort(rank);
-    const thirds = rows.filter((r) => r.pos === 2).sort(rank).slice(0, Math.max(0, 32 - firsts.length - seconds.length));
-    const seeds = [...firsts, ...seconds, ...thirds];
-    const n = seeds.length; // 32
+    const thirds = rows.filter((r) => r.pos === 2).sort(rank);
+    const seeds = [...firsts, ...seconds, ...thirds].slice(0, bracket);
+    const n = seeds.length;
     const pairs: [Row, Row][] = [];
     for (let i = 0; i < n / 2; i++) pairs.push([seeds[i], seeds[n - 1 - i]]);
     // evita reencontro do mesmo grupo trocando adversários entre confrontos vizinhos
@@ -297,32 +353,57 @@ function progressWorldCup(w: World, comp: Competition) {
       const j = (i + 1) % pairs.length;
       [pairs[i][1], pairs[j][1]] = [pairs[j][1], pairs[i][1]];
     }
-    // chaveamento: 1º x 16º, depois 8º x 9º ficam do mesmo lado
-    spread(pairs.map(([a, b]) => [a.club, b.club]), "r32", d.r32, 4);
-    comp.stage = "r32";
+    const stage = STAGE_FOR[n];
+    spread(pairs.map(([a, b]) => [a.club, b.club]), stage);
+    comp.stage = stage;
     const out = rows.filter((r) => !seeds.includes(r)).map((r) => r.club);
     for (const id of out) intl.rel[id] = Math.min(intl.rel[id] ?? Infinity, w.day);
-    worldNews(w, `Copa do Mundo ${comp.season}: fim da fase de grupos`, `Eliminados: ${out.map(name).join(", ")}.`, { force: out.includes("nt-BRA") });
+    worldNews(w, `${comp.name} ${comp.season}: fim da fase de grupos`, `Eliminados: ${out.map(name).join(", ")}.`, { force: out.includes("nt-BRA") });
   } else if (["r32", "r16", "qf"].includes(comp.stage) && roundDone(comp, comp.stage)) {
-    const next = comp.stage === "r32" ? "r16" : comp.stage === "r16" ? "qf" : "sf";
+    const next = NEXT[comp.stage];
     const ts = tieRound(comp, comp.stage);
     const pairs: [string, string][] = [];
     for (let i = 0; i < ts.length / 2; i++) pairs.push([ts[i].winner!, ts[ts.length - 1 - i].winner!]);
-    spread(pairs, next, next === "r16" ? d.r16 : next === "qf" ? d.qf : d.sf, next === "r16" ? 2 : 1);
+    spread(pairs, next);
     for (const t of ts) intl.rel[loserOf(t)] = Math.min(intl.rel[loserOf(t)] ?? Infinity, w.day);
     comp.stage = next;
   } else if (comp.stage === "sf" && roundDone(comp, "sf")) {
     const ts = tieRound(comp, "sf");
-    intlTie(w, comp, "third", loserOf(ts[0]), loserOf(ts[1]), d.third + shift);
-    intlTie(w, comp, "final", ts[0].winner!, ts[1].winner!, d.final + shift);
+    if (spec.third) intlTie(w, comp, "third", loserOf(ts[0]), loserOf(ts[1]), spec.ko.third + shift);
+    else for (const t of ts) intl.rel[loserOf(t)] = Math.min(intl.rel[loserOf(t)] ?? Infinity, w.day);
+    intlTie(w, comp, "final", ts[0].winner!, ts[1].winner!, spec.ko.final + shift);
     comp.stage = "final";
-    worldNews(w, `Final da Copa do Mundo: ${name(ts[0].winner!)} x ${name(ts[1].winner!)}`, "A decisão é no dia 19 de julho.", { force: true });
-  } else if (comp.stage === "final" && roundDone(comp, "final") && roundDone(comp, "third")) {
+    worldNews(w, `Final: ${name(ts[0].winner!)} x ${name(ts[1].winner!)}`, `A decisão da ${comp.name} ${comp.season} está definida.`, { force: true });
+  } else if (comp.stage === "final" && roundDone(comp, "final") && (!spec.third || roundDone(comp, "third"))) {
     const t = tieRound(comp, "final")[0];
     finishIntlComp(w, comp, t.winner!, loserOf(t));
     for (const id of comp.teams) intl.rel[id] = Math.min(intl.rel[id] ?? Infinity, w.day);
-    worldNews(w, `🏆 ${name(t.winner!)} é campeã da Copa do Mundo ${comp.season}!`, `${name(t.winner!)} vence ${name(loserOf(t))} na grande final.`, { force: true });
+    worldNews(w, `🏆 ${name(t.winner!)} é campeã: ${comp.name} ${comp.season}!`, `${name(t.winner!)} vence ${name(loserOf(t))} na grande final.`, { force: true });
   }
+}
+
+// ---------------------------------------------------------------- Eliminatórias da Euro
+/** Ano anterior à Euro: grupos de até 6 seleções da UEFA, turno e returno nas datas FIFA. */
+function createEuroQualifiers(w: World, euroYear: number) {
+  const intl = w.intl!;
+  const uefa = Object.values(intl.nts).filter((n) => n.confed === "UEFA").sort(byLevel).map((n) => n.id);
+  if (uefa.length < 8) return;
+  const y = w.season;
+  const g = Math.ceil(uefa.length / 6);
+  const comp = intlComp(w, `euroq-${euroYear}`, "groups", uefa, String(y), "UEFA");
+  const groups: string[][] = Array.from({ length: g }, () => []);
+  // potes pela força, em serpentina
+  uefa.forEach((id, i) => groups[Math.floor(i / g) % 2 ? g - 1 - (i % g) : i % g].push(id));
+  comp.groups = groups.map((t, i) => ({ name: `Grupo ${"ABCDEFGHIJ"[i]}`, teams: t, table: t.map(newRow) }));
+  const days = intlWindows(y).filter((win) => win.start > w.day).flatMap((win) => win.days);
+  comp.groups.forEach((grp, gi) => {
+    const rr = roundRobin(shuffle(grp.teams.slice()));
+    const all = [...rr, ...rr.map((r) => r.map(([h, a]) => [a, h] as [string, string]))];
+    all.forEach((pairs, ri) => {
+      if (ri >= days.length) return;
+      for (const [home, away] of pairs) addIntlFixture(w, { comp: comp.id, stage: "group", round: ri + 1, day: days[ri], home, away, group: gi });
+    });
+  });
 }
 
 function finishIntlComp(w: World, comp: Competition, winner: string, runnerUp?: string) {
@@ -340,10 +421,14 @@ function progressIntl(w: World) {
   for (const comp of Object.values(intl.comps)) {
     if (comp.done) continue;
     const kind = intlKind(comp.id);
-    if (kind === "wc") {
-      for (let g = 0; g < 4; g++) { const s = comp.stage; progressWorldCup(w, comp); if (s === comp.stage || comp.done) break; }
+    const tk = tourKindOf(comp.id);
+    if (tk) {
+      for (let g = 0; g < 4; g++) { const s = comp.stage; progressTournament(w, comp, tk); if (s === comp.stage || comp.done) break; }
     } else if (intl.fixtures.every((f) => f.comp !== comp.id || f.result)) {
-      if (kind === "wcq") {
+      if (kind === "euroq") {
+        comp.stage = "done"; comp.done = true;
+        worldNews(w, "Eliminatórias da Euro encerradas", `Classificados: ${euroEntrants(w, Number(comp.id.split("-")[1])).map((id) => ntName(w, id)).join(", ")}.`);
+      } else if (kind === "wcq") {
         const t = sortTable(comp.table);
         finishIntlComp(w, comp, t[0].club, t[1]?.club);
         worldNews(w, "Eliminatórias encerradas", `Classificados: ${t.slice(0, 6).map((r) => ntName(w, r.club)).join(", ")}.`, { force: true });
@@ -428,13 +513,14 @@ export function intlDaily(w: World) {
     for (const f of intl.fixtures) if (f.day >= win.start && f.day <= win.end) { playing.add(f.home); playing.add(f.away); }
     for (const id of playing) called.push(...callUp(w, id, win.end));
   }
-  // Copa do Mundo: convocação dez dias antes da abertura, até a eliminação
-  const wc = intl.comps[`wc-${w.season}`];
-  if (wc && !wc.done && day === worldCupDays(w.season).callup) {
-    idx = keyIndex(w);
-    const end = worldCupDays(w.season).final;
-    for (const id of wc.teams) called.push(...callUp(w, id, end, 26, w.season === 2026 ? intl.nts[id].wc2026 : undefined, idx));
-    worldNews(w, `Convocações para a Copa do Mundo ${w.season}`, `${wc.teams.length} seleções anunciaram suas listas de 26 jogadores.`, { force: true });
+  // torneios: convocação dez dias antes da abertura, até a eliminação
+  for (const kind of ["wc", "euro", "ca"] as const) {
+    const t = intl.comps[`${kind}-${w.season}`];
+    const spec = tourSpec(kind, w.season);
+    if (!t || t.done || day !== spec.callup) continue;
+    idx ??= keyIndex(w);
+    for (const id of t.teams) called.push(...callUp(w, id, spec.ko.final, 26, kind === "wc" && w.season === 2026 ? intl.nts[id].wc2026 : undefined, idx));
+    worldNews(w, `Convocações: ${t.name} ${w.season}`, `${t.teams.length} seleções anunciaram suas listas de 26 jogadores.`, { force: true });
   }
   if (called.length) callupNews(w, called);
 }

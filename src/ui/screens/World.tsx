@@ -83,7 +83,7 @@ export function IntlBrowser({ w }: { w: World }) {
   );
 }
 
-const order = (c: Competition) => ({ wc: 0, wcq: 1, fr: 2 } as Record<string, number>)[intlKind(c.id)] ?? 5;
+const order = (c: Competition) => ({ wc: 0, euro: 1, ca: 2, wcq: 3, euroq: 4, fr: 5 } as Record<string, number>)[intlKind(c.id)] ?? 6;
 
 function IntlCompView({ w, comp }: { w: World; comp: Competition }) {
   const intl = w.intl!;
