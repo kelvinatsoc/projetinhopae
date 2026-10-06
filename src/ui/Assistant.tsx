@@ -1,7 +1,7 @@
 // Auxiliar técnico na interface: card do pré-jogo, card da tela de tática e dicas durante a partida.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  analyzeMatch, analyzeSquad, applyAdvice, applyFix, applyTip, currentPlan, dismissTip, estimateOdds, liveTips,
+  analyzeMatch, analyzeSquad, applyAdvice, applyFix, applyTip, auxStars, currentPlan, dismissTip, estimateOdds, liveTips, refineAnalysisAsync,
   type LineupFix, type MatchAnalysis, type Odds, type Outlook, type TacticPlan,
 } from "../engine/assistant";
 import { fixtureById, nextFixture } from "../engine/competitions";
@@ -96,17 +96,57 @@ function applyAlternative(l: Lineup) {
   toast("Time alternativo escalado ✔");
 }
 
+/**
+ * Análise do modelo na hora e, em seguida, a conferência por simulação (em segundo plano).
+ * Enquanto confere, `checking` traz o progresso e o botão de aplicar espera.
+ */
+function useRefined(w: World, f: Fixture | undefined, a: MatchAnalysis | null, v: number): { a: MatchAnalysis | null; checking: number | null } {
+  const [st, setSt] = useState<{ key: string; a: MatchAnalysis | null; progress: number | null }>({ key: "", a: null, progress: null });
+  const key = `${v}|${f?.id ?? ""}`;
+  useEffect(() => {
+    if (!f || !a) return;
+    let alive = true;
+    setSt({ key, a: null, progress: 0 });
+    refineAnalysisAsync(w, f, a, auxStars(w), (d, t) => alive && setSt((s) => (s.key === key ? { ...s, progress: d / t } : s)))
+      .then((r) => { if (alive) setSt({ key, a: r, progress: null }); });
+    return () => { alive = false; };
+  }, [key]);
+  if (st.key === key && st.a) return { a: st.a, checking: null };
+  return { a, checking: a ? (st.key === key ? st.progress ?? 0 : 0) : null };
+}
+
+/** Confiança do auxiliar na sugestão (depois de conferir por simulação). */
+function Confidence({ a, checking }: { a: MatchAnalysis; checking: number | null }) {
+  if (checking != null) {
+    return (
+      <div className="as-sim">
+        <div className="tiny muted">🔎 Conferindo as opções em jogos simulados… {pct(checking)}</div>
+        <div className="as-progress"><i style={{ width: pct(checking) }} /></div>
+      </div>
+    );
+  }
+  const c = a.check;
+  if (!c) return null;
+  const cls = c.kept ? "" : c.level === "alta" ? "good" : c.level === "média" ? "warn" : "";
+  return (
+    <div className="small as-reason">
+      {!c.kept && <span className={`tag ${cls}`}>Confiança {c.level} · {pct(c.confidence)}</span>} {c.reason}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- pré-jogo
 export function PreMatchAdvice({ fixtureId }: { fixtureId: number }) {
   const w = useWorld();
   const v = useVersion();
   const f = fixtureById(w, fixtureId);
-  const a = useMemo(() => (f && !f.result ? analyzeMatch(w, f) : null), [v, fixtureId]);
+  const base = useMemo(() => (f && !f.result ? analyzeMatch(w, f) : null), [v, fixtureId]);
+  const { a, checking } = useRefined(w, f && !f.result ? f : undefined, base, v);
   if (!f || !a) return null;
-  return <PreMatchCard w={w} f={f} a={a} />;
+  return <PreMatchCard w={w} f={f} a={a} checking={checking} />;
 }
 
-function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
+function PreMatchCard({ w, f, a, checking }: { w: World; f: Fixture; a: MatchAnalysis; checking: number | null }) {
   const user = w.clubs[w.userClubId];
   const opp = w.clubs[a.opp.id];
   const verdict = VERDICT[a.verdict];
@@ -165,6 +205,7 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
         <RecRow icon="🧩" label="Formação" value={a.rec.formation.value} reason={a.rec.formation.reason} changed={a.rec.formation.value !== t.formation} />
         <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[a.rec.mentality.value]} reason={a.rec.mentality.reason} changed={a.rec.mentality.value !== t.mentality} />
         <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[a.rec.pressing.value]} reason={a.rec.pressing.reason} changed={a.rec.pressing.value !== t.pressing} />
+        <Confidence a={a} checking={checking} />
         <div className="as-compare">
           <div><span className="tiny muted">Chances com a sua tática</span><WDL o={a.now} /></div>
           {a.changed && <div><span className="tiny muted">Com as sugestões</span><WDL o={a.suggested} /></div>}
@@ -187,7 +228,9 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
       <TalkTip w={w} f={f} />
 
       <div className="col gap8">
-        {a.changed
+        {checking != null
+          ? <button className="btn block" disabled><Ic n="compass" size={18} /> Conferindo…</button>
+          : a.changed
           ? <button className="btn block" onClick={() => applyPlan(a.plan, f.comp)}><Ic n="check" size={18} /> Aplicar sugestões</button>
           : <div className="as-ok small"><Ic n="check" /> Seu time já está do jeito que eu sugiro.</div>}
         <OddsSim w={w} f={f} a={a} />
@@ -271,7 +314,8 @@ export function TacticsAdvice() {
     const pending = w.pendingMatch != null ? fixtureById(w, w.pendingMatch) : undefined;
     return pending && !pending.result ? pending : nextFixture(w, w.userClubId);
   }, [v]);
-  const match = useMemo(() => (f ? analyzeMatch(w, f) : null), [v, f?.id]);
+  const baseMatch = useMemo(() => (f ? analyzeMatch(w, f) : null), [v, f?.id]);
+  const { a: match, checking } = useRefined(w, f, baseMatch, v);
   const squad = useMemo(() => (f ? null : analyzeSquad(w)), [v, f?.id]);
   const user = w.clubs[w.userClubId];
   const t = user.tactic;
@@ -302,11 +346,14 @@ export function TacticsAdvice() {
             <RecRow icon="🧩" label="Formação" value={match.rec.formation.value} reason={match.rec.formation.reason} changed={match.rec.formation.value !== t.formation} />
             <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[match.rec.mentality.value]} reason={match.rec.mentality.reason} changed={match.rec.mentality.value !== t.mentality} />
             <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[match.rec.pressing.value]} reason={match.rec.pressing.reason} changed={match.rec.pressing.value !== t.pressing} />
+            <Confidence a={match} checking={checking} />
             <div className="small muted">Destaques do {opp.name}: {match.opp.stars.map((s) => `${shortName(s.name)} (${s.ovr})`).join(", ")}</div>
           </div>
         )}
         <FixList w={w} fixes={match.fixes} compId={f.comp} />
-        {match.changed
+        {checking != null
+          ? <button className="btn block" disabled><Ic n="compass" size={18} /> Conferindo… {pct(checking)}</button>
+          : match.changed
           ? <button className="btn block" onClick={() => applyPlan(match.plan, f.comp)}><Ic n="check" size={18} /> Aplicar sugestões</button>
           : <div className="as-ok small"><Ic n="check" /> Tática e escalação já estão do jeito que eu sugiro.</div>}
       </div>
