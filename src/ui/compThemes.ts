@@ -79,6 +79,36 @@ const THEMES: Record<string, CompTheme> = {
     key: "intercontinental", primary: "#e5c158", secondary: "#13204a", accent: "#ffffff", ink: "#ffffff", base: "#070b1d",
     pattern: P.dots("rgba(229,193,88,0.18)"), font: "serif", trophy: "🌍", motto: "O mundo é o limite", bumper: "stars",
   },
+  // ---------------------------------------------------------------- mundo
+  ucl: {
+    key: "ucl", primary: "#1b3fa0", secondary: "#0a1240", accent: "#ffffff", ink: "#ffffff", base: "#050a26",
+    pattern: P.dots("rgba(255,255,255,0.16)"), font: "serif", trophy: "🏆", motto: "The Champions", bumper: "stars",
+  },
+  uel: {
+    key: "uel", primary: "#ff6900", secondary: "#1a1a1a", accent: "#ffb27a", ink: "#ffffff", base: "#0d0d0d",
+    pattern: P.rays("rgba(255,105,0,0.12)"), font: "condensed", trophy: "🏆", motto: "A noite europeia de quinta", bumper: "sweep",
+  },
+  wc: {
+    key: "wc", primary: "#c9a227", secondary: "#0d3b2e", accent: "#ffffff", ink: "#ffffff", base: "#06140f",
+    pattern: P.hex("rgba(201,162,39,0.16)"), font: "serif", trophy: "🏆", motto: "O maior espetáculo da Terra", bumper: "stars",
+  },
+  wcq: {
+    key: "wcq", primary: "#0f9d58", secondary: "#0a2a5e", accent: "#ffd400", ink: "#ffffff", base: "#061433",
+    pattern: P.stripes("rgba(255,255,255,0.05)"), font: "condensed", trophy: "🎟️", motto: "Rumo à Copa", bumper: "flag",
+  },
+  fr: {
+    key: "fr", primary: "#64748b", secondary: "#1e293b", accent: "#e2e8f0", ink: "#ffffff", base: "#0f172a",
+    pattern: P.grid("rgba(255,255,255,0.04)"), font: "rounded", trophy: "🤝", motto: "Data FIFA", bumper: "sweep",
+  },
+  eng1: { key: "eng1", primary: "#3d195b", secondary: "#12051f", accent: "#00ff85", ink: "#ffffff", base: "#0c0316", pattern: P.diag("rgba(0,255,133,0.08)"), font: "broadcast", trophy: "🏆", motto: "A liga mais rica do mundo", bumper: "sweep" },
+  esp1: { key: "esp1", primary: "#ee2523", secondary: "#2a0505", accent: "#ffcd00", ink: "#ffffff", base: "#140303", pattern: P.stripes("rgba(255,255,255,0.05)"), font: "broadcast", trophy: "🏆", motto: "El fútbol de los cracks", bumper: "sweep" },
+  ita1: { key: "ita1", primary: "#008fd7", secondary: "#04203a", accent: "#ffffff", ink: "#ffffff", base: "#031423", pattern: P.grid("rgba(255,255,255,0.05)"), font: "serif", trophy: "🏆", motto: "Il calcio", bumper: "shine" },
+  ger1: { key: "ger1", primary: "#d20515", secondary: "#1a1a1a", accent: "#ffffff", ink: "#ffffff", base: "#0d0d0d", pattern: P.diag("rgba(255,255,255,0.06)"), font: "condensed", trophy: "🏆", motto: "Estádios lotados", bumper: "sweep" },
+  fra1: { key: "fra1", primary: "#091c3e", secondary: "#020814", accent: "#dae025", ink: "#ffffff", base: "#020814", pattern: P.dots("rgba(218,224,37,0.12)"), font: "rounded", trophy: "🏆", motto: "Le championnat", bumper: "sweep" },
+  por1: { key: "por1", primary: "#00365f", secondary: "#001a2e", accent: "#ffd400", ink: "#ffffff", base: "#000f1c", pattern: P.stripes("rgba(255,255,255,0.05)"), font: "broadcast", trophy: "🏆", motto: "Liga Portugal", bumper: "sweep" },
+  ned1: { key: "ned1", primary: "#ff6200", secondary: "#14213d", accent: "#ffffff", ink: "#ffffff", base: "#0a1020", pattern: P.grid("rgba(255,255,255,0.05)"), font: "rounded", trophy: "🏆", motto: "Escola holandesa", bumper: "sweep" },
+  tur1: { key: "tur1", primary: "#e30a17", secondary: "#2a0306", accent: "#ffffff", ink: "#ffffff", base: "#160204", pattern: P.rays("rgba(255,255,255,0.06)"), font: "condensed", trophy: "🏆", motto: "Caldeirão turco", bumper: "sweep" },
+  sco1: { key: "sco1", primary: "#4b2582", secondary: "#140a24", accent: "#ffd700", ink: "#ffffff", base: "#0c0616", pattern: P.diag("rgba(255,215,0,0.07)"), font: "serif", trophy: "🏆", motto: "Scottish Premiership", bumper: "sweep" },
 };
 
 /** Estaduais: herdam a cor do campeonato e ganham listras de bandeira. */
@@ -102,7 +132,7 @@ const cache = new Map<string, CompTheme>();
 export function compTheme(id: string, fallbackColor?: string): CompTheme {
   const hit = cache.get(id);
   if (hit) return hit;
-  let t = THEMES[id];
+  let t = THEMES[id] ?? (/^(wc|wcq|fr)-/.test(id) ? THEMES[id.split("-")[0]] : undefined);
   if (!t && id.startsWith("est-")) {
     const [p, s, a] = ESTADUAL_PAL[id] ?? [fallbackColor ?? "#e11d48", "#111827", "#ffffff"];
     t = {

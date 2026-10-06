@@ -140,7 +140,7 @@ describe("fundação: integridade do save", () => {
     const res = migrateWorld(w, db as Database);
     expect(res).toEqual({ repaired: 0, newer: false });
     expect(w.version).toBe(SAVE_VERSION);
-    expect(SAVE_VERSION).toBe(3);
+    expect(SAVE_VERSION).toBe(4);
     expect(validateWorld(w)).toEqual([]);
     expect(JSON.stringify(Object.values(w.players).map((p) => [p.id, p.traits, p.lockedTraits, p.hid]))).toBe(orig);
     expect(Object.values(w.clubs).every((c) => c.youthFac === c.youthLevel && c.youthCoach === c.youthLevel)).toBe(true);

@@ -6,27 +6,41 @@ import { push, useWorld } from "../../store";
 import { CompLogo, Crest } from "../components";
 import { CompHeader } from "../CompTheme";
 import { compTheme } from "../compThemes";
+import { compRegion, IntlBrowser, REGIONS, RegionChips, type CompRegion } from "./World";
 
 export function CompsScreen() {
   const w = useWorld();
   const user = w.clubs[w.userClubId];
-  const comps = Object.values(w.comps).sort((a, b) => a.tier - b.tier);
-  const mine = comps.filter((c) => c.teams.includes(user.id));
+  const all = Object.values(w.comps).sort((a, b) => a.tier - b.tier);
+  const mine = all.filter((c) => c.teams.includes(user.id));
   const [sel, setSel] = useState<string>("mine");
+  const [region, setRegion] = useState<CompRegion>("BRA");
   const comp = w.comps[sel];
+  const regions = w.wl || w.intl ? REGIONS.filter((r) => r.id === "INT" ? !!w.intl : all.some((c) => compRegion(c) === r.id)) : [];
+  const comps = regions.length ? all.filter((c) => compRegion(c) === region) : all;
+
+  if (region === "INT" && w.intl) {
+    return (
+      <div className="page">
+        <RegionChips regions={regions} region={region} setRegion={setRegion} />
+        <IntlBrowser w={w} />
+      </div>
+    );
+  }
 
   return (
     <div className="page">
+      {regions.length > 1 && <RegionChips regions={regions} region={region} setRegion={setRegion} />}
       <div className="chips">
         <button className={`chip${sel === "mine" ? " active" : ""}`} onClick={() => setSel("mine")}>📅 Meus jogos</button>
-        {[...mine, ...comps.filter((c) => !mine.includes(c))].map((c) => (
+        {[...mine.filter((c) => comps.includes(c)), ...comps.filter((c) => !mine.includes(c))].map((c) => (
           <button key={c.id} className={`chip${sel === c.id ? " active" : ""}`} onClick={() => setSel(c.id)}><CompLogo id={c.id} size={16} /> {c.short}{mine.includes(c) ? " •" : ""}</button>
         ))}
       </div>
       {sel === "mine" && <MyFixtures w={w} />}
       {comp && (
         <>
-          <CompHeader id={comp.id} title={`${comp.name} ${comp.season}`} sub={compTheme(comp.id, comp.color).motto} right={<span className="ct-pill">{STAGE_NAMES[comp.stage]}</span>} />
+          <CompHeader id={comp.id} title={`${comp.name} ${comp.label ?? comp.season}`} sub={compTheme(comp.id, comp.color).motto} right={<span className="ct-pill">{STAGE_NAMES[comp.stage]}</span>} />
           {comp.champion && (
             <div className="card row" style={{ borderColor: "var(--gold)" }}>
               <span style={{ fontSize: 26 }}>🏆</span><Crest club={w.clubs[comp.champion]} size={30} /><b>{w.clubs[comp.champion].name}</b><span className="muted small">campeão</span>
@@ -86,6 +100,8 @@ function zoneFor(compId: string, pos: number, n: number): string {
   if (compId === "serieA") return pos <= 4 ? "lib" : pos <= 6 ? "lib" : pos <= 12 ? "sula" : pos > n - 4 ? "rel" : "";
   if (compId === "serieB") return pos <= 2 ? "up" : pos <= 6 ? "po" : pos > n - 4 ? "rel" : "";
   if (compId === "serieC") return pos <= 8 ? "up" : pos > n - 2 ? "rel" : "";
+  if (compId === "ucl" || compId === "uel") return pos <= 8 ? "up" : pos <= 24 ? "po" : "rel";
+  if (/^[a-z]{3}1$/.test(compId)) return pos <= 4 ? "lib" : pos <= 6 ? "sula" : "";
   return "";
 }
 
@@ -124,7 +140,10 @@ function LeagueView({ w, comp }: { w: World; comp: Competition }) {
     serieA: [["lib", "Libertadores (1º-6º)"], ["sula", "Sul-Americana (7º-12º)"], ["rel", "Rebaixamento"]],
     serieB: [["up", "Acesso direto"], ["po", "Playoff de acesso"], ["rel", "Rebaixamento"]],
     serieC: [["up", "Mata-mata (quartas = acesso)"], ["rel", "Rebaixamento"]],
+    ucl: [["up", "Oitavas de final (1º-8º)"], ["po", "Playoff (9º-24º)"], ["rel", "Eliminados"]],
+    uel: [["up", "Oitavas de final (1º-8º)"], ["po", "Playoff (9º-24º)"], ["rel", "Eliminados"]],
   };
+  if (w.wl?.leagues[comp.id]) legend[comp.id] = [["lib", "Zona de Champions"], ["sula", "Zona de Europa League"]];
   if (comp.id.startsWith("est-")) legend[comp.id] = [["up", "Semifinal (jogo único) e final em ida e volta"]];
   return (
     <>

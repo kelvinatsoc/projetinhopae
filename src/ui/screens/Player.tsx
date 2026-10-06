@@ -15,7 +15,7 @@ import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Avatar, Bar, cardTier, Crest, Flag, PosBadge, Sheet } from "../components";
 import { loadCredits, type Credit } from "../credits";
-import { COUNTRY_NAME } from "../flags";
+import { COUNTRY_NAME, flag } from "../flags";
 import { potRangeLabel } from "../../engine/scouting";
 import { AdminPlayerEditor } from "./Admin";
 import { NegotiationSheet } from "./Contracts";
@@ -181,6 +181,13 @@ export function PlayerScreen({ id }: { id: number }) {
         {p.form.length > 0 && <div className="small muted mt8">Últimas notas: {p.form.map((f) => f.toFixed(1)).join(" · ")}</div>}
       </div>
 
+      {(p.caps ?? 0) > 0 && (
+        <div className="card row gap8" onClick={() => push({ name: "nt", id: `nt-${p.nat}` })}>
+          <span style={{ fontSize: 20 }}>{flag(p.nat)}</span>
+          <span className="grow">Seleção: <b>{p.caps}</b> jogo{p.caps === 1 ? "" : "s"} · <b>{p.intGoals ?? 0}</b> gol{p.intGoals === 1 ? "" : "s"}</span>
+          {p.away && <span className="tiny muted">convocado</span>}
+        </div>
+      )}
       {p.history.length > 0 && (
         <div className="card">
           <h3>Carreira</h3>

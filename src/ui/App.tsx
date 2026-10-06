@@ -17,6 +17,7 @@ import { continueGame } from "./actions";
 import { Crest, Icon, textOn, visibleColor } from "./components";
 import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
 import { CompsScreen } from "./screens/Comps";
+import { NationalTeamScreen, NationalTeamsScreen } from "./screens/World";
 import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
 import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
@@ -68,6 +69,8 @@ function routeTitle(r: Route): string {
     case "sponsors": return "Patrocínios";
     case "facilities": return "Estrutura";
     case "setpieces": return "Bola parada";
+    case "nts": return "Seleções";
+    case "nt": return "Seleção";
     default: return "";
   }
 }
@@ -190,6 +193,8 @@ export function App() {
       case "sponsors": content = <SponsorsScreen />; break;
       case "facilities": content = <FacilitiesScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;
+      case "nts": content = <NationalTeamsScreen />; break;
+      case "nt": content = <NationalTeamScreen id={top.id} key={top.id} />; break;
       default: content = null;
     }
   }

@@ -5,7 +5,7 @@ import { createScenarioWorld, SCENARIO_BY_ID, SCENARIOS } from "../../engine/sce
 import "../progression.css";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
-import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
+import { autosave, loadDatabase, loadWorldFile, openWorld, startNewWorld } from "../actions";
 import { clubStars, Crest, stadiumSrc, Stars, visibleColor } from "../components";
 import type { CSSProperties } from "react";
 import { flag } from "../flags";
@@ -133,8 +133,8 @@ function NewGame({ onBack }: { onBack: () => void }) {
     if (!db || !clubId) return;
     setCreating(true);
     try { localStorage.setItem("managerName", name); } catch { /* ignore */ }
-    setTimeout(() => {
-      const w = createWorld(db, { managerName: name.trim() || "Professor", clubId, settings: { casual, legendFreq } });
+    setTimeout(async () => {
+      const w = createWorld(db, { managerName: name.trim() || "Professor", clubId, settings: { casual, legendFreq }, world: await loadWorldFile() });
       resetNav();
       startNewWorld(w);
     }, 30);

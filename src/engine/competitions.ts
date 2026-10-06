@@ -33,6 +33,9 @@ export const STAGE_NAMES: Record<string, string> = {
   sf: "Semifinal",
   final: "Final",
   done: "Encerrada",
+  ko: "Playoff da fase eliminatória",
+  third: "Disputa do 3º lugar",
+  friendly: "Amistosos",
 };
 
 /** Registra nome/cor/ordem de uma competição criada em tempo de execução (ligas do mundo, Champions...). */

@@ -75,7 +75,9 @@ export type Route =
   | { name: "career" }
   | { name: "sponsors" }
   | { name: "facilities" }
-  | { name: "setpieces" };
+  | { name: "setpieces" }
+  | { name: "nts" }
+  | { name: "nt"; id: string };
 
 interface NavState {
   tab: Tab;

@@ -1,3 +1,4 @@
+import type { WorldData } from "../data/worldTypes";
 // Ações de alto nível disparadas pela interface.
 import { migrateWorld, type Database } from "../engine/world";
 import { advance, runEndOfSeason } from "../engine/game";
@@ -36,11 +37,21 @@ export function loadDatabase(): Promise<Database> {
   return dbPromise;
 }
 
+// world.json (ligas estrangeiras e seleções) é opcional: sem ele o jogo é só Brasil/América do Sul
+const worldFiles = import.meta.glob("../data/world.json");
+let worldPromise: Promise<WorldData | undefined> | undefined;
+/** Dados do mundo (chunk separado, carregado sob demanda); undefined se o arquivo não existir. */
+export function loadWorldFile(): Promise<WorldData | undefined> {
+  const f = worldFiles["../data/world.json"];
+  worldPromise ??= f ? f().then((m) => (m as { default: WorldData }).default).catch(() => undefined) : Promise.resolve(undefined);
+  return worldPromise;
+}
+
 /** Abre um jogo salvo (ou importado), atualizando-o com as fotos/escudos do banco atual. */
 export async function openWorld(w: World) {
   let info: ReturnType<typeof migrateWorld> | null = null;
   try {
-    info = migrateWorld(w, await loadDatabase());
+    info = migrateWorld(w, await loadDatabase(), await loadWorldFile());
   } catch (e) {
     console.error(e);
   }
