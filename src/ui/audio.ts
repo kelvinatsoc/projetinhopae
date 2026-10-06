@@ -266,6 +266,29 @@ function synthCrowd(c: AudioContext, out: GainNode): () => void {
   };
 }
 
+/** Vaia sintetizada (reserva): ruído grave com um "uuu" de vogal, oscilando devagar. */
+function synthBoo(c: AudioContext, out: GainNode): AudioBufferSourceNode {
+  const src = c.createBufferSource();
+  src.buffer = noiseBuffer(c, 3);
+  src.loop = true;
+  const f = c.createBiquadFilter();
+  f.type = "bandpass";
+  f.frequency.value = 320;
+  f.Q.value = 1.2;
+  const g = c.createGain();
+  g.gain.value = 0.8;
+  const lfo = c.createOscillator();
+  const lg = c.createGain();
+  lfo.frequency.value = 0.4;
+  lg.gain.value = 0.3;
+  lfo.connect(lg).connect(g.gain);
+  src.connect(f).connect(g).connect(out);
+  src.start();
+  lfo.start();
+  src.onended = () => { try { lfo.stop(); } catch { /* já parou */ } };
+  return src;
+}
+
 function synthWhistle(c: AudioContext, times: number) {
   for (let i = 0; i < times; i++) {
     const t = c.currentTime + i * 0.45;
@@ -433,7 +456,7 @@ function brPaths(p: CrowdProfile): string[] {
   return [p.bed, p.chant, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, ...p.goal];
 }
 
-function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean): Layer {
+function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean, synth?: (c: AudioContext, out: GainNode) => AudioBufferSourceNode): Layer {
   const g = c.createGain();
   g.gain.value = 0;
   g.connect(bus);
@@ -442,6 +465,10 @@ function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: stri
     if (!me() || !enabled) return;
     if (!b) {
       if (!alt && fallback) void sample(fallback).then((fb) => startWith(fb, true));
+      else if (synth) {
+        layer.src = synth(c, g);
+        rampLayer(c, layer, 1.5);
+      }
       return;
     }
     const src = c.createBufferSource();
@@ -500,7 +527,7 @@ export function startAtmosphere(p: CrowdProfile) {
   atmos = a;
   a.bed = loopLayer(c, tone, p.bed, SAMPLE.crowd, me);
   a.chant = loopLayer(c, tone, p.chant, null, me);
-  a.boo = loopLayer(c, tone, BR_SOUNDS.boo, null, me);
+  a.boo = loopLayer(c, tone, BR_SOUNDS.boo, null, me, synthBoo);
   setLayerTargets(c, a, 2);
 }
 
