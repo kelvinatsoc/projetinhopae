@@ -1,5 +1,5 @@
 // Competições: tabelas, mata-matas, sorteios e avanço de fases.
-import { continentalDays, copaDays, leagueDays, serieBPlayoffDays, serieCDays } from "./calendar";
+import { continentalDays, copaDays, isWorldCupYear, leagueDays, serieBPlayoffDays, serieCDays } from "./calendar";
 import { ESTADUAIS } from "../data/estaduais";
 import { createEstaduais, isEstadual, progressEstadual } from "./estaduais";
 import { rand, shuffle } from "./rng";
@@ -35,22 +35,66 @@ export const STAGE_NAMES: Record<string, string> = {
   done: "Encerrada",
 };
 
+/** Registra nome/cor/ordem de uma competição criada em tempo de execução (ligas do mundo, Champions...). */
+export function registerComp(id: string, meta: { name: string; short: string; color: string; tier: number }) {
+  COMP_META[id] = meta;
+}
+
+/** Ganchos de avanço de fase para competições de outros módulos (mundo). Devolvem true se trataram a competição. */
+export const progressHooks: ((w: World, comp: Competition, news: string[]) => boolean)[] = [];
+
 // ---------------------------------------------------------------- índices
 let idxWorld: World | null = null;
+let idxArr: Fixture[] | null = null;
 let idxMap = new Map<number, Fixture>();
+let idxComp: Map<string, Fixture[]> | null = null;
+
+/** Descarta os índices de jogos (chamar depois de trocar ou filtrar w.fixtures). */
+export function resetFixtureIndex() {
+  idxWorld = null;
+  idxArr = null;
+  idxComp = null;
+}
+
+function ensureIndex(w: World) {
+  if (idxWorld !== w || idxArr !== w.fixtures || idxMap.size !== w.fixtures.length) {
+    idxWorld = w;
+    idxArr = w.fixtures;
+    idxMap = new Map(w.fixtures.map((f) => [f.id, f]));
+    idxComp = null;
+  }
+}
 
 export function fixtureById(w: World, id: number): Fixture | undefined {
-  if (idxWorld !== w || idxMap.size !== w.fixtures.length) {
-    idxWorld = w;
-    idxMap = new Map(w.fixtures.map((f) => [f.id, f]));
-  }
+  ensureIndex(w);
   return idxMap.get(id);
+}
+
+/** Jogos de uma competição (índice). */
+export function compFixtures(w: World, compId: string): Fixture[] {
+  ensureIndex(w);
+  if (!idxComp) {
+    idxComp = new Map();
+    for (const f of w.fixtures) {
+      let l = idxComp.get(f.comp);
+      if (!l) idxComp.set(f.comp, (l = []));
+      l.push(f);
+    }
+  }
+  return idxComp.get(compId) ?? [];
 }
 
 export function addFixture(w: World, f: Omit<Fixture, "id">): Fixture {
   const fx: Fixture = { id: w.nextId++, ...f };
   w.fixtures.push(fx);
-  if (idxWorld === w) idxMap.set(fx.id, fx);
+  if (idxWorld === w && idxArr === w.fixtures) {
+    idxMap.set(fx.id, fx);
+    if (idxComp) {
+      let l = idxComp.get(fx.comp);
+      if (!l) idxComp.set(fx.comp, (l = []));
+      l.push(fx);
+    }
+  }
   return fx;
 }
 
@@ -98,7 +142,7 @@ export function roundRobin(teams: string[]): [string, string][][] {
   return rounds;
 }
 
-function newComp(w: World, id: string, format: Competition["format"], teams: string[]): Competition {
+export function newComp(w: World, id: string, format: Competition["format"], teams: string[]): Competition {
   const meta = COMP_META[id];
   return {
     id, name: meta.name, short: meta.short, format, season: w.season, teams,
@@ -175,8 +219,8 @@ function resolveTie(w: World, tie: Tie) {
   }
 }
 
-const stageDone = (w: World, comp: Competition, stage: string) =>
-  w.fixtures.every((f) => f.comp !== comp.id || f.stage !== stage || !!f.result);
+export const stageDone = (w: World, comp: Competition, stage: string) =>
+  compFixtures(w, comp.id).every((f) => f.stage !== stage || !!f.result);
 
 // ---------------------------------------------------------------- criação da temporada
 export interface SeasonEntrants {
@@ -191,7 +235,7 @@ export interface SeasonEntrants {
 export function createSeasonCompetitions(w: World, e: SeasonEntrants) {
   const y = w.season;
   w.comps = {};
-  const days = leagueDays(y);
+  const days = leagueDays(y, !!w.intl && isWorldCupYear(y));
 
   const a = newComp(w, "serieA", "league", e.serieA);
   leagueFixtures(w, a, days, true);
@@ -293,15 +337,15 @@ export function progressCompetitions(w: World): string[] {
   return news;
 }
 
-function stageTies(comp: Competition, stage: string) {
+export function stageTies(comp: Competition, stage: string) {
   return comp.ties.filter((t) => t.stage === stage);
 }
 
-function winners(comp: Competition, stage: string): string[] {
+export function winners(comp: Competition, stage: string): string[] {
   return stageTies(comp, stage).map((t) => t.winner!).filter(Boolean);
 }
 
-function allTiesDone(comp: Competition, stage: string) {
+export function allTiesDone(comp: Competition, stage: string) {
   const ts = stageTies(comp, stage);
   return ts.length > 0 && ts.every((t) => !!t.winner);
 }
@@ -309,7 +353,8 @@ function allTiesDone(comp: Competition, stage: string) {
 function progressOne(w: World, comp: Competition, news: string[]) {
   const y = w.season;
   const name = (id: string) => w.clubs[id]?.name ?? id;
-  if (isEstadual(comp)) progressEstadual(w, comp, news);
+  if (comp.region && comp.region !== "BRA") { for (const h of progressHooks) if (h(w, comp, news)) return; }
+  else if (isEstadual(comp)) progressEstadual(w, comp, news);
   else if (comp.id === "serieA" && comp.stage === "league" && stageDone(w, comp, "league")) {
     sortTable(comp.table);
     comp.champion = comp.table[0].club;

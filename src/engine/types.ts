@@ -144,6 +144,10 @@ export interface Player {
   clause?: number; // multa rescisória
   goalBonus?: number;
   sellOn?: { club: string; pct: number };
+  // --- seleções (mundo)
+  caps?: number; // jogos pela seleção
+  intGoals?: number; // gols pela seleção
+  away?: string; // convocado: id da seleção (nt-BRA) enquanto durar a data FIFA / torneio
 }
 
 export type CrestPattern =
@@ -218,6 +222,7 @@ export interface Club {
   fac?: FacilityState;
   setPieces?: SetPieceConfig;
   minor?: string; // UF: clube fictício que só disputa o estadual (fora da pirâmide nacional)
+  league?: string; // liga estrangeira (eng1, esp1...): div "F" + league = clube de liga do mundo
 }
 
 export interface FinanceBook {
@@ -320,6 +325,12 @@ export interface Competition {
   relegated?: string[];
   color: string; // cor de destaque na interface
   tier: number; // ordem de exibição / importância
+  // --- mundo (opcionais)
+  carry?: boolean; // atravessa a virada do ano (temporada europeia ago–mai): preservada no fim da temporada
+  lite?: boolean; // jogos sem o usuário usam a simulação rápida
+  label?: string; // rótulo da temporada ("2026/27")
+  region?: string; // BRA | CONMEBOL | UEFA | AFC | CONCACAF | FIFA
+  awarded?: boolean; // troféu e prêmios já entregues (competições do mundo entregam ao terminar)
 }
 
 export type NewsKind =
@@ -462,6 +473,51 @@ export interface World {
   ach?: AchState;
   scenario?: ScenarioState;
   career?: CareerState;
+  // --- mundo (opcionais: só existem quando há dados mundiais)
+  wl?: WorldLeagues;
+  intl?: IntlState;
+}
+
+// ---------------------------------------------------------------- mundo: ligas estrangeiras e seleções
+export interface WorldLeagueMeta {
+  id: string; name: string; short: string; country: string; confed: string;
+  calendar: "aug-may" | "feb-dec"; relegation: number; color: string;
+}
+export interface WorldLeagues {
+  leagues: Record<string, WorldLeagueMeta>;
+  /** primeiro ano em que as ligas ago–mai nascem (dia 181); saves migrados esperam a próxima temporada */
+  startYear: number;
+  /** último ano em que as temporadas ago–mai foram criadas */
+  createdYear?: number;
+  /** vagas reais na primeira Champions/Europa League */
+  seeds?: { ucl: string[]; uel: string[] };
+}
+export interface NationalTeam {
+  id: string; // nt-BRA
+  fifa: string; // BRA
+  name: string;
+  confed: string;
+  tier: number; // 1-5
+  level: number;
+  colors: [string, string, string];
+  logo?: boolean;
+  pool: string[]; // "nome|ano"
+  wc2026?: string[];
+  trophies: Trophy[];
+  /** resultados recentes ("V" | "E" | "D") */
+  form: string[];
+}
+export interface IntlState {
+  nts: Record<string, NationalTeam>;
+  comps: Record<string, Competition>;
+  fixtures: Fixture[]; // dia relativo a 1º/jan de w.season, como os jogos de clubes
+  callups: Record<string, number[]>; // seleção -> convocados atuais
+  /** fim da convocação atual (dia), se houver data FIFA em andamento */
+  until?: number;
+  /** ano cujo calendário internacional já foi montado */
+  year?: number;
+  /** campanhas de eliminatórias em andamento: comp -> ano da Copa */
+  quals?: Record<string, number>;
 }
 
 // ---------------------------------------------------------------- narrativa e mídia

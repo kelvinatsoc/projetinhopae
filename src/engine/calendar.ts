@@ -14,9 +14,69 @@ export const saturday = (year: number, k: number) => sunday(year, k) - 1;
 // semanas sem rodada de Série A/B (datas FIFA e finais)
 const LEAGUE_SKIP = new Set([7, 15, 21, 22, 23, 33, 38, 42, 44]);
 
-export function leagueDays(year: number): number[] {
+/** Semanas sem rodada a mais em ano de Copa do Mundo (só com dados mundiais); as rodadas vão para quartas livres. */
+export const WC_EXTRA_SKIP = [20, 24, 25];
+const WC_MIDWEEK = [14, 28, 40];
+
+export function leagueDays(year: number, worldCup = false): number[] {
   const out: number[] = [];
-  for (let k = 0; out.length < 38; k++) if (!LEAGUE_SKIP.has(k)) out.push(sunday(year, k));
+  const skip = worldCup ? new Set([...LEAGUE_SKIP, ...WC_EXTRA_SKIP]) : LEAGUE_SKIP;
+  const target = worldCup ? 38 - WC_MIDWEEK.length : 38;
+  for (let k = 0; out.length < target; k++) if (!skip.has(k)) out.push(sunday(year, k));
+  if (worldCup) { out.push(...WC_MIDWEEK.map((k) => wednesday(year, k))); out.sort((a, b) => a - b); }
+  return out;
+}
+
+// ---------------------------------------------------------------- mundo: datas absolutas e datas FIFA
+/** Dias do ano. */
+export const yearLen = (y: number) => (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 366 : 365);
+
+/** Dia relativo a 1º/jan de `base` para a data (y, mês 0-11, dia). */
+export function dayOf(base: number, y: number, m: number, d: number): number {
+  return Math.round((Date.UTC(y, m, d) - Date.UTC(base, 0, 1)) / 86_400_000);
+}
+
+/** Dia da semana (0 = domingo) de um dia relativo a 1º/jan de `base`. */
+export const dowOf = (base: number, day: number) => new Date(Date.UTC(base, 0, 1 + day)).getUTCDay();
+
+/** Primeiro dia (relativo a `base`) com o dia da semana `dow` a partir da data dada. */
+export function onOrAfter(base: number, y: number, m: number, d: number, dow: number): number {
+  const x = dayOf(base, y, m, d);
+  return x + ((dow - dowOf(base, x) + 7) % 7);
+}
+
+export const isWorldCupYear = (y: number) => y >= 2026 && (y - 2026) % 4 === 0;
+/** Ano de Euro e Copa América (2028, 2032...). */
+export const isContinentalYear = (y: number) => y >= 2028 && y % 4 === 0;
+
+export interface IntlWindow { k: number; start: number; end: number; days: [number, number] }
+
+/** Datas FIFA do ano (dias relativos a 1º/jan do ano): convocação seg → ter da semana seguinte, jogos qui e ter. */
+export function intlWindows(year: number): IntlWindow[] {
+  const ks = [7, 21, 33, 38, 42].filter((k) => k !== 21 || !(isWorldCupYear(year) || isContinentalYear(year)));
+  return ks.map((k) => {
+    const s = sunday(year, k);
+    return { k, start: s - 6, end: s + 2, days: [s - 3, s + 2] as [number, number] };
+  });
+}
+
+/** Sábados das ligas europeias (ago/Y–mai/Y+1, relativos a 1º/jan de Y), sem as datas FIFA; completa com terças. */
+export function euroLeagueDays(year: number, rounds: number): number[] {
+  const blocked = new Set<number>();
+  for (const win of intlWindows(year)) for (let d = win.start - 1; d <= win.end; d++) blocked.add(d);
+  const off = yearLen(year);
+  for (const win of intlWindows(year + 1)) for (let d = win.start - 1; d <= win.end; d++) blocked.add(d + off);
+  const first = onOrAfter(year, year, 7, 15, 6);
+  const last = dayOf(year, year + 1, 4, 24);
+  const sats: number[] = [];
+  for (let d = first; d <= last; d += 7) if (!blocked.has(d)) sats.push(d);
+  // faltando datas: terças no meio da temporada (dez, jan, fev, abr)
+  const tues: number[] = [];
+  for (let d = onOrAfter(year, year, 11, 1, 2); tues.length < 12 && d < last; d += 7) if (!blocked.has(d)) tues.push(d);
+  let out = sats.slice();
+  for (let i = 0; out.length < rounds && i < tues.length; i++) out.push(tues[(i * 5) % tues.length]);
+  out = [...new Set(out)].sort((a, b) => a - b);
+  while (out.length > rounds) out.splice(Math.floor(out.length / 2), 1); // sobrou: tira do meio
   return out;
 }
 
