@@ -173,3 +173,29 @@ export function isMonthStart(year: number, day: number): boolean {
 export function monthOf(year: number, day: number): number {
   return dateOf(year, day).getMonth();
 }
+
+/** Ano de Mundial de Clubes FIFA (2029, 2033...). */
+export const isClubWorldCupYear = (y: number) => y >= 2029 && (y - 2029) % 4 === 0;
+
+/**
+ * Dias com os dias da semana `dows` entre duas datas do ano `year` (relativos a 1º/jan), fora das datas FIFA
+ * e de `skip` (intervalos [ini, fim]).
+ */
+export function weeklyPool(year: number, from: [number, number], to: [number, number], dows: number[], skip: [number, number][] = []): number[] {
+  const blocked = new Set<number>();
+  for (const win of intlWindows(year)) for (let d = win.start - 1; d <= win.end; d++) blocked.add(d);
+  const out: number[] = [];
+  for (let d = dayOf(year, year, from[0], from[1]); d <= dayOf(year, year, to[0], to[1]); d++) {
+    if (!dows.includes(dowOf(year, d)) || blocked.has(d) || skip.some(([a, b]) => d >= a && d <= b)) continue;
+    out.push(d);
+  }
+  return out;
+}
+
+/** Escolhe n dias espalhados de uma lista (mantém o primeiro e o último). */
+export function spreadPick(pool: number[], n: number): number[] {
+  if (pool.length <= n) return pool.slice();
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) out.push(pool[Math.round((i * (pool.length - 1)) / Math.max(1, n - 1))]);
+  return [...new Set(out)];
+}

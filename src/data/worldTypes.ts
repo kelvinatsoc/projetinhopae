@@ -43,6 +43,8 @@ export interface WorldClub extends DbClub {
   div: "F";
   league: string;
   confed: Confed;
+  /** zona (Argentina: "A"/"B") ou conferência (MLS: "E"/"W"); sem ela, o motor divide por força */
+  zone?: string;
 }
 
 export interface NationalTeamDef {

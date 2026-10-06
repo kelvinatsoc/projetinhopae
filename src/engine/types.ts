@@ -247,6 +247,7 @@ export interface Club {
   setPieces?: SetPieceConfig;
   minor?: string; // UF: clube fictício que só disputa o estadual (fora da pirâmide nacional)
   league?: string; // liga estrangeira (eng1, esp1...): div "F" + league = clube de liga do mundo
+  zone?: string; // zona/conferência na liga (Argentina A/B, MLS E/W)
 }
 
 export interface FinanceBook {

@@ -106,6 +106,7 @@ export function loadWorldData(w: World, data: WorldData, migrating: boolean) {
     if (w.clubs[c.id]) continue;
     const club = makeClub(c);
     club.league = c.league;
+    if (c.zone) club.zone = c.zone;
     w.clubs[c.id] = club;
     fresh.push(club);
   }

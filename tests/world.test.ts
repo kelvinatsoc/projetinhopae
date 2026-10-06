@@ -107,6 +107,9 @@ describe("mundo: um ano inteiro com Europa e seleções", () => {
     expect(champs.some((t) => t.comp === "ucl")).toBe(true);
     expect(champs.some((t) => t.comp === "eng1")).toBe(true);
     expect(w.comps.eng1.label).toBe("2027/28");
+    // Argentina (Apertura/Clausura) e MLS de 2026 terminaram com campeão
+    for (const id of ["arg1a", "arg1c", "usa1"]) expect(champs.concat(Object.values(w.clubs).flatMap((c) => c.trophies)).some((t) => t.comp === id && t.season === 2026)).toBe(true);
+    expect(w.comps.arg1a?.label).toBe("2027");
     expect(noDoubleBookings(w.fixtures)).toEqual([]);
     expect(ms).toBeLessThan(120_000);
   }, 180_000);
@@ -167,7 +170,7 @@ describe("mundo: migração de save antigo", () => {
     expect(w.wl?.startYear).toBe(2027);
     expect(w.version).toBe(4);
     expect(w.fixtures.length).toBe(nFix);
-    expect(Object.values(w.clubs).filter((c) => c.league).length).toBe(72);
+    expect(Object.values(w.clubs).filter((c) => c.league).length).toBe(112);
     playUntil(w, (x) => x.day >= 260);
     expect(w.comps.eng1).toBeUndefined();
   }, 60_000);

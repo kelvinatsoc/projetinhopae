@@ -14,7 +14,14 @@ const LEAGUES: [id: string, name: string, country: string, confed: Confed, color
   ["ned1", "Eredivisie", "NED", "UEFA", "#ff6200", "aug-may", 2],
   ["tur1", "Süper Lig", "TUR", "UEFA", "#e30a17", "aug-may", 0],
   ["sco1", "Scottish Premiership", "SCO", "UEFA", "#4b2582", "aug-may", 0],
+  ["ksa1", "Saudi Pro League", "KSA", "AFC", "#0f8a4b", "aug-may", 0],
+  ["jpn1", "J1 League", "JPN", "AFC", "#d7000f", "aug-may", 0],
+  ["usa1", "MLS", "USA", "CONCACAF", "#001f5b", "feb-dec", 0],
 ];
+
+/** Clubes argentinos que já existem no database.json (a liga arg1 os reaproveita pelo id). */
+export const ARG_DB_CLUBS = ["river-plate", "boca-juniors", "racing", "independiente", "san-lorenzo", "estudiantes", "velez", "lanus",
+  "rosario-central", "talleres", "argentinos-juniors", "platense", "independiente-rivadavia", "tigre", "barracas-central", "riestra"];
 
 const SQUAD: Pos[] = ["GOL", "GOL", "ZAG", "ZAG", "ZAG", "LD", "LE", "VOL", "VOL", "MC", "MC", "MEI", "PD", "PE", "ATA", "ATA", "ATA", "ZAG"];
 
@@ -56,11 +63,12 @@ export function makeWorldFixture(opts: { clubsPerLeague?: number; leagues?: stri
     for (let i = 0; i < n; i++) {
       const cid = `${id}-c${i + 1}`;
       ids.push(cid);
-      const level = Math.round(80 - i * 1.5 - (big ? 0 : 5));
+      const level = Math.round(80 - i * 1.5 - (big ? 0 : confed === "UEFA" ? 5 : 9));
       clubs.push({
         id: cid, name: `${country} Clube ${i + 1}`, full: `${country} Football Club ${i + 1}`, abbr: `${country.slice(0, 2)}${i + 1}`,
         region: country, city: `Cidade ${i + 1}`, country, div: "F", level, rep: Math.min(95, level + 8 - i), colors: [color, "#FFFFFF"],
         crest: "solid", stadium: `${country} Arena ${i + 1}`, capacity: 30000 + i * 1000, league: id, confed,
+        zone: id === "usa1" ? (i % 2 ? "W" : "E") : undefined,
       });
       SQUAD.forEach((p, k) => {
         // metade é do país, o resto de seleções variadas (garante pool para as 48)
@@ -74,8 +82,11 @@ export function makeWorldFixture(opts: { clubsPerLeague?: number; leagues?: stri
     }
     leagues.push({
       id, name, short: name, country, confed, size: n, calendar, relegation: rel, color, clubs: ids,
-      ucl2026Seeds: ids.slice(0, 2), uel2026Seeds: ids.slice(2, 3),
+      ucl2026Seeds: confed === "UEFA" ? ids.slice(0, 2) : undefined, uel2026Seeds: confed === "UEFA" ? ids.slice(2, 3) : undefined,
     });
+  }
+  if (!opts.leagues || opts.leagues.includes("arg1")) {
+    leagues.push({ id: "arg1", name: "Liga Profesional", short: "Liga Argentina", country: "ARG", confed: "CONMEBOL", size: ARG_DB_CLUBS.length, calendar: "feb-dec", relegation: 0, color: "#75aadb", clubs: ARG_DB_CLUBS });
   }
   const nationalTeams: NationalTeamDef[] = NT_CODES.map(([fifa, name, confed, level], i) => ({
     id: `nt-${fifa}`, fifa, name, confed, level, rankingTier: Math.min(5, 1 + Math.floor((i % 10) / 2)) as 1 | 2 | 3 | 4 | 5,

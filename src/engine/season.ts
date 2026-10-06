@@ -22,6 +22,7 @@ import type { Club, Competition, Div, World } from "./types";
 import { yearLen } from "./calendar";
 import { fastFixture, compactResult, carryCompIds, restoreCarry, takeCarry, worldBalance } from "./worldLeagues";
 import { intlYearEnd, simulateIntlDay } from "./international";
+import { createYearLeagues } from "./worldYear";
 import { applyResult } from "./game";
 import { progressCompetitions } from "./competitions";
 
@@ -74,6 +75,7 @@ export function initialEntrants(w: World): SeasonEntrants {
 export function startSeason(w: World, e: SeasonEntrants) {
   w.fixtures = [];
   createSeasonCompetitions(w, e);
+  createYearLeagues(w); // mundo: Argentina e MLS (fev–dez)
   for (const c of Object.values(w.clubs)) {
     if (c.id !== w.userClubId) c.tactic.formation = bestFormationFor(w, c);
   }

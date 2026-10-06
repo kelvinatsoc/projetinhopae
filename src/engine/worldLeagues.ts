@@ -9,6 +9,7 @@ import { addNews } from "./news";
 import { shuffle } from "./rng";
 import type { Club, Competition, Fixture, MatchResult, NewsKind, World } from "./types";
 import { createUefaSeason, UEFA_METAS } from "./uefa";
+import { registerYearMetas } from "./worldYear";
 
 export { LEAGUE_MONEY, leagueWageMult, worldBalance } from "./worldMoney";
 
@@ -33,6 +34,7 @@ export function registerWorldMetas(w: World) {
   if (!w.wl) return;
   Object.values(w.wl.leagues).forEach((l, i) => registerComp(l.id, { name: l.name, short: l.short, color: l.color, tier: 30 + i }));
   for (const [id, m] of Object.entries(UEFA_METAS)) registerComp(id, m);
+  registerYearMetas(w);
 }
 
 export function initWorldLeagues(w: World, data: WorldData, migrating: boolean) {
@@ -109,7 +111,7 @@ export function awardWorldComp(w: World, comp: Competition) {
 }
 
 function progressLeague(w: World, comp: Competition): boolean {
-  if (!w.wl?.leagues[comp.id]) return false;
+  if (!w.wl?.leagues[comp.id] || comp.format !== "league") return false;
   if (comp.stage !== "league" || !stageDone(w, comp, "league")) return true;
   sortTable(comp.table);
   comp.champion = comp.table[0].club;
