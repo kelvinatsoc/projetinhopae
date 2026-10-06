@@ -56,3 +56,23 @@ export function updateFanFavourite(w: World, p: Player) {
 
 /** Cor de uma nota (para as bolinhas de forma). */
 export const ratingColor = (r: number) => (r >= 7.5 ? "#1f9d55" : r >= 6.8 ? "#7cb342" : r >= 6.2 ? "#c78a12" : "#c0392b");
+
+export interface Award { season: number; kind: "best" | "rev" | "top"; label: string; emoji: string }
+/** Prêmios da Série A que o jogador já ganhou (craque, revelação, artilheiro), do mais recente ao mais antigo. */
+export function awardsOf(w: World, pid: number): Award[] {
+  const out: Award[] = [];
+  for (const s of w.history.slice().reverse()) {
+    if (s.bestPlayer?.pid === pid) out.push({ season: s.season, kind: "best", label: "Craque da temporada", emoji: "🏅" });
+    if (s.revelation?.pid === pid) out.push({ season: s.season, kind: "rev", label: "Revelação da temporada", emoji: "🌟" });
+    if (s.topScorer?.pid === pid) out.push({ season: s.season, kind: "top", label: "Artilheiro da Série A", emoji: "⚽" });
+  }
+  return out;
+}
+
+/** Pedido em aberto de quem vive grande fase: valorização (contrato curto) ou clube maior (já pediu para sair). */
+export function pendingRequest(w: World, p: Player): "raise" | "bigger" | null {
+  if ((p.hm ?? 0) < 2 || p.loan) return null;
+  if (p.wantsOut) return "bigger";
+  if (p.contractEnd <= w.season + 1) return "raise";
+  return null;
+}

@@ -218,7 +218,8 @@ export function HistoryScreen() {
             <div key={comp} className="row gap8 mt8"><span className="muted" style={{ width: 110 }}>{COMP_META[comp]?.short}</span><Crest club={w.clubs[club]} size={16} />{w.clubs[club]?.name}</div>
           ))}
           {s.topScorer && <div className="mt8">⚽ Artilheiro da Série A: {s.topScorer.name} ({s.topScorer.goals})</div>}
-          {s.bestPlayer && <div>🌟 Craque da Série A: {s.bestPlayer.name} (nota {s.bestPlayer.rating})</div>}
+          {s.bestPlayer && <div>🏅 Craque da Série A: {s.bestPlayer.name} (nota {s.bestPlayer.rating})</div>}
+          {s.revelation && <div>🌟 Revelação: {s.revelation.name}, {s.revelation.age} anos (nota {s.revelation.rating})</div>}
         </div>
       ))}
     </div>

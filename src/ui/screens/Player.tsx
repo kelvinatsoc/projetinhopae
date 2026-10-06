@@ -15,7 +15,7 @@ import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Avatar, Bar, cardTier, Crest, Flag, FormDots, PosBadge, Sheet, Stars, TrendArrow } from "../components";
 import { bestPartners } from "../../engine/chemistry";
-import { expectedRating, formResidual, injuryProne, streakOf } from "../../engine/form";
+import { awardsOf, expectedRating, formResidual, injuryProne, pendingRequest, streakOf } from "../../engine/form";
 import { roleStars, rolesFor } from "../../engine/tactics";
 import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME } from "../flags";
@@ -121,7 +121,13 @@ export function PlayerScreen({ id }: { id: number }) {
       {!mine && !ownedOut && p.loan && club && (
         <div className="banner">📤 Emprestado pelo {parent?.name ?? "?"} ao {club.name} até {loanUntilLabel(p)}. Não pode ser negociado agora.</div>
       )}
-      {mine && p.wantsOut && <div className="banner red">😤 Quer ser negociado — converse, prometa minutos ou venda.</div>}
+      {mine && p.wantsOut && <div className="banner red">😤 {pendingRequest(w, p) === "bigger" ? `Depois de ${p.hm} meses em alta, quer um clube maior` : "Quer ser negociado"} — converse, prometa minutos ou venda.</div>}
+      {mine && pendingRequest(w, p) === "raise" && (
+        <div className="banner blue row gap8">
+          <span className="grow">📝 Em grande fase, quer ser valorizado: renove com aumento antes que outros clubes apareçam.</span>
+          <button className="btn sm primary" onClick={() => setSheet("renew")}>Renovar</button>
+        </div>
+      )}
 
       {legend && (
         <div className="card" style={{ borderColor: "#8a6a00" }}>
@@ -496,6 +502,7 @@ function FormCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
   const res = formResidual(p, 5);
   const streak = streakOf(p);
   const exp = expectedRating(p);
+  const awards = awardsOf(w, p.id);
   return (
     <div className="card">
       <div className="row"><h3 className="grow">Fase</h3><TrendArrow p={p} label /></div>
@@ -516,6 +523,11 @@ function FormCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
         {injuryProne(p) && <span className="tag danger">🩹 Propenso a lesões</span>}
         {(p.hm ?? 0) >= 2 && mine && <span className="tag good">📈 {p.hm} meses em alta</span>}
       </div>
+      {awards.length > 0 && (
+        <div className="row gap8 wrap mt8 small">
+          {awards.map((a) => <span key={`${a.season}-${a.kind}`} className="tag legend" title={`${a.label} (${a.season})`}>{a.emoji} {a.label} {a.season}</span>)}
+        </div>
+      )}
       <div className="tiny muted mt8">Boas notas com minutos aceleram a evolução (principalmente dos jovens) e podem até subir o potencial; banco e notas ruins travam.{p.form.length === 0 ? ` ${age(p, w.season) <= 21 ? "Ainda sem jogos nesta fase." : ""}` : ""}</div>
     </div>
   );

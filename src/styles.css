@@ -337,3 +337,6 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; 
 .trend-arrow.up { color: var(--accent); }
 .trend-arrow.down { color: var(--danger); }
 .trend-arrow.flat { color: var(--muted); }
+.squad-pulse { padding: 8px 10px; }
+.squad-pulse .chips { flex-wrap: wrap; }
+.squad-pulse .chip { font-size: 12px; padding: 4px 9px; }

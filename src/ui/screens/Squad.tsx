@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { teamLinkAvg } from "../../engine/chemistry";
 import { chemOf } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
-import { formResidual } from "../../engine/form";
+import { awardsOf, formResidual, pendingRequest, streakOf } from "../../engine/form";
 import { lineupStrength, squadOf, validLineup } from "../../engine/lineup";
 import { age, playerValue } from "../../engine/player";
 import { potRangeLabel } from "../../engine/scouting";
@@ -76,6 +76,7 @@ function SquadList() {
         <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
       </div>
       </div>
+      <SquadPulse w={w} players={squadOf(w, club)} />
       <div className="chips">
         {([["all", "Todos"], ["starters", "Titulares"], ["out", "Lesionados/suspensos"], ["listed", "À venda"]] as const).map(([k, l]) => (
           <button key={k} className={`chip${filter === k ? " active" : ""}`} onClick={() => setFilter(k)}>{l}</button>
@@ -105,6 +106,30 @@ function SquadList() {
       )}
       {!list.length && <div className="empty">😶 Nenhum jogador neste filtro.</div>}
       <div style={{ height: 50 }} />
+    </div>
+  );
+}
+
+/** Fase do elenco: quem está em alta/baixa, pedidos em aberto e prêmios recentes. */
+function SquadPulse({ w, players }: { w: World; players: Player[] }) {
+  const hot = players.filter((p) => streakOf(p) === "hot");
+  const cold = players.filter((p) => streakOf(p) === "cold");
+  const reqs = players.map((p) => ({ p, r: pendingRequest(w, p) })).filter((x) => x.r);
+  const last = w.history[w.history.length - 1]?.season;
+  const awards = last == null ? [] : players.flatMap((p) => awardsOf(w, p.id).filter((a) => a.season === last).map((a) => ({ p, a })));
+  if (!hot.length && !cold.length && !reqs.length && !awards.length) return null;
+  const chip = (p: Player, label: string, cls = "") => (
+    <button key={`${label}-${p.id}`} className={`chip ${cls}`} onClick={() => push({ name: "player", id: p.id })}>{label} {p.name.split(" ").slice(-1)[0]}</button>
+  );
+  return (
+    <div className="card flat squad-pulse">
+      <div className="row"><b className="small grow">Fase do elenco</b><span className="tiny muted">🔥 {hot.length} · 🧊 {cold.length}</span></div>
+      {awards.length > 0 && <div className="chips mt4">{awards.map(({ p, a }) => chip(p, `${a.emoji} ${a.label.split(" ")[0]}`, "active"))}</div>}
+      {reqs.length > 0 && <div className="chips mt4">{reqs.map(({ p, r }) => chip(p, r === "raise" ? "📝 Quer aumento:" : "🚀 Quer clube maior:"))}</div>}
+      {(hot.length > 0 || cold.length > 0) && (
+        <div className="chips mt4">{hot.slice(0, 4).map((p) => chip(p, "🔥"))}{cold.slice(0, 3).map((p) => chip(p, "🧊"))}</div>
+      )}
+      <div className="tiny muted mt4">Boa fase com minutos acelera a evolução; banco e notas ruins travam.</div>
     </div>
   );
 }
