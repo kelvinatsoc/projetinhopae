@@ -2,6 +2,10 @@
 // torcida, explosão no gol, "uhhh", apito do árbitro e cantos de algumas torcidas), empacotadas
 // em public/media/audio/ (autores e licenças em media/audio/credits.json; ver scripts/fetch_audio.py).
 // Se um arquivo faltar ou não decodificar, toca a versão sintetizada com Web Audio.
+// Jogos com torcida brasileira (clubes do Brasil e a Seleção) usam o mixador em camadas
+// (startAtmosphere): ambiente + canto + vaia em laço, olé/gol/"uhhh" por cima, tudo seguindo o
+// humor da torcida (src/ui/torcida.ts). Sons em media/audio/br/ (scripts/fetch_torcida.py).
+// Todo som passa por um volume geral (ajuste do usuário) que abaixa sozinho nos menus.
 // O usuário pode carregar o próprio áudio (hino/canto) do seu clube, que toca nos gols — fica
 // salvo só no aparelho dele.
 import { mediaUrl } from "./mediaUrl";
