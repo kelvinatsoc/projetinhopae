@@ -200,4 +200,6 @@ FOREIGN_CLUBS = [
     F("puerto-cabello", "Academia Puerto Cabello", "APC", "VEN", 61, 34, "Academia Puerto Cabello", "solid", None),
 ]
 
-ALL_CLUBS = BR_CLUBS + FOREIGN_CLUBS
+from estadual_catalog import ESTADUAL_CLUBS  # noqa: E402
+
+ALL_CLUBS = BR_CLUBS + FOREIGN_CLUBS + ESTADUAL_CLUBS
