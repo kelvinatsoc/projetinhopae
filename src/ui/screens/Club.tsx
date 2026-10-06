@@ -15,7 +15,7 @@ import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
 import { loadMedia, saveMedia, setSoundEnabled, soundEnabled } from "../audio";
-import { Avatar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, stadiumSrc, Stars } from "../components";
+import { Avatar, clubStars, CompLogo, Crest, Icon, PlayerRow, StadiumPhoto, stadiumSrc, Stars } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
@@ -85,10 +85,17 @@ export function ClubScreen() {
   );
 }
 
+// emojis antigos → ícones próprios (src/ui/components.tsx)
+const TILE_ICON: Record<string, string> = {
+  "💰": "coins", "👔": "briefcase", "🏛️": "bank", "🏗️": "crane", "🤝": "handshake", "💬": "chat",
+  "🏋️": "dumbbell", "🌱": "sprout", "⚙️": "gear", "🏆": "trophy", "⭐": "star", "🏅": "medal",
+  "🧭": "compass", "📜": "scroll", "🔎": "search", "🛠️": "wrench",
+};
+
 function Tile({ icon, label, sub, tint, wide, hot, onClick }: { icon: string; label: string; sub: string; tint: string; wide?: boolean; hot?: boolean; onClick: () => void }) {
   return (
     <button className={`tile${wide ? " wide" : ""}${hot ? " hot" : ""}`} style={{ "--tint": tint } as CSSProperties} onClick={onClick}>
-      <span className="ti">{icon}</span>
+      <span className="ti">{TILE_ICON[icon] ? <Icon name={TILE_ICON[icon]} size={26} /> : icon}</span>
       <span><b>{label}</b><small>{sub}</small></span>
     </button>
   );

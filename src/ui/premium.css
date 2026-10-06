@@ -1,0 +1,292 @@
+/* =====================================================================
+   Lendas da Base — camada "Vidro de Gala" (docs/design.md)
+   Carregada por último. Vidro fosco só nas barras e cartões fixos
+   (nunca em listas longas), sombras em camadas, cantos grandes estilo iOS,
+   números em Barlow Condensed embutida (sem rede), molas em transform/opacity.
+   ===================================================================== */
+:root {
+  --display: "Barlow Condensed", "Roboto Condensed", sans-serif-condensed, "Arial Narrow", system-ui, sans-serif;
+  --num: "Barlow Condensed", sans-serif-condensed, system-ui, sans-serif;
+  --radius: 24px;
+  --r-lg: 30px;
+  --r-md: 18px;
+  --glass: color-mix(in srgb, #141b2e 62%, transparent);
+  --glass-hi: rgba(255, 255, 255, 0.14);
+  --glass-edge: rgba(255, 255, 255, 0.08);
+  --shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 2px 4px rgba(0,0,0,0.22), 0 12px 32px rgba(0,0,0,0.38);
+  --shadow-lift: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 10px rgba(0,0,0,0.3), 0 24px 60px rgba(0,0,0,0.5);
+  /* mola (overshoot leve, assenta rápido) — curva linear() aproximando uma mola amortecida */
+  --spring: linear(0, 0.18 6%, 0.55 14%, 0.86 23%, 1.03 32%, 1.08 40%, 1.06 48%, 1.01 60%, 0.995 72%, 1);
+  --ease: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --card: color-mix(in srgb, #182138 78%, transparent);
+  --card2: color-mix(in srgb, #222d4a 78%, transparent);
+}
+:root[data-theme="light"] {
+  --glass: color-mix(in srgb, #ffffff 70%, transparent);
+  --glass-hi: rgba(255, 255, 255, 0.9);
+  --glass-edge: rgba(10, 20, 50, 0.08);
+  --card: rgba(255, 255, 255, 0.94);
+  --card2: #f1f4fa;
+  --shadow: 0 1px 2px rgba(10,20,50,0.06), 0 10px 26px rgba(10,20,50,0.08);
+  --shadow-lift: 0 2px 6px rgba(10,20,50,0.08), 0 20px 46px rgba(10,20,50,0.14);
+}
+
+body { font-feature-settings: "ss01", "cv11"; letter-spacing: -0.005em; }
+
+/* números: placares, overall, dinheiro, anéis — condensados, pesados, tabulares */
+.pc-ovr, .ring b, .stat-box b, .ovr, .fut-ovr .pc-ovr, .fut-attrs b, .money-chip, .score, .mh-vs,
+.tbl td.num, .big-num { font-family: var(--num); font-variant-numeric: tabular-nums lining-nums; }
+
+h1, h2, .display { letter-spacing: -0.005em; }
+h3 { font-size: 14px; letter-spacing: 0.14em; font-weight: 800; }
+
+/* ---------- vidro: barra superior ---------- */
+.topbar {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent), color-mix(in srgb, var(--bg) 35%, transparent));
+  backdrop-filter: blur(22px) saturate(1.8);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  box-shadow: inset 0 -1px 0 var(--glass-edge);
+}
+.topbar .title b { font-size: 22px; font-weight: 800; letter-spacing: 0; }
+.topbar .title small { font-weight: 600; letter-spacing: 0.02em; }
+.topbar .money-chip {
+  font-size: 15px; font-weight: 800; padding: 7px 13px; letter-spacing: 0.01em;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--club) 26%, var(--glass)), color-mix(in srgb, var(--club) 10%, var(--glass)));
+  border: 1px solid color-mix(in srgb, var(--club) 45%, var(--glass-hi));
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 14px color-mix(in srgb, var(--club) 25%, transparent);
+}
+.icon-btn {
+  border-radius: 15px; background: var(--glass); border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.45s var(--spring);
+}
+.icon-btn:active { transform: scale(0.88); transition-duration: 0.08s; }
+
+/* ---------- vidro: dock inferior ---------- */
+.bottomnav {
+  border-radius: var(--r-lg); border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, #1b2440 66%, transparent), color-mix(in srgb, #0b1020 74%, transparent));
+  backdrop-filter: blur(26px) saturate(1.8);
+  -webkit-backdrop-filter: blur(26px) saturate(1.8);
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 10px 24px rgba(0,0,0,0.35), 0 30px 60px rgba(0,0,0,0.45);
+}
+:root[data-theme="light"] .bottomnav { background: var(--glass); }
+.bottomnav button { font-weight: 700; transition: color 0.25s, transform 0.5s var(--spring); }
+.bottomnav button:active { transform: scale(0.86); transition-duration: 0.08s; }
+.bottomnav button::before {
+  border-radius: 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--club) 34%, transparent), color-mix(in srgb, var(--club) 14%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 18px color-mix(in srgb, var(--club) 30%, transparent);
+  transition: opacity 0.2s, transform 0.55s var(--spring);
+}
+.bottomnav button.active svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--club) 70%, transparent)); }
+
+/* ---------- FAB "Jogar/Continuar": pílula com brilho ---------- */
+.fab {
+  border-radius: 999px; font-size: 22px; font-weight: 900; padding: 15px 34px;
+  overflow: hidden; isolation: isolate;
+  transition: transform 0.5s var(--spring);
+}
+.fab::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.45) 50%, transparent 65%);
+  background-size: 260% 100%; animation: sweep 4.2s ease-in-out 1s infinite;
+}
+.fab:active { transition-duration: 0.08s; }
+
+/* ---------- blocos ---------- */
+.page { gap: 16px; }
+.card {
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 4%, var(--card)), var(--card));
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow);
+}
+:root[data-theme="light"] .card { background: var(--card); }
+.card.tap, .tap, .tile, .btn, .chip, .seg button, .quick button, .ring-card, .club-pick {
+  transition: transform 0.5s var(--spring), background 0.2s, box-shadow 0.25s;
+}
+.card.tap:active, .tap:active, .tile:active, .ring-card:active, .club-pick:active { transform: scale(0.965); transition-duration: 0.08s; }
+.btn { border-radius: var(--r-md); font-weight: 700; box-shadow: inset 0 1px 0 var(--glass-hi), 0 2px 8px rgba(0,0,0,0.2); border-color: var(--glass-edge); }
+.btn:active, .chip:active { transform: scale(0.95); transition-duration: 0.08s; }
+.btn.primary, .btn.gold { border-radius: var(--r-md); font-weight: 900; font-size: 19px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 26px color-mix(in srgb, var(--club) 38%, transparent); }
+.chip { border-radius: 999px; font-weight: 700; }
+.chip.active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px color-mix(in srgb, var(--club) 35%, transparent); }
+.seg {
+  border-radius: 20px; padding: 5px; border: 1px solid var(--glass-edge);
+  background: var(--glass); box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+}
+.seg button { border-radius: 15px; font-weight: 700; }
+.seg button.active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 18px color-mix(in srgb, var(--club) 40%, transparent); }
+.stat-box {
+  border-radius: 20px; border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, #fff 5%, var(--card)), var(--card));
+  box-shadow: var(--shadow);
+}
+.stat-box b { font-size: 30px; font-weight: 800; line-height: 1; }
+.ovr { font-weight: 800; font-size: 18px; }
+.list-item { border-radius: 16px; }
+.sheet { border-radius: 32px 32px 0 0; animation: sheet-up 0.5s var(--spring); box-shadow: 0 -20px 60px rgba(0,0,0,0.5); }
+.toast {
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg2) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 18px 40px rgba(0,0,0,0.5);
+  animation: toast-in 0.5s var(--spring);
+}
+.ico-txt { display: inline-flex; align-items: center; gap: 5px; }
+.ico-txt svg { flex: none; opacity: 0.85; }
+
+/* ---------- Início: foto do estádio como palco ---------- */
+.home-page { position: relative; }
+.home-stadium {
+  position: absolute; z-index: 0; pointer-events: none;
+  left: 0; right: 0; top: calc(-1 * (var(--top-h) + env(safe-area-inset-top)));
+  height: 560px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%);
+}
+.home-stadium img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(1.15) brightness(0.62);
+  animation: stadium-in 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.home-stadium::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7,11,20,0.35), transparent 30%, color-mix(in srgb, var(--bg) 70%, transparent) 80%),
+    radial-gradient(90% 60% at 50% 30%, transparent, color-mix(in srgb, var(--club) 25%, transparent));
+}
+@keyframes stadium-in { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1.0); } }
+.home-page > *:not(.home-stadium) { position: relative; z-index: 1; }
+.home-page > .match-hero { position: relative; }
+
+/* cartão do próximo jogo: vidro fosco sobre o estádio */
+.match-hero {
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 14px rgba(0,0,0,0.3), 0 30px 70px rgba(0,0,0,0.5);
+  backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5);
+}
+.home-page .match-hero::before { opacity: 0.5; }
+.home-page .match-hero { background-color: rgba(8,12,24,0.28); }
+.match-hero .mh-team b { font-size: 24px; font-weight: 800; }
+.match-hero .mh-vs { font-size: 38px; font-weight: 900; letter-spacing: -0.02em;
+  background: linear-gradient(180deg, #fff, rgba(255,255,255,0.55)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.match-hero .mh-info { font-size: 13px; font-weight: 600; gap: 12px; }
+.match-hero .mh-actions button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 18px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: transform 0.5s var(--spring), background 0.2s;
+}
+.match-hero .mh-actions button:active { transform: scale(0.94); transition-duration: 0.08s; }
+.match-hero .mh-when { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.14); }
+
+/* anéis e atalhos: cartões de vidro com profundidade */
+.ring-card, .quick button {
+  border-radius: 24px; border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, #fff 6%, var(--glass)), var(--glass));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+.ring b { font-size: 24px; font-weight: 800; }
+.quick button { font-weight: 700; }
+.quick button:active { transform: scale(0.92); transition-duration: 0.08s; }
+.quick button .qi {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px;
+  color: var(--club-ink);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--club) 80%, #fff), var(--club) 55%, color-mix(in srgb, var(--club) 70%, #000));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 0 rgba(0,0,0,0.15), 0 6px 14px color-mix(in srgb, var(--club) 40%, transparent);
+}
+.quick button .qi svg { width: 24px; height: 24px; }
+.form-pill { border-radius: 10px; font-family: var(--num); font-weight: 800; font-size: 15px; }
+
+/* ---------- cartas de jogador colecionáveis ---------- */
+.pgrid { gap: 12px; }
+.pcard {
+  border-radius: 20px 20px 26px 26px; isolation: isolate;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 0 0 1px rgba(255,255,255,0.06), 0 4px 10px rgba(0,0,0,0.3), 0 14px 30px rgba(0,0,0,0.35);
+  transition: transform 0.5s var(--spring);
+  animation: card-pop 0.6s var(--spring) both;
+}
+.pcard:active { transform: scale(0.93) rotate(-0.6deg); transition-duration: 0.08s; }
+.pcard::before { /* textura de linhas finas, tipo carta impressa */
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.18;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,0.5) 0 1px, transparent 1px 7px);
+}
+.pcard::after { /* brilho que varre a carta */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.5) 48%, transparent 58%);
+  background-size: 300% 100%; background-position: 150% 0; opacity: 0;
+}
+.pcard .pc-ovr { font-size: 32px; letter-spacing: -0.02em; }
+.pcard .pc-name { font-size: 16px; letter-spacing: 0.01em; }
+.pcard.bronze { --t1: #d39a68; --t2: #4d2a12; --tb: rgba(255, 210, 170, 0.55); }
+.pcard.silver { --t1: #e4eaf3; --t2: #6b7891; --tb: rgba(255,255,255,0.8); }
+.pcard.gold { --t1: #ffe08a; --t2: #8a5d0b; --tb: #fff0bd; }
+.pcard.silver::after { opacity: 0.6; animation: sweep 6s ease-in-out infinite; }
+.pcard.gold::after { opacity: 0.9; animation: sweep 4.5s ease-in-out infinite; }
+.pcard.gold { box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 4px 10px rgba(0,0,0,0.3), 0 14px 30px rgba(120, 80, 0, 0.35); }
+.pcard.legend {
+  --t1: #fff1a8; --t2: #5a3500;
+  background:
+    linear-gradient(160deg, rgba(255,241,168,0.92), rgba(140,80,0,0.92)),
+    conic-gradient(from 0deg, #ff7ab6, #ffd84a, #6dffb3, #6ac8ff, #c48bff, #ff7ab6);
+  background-blend-mode: overlay;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(255,220,120,0.6), 0 0 24px rgba(255,207,63,0.55), 0 14px 30px rgba(0,0,0,0.4);
+}
+.pcard.legend::before {
+  opacity: 0.45; mix-blend-mode: color-dodge;
+  background: linear-gradient(125deg, #ff7ab6, #ffd84a 25%, #6dffb3 50%, #6ac8ff 75%, #c48bff);
+  background-size: 200% 200%; animation: holo 6s linear infinite;
+}
+.pcard.legend::after { opacity: 1; animation: sweep 3s ease-in-out infinite; }
+.pcard .pc-cond { height: 5px; border-radius: 3px; }
+.pcard .pc-xi { border-radius: 8px; padding: 2px 6px; font-family: var(--num); font-size: 11px; letter-spacing: 0.04em; }
+.pcard.fut { animation: card-pop 0.7s var(--spring) both; box-shadow: 0 10px 20px rgba(0,0,0,0.35), 0 30px 60px rgba(0,0,0,0.45); }
+.pcard.fut::after { opacity: 0.9; animation: sweep 4s ease-in-out infinite; }
+.fut-ovr .pc-ovr { font-size: 56px; font-weight: 900; }
+
+@keyframes card-pop { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes sweep { 0%, 55% { background-position: 150% 0; } 100% { background-position: -150% 0; } }
+@keyframes holo { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
+
+/* ---------- abertura / novo jogo ---------- */
+.logo { font-family: var(--display); font-weight: 900; letter-spacing: -0.01em; }
+.club-pick {
+  border-radius: 22px; border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c, #fff) 16%, var(--card)), var(--card));
+  box-shadow: var(--shadow);
+}
+.club-pick.sel { box-shadow: 0 0 0 2px var(--c, var(--club)), 0 10px 30px color-mix(in srgb, var(--c, var(--club)) 40%, transparent); transform: translateY(-2px); }
+.pick-preview { border-radius: var(--r-lg); box-shadow: var(--shadow-lift); }
+input.text, select { border-radius: 16px; }
+
+.club-hero { border-radius: var(--r-lg); box-shadow: var(--shadow-lift); }
+.tile { border-radius: 22px; box-shadow: var(--shadow); border: 1px solid var(--glass-edge); }
+
+/* listas longas: sem blur (120 Hz), só cor sólida translúcida */
+.list .card, .tbl, .news-card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pcard::after, .fab::after, .pcard.legend::before { animation: none !important; }
+  .home-stadium img { animation: none; }
+}
+
+/* ---------- abertura: estádio ao fundo, painel de vidro ---------- */
+.start-bg { position: relative; isolation: isolate; overflow: hidden; }
+.start-stadium { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.start-stadium img { width: 100%; height: 62%; object-fit: cover; display: block; filter: brightness(0.55) saturate(1.2); animation: stadium-in 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent); mask-image: linear-gradient(180deg, #000 40%, transparent); }
+.start-panel { position: relative; }
+.start-bg .btn.block { min-height: 56px; }
+.start-bg .btn:not(.primary):not(.gold) { background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.start-bg .logo { text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+.home-page > .home-stadium + .match-hero { margin-top: 110px; }
+.home-page > .home-stadium + .match-hero::before { opacity: 0.38; }
+.tile .ti:has(svg) {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tint, var(--club)) 85%, #fff), var(--tint, var(--club)) 60%, color-mix(in srgb, var(--tint, var(--club)) 65%, #000));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 6px 14px color-mix(in srgb, var(--tint, var(--club)) 40%, transparent);
+}

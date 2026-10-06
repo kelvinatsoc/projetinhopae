@@ -352,6 +352,26 @@ const PATHS: Record<string, string> = {
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm9 16-4.3-4.3",
   edit: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4",
   camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  // conjunto próprio do jogo (traço 2px, cantos redondos)
+  board: "M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM8 8h.01M8 16h.01M16 8h.01M12 12h.01M8.5 8.5l3 3M16 16l-3-3",
+  dumbbell: "M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12",
+  mail: "M3 6h18v12H3zM3 7l9 6 9-6",
+  sprout: "M12 21v-9M12 12C12 8 9 5 4 5c0 4 3 7 8 7zM12 10c0-3 2.5-6 8-6 0 4-3 6.5-8 6.5",
+  shirt: "M8 3 3 6l2 5 2-1v11h10V10l2 1 2-5-5-3a4 4 0 0 1-8 0z",
+  coins: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v12",
+  briefcase: "M4 8h16v11H4zM9 8V5h6v3M4 13h16",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  stadium: "M2 18c0-3 4.5-5 10-5s10 2 10 5M2 18v2h20v-2M5 13V7M19 13V7M5 7l2-2M19 7l-2-2M12 13V9",
+  tv: "M3 6h18v12H3zM8 21h8M9 3l3 3 3-3",
+  bank: "M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18",
+  crane: "M6 21V4l12 3M6 7h14M18 7v5M16 12h4v3h-4zM3 21h8M6 4 3 7",
+  handshake: "M2 11l4-4 4 2 3-2 3 2 4-2 2 4-6 6-3-2-2 2-3-3-2 1zM9 13l3 3M12 12l3 3",
+  chat: "M4 5h16v11H9l-5 4zM8 10h.01M12 10h.01M16 10h.01",
+  medal: "M8 3l4 6 4-6M12 21a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-8.5 1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L9 14.8l2-.3z",
+  compass: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z",
+  scroll: "M7 4h11a2 2 0 0 1 0 4h-1v10a2 2 0 0 1-2 2H6a2 2 0 0 1 0-4h1zM10 9h4M10 13h4",
+  wrench: "M14.5 5.5a4 4 0 0 0 4.9 4.9L21 12l-9 9-3-3 9-9-1.6-1.6a4 4 0 0 0-4.9-4.9l2.5 2.5-1.5 1.5z",
+  scout: "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm10 16-5.5-5.5M10 7v6M7 10h6",
 };
 
 export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PATHS | string; size?: number; fill?: boolean }) {

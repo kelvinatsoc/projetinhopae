@@ -9,7 +9,7 @@ import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
 import { broadcasters, newsSource } from "../../engine/outlets";
 import { stadiumName } from "../../engine/sponsors";
-import { CompLogo, Crest, visibleColor } from "../components";
+import { CompLogo, Crest, Icon, stadiumSrc, visibleColor } from "../components";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
 import { SquadMoodHomeCard } from "./Dressing";
@@ -68,8 +68,15 @@ export function HomeScreen() {
   const unread = inboxUnread(w);
   const offers = w.career?.offers.length ?? 0;
 
+  const stadium = stadiumSrc(user);
+
   return (
-    <div className="page">
+    <div className="page home-page">
+      {stadium && (
+        <div className="home-stadium" aria-hidden="true">
+          <img src={stadium} alt="" decoding="async" />
+        </div>
+      )}
       {next ? <NextMatchCard w={w} f={next} /> : (
         <div className="match-hero center" style={{ "--h": visibleColor(user.colors), "--a": "#1f6fd1" } as CSSProperties}>
           <div style={{ fontSize: 44 }}>🏁</div>
@@ -104,14 +111,14 @@ export function HomeScreen() {
       <BoardHomeCard />
 
       <div className="quick">
-        <button onClick={() => push({ name: "tactics" })}><span className="qi">📋</span>Tática</button>
-        <button onClick={() => push({ name: "training" })}><span className="qi">🏋️</span>Treino</button>
-        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi">📨</span>Mensagens</button>
-        <button onClick={() => push({ name: "youth" })}><span className="qi">🌱</span>Base</button>
-        <button onClick={() => push({ name: "dressing" })}><span className="qi">🤝</span>Vestiário</button>
-        <button onClick={() => push({ name: "finances" })}><span className="qi">💰</span>Finanças</button>
-        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi">👔</span>Carreira</button>
-        <button onClick={() => push({ name: "legends" })}><span className="qi">⭐</span>Lendas</button>
+        <button onClick={() => push({ name: "tactics" })}><span className="qi"><Icon name="board" /></span>Tática</button>
+        <button onClick={() => push({ name: "training" })}><span className="qi"><Icon name="dumbbell" /></span>Treino</button>
+        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi"><Icon name="mail" /></span>Mensagens</button>
+        <button onClick={() => push({ name: "youth" })}><span className="qi"><Icon name="sprout" /></span>Base</button>
+        <button onClick={() => push({ name: "dressing" })}><span className="qi"><Icon name="shirt" /></span>Vestiário</button>
+        <button onClick={() => push({ name: "finances" })}><span className="qi"><Icon name="coins" /></span>Finanças</button>
+        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi"><Icon name="briefcase" /></span>Carreira</button>
+        <button onClick={() => push({ name: "legends" })}><span className="qi"><Icon name="star" /></span>Lendas</button>
       </div>
 
       {last && <LastResult w={w} f={last} />}
@@ -164,13 +171,13 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
         <div className="mh-team"><Crest club={away} size={74} /><b>{away.name}</b></div>
       </div>
       <div className="mh-info">
-        <span>📅 {formatDate(w.season, f.day)}</span>
-        <span className="ellipsis" style={{ maxWidth: "60%" }}>🏟️ {f.neutral ? "Campo neutro" : stadiumName(w, home)}</span>
+        <span className="ico-txt"><Icon name="calendar" size={15} />{formatDate(w.season, f.day)}</span>
+        <span className="ellipsis ico-txt" style={{ maxWidth: "60%" }}><Icon name="stadium" size={15} />{f.neutral ? "Campo neutro" : stadiumName(w, home)}</span>
       </div>
-      {broadcasters(f).length > 0 && <div className="mh-info"><span>📺 {broadcasters(f).join(" · ")}</span></div>}
+      {broadcasters(f).length > 0 && <div className="mh-info"><span className="ico-txt"><Icon name="tv" size={15} />{broadcasters(f).join(" · ")}</span></div>}
       <div className="mh-actions">
-        <button onClick={() => push({ name: "tactics" })}>📋 Escalação</button>
-        <button onClick={() => push({ name: "club", id: opp.id })}>🔎 {opp.name.length > 12 ? opp.abbr : opp.name}</button>
+        <button onClick={() => push({ name: "tactics" })}><Icon name="board" size={18} />Escalação</button>
+        <button onClick={() => push({ name: "club", id: opp.id })}><Icon name="scout" size={18} />{opp.name.length > 12 ? opp.abbr : opp.name}</button>
       </div>
     </div>
   );

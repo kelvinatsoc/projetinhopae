@@ -4,6 +4,12 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "./ui/App";
 import "./styles.css";
 import "./ui/redesign.css";
+// tipografia embutida no pacote (sem rede em tempo de execução): números e títulos condensados
+import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow-condensed/latin-700.css";
+import "@fontsource/barlow-condensed/latin-800.css";
+import "@fontsource/barlow-condensed/latin-900.css";
+import "./ui/premium.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 

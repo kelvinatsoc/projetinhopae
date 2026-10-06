@@ -3,6 +3,7 @@ import type { Div } from "../../engine/types";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
 import { createScenarioWorld, SCENARIO_BY_ID, SCENARIOS } from "../../engine/scenarios";
 import "../progression.css";
+import { mediaUrl } from "../mediaUrl";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
@@ -59,7 +60,8 @@ export function StartScreen() {
 
   return (
     <div className="start-bg">
-      <div className="col gap12" style={{ maxWidth: 480, margin: "0 auto", width: "100%" }}>
+      <div className="start-stadium" aria-hidden="true"><img src={mediaUrl("stadiums/Q155174.webp")} alt="" decoding="async" /></div>
+      <div className="col gap12 start-panel" style={{ maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <div className="center" style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 54 }}>⚽</div>
           <div className="logo">Lendas <span>da Base</span></div>
