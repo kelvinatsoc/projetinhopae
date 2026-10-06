@@ -63,7 +63,7 @@ export function StartScreen() {
         <div className="center" style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 54 }}>⚽</div>
           <div className="logo">Lendas <span>da Base</span></div>
-          <p className="muted">Manager de futebol brasileiro. Séries A, B e C, Copa do Brasil, Libertadores e Sul-Americana — e lendas renascendo nas categorias de base.</p>
+          <p className="muted">Jogo de técnico de futebol brasileiro. Séries A, B e C, Copa do Brasil, Libertadores e Sul-Americana — e lendas renascendo nas categorias de base.</p>
         </div>
         {mode === "menu" && (
           <>
@@ -148,7 +148,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
         <span style={{ width: 70 }} />
       </div>
       <label className="field">
-        Nome do treinador
+        Nome do técnico
         <input className="text" value={name} placeholder="Ex.: Professor Kelvin" onChange={(e) => setName(e.target.value)} maxLength={30} />
       </label>
       <h3>Escolha seu clube</h3>

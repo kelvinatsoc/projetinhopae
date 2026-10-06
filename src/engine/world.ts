@@ -64,7 +64,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
     rng: seed,
     season: db.season,
     day: 0,
-    managerName: opts.managerName || "Treinador",
+    managerName: opts.managerName || "Técnico",
     userClubId: opts.clubId,
     clubs: {},
     players: {},

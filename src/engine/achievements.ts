@@ -16,9 +16,9 @@ export interface AchDef {
 
 export const ACHIEVEMENTS: AchDef[] = [
   // jogos
-  { id: "first_win", emoji: "✅", name: "Primeira vitória", desc: "Vença seu primeiro jogo como treinador.", cat: "jogo" },
+  { id: "first_win", emoji: "✅", name: "Primeira vitória", desc: "Vença seu primeiro jogo como técnico.", cat: "jogo" },
   { id: "goleada", emoji: "🍫", name: "Chocolate", desc: "Vença por 5 ou mais gols de diferença.", cat: "jogo" },
-  { id: "hattrick", emoji: "🎩", name: "Hat-trick", desc: "Um jogador seu marca 3 gols na mesma partida.", cat: "jogo" },
+  { id: "hattrick", emoji: "🎩", name: "Três na mesma partida", desc: "Um jogador seu marca 3 gols na mesma partida.", cat: "jogo" },
   { id: "comeback", emoji: "🔄", name: "Virada histórica", desc: "Vença um jogo em que esteve perdendo por 2 gols.", cat: "jogo" },
   { id: "classico", emoji: "⚔️", name: "Dono do clássico", desc: "Vença um clássico.", cat: "jogo" },
   { id: "classico_5", emoji: "🗡️", name: "Freguês", desc: "Vença 5 clássicos.", cat: "jogo" },
@@ -39,7 +39,7 @@ export const ACHIEVEMENTS: AchDef[] = [
   { id: "seasons_5", emoji: "🕰️", name: "Identificação", desc: "Complete 5 temporadas no mesmo clube.", cat: "carreira" },
   { id: "seasons_10", emoji: "🗿", name: "Ídolo eterno", desc: "Complete 10 temporadas no mesmo clube.", cat: "carreira" },
   { id: "job_change", emoji: "🧳", name: "Novos ares", desc: "Assuma o comando de outro clube.", cat: "carreira" },
-  { id: "rep_80", emoji: "🎖️", name: "Professor renomado", desc: "Chegue a 80 de reputação como treinador.", cat: "carreira" },
+  { id: "rep_80", emoji: "🎖️", name: "Professor renomado", desc: "Chegue a 80 de reputação como técnico.", cat: "carreira" },
   { id: "scenario_win", emoji: "🎯", name: "Desafio vencido", desc: "Vença um cenário de desafio.", cat: "carreira" },
   // temporada
   { id: "title_any", emoji: "🏆", name: "Primeira taça", desc: "Conquiste um título.", cat: "temporada" },
