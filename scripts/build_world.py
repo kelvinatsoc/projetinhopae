@@ -20,7 +20,7 @@ import unicodedata
 sys.path.insert(0, os.path.dirname(__file__))
 import build_database as B  # noqa: E402
 from fetch_world import CW, DETAILS, PHOTOS, SQUADS, TEAMS, load  # noqa: E402
-from world_catalog import C, LEAGUES, NATIONS, clubs as new_clubs, league_ids  # noqa: E402
+from world_catalog import C, LEAGUES, NATIONS, WC_NAMES, clubs as new_clubs, league_ids  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "data", "world.json")
@@ -196,6 +196,30 @@ def club_record(c, sq, teams):
     return rec
 
 
+MLS_EAST = {"atlanta-united", "charlotte-fc", "chicago-fire", "columbus-crew", "dc-united", "fc-cincinnati",
+            "inter-miami", "cf-montreal", "nashville-sc", "new-england", "nycfc", "ny-red-bulls", "orlando-city",
+            "philadelphia-union", "toronto-fc"}
+
+
+def zones():
+    """Zonas da Argentina (tabelas "Zone A/B" do artigo da temporada) e conferências da MLS (E/W)."""
+    from world_http import wiki_raw
+    out = {cid: ("E" if cid in MLS_EAST else "W") for cid in league_ids("usa1")}
+    text, _ = wiki_raw("2026 Argentine Primera División")
+    seasons = json.load(open(os.path.join(CW, "seasons.json"), encoding="utf-8"))
+    by_title = dict(zip(seasons["arg1"], league_ids("arg1")))
+    for z in ("A", "B"):
+        i = (text or "").find(f"=====Zone {z}=====")
+        if i < 0:
+            continue
+        chunk = text[i:i + 6000].split("=====", 3)[2] if z == "A" else text[i:i + 6000]
+        chunk = chunk.split("=====Zone B=====")[0] if z == "A" else chunk.split("=====", 3)[2]
+        for t in re.findall(r"\|name_[A-Z]+=\[\[([^\]|]+)", chunk):
+            if t.strip() in by_title:
+                out[by_title[t.strip()]] = z
+    return out
+
+
 def main():
     db = json.load(open(DB, encoding="utf-8"))
     sq, det, teams = load(SQUADS, None), load(DETAILS, {}), load(TEAMS, {})
@@ -274,7 +298,11 @@ def main():
 
     en_to_code = {wiki.replace(" national football team", "").replace(" men's national soccer team", ""): code
                   for code, _, _, _, _, wiki in NATIONS}
-    en_to_code.update({"United States": "USA", "South Korea": "KOR", "Ivory Coast": "CIV", "Turkey": "TUR"})
+    en_to_code.update({w.replace(" men's national football team", "").replace(" national soccer team", ""): code
+                       for code, _, _, _, _, w in NATIONS})
+    en_to_code.update(WC_NAMES)
+    wc_missing = [h for h, ps in (sq.get("wc") or {}).items() if ps and h not in en_to_code]
+    assert not wc_missing, f"seleções da Copa fora do catálogo: {wc_missing}"
     nts = []
     for code, name, confed, tier, lvl, wiki in NATIONS:
         ns = sq["nations"].get(code, {"players": [], "infobox": {}})
@@ -317,10 +345,19 @@ def main():
                 gaps.append(f"chave ambígua no pool {nt['id']}: {k} ({len(live[k])}; vence o de maior ovr)")
 
     leagues = []
+    zone = zones()
+    for c in clubs_out:
+        if c["id"] in zone:
+            c["zone"] = zone[c["id"]]
     for lg, (name, short, country, confed, cal, rel, color) in LEAGUES.items():
         ids = league_ids(lg)
-        leagues.append({"id": lg, "name": name, "short": short, "country": country, "confed": confed,
-                        "size": len(ids), "calendar": cal, "relegation": rel, "color": color, "clubs": ids})
+        d = {"id": lg, "name": name, "short": short, "country": country, "confed": confed,
+             "size": len(ids), "calendar": cal, "relegation": rel, "color": color, "clubs": ids}
+        zl = {cid: zone[cid] for cid in ids if cid in zone}
+        if zl:  # cobre também os clubes argentinos que vivem no database.json
+            d["zones"] = zl
+            assert len(zl) == len(ids), f"zona faltando em {lg}: {set(ids) - set(zl)}"
+        leagues.append(d)
 
     world = {"version": VERSION, "fetchedAt": __import__("time").strftime("%Y-%m-%d"), "season": SEASON,
              "leagues": leagues, "clubs": clubs_out, "players": players_out, "nationalTeams": nts,

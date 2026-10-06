@@ -235,7 +235,24 @@ NATIONS = [
     ("CIV", "Costa do Marfim", "CAF", 3, 77, "Ivory Coast national football team"),
     ("ALG", "Argélia", "CAF", 3, 76, "Algeria national football team"),
     ("TUN", "Tunísia", "CAF", 4, 72, "Tunisia national football team"),
+    # demais classificados à Copa 2026 (48 seleções no total na Copa)
+    ("CZE", "Tchéquia", "UEFA", 3, 75, "Czech Republic national football team"),
+    ("BIH", "Bósnia e Herzegovina", "UEFA", 4, 73, "Bosnia and Herzegovina national football team"),
+    ("SWE", "Suécia", "UEFA", 3, 76, "Sweden men's national football team"),
+    ("RSA", "África do Sul", "CAF", 4, 71, "South Africa national soccer team"),
+    ("GHA", "Gana", "CAF", 4, 73, "Ghana national football team"),
+    ("CPV", "Cabo Verde", "CAF", 5, 69, "Cape Verde national football team"),
+    ("COD", "RD Congo", "CAF", 4, 72, "DR Congo national football team"),
+    ("HAI", "Haiti", "CONCACAF", 5, 66, "Haiti national football team"),
+    ("CUW", "Curaçao", "CONCACAF", 5, 67, "Curaçao national football team"),
+    ("IRQ", "Iraque", "AFC", 4, 69, "Iraq national football team"),
+    ("JOR", "Jordânia", "AFC", 5, 68, "Jordan national football team"),
+    ("NZL", "Nova Zelândia", "OFC", 5, 67, "New Zealand men's national football team"),
 ]
+# nome usado nos títulos do artigo das convocações da Copa -> código FIFA
+WC_NAMES = {"Czech Republic": "CZE", "Bosnia and Herzegovina": "BIH", "South Africa": "RSA", "South Korea": "KOR",
+            "United States": "USA", "Ivory Coast": "CIV", "Curaçao": "CUW", "New Zealand": "NZL", "Cape Verde": "CPV",
+            "DR Congo": "COD", "Turkey": "TUR", "Saudi Arabia": "KSA", "Netherlands": "NED"}
 WC_SQUADS_ARTICLE = "2026 FIFA World Cup squads"
 
 

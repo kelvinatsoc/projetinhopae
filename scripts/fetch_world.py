@@ -125,7 +125,8 @@ def wc_sections(text):
 def step_wiki():
     sq = load(SQUADS, {"clubs": {}, "nations": {}, "wc": {}})
     for c in clubs():
-        if c["id"] in sq["clubs"]:
+        prev = sq["clubs"].get(c["id"])
+        if prev and (prev["players"] or prev.get("retried")):
             continue
         if out_of_time():
             break
@@ -133,12 +134,19 @@ def step_wiki():
         if text is None and not os.path.exists(H._cpath("wt_en", c["wiki"])):
             continue  # falha de rede: tenta na próxima
         players = parse_players(text or "")
+        if not players:  # elenco transcluído de outra página ({{#section-h:2026 X season|Current roster}})
+            for m in re.finditer(r"\{\{\s*(?:#section-h:|#lst:|:)([^|}]+)", text or ""):
+                sub, _ = H.wiki_raw(m.group(1).strip())
+                players = [p for p in parse_players(sub or "") if p["kind"] == "first"]
+                if players:
+                    break
         seen, uniq = set(), []
         for p in players:
             k = p["link"] or p["name"]
             if k not in seen:
                 seen.add(k); uniq.append(p)
-        sq["clubs"][c["id"]] = {"title": final, "infobox": parse_infobox(text or ""), "players": uniq}
+        sq["clubs"][c["id"]] = {"title": final, "infobox": parse_infobox(text or ""), "players": uniq,
+                              **({"retried": 1} if prev else {})}
         print(f"{c['league']} {c['id']:<24} {sum(p['kind'] == 'first' for p in uniq):>3} jogadores", flush=True)
         save(SQUADS, sq)
     for code, _, _, _, _, wiki in NATIONS:
@@ -280,12 +288,41 @@ TSDB_NAME = {  # nomes como o TheSportsDB grafa (quando a busca pelo nome curto 
 }
 
 
+def team_via_players(cid, names):
+    """A busca de times do TheSportsDB é instável: acha o idTeam pelos jogadores mais famosos do
+    elenco (searchplayers devolve idTeam/strTeam) e confirma com lookupteam."""
+    sq, det = load(SQUADS, {}), load(DETAILS, {})
+    ps = [p for p in (sq.get("clubs", {}).get(cid) or {}).get("players", []) if p["kind"] == "first"]
+    ps.sort(key=lambda p: -(det.get(p.get("link") or "", {}).get("sl") or 0))
+    votes = {}
+    for p in ps[:5]:
+        res = H.tsdb("searchplayers.php", p=p["name"].replace(" ", "_"))
+        for c in (res or {}).get("player") or []:
+            if c.get("strSport") == "Soccer" and c.get("idTeam") and norm(c.get("strPlayer")) == norm(p["name"]):
+                votes[c["idTeam"]] = votes.get(c["idTeam"], 0) + 1
+        if votes and max(votes.values()) >= 2:
+            break
+    if not votes:
+        return None
+    tid, n = max(votes.items(), key=lambda kv: kv[1])
+    if n < 2:
+        return None
+    r = H.tsdb("lookupteam.php", id=tid)
+    t = ((r or {}).get("teams") or [None])[0]
+    return t if t and (t.get("strGender") or "Male") == "Male" else None
+
+
 def step_teams():
     teams = load(TEAMS, {})
+    if "--retry-miss" in sys.argv:
+        teams = {k: v for k, v in teams.items() if not v.get("miss")}
     jobs = [(c["id"], [TSDB_NAME.get(c["id"]), c["name"], c["wiki"]], TSDB_COUNTRY[c["league"]], False) for c in clubs()]
-    en_names = {code: wiki.replace(" national football team", "").replace(" men's national soccer team", "")
+    en_names = {code: re.sub(r"\s+(men's\s+)?national\s+(football|soccer)\s+team$", "", wiki)
                 for code, _, _, _, _, wiki in NATIONS}
-    jobs += [("nt-" + code, [en_names[code]], None, True) for code, *_ in NATIONS]
+    nt_alias = {"USA": ["USA", "United States"], "BIH": ["Bosnia-Herzegovina", "Bosnia"], "KOR": ["South Korea", "Korea Republic"],
+                "CIV": ["Ivory Coast", "Cote d'Ivoire"], "COD": ["DR Congo", "Congo DR"], "CPV": ["Cape Verde"],
+                "CZE": ["Czech Republic", "Czechia"], "TUR": ["Turkey", "Turkiye"], "IRN": ["Iran"]}
+    jobs += [("nt-" + code, [en_names[code]] + nt_alias.get(code, []), None, True) for code, *_ in NATIONS]
     for tid, names, country, national in jobs:
         if tid in teams or out_of_time():
             continue
@@ -298,6 +335,8 @@ def step_teams():
             hit = pick_team(res.get("teams"), names, country, national)
             if hit:
                 break
+        if not hit and not national:
+            hit = team_via_players(tid, names)
         rec = {"miss": 1}
         if hit:
             rec = {k: hit.get(k) for k in ("idTeam", "strTeam", "strTeamShort", "intFormedYear", "strStadium", "idVenue",
@@ -367,6 +406,11 @@ def photo_jobs():
 
 
 def step_photos():
+    teams = load(TEAMS, {})
+    need = [c["id"] for c in clubs()]
+    if any(cid not in teams for cid in need):
+        print("photos: aguardando a etapa teams terminar", flush=True)
+        return
     done = load(PHOTOS, {})
     jobs = photo_jobs()
     n_new = 0
