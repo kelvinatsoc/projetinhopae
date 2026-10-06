@@ -19,6 +19,27 @@ import { seasonEndDevelop } from "./training";
 import { aiSignFree, releasePlayer } from "./transfers";
 import { resolvePeneiraAuto } from "./youth";
 import type { Club, Competition, Div, World } from "./types";
+import { yearLen } from "./calendar";
+import { fastFixture, compactResult, carryCompIds, restoreCarry, takeCarry, worldBalance } from "./worldLeagues";
+import { intlYearEnd, simulateIntlDay } from "./international";
+import { applyResult } from "./game";
+import { progressCompetitions } from "./competitions";
+
+/** Simula (rápido) os jogos do mundo que ainda faltam no ano, depois do fim do Brasileirão. */
+function flushWorldYear(w: World) {
+  if (!w.wl && !w.intl) return;
+  const yl = yearLen(w.season);
+  for (let d = w.day; d < yl; d++) {
+    for (const f of w.fixtures) {
+      if (f.day !== d || f.result) continue;
+      const r = fastFixture(w, f);
+      applyResult(w, f, r);
+      if (f.home !== w.userClubId && f.away !== w.userClubId) compactResult(r);
+    }
+    simulateIntlDay(w, d);
+    progressCompetitions(w);
+  }
+}
 
 const FOREIGN_QUOTA: Record<string, number> = { ARG: 6, URU: 3, PAR: 3, CHI: 3, COL: 3, ECU: 3, PER: 2, BOL: 1, VEN: 1 };
 
@@ -136,6 +157,7 @@ function awardCupPrizes(w: World) {
 export function endSeason(w: World): string[] {
   // peneira pendente é resolvida antes de fechar a temporada
   resolvePeneiraAuto(w);
+  flushWorldYear(w);
   const y = w.season;
   const summary: string[] = [];
   const user = w.clubs[w.userClubId];
@@ -151,10 +173,12 @@ export function endSeason(w: World): string[] {
   for (const comp of Object.values(w.comps)) {
     if (!comp.champion) continue;
     champions[comp.id] = comp.champion;
+    if (comp.awarded) continue; // competições do mundo entregam o troféu ao terminar
     const club = w.clubs[comp.champion];
-    club.trophies.push({ comp: comp.id, name: COMP_META[comp.id].name, season: y });
+    club.trophies.push({ comp: comp.id, name: COMP_META[comp.id]?.name ?? comp.name, season: y });
   }
   for (const club of Object.values(w.clubs)) {
+    if (club.league) continue; // clubes do exterior: o histórico fica nas tabelas das ligas
     const league = club.div === "A" ? A : club.div === "B" ? B : club.div === "C" ? C : undefined;
     const pos = league ? tablePosition(league, club.id) : null;
     club.history.push({ season: y, div: club.div, pos, titles: Object.entries(champions).filter(([, c]) => c === club.id).map(([k]) => k) });
@@ -238,6 +262,13 @@ export function endSeason(w: World): string[] {
 
   // ------------- jogadores: histórico, evolução, aposentadoria, contratos
   const retired: string[] = [];
+  const keepComps = carryCompIds(w);
+  const keepOnly = (r: Record<string, number>) => {
+    if (!keepComps.size) return {};
+    const out: Record<string, number> = {};
+    for (const k of Object.keys(r)) if (keepComps.has(k)) out[k] = r[k];
+    return out;
+  };
   for (const p of Object.values(w.players)) {
     if (p.stats.apps > 0 && p.clubId) {
       p.history.push({ season: y, clubId: p.clubId, apps: p.stats.apps, goals: p.stats.goals, assists: p.stats.assists, rating: Math.round((p.stats.ratingSum / p.stats.apps) * 100) / 100, ovr: p.ovr });
@@ -256,9 +287,10 @@ export function endSeason(w: World): string[] {
       continue;
     }
     p.stats = emptyStats();
-    p.compGoals = {};
-    p.yel = {};
-    p.bans = {};
+    // gols/cartões/suspensões de competições que atravessam o ano (Europa) continuam valendo
+    p.compGoals = keepOnly(p.compGoals);
+    p.yel = keepOnly(p.yel);
+    p.bans = keepOnly(p.bans);
     p.cond = 100;
     p.injury = Math.max(0, p.injury - 30);
     p.morale = Math.round(p.morale * 0.6 + 70 * 0.4);
@@ -326,7 +358,8 @@ export function endSeason(w: World): string[] {
     club.finance.lastExpense = club.finance.expense;
     club.finance.income = {};
     club.finance.expense = {};
-    if (club.div === "F") club.balance = Math.round(5_000_000 + club.rep * club.rep * 5_000);
+    if (club.league) club.balance = Math.max(club.balance, worldBalance(club));
+    else if (club.div === "F") club.balance = Math.round(5_000_000 + club.rep * club.rep * 5_000);
     // nível de referência acompanha a divisão
     club.level = Math.round(club.level * 0.7 + squadLevel(w, club) * 0.3);
   }
@@ -367,7 +400,10 @@ export function endSeason(w: World): string[] {
   };
   w.day = 0;
   w.seasonEnded = false;
+  const carry = takeCarry(w);
+  intlYearEnd(w, y);
   startSeason(w, entrants);
+  restoreCarry(w, carry, y);
   careerNewSeason(w);
   addNews(w, "season", `Resumo da temporada ${y}`, summary.join("\n"));
   return summary;

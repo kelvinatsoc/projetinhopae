@@ -3,6 +3,9 @@ import { applyDerbyOutcome } from "./narrative";
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
 import { achievementsAfterMatch } from "./achievements";
 import { adminCheats } from "./admin";
+import { yearLen } from "./calendar";
+import { intlDaily, simulateIntlDay } from "./international";
+import { compactResult, createWorldSeason, fastFixture } from "./worldLeagues";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
 import { goalBonuses } from "./contracts";
@@ -131,8 +134,32 @@ function simulateDay(w: World, day: number) {
   for (const f of w.fixtures) {
     if (f.day !== day || f.result) continue;
     if (f.home === w.userClubId || f.away === w.userClubId) continue;
-    applyResult(w, f, simulateFixture(w, f));
+    if (w.comps[f.comp]?.lite) {
+      // mundo: simulação rápida e resultado compacto
+      const r = fastFixture(w, f);
+      applyResult(w, f, r);
+      compactResult(r);
+    } else applyResult(w, f, simulateFixture(w, f));
   }
+  if (w.intl) simulateIntlDay(w, day);
+}
+
+/** Mundo: cria as temporadas ago–mai no dia 181 e cuida das seleções. */
+function worldDaily(w: World) {
+  if (w.wl && w.day === 181) createWorldSeason(w);
+  if (w.intl) intlDaily(w);
+}
+
+/** Fim da temporada brasileira: tudo o que não atravessa o ano jogado e o usuário sem jogo até 31/dez. */
+function seasonOver(w: World): boolean {
+  if (w.day < seasonEndDay(w.season) - 1) return false;
+  const yl = yearLen(w.season);
+  for (const f of w.fixtures) {
+    if (f.result) continue;
+    if (!w.comps[f.comp]?.carry) return false;
+    if (f.day < yl && (f.home === w.userClubId || f.away === w.userClubId)) return false;
+  }
+  return true;
 }
 
 /** Processamento diário: recuperação, lesões, finanças, base, mercado. */
@@ -168,6 +195,7 @@ function dailyTick(w: World) {
     processLoanReturns(w, "half");
   }
   if (d === YOUTH_PREVIEW_DAY) previewIntake(w);
+  if (w.wl || w.intl) worldDaily(w);
   trainingDaily(w);
   peneiraTick(w);
   scoutTick(w);
@@ -209,8 +237,7 @@ export function advance(w: World, maxDays = 400): AdvanceResult {
       simulateDay(w, w.day);
       news.push(...progressCompetitions(w));
       for (const n of news.splice(0)) addNews(w, "season", n, "");
-      const allDone = w.fixtures.every((f) => !!f.result);
-      if (allDone && w.day >= seasonEndDay(w.season) - 1) {
+      if (seasonOver(w)) {
         w.seasonEnded = true;
         return { reason: "seasonEnd", news };
       }

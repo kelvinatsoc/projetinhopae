@@ -19,6 +19,9 @@ import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } fro
 import { initialEntrants, startSeason } from "./season";
 import { freeShirt } from "./transfers";
 import type { Club, CrestPattern, Div, Pos, Settings, World } from "./types";
+import type { WorldData } from "../data/worldTypes";
+import { initWorldLeagues, leagueWageMult, registerWorldMetas, worldBalance } from "./worldLeagues";
+import { initIntl } from "./international";
 
 export interface DbClub {
   id: string; name: string; full: string; abbr: string; region: string; city: string; country: string;
@@ -43,15 +46,79 @@ export interface Database {
   players: DbPlayer[];
 }
 
-// 1: original · 2: mídia real · 3: gestão (traços, personalidade, base, comissão, admin...)
-export const SAVE_VERSION = 3;
+// 1: original · 2: mídia real · 3: gestão (traços, personalidade, base, comissão, admin...) · 4: mundo (ligas estrangeiras, seleções)
+export const SAVE_VERSION = 4;
 
 const FAMOUS_ACADEMIES = new Set(["sao-paulo", "fluminense", "santos", "flamengo", "gremio", "internacional", "vasco", "athletico-pr", "palmeiras", "cruzeiro", "river-plate", "boca-juniors", "independiente-del-valle", "argentinos-juniors"]);
 const JERSEYS = ["football", "football2", "football4", "football5", "football3"];
 
 export const defaultSettings = (): Settings => ({ casual: true, legendFreq: 2, speed: 250, theme: "dark", autoSave: true });
 
-export function createWorld(db: Database, opts: { managerName: string; clubId: string; seed?: number; settings?: Partial<Settings> }): World {
+/** Cria um jogador real do banco de dados no clube dele (ou ignora, se o clube não existir). */
+export function addDbPlayer(w: World, dp: DbPlayer) {
+  const club = w.clubs[dp.c];
+  if (!club) return;
+  const ageY = w.season - dp.b;
+  const p = newPlayerBase(w, {
+    name: dp.n,
+    nat: dp.nat,
+    born: dp.b,
+    pos: dp.p,
+    sec: dp.s ?? [],
+    foot: dp.f,
+    height: dp.h,
+    attrs: makeAttrs(dp.p, dp.o, { height: dp.h, age: ageY }),
+    pot: Math.max(dp.pt, dp.o),
+    youth: dp.y === 1 && ageY <= 20,
+    real: true,
+    fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
+    shirt: dp.no,
+  });
+  if (p.ovr !== dp.o) {
+    // o overall real manda; os extras (que dependem do overall) são refeitos com o mesmo gerador próprio
+    p.ovr = dp.o;
+    delete p.hid;
+    delete p.traits;
+    initPlayerExtras(w, p);
+  }
+  if (dp.img && dp.q) p.img = dp.q;
+  p.ext = sportsdbPath(dp.n, dp.b);
+  if (dp.pi) { p.img = dp.pi; delete p.ext; } // retrato do elenco atual vence as outras fontes
+  p.clubId = club.id;
+  club.players.push(p.id);
+  const foreignMult = club.league ? leagueWageMult(club) : club.country === "BRA" ? 1 : 0.5;
+  p.wage = Math.round(wageFor(p.ovr, club.rep, ageY) * foreignMult * (0.85 + rand() * 0.3));
+  p.contractEnd = w.season + randInt(1, 3);
+}
+
+/**
+ * Carrega os dados do mundo (ligas estrangeiras, clubes, jogadores e seleções) num jogo.
+ * Idempotente: clubes que já existem não são recriados e jogadores reais já presentes (nome|ano) não são duplicados.
+ * @param migrating save antigo: as ligas ago–mai só nascem na próxima temporada que ainda não passou do dia 181
+ */
+export function loadWorldData(w: World, data: WorldData, migrating: boolean) {
+  const known = new Set<string>();
+  if (migrating) for (const p of Object.values(w.players)) if (p.real) known.add(`${p.name}|${p.born}`);
+  const fresh: Club[] = [];
+  for (const c of data.clubs) {
+    if (w.clubs[c.id]) continue;
+    const club = makeClub(c);
+    club.league = c.league;
+    w.clubs[c.id] = club;
+    fresh.push(club);
+  }
+  for (const l of data.leagues) for (const id of l.clubs) if (w.clubs[id]) w.clubs[id].league = l.id;
+  for (const club of Object.values(w.clubs)) if (club.league) club.balance = worldBalance(club);
+  for (const dp of data.players) {
+    if (known.has(`${dp.n}|${dp.b}`)) continue;
+    addDbPlayer(w, dp);
+  }
+  if (migrating) for (const club of fresh) fillSquad(w, club);
+  initWorldLeagues(w, data, migrating);
+  initIntl(w, data.nationalTeams);
+}
+
+export function createWorld(db: Database, opts: { managerName: string; clubId: string; seed?: number; settings?: Partial<Settings>; world?: WorldData }): World {
   const seed = opts.seed ?? (Date.now() % 2147483647);
   setRngState(seed);
   const w: World = {
@@ -83,42 +150,13 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
 
   for (const c of db.clubs) w.clubs[c.id] = makeClub(c);
 
-  // jogadores reais
+  // jogadores reais (quem foi para um clube do mundo vem do world.json)
+  const sup = opts.world?.supersedes?.length ? new Set(opts.world.supersedes) : null;
   for (const dp of db.players) {
-    const club = w.clubs[dp.c];
-    if (!club) continue;
-    const ageY = w.season - dp.b;
-    const p = newPlayerBase(w, {
-      name: dp.n,
-      nat: dp.nat,
-      born: dp.b,
-      pos: dp.p,
-      sec: dp.s ?? [],
-      foot: dp.f,
-      height: dp.h,
-      attrs: makeAttrs(dp.p, dp.o, { height: dp.h, age: ageY }),
-      pot: Math.max(dp.pt, dp.o),
-      youth: dp.y === 1 && ageY <= 20,
-      real: true,
-      fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
-      shirt: dp.no,
-    });
-    if (p.ovr !== dp.o) {
-      // o overall real manda; os extras (que dependem do overall) são refeitos com o mesmo gerador próprio
-      p.ovr = dp.o;
-      delete p.hid;
-      delete p.traits;
-      initPlayerExtras(w, p);
-    }
-    if (dp.img && dp.q) p.img = dp.q;
-    p.ext = sportsdbPath(dp.n, dp.b);
-    if (dp.pi) { p.img = dp.pi; delete p.ext; } // retrato do elenco atual vence as outras fontes
-    p.clubId = club.id;
-    club.players.push(p.id);
-    const foreignMult = club.country === "BRA" ? 1 : 0.5;
-    p.wage = Math.round(wageFor(p.ovr, club.rep, ageY) * foreignMult * (0.85 + rand() * 0.3));
-    p.contractEnd = w.season + randInt(1, 3);
+    if (sup?.has(`${dp.n}|${dp.b}`)) continue;
+    addDbPlayer(w, dp);
   }
+  if (opts.world) loadWorldData(w, opts.world, false);
 
   // completa elencos e categorias de base
   for (const club of Object.values(w.clubs)) fillSquad(w, club);
@@ -175,8 +213,14 @@ function makeClub(c: DbClub): Club {
  * Roda a cada carregamento: é barato e faz jogos antigos ganharem as novidades.
  * @returns repaired = correções feitas; newer = o save veio de uma versão mais nova do jogo
  */
-export function migrateWorld(w: World, db: Database): { repaired: number; newer: boolean } {
+export function migrateWorld(w: World, db: Database, world?: WorldData): { repaired: number; newer: boolean } {
   const from = w.version ?? 1;
+  if (world && !w.wl) {
+    setRngState(w.rng);
+    loadWorldData(w, world, true);
+    w.rng = getRngState();
+  }
+  registerWorldMetas(w);
   const dbClubs = new Map(db.clubs.map((c) => [c.id, c]));
   for (const c of Object.values(w.clubs)) {
     const d = dbClubs.get(c.id);

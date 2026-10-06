@@ -3,8 +3,9 @@ import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
 import { hasTrait } from "./traits";
 import type { Club, Lineup, Player, World } from "./types";
 
-export function isAvailable(p: Player, compId?: string): boolean {
+export function isAvailable(p: Player, compId?: string, forClubId?: string): boolean {
   if (p.injury > 0) return false;
+  if (p.away && p.away !== forClubId) return false; // convocado para a seleção
   if (compId && (p.bans[compId] ?? 0) > 0) return false;
   return true;
 }

@@ -347,6 +347,7 @@ export interface NewsItem {
   read: boolean;
   pid?: number;
   clubId?: string;
+  world?: boolean; // notícia do exterior (limitada por semana)
 }
 
 export interface TransferOffer {
@@ -512,12 +513,12 @@ export interface IntlState {
   comps: Record<string, Competition>;
   fixtures: Fixture[]; // dia relativo a 1º/jan de w.season, como os jogos de clubes
   callups: Record<string, number[]>; // seleção -> convocados atuais
-  /** fim da convocação atual (dia), se houver data FIFA em andamento */
-  until?: number;
+  /** seleção -> último dia da convocação atual (o jogador volta ao clube no dia seguinte) */
+  rel: Record<string, number>;
   /** ano cujo calendário internacional já foi montado */
   year?: number;
-  /** campanhas de eliminatórias em andamento: comp -> ano da Copa */
-  quals?: Record<string, number>;
+  /** campeões dos torneios de seleções já encerrados */
+  honors: { comp: string; name: string; season: number; winner: string; runnerUp?: string }[];
 }
 
 // ---------------------------------------------------------------- narrativa e mídia
