@@ -10,7 +10,7 @@ const newWorld = (seed = 4) => createWorld(db as Database, { managerName: "T", c
 describe("mundo: patrocínios", () => {
   it("nenhum clube europeu recebe patrocinador brasileiro", () => {
     const w = newWorld();
-    for (const c of Object.values(w.clubs).filter((x) => x.league)) {
+    for (const c of Object.values(w.clubs).filter((x) => x.league && w.wl!.leagues[x.league].confed === "UEFA")) {
       expect(c.sponsors).toBeUndefined();
       for (const slot of ["shirt", "stadium", "kit"] as const) for (const o of makeOffers(w, c, slot)) expect(GLOBAL_BRANDS[slot]).toContain(o.brand);
     }

@@ -150,6 +150,7 @@ export function fastFixture(w: World, f: Fixture): MatchResult {
 /** Guarda menos dados dos jogos do mundo já disputados (save menor). */
 export function compactResult(r: MatchResult) {
   r.ratings = {};
+  r.lineups = [[], []];
   r.events = r.events.filter((e) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal");
 }
 

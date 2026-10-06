@@ -303,7 +303,8 @@ const MIN_BY_POS: Record<Pos, number> = { GOL: 3, ZAG: 4, LD: 2, LE: 2, VOL: 2, 
 
 function fillSquad(w: World, club: Club) {
   const first = () => club.players.map((id) => w.players[id]).filter((p) => p && !p.youth);
-  const target = club.div === "A" || club.div === "B" ? 27 : 24;
+  // clubes de liga do mundo: elenco enxuto e sem base (save menor; a IA não usa a base deles)
+  const target = club.league ? 22 : club.div === "A" || club.div === "B" ? 27 : 24;
   // mínimo por posição
   for (const pos of Object.keys(MIN_BY_POS) as Pos[]) {
     const have = first().filter((p) => p.pos === pos).length;
@@ -316,7 +317,7 @@ function fillSquad(w: World, club: Club) {
     generatePlayer(w, club, club.level - 6, randInt(19, 32), pos);
   }
   // base
-  const youthTarget = club.country === "BRA" ? 4 + club.youthLevel : 3;
+  const youthTarget = club.league ? 0 : club.country === "BRA" ? 4 + club.youthLevel : 3;
   const youth = club.players.map((id) => w.players[id]).filter((p) => p?.youth).length;
   for (let i = youth; i < youthTarget; i++) {
     const ageY = randInt(15, 18);

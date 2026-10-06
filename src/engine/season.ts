@@ -299,7 +299,9 @@ export function endSeason(w: World): string[] {
   for (const p of Object.values(w.players)) {
     if (p.stats.apps > 0 && p.clubId) {
       p.history.push({ season: y, clubId: p.clubId, apps: p.stats.apps, goals: p.stats.goals, assists: p.stats.assists, rating: Math.round((p.stats.ratingSum / p.stats.apps) * 100) / 100, ovr: p.ovr });
-      if (p.history.length > 25) p.history.shift();
+      // exterior: histórico curto (save menor)
+      const keep = w.clubs[p.clubId]?.league && p.clubId !== w.userClubId ? 3 : 25;
+      while (p.history.length > keep) p.history.shift();
     }
     const club = p.clubId ? w.clubs[p.clubId] : null;
     seasonEndDevelop(w, p, y);
@@ -396,7 +398,8 @@ export function endSeason(w: World): string[] {
     if (club.id === w.userClubId) continue;
     let sq = squadOf(w, club);
     let guard = 0;
-    while (sq.length < 24 && guard++ < 12) { aiSignFree(w, club); sq = squadOf(w, club); }
+    const min = club.league ? 22 : 24;
+    while (sq.length < min && guard++ < 12) { aiSignFree(w, club); sq = squadOf(w, club); }
     if (sq.length > 32) {
       // emprestados não são dispensados
       const cands = sq.filter((p) => !p.loan).sort((a, b) => a.ovr - b.ovr);
