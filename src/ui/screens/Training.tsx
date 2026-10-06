@@ -10,8 +10,9 @@ import { canLearn, LEARN_REQ, TRAITS } from "../../engine/traits";
 import type { Player, Pos, TeamFocus, TraitId } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, Ovr, PosBadge, Sheet } from "../components";
+import { Avatar, Bar, Ovr, PosBadge, Sheet, Ic, Icon } from "../components";
 
+const FOCUS_ICON: Record<TeamFocus, string> = { eq: "target", fis: "dumbbell", atk: "bolt", def: "shield", tat: "board", bola: "ball", rec: "calm" };
 const FOCUS_ORDER: TeamFocus[] = ["eq", "fis", "atk", "def", "tat", "bola", "rec"];
 const BTN40 = { minHeight: 40 } as const;
 
@@ -43,11 +44,11 @@ export function TrainingTab() {
   return (
     <>
       <div className="card">
-        <h3>🏋️ Foco do treino</h3>
+        <h3><Ic n="dumbbell" /> Foco do treino</h3>
         <div className="chips" style={{ flexWrap: "wrap", overflow: "visible", marginTop: 8 }}>
           {FOCUS_ORDER.map((f) => (
             <button key={f} className={`chip${t.focus === f ? " active" : ""}`} style={BTN40} onClick={() => setTrain({ focus: f })}>
-              {FOCUS_INFO[f].emoji} {FOCUS_INFO[f].label}
+              <Ic n={FOCUS_ICON[f]} /> {FOCUS_INFO[f].label}
             </button>
           ))}
         </div>
@@ -70,7 +71,7 @@ export function TrainingTab() {
       </div>
 
       <div className="card">
-        <h3>🎯 Treino individual</h3>
+        <h3><Ic n="target" /> Treino individual</h3>
         {withTf.length === 0 && <div className="small muted mt8">Ninguém com treino individual. Ensine uma posição nova ou uma jogada especial!</div>}
         <div className="list mt8">
           {withTf.map((p) => (
@@ -81,7 +82,7 @@ export function TrainingTab() {
       </div>
 
       <div className="card">
-        <h3>📈 Destaques do mês</h3>
+        <h3><Ic n="trend" /> Destaques do mês</h3>
         {highlights.length === 0 && <div className="small muted mt8">As setas ▲▼ aparecem depois do próximo treino mensal (dia 1º).</div>}
         <div className="list mt8">
           {highlights.map((p) => (
@@ -132,7 +133,7 @@ function TfRow({ p, onOpen, onClear }: { p: Player; onOpen: () => void; onClear:
           {prog != null ? <div className="mt8"><Bar v={prog} color="var(--accent)" /></div> : <div className="tiny muted">treino contínuo</div>}
         </div>
       </div>
-      <button className="icon-btn" style={{ minWidth: 40, minHeight: 40 }} aria-label="Cancelar treino" onClick={onClear}>✕</button>
+      <button className="icon-btn" style={{ minWidth: 40, minHeight: 40 }} aria-label="Cancelar treino" onClick={onClear}><Icon name="close" size={18} /></button>
     </div>
   );
 }
@@ -145,7 +146,7 @@ export function IndividualTrainingSheet({ p, onClose }: { p: Player; onClose: ()
   const [mode, setMode] = useState<Mode>(p.tf?.k === "pos" ? "pos" : p.tf?.k === "trait" || p.tf?.k === "calm" ? "trait" : "attr");
   if (p.clubId !== w.userClubId) {
     return (
-      <Sheet title="🎯 Treino individual" onClose={onClose}>
+      <Sheet title="Treino individual" onClose={onClose}>
         <p className="small muted">Só jogadores do seu elenco podem ter treino individual.</p>
       </Sheet>
     );
@@ -170,7 +171,7 @@ export function IndividualTrainingSheet({ p, onClose }: { p: Player; onClose: ()
     .sort((a, b) => Number(canLearn(p, b, w.season)) - Number(canLearn(p, a, w.season)));
 
   return (
-    <Sheet title={`🎯 Treino individual: ${p.name}`} onClose={onClose}>
+    <Sheet title={`Treino individual: ${p.name}`} onClose={onClose}>
       <div className="card flat small" style={{ marginTop: 0 }}>
         <div className="row gap8">
           <span className="grow">Agora: <b>{trainFocusLabel(p)}</b></span>
@@ -248,7 +249,7 @@ export function IndividualTrainingSheet({ p, onClose }: { p: Player; onClose: ()
             {canCalm(p) && (
               <div className="list-item" style={{ minHeight: 44, background: p.tf?.k === "calm" ? "var(--card2)" : undefined }}
                 onClick={() => set({ k: "calm", prog: p.tf?.k === "calm" ? p.tf.prog : 0 }, `${p.name} vai trabalhar o temperamento.`)}>
-                <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>🧘</span>
+                <span style={{ width: 28, display: "grid", placeItems: "center" }}><Icon name="calm" size={20} /></span>
                 <div className="grow"><b className="small">Trabalhar o temperamento</b><div className="tiny muted">Fica mais calmo e leva menos cartões bobos.</div></div>
                 {p.tf?.k === "calm" && <span className="tag good">treinando</span>}
               </div>

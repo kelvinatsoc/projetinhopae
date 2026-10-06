@@ -9,7 +9,7 @@ import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
 import { broadcasters, newsSource } from "../../engine/outlets";
 import { stadiumName } from "../../engine/sponsors";
-import { CompLogo, Crest, Icon, stadiumSrc, visibleColor } from "../components";
+import { CompLogo, Crest, Icon, stadiumSrc, visibleColor, Ic, GIcon } from "../components";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
 import { SquadMoodHomeCard } from "./Dressing";
@@ -79,12 +79,22 @@ export function HomeScreen() {
       )}
       {next ? <NextMatchCard w={w} f={next} /> : (
         <div className="match-hero center" style={{ "--h": visibleColor(user.colors), "--a": "#1f6fd1" } as CSSProperties}>
-          <div style={{ fontSize: 44 }}>🏁</div>
+          <div className="big-ic"><Icon name="calendar" size={40} /></div>
           <h2>Sem jogos marcados</h2>
           <div className="small" style={{ opacity: 0.85 }}>Toque em Continuar para encerrar a temporada.</div>
         </div>
       )}
 
+      <div className="quick">
+        <button className="q-big" onClick={() => push({ name: "tactics" })}><span className="qi"><GIcon slug="tatica" size={30} /></span>Tática</button>
+        <button onClick={() => push({ name: "training" })}><span className="qi"><GIcon slug="treino" /></span>Treino</button>
+        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi"><GIcon slug="caixa-entrada" /></span>Mensagens</button>
+        <button onClick={() => push({ name: "youth" })}><span className="qi"><GIcon slug="base" /></span>Base</button>
+        <button onClick={() => push({ name: "dressing" })}><span className="qi"><GIcon slug="vestiario" /></span>Vestiário</button>
+        <button onClick={() => push({ name: "finances" })}><span className="qi"><GIcon slug="financas" /></span>Finanças</button>
+        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi"><GIcon slug="carreira" /></span>Carreira</button>
+        <button className="q-wide" onClick={() => push({ name: "legends" })}><span className="qi"><GIcon slug="lendas" size={30} /></span>Lendas</button>
+      </div>
       <div className="row">
         <h3 className="grow">Forma</h3>
         <FormPills w={w} clubId={user.id} />
@@ -93,33 +103,23 @@ export function HomeScreen() {
       <div className="rings">
         <div className="ring-card" onClick={() => push({ name: "board" })}>
           <Ring v={w.board.confidence} />
-          <span>Diretoria</span>
+          <span><GIcon slug="diretoria" size={15} /> Diretoria</span>
         </div>
         <div className="ring-card" onClick={() => push({ name: "inbox" })}>
           <Ring v={fanMood(w)} />
-          <span>Torcida</span>
+          <span><GIcon slug="torcida" size={15} /> Torcida</span>
         </div>
         <div className="ring-card" onClick={() => push({ name: "dressing" })}>
           <Ring v={chemOf(w, user)} />
           <span>Entrosamento</span>
         </div>
       </div>
-      <div className="small muted" style={{ marginTop: -6, padding: "0 4px" }}>🎯 {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</div>
+      <div className="small muted" style={{ marginTop: -6, padding: "0 4px" }}><Ic n="target" /> {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</div>
 
       <PeneiraHomeCard />
       <SquadMoodHomeCard />
       <BoardHomeCard />
 
-      <div className="quick">
-        <button onClick={() => push({ name: "tactics" })}><span className="qi"><Icon name="board" /></span>Tática</button>
-        <button onClick={() => push({ name: "training" })}><span className="qi"><Icon name="dumbbell" /></span>Treino</button>
-        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi"><Icon name="mail" /></span>Mensagens</button>
-        <button onClick={() => push({ name: "youth" })}><span className="qi"><Icon name="sprout" /></span>Base</button>
-        <button onClick={() => push({ name: "dressing" })}><span className="qi"><Icon name="shirt" /></span>Vestiário</button>
-        <button onClick={() => push({ name: "finances" })}><span className="qi"><Icon name="coins" /></span>Finanças</button>
-        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi"><Icon name="briefcase" /></span>Carreira</button>
-        <button onClick={() => push({ name: "legends" })}><span className="qi"><Icon name="star" /></span>Lendas</button>
-      </div>
 
       {last && <LastResult w={w} f={last} />}
 
@@ -133,12 +133,12 @@ export function HomeScreen() {
       <div className="section-head"><h3>Últimas notícias</h3><button onClick={() => push({ name: "news" })}>ver todas ›</button></div>
       <div className="hscroll">
         {w.news.slice(0, 6).map((n) => <NewsCard key={n.id} n={n} w={w} />)}
-        {!w.news.length && <div className="news-card"><span className="ic">📰</span><b>Nenhuma notícia ainda</b><span className="tiny muted">A imprensa está de olho no seu trabalho.</span></div>}
+        {!w.news.length && <div className="news-card"><span className="ic"><Icon name="news" /></span><b>Nenhuma notícia ainda</b><span className="tiny muted">A imprensa está de olho no seu trabalho.</span></div>}
       </div>
 
       <div className="card tap" onClick={() => push({ name: "legends" })} style={{ background: "linear-gradient(135deg, rgba(120,90,10,0.55), var(--card))", borderColor: "rgba(255,207,63,0.35)" }}>
         <div className="row">
-          <div style={{ fontSize: 32 }}>⭐</div>
+          <div className="big-ic"><Icon name="star" size={30} /></div>
           <div className="grow">
             <b className="display" style={{ fontSize: 19 }}>Álbum de Lendas</b>
             <div className="small muted">{appeared} de {LEGENDS.length} lendas já renasceram · {myLegends} no seu clube</div>

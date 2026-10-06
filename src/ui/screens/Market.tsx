@@ -9,7 +9,7 @@ import { acceptOffer, feeWithSellOn, searchMarket, type MarketFilter } from "../
 import type { Pos, TraitId } from "../../engine/types";
 import { push, toast, update, useVersion, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Crest, PlayerRow } from "../components";
+import { Crest, PlayerRow, Ic } from "../components";
 import { ScoutingTab } from "./Scouting";
 import "../market.css";
 
@@ -48,7 +48,7 @@ function Search() {
   const set = (patch: Partial<MarketFilter>) => setF((x) => ({ ...x, ...patch }));
   return (
     <>
-      <input className="text" placeholder="🔎 Buscar por nome" value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
+      <input className="text" placeholder="Buscar por nome" value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
       <div className="chips">
         <button className={`chip${!f.pos ? " active" : ""}`} onClick={() => set({ pos: "" })}>Todas</button>
         {POSITIONS.map((p) => <button key={p} className={`chip${f.pos === p ? " active" : ""}`} onClick={() => set({ pos: p as Pos })}>{p}</button>)}
@@ -131,7 +131,7 @@ function Offers() {
                 </div>
               </>
             ) : (
-              <div className="small muted mt8">{o.status === "done" ? "✅ Vendido" : o.status === "rejected" ? "❌ Recusada" : "⌛ Expirada"}</div>
+              <div className="small muted mt8">{o.status === "done" ? <><Ic n="check" /> Vendido</> : o.status === "rejected" ? <><Ic n="close" /> Recusada</> : "Expirada"}</div>
             )}
           </div>
         );

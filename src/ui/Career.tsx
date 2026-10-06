@@ -7,7 +7,7 @@ import { SCENARIO_BY_ID } from "../engine/scenarios";
 import type { JobOffer, World } from "../engine/types";
 import { forceBack, setTab, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
-import { clubStars, Crest, Stars } from "./components";
+import { clubStars, Crest, Stars, Ic, Icon } from "./components";
 import "./progression.css";
 
 /** Lista de propostas com aceitar/recusar (usada também na tela de demissão). */
@@ -64,7 +64,7 @@ export function CareerScreen() {
   return (
     <div className="page">
       <div className="card">
-        <div className="card-title"><h3>👔 {w.managerName}</h3><span className="tag">{repLabel(car.rep)}</span></div>
+        <div className="card-title"><h3><Ic n="briefcase" /> {w.managerName}</h3><span className="tag">{repLabel(car.rep)}</span></div>
         <div className="row small"><span className="grow muted">Reputação</span><b>{car.rep}/100</b></div>
         <div className="rep-meter mt8"><div style={{ width: `${car.rep}%` }} /></div>
         <div className="grid3 mt12">
@@ -78,7 +78,7 @@ export function CareerScreen() {
         <div className="card">
           <div className="card-title"><h3>{scDef.emoji} Desafio</h3><span className="tag" style={{ color: sc.status === "won" ? "var(--accent)" : sc.status === "lost" ? "#ef4444" : "var(--gold)" }}>{sc.status === "active" ? "em andamento" : sc.status === "won" ? "vencido" : "perdido"}</span></div>
           <b className="small">{scDef.title}</b>
-          <div className="small muted mt8">🎯 {scDef.goal}</div>
+          <div className="small muted mt8"><Ic n="target" /> {scDef.goal}</div>
         </div>
       )}
 
@@ -96,13 +96,13 @@ export function CareerScreen() {
             <b style={{ width: 44 }}>{h.season}</b>
             <Crest club={w.clubs[h.clubId]} size={18} />
             <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div}{h.pos ? ` · ${h.pos}º` : ""}</span>
-            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}>🏆</span>)}
+            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={18} /></span>)}
           </div>
         ))}
         {car.moves.length > 0 && (
           <div className="tiny muted mt8">
             {car.moves.slice().reverse().map((m, i) => (
-              <div key={i}>🧳 {m.season}: {w.clubs[m.from]?.name ?? m.from} → {w.clubs[m.to]?.name ?? m.to}{m.fired ? " (após demissão)" : ""}</div>
+              <div key={i}><Ic n="luggage" /> {m.season}: {w.clubs[m.from]?.name ?? m.from} → {w.clubs[m.to]?.name ?? m.to}{m.fired ? " (após demissão)" : ""}</div>
             ))}
           </div>
         )}

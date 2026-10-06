@@ -10,6 +10,7 @@ import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
 import { mediaUrlOrNull } from "./mediaUrl";
+import { DUO, GameIcon, type IconSlug } from "./icons";
 import { PlayerBadges } from "./PlayerBadges";
 
 // ---------------------------------------------------------------- escudo
@@ -371,13 +372,62 @@ const PATHS: Record<string, string> = {
   compass: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z",
   scroll: "M7 4h11a2 2 0 0 1 0 4h-1v10a2 2 0 0 1-2 2H6a2 2 0 0 1 0-4h1zM10 9h4M10 13h4",
   wrench: "M14.5 5.5a4 4 0 0 0 4.9 4.9L21 12l-9 9-3-3 9-9-1.6-1.6a4 4 0 0 0-4.9-4.9l2.5 2.5-1.5 1.5z",
+  mic: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3",
+  refresh: "M20 7a8 8 0 0 0-14.5 1M4 17a8 8 0 0 0 14.5-1M20 3v4h-4M4 21v-4h4",
+  alert: "M12 3 2 20h20zM12 10v4M12 17h.01",
+  target: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
+  sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  role: "M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0M17 4l3 3",
+  bolt: "M13 2 4 14h7l-1 8 9-12h-7z",
+  trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
+  lock: "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
+  trash: "M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14",
+  check: "M4 12l5 5L20 6",
+  close: "M6 6l12 12M18 6 6 18",
+  news: "M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5",
+  flame: "M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-3 3-5 5-5 8a7 7 0 0 0 7 7z",
+  ball: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5l4 2.9-1.5 4.7h-5L8 10.4zM12 3v4.5M16 10.4l4.5-1.6M14.5 15.1l2.7 4M9.5 15.1l-2.7 4M8 10.4 3.5 8.8",
+  film: "M4 5h16v14H4zM8 5v14M16 5v14M4 9h4M4 15h4M16 9h4M16 15h4",
+  feather: "M20 4c-8 0-14 6-14 14v2M6 18l8-8M10 12h7c2-2 3-5 3-8",
+  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 3a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7",
+  book: "M4 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4zM20 4h-6M20 4v15h-6",
+  bulb: "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z",
+  luggage: "M6 7h12v13H6zM9 7V4h6v3M10 11v6M14 11v6",
+  pitch: "M3 5h18v14H3zM12 5v14M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM3 9h3v6H3M21 9h-3v6h3",
+  calm: "M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5 21l3-6 4 2 4-2 3 6M8 15V9h8v6",
+  megaphone: "M3 10v4h4l8 5V5L7 10zM18 9a4 4 0 0 1 0 6",
+  save: "M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-7h8v7",
+  door: "M6 21V3h10v18M16 7l4-1v16l-4-1M12 12h.01",
+  user: "M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   scout: "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm10 16-5.5-5.5M10 7v6M7 10h6",
 };
 
+/** Ícone alinhado ao texto (substitui emojis em rótulos). */
+export function Ic({ n, size = 16 }: { n: string; size?: number }) {
+  return <span className="ic-inline" aria-hidden="true"><Icon name={n} size={size} /></span>;
+}
+
 export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PATHS | string; size?: number; fill?: boolean }) {
+  const duo = DUO[name];
+  if (fill) {
+    return (
+      <svg className="ico" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d={duo?.f ?? PATHS[name] ?? ""} />
+      </svg>
+    );
+  }
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? "currentColor" : "none"} stroke="currentColor" strokeWidth={fill ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-      <path d={PATHS[name] ?? ""} />
+    <svg className={`ico${duo?.f ? " duo" : ""}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      {duo?.f && <path className="ico-f" d={duo.f} stroke="none" />}
+      <path d={duo?.d ?? PATHS[name] ?? ""} />
     </svg>
   );
+}
+
+/** Ícone substituível por imagem (public/media/icons/<slug>.png), com o SVG duotom de reserva. */
+export function GIcon({ slug, size = 22 }: { slug: IconSlug; size?: number }) {
+  return <GameIcon slug={slug} size={size} svg={(n, sz) => <Icon name={n} size={sz} />} />;
 }

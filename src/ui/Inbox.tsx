@@ -7,7 +7,13 @@ import { fanEmoji, fanLabel } from "../engine/narrative";
 import type { InboxAction, InboxKind, InboxMsg } from "../engine/types";
 import { push, setTab, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
+import { Ic, Icon } from "./components";
 import "./narrative.css";
+
+// tipos de mensagem → ícones próprios (o emoji do motor fica de reserva)
+const KIND_ICON: Partial<Record<InboxKind, string>> = {
+  news: "news", offer: "briefcase", contract: "scroll", injury: "alert", board: "bank", dressing: "handshake", transfer: "swap", press: "mic", match: "ball",
+};
 
 type Filter = "all" | "unread" | "offer" | "squad";
 const SQUAD_KINDS: InboxKind[] = ["injury", "contract", "dressing"];
@@ -51,7 +57,7 @@ export function InboxScreen() {
           <b className="small">Torcida: {fanLabel(fan)}</b>
           <div className="agent-bar"><i style={{ width: `${fan}%`, background: fan >= 60 ? "var(--accent)" : fan >= 40 ? "var(--warn)" : "var(--danger)" }} /></div>
         </div>
-        <span className="small muted">🏛️ {w.board.confidence}%</span>
+        <span className="small muted"><Ic n="bank" /> {w.board.confidence}%</span>
       </div>
 
       <div className="seg">
@@ -61,9 +67,9 @@ export function InboxScreen() {
       </div>
 
       <div className="row">
-        <button className="btn sm" disabled={!unread} onClick={() => { update((x) => markAllRead(x)); autosave(); }}>✔ Marcar tudo como lido</button>
+        <button className="btn sm" disabled={!unread} onClick={() => { update((x) => markAllRead(x)); autosave(); }}><Ic n="check" /> Marcar tudo como lido</button>
         <span className="grow" />
-        <button className="btn sm" onClick={() => push({ name: "news" })}>📰 Notícias</button>
+        <button className="btn sm" onClick={() => push({ name: "news" })}><Ic n="news" /> Notícias</button>
       </div>
 
       {!msgs.length && <div className="empty">Nada por aqui.</div>}
@@ -71,7 +77,7 @@ export function InboxScreen() {
         {msgs.map((m) => (
           <div key={m.id} className={`inbox-item${m.read ? "" : " unread"}${m.done ? " done" : ""}`}>
             <button className="inbox-row" onClick={() => toggle(m)}>
-              <span className="inbox-ic">{INBOX_ICON[m.kind]}</span>
+              <span className="inbox-ic">{KIND_ICON[m.kind] ? <Icon name={KIND_ICON[m.kind]!} size={20} /> : INBOX_ICON[m.kind]}</span>
               <span className="inbox-txt">
                 <b className="ellipsis">{m.title}</b>
                 <span className="tiny muted">{inboxSource(w, m) ? `📰 ${inboxSource(w, m)} · ` : ""}{formatDate(m.season, m.day)} {m.season}</span>
@@ -85,7 +91,7 @@ export function InboxScreen() {
                   {m.actions.map((a) => (
                     <button key={a.id} className={`btn sm${a.id === "accept" ? " primary" : a.id === "reject" ? " danger" : ""}`} onClick={() => act(m, a)}>{a.label}</button>
                   ))}
-                  <button className="btn sm" onClick={() => { update((x) => deleteMsg(x, m.id)); autosave(); }}>🗑️</button>
+                  <button className="btn sm" onClick={() => { update((x) => deleteMsg(x, m.id)); autosave(); }} aria-label="Apagar"><Icon name="trash" size={18} /></button>
                 </div>
               </div>
             )}

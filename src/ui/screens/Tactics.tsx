@@ -13,7 +13,7 @@ import type { Club, Lineup, Player, TeamInstr, World } from "../../engine/types"
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { TacticsAdvice } from "../Assistant";
-import { Avatar, Bar, Ovr, PosBadge, Sheet, Stars } from "../components";
+import { Avatar, Bar, Ovr, PosBadge, Sheet, Stars, Ic } from "../components";
 import "../tactics.css";
 
 /** Reencaixa os mesmos 11 jogadores numa nova formação. */
@@ -128,15 +128,15 @@ export function TacticsScreen() {
       <TacticsAdvice />
       <div className="tac-meters">
         <div className="tac-meter" title="Familiaridade com a formação: cresce jogando e treinando (foco Tático acelera)">
-          <span className="tiny muted">📘 Familiaridade {club.tactic.formation}</span>
+          <span className="tiny muted"><Ic n="book" size={13} /> Familiaridade {club.tactic.formation}</span>
           <Bar v={fam} /><b className="kbd">{Math.round(fam)}%</b>
         </div>
         <div className="tac-meter" title="Entrosamento dos titulares vizinhos em campo (minutos juntos, nacionalidade, base, tempo de casa)">
-          <span className="tiny muted">🤝 Entrosamento em campo</span>
+          <span className="tiny muted"><Ic n="link" size={13} /> Entrosamento em campo</span>
           <Bar v={links} /><b className="kbd">{Math.round(links)}</b>
         </div>
         <div className="tac-meter" title="Entrosamento geral do grupo (vestiário)">
-          <span className="tiny muted">👥 Grupo</span>
+          <span className="tiny muted"><Ic n="users" size={13} /> Grupo</span>
           <Bar v={chemOf(w, club)} /><b className="kbd">{Math.round(chemOf(w, club))}%</b>
         </div>
       </div>
@@ -158,9 +158,9 @@ export function TacticsScreen() {
 
       <div className="row gap8 wrap">
         <button className="btn sm" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar</button>
-        <button className={`btn sm${showLinks ? " primary" : ""}`} onClick={() => setShowLinks((x) => !x)}>🤝 Linhas</button>
-        <button className="btn sm" onClick={() => push({ name: "setpieces" })}>🎯 Bola parada</button>
-        {sel !== null && <button className="btn sm primary" onClick={() => setRoleSheet(sel)}>🎭 Função</button>}
+        <button className={`btn sm${showLinks ? " primary" : ""}`} onClick={() => setShowLinks((x) => !x)}><Ic n="link" /> Linhas</button>
+        <button className="btn sm" onClick={() => push({ name: "setpieces" })}><Ic n="target" /> Bola parada</button>
+        {sel !== null && <button className="btn sm primary" onClick={() => setRoleSheet(sel)}><Ic n="role" /> Função</button>}
       </div>
       <div className="tiny muted">{sel !== null ? "Toque em outro jogador para trocar, ou de novo nele para escolher a função." : "Toque num jogador para selecionar; arraste para trocar de posição."}</div>
 
@@ -193,7 +193,7 @@ export function TacticsScreen() {
           </div>
         ))}
         <div className="chips mt12">
-          <button className={`chip${ti.cpress ? " active" : ""}`} onClick={() => setTi({ cpress: !ti.cpress })}>⚡ Contrapressão</button>
+          <button className={`chip${ti.cpress ? " active" : ""}`} onClick={() => setTi({ cpress: !ti.cpress })}><Ic n="bolt" size={14} /> Contrapressão</button>
           <button className={`chip${ti.waste ? " active" : ""}`} onClick={() => setTi({ waste: !ti.waste })}>⏳ Fazer cera (vencendo)</button>
         </div>
         <div className="tiny muted mt4">Contrapressão rouba a bola logo após perder, mas cansa e expõe a defesa. Cera esfria o jogo na reta final.</div>
