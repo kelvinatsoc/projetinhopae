@@ -4,6 +4,7 @@ import { SetPiecesScreen } from "./SetPieces";
 import { useEffect, useRef, useState } from "react";
 import { markTitleSeen, TitleCelebration, titlesSeen } from "./CompTheme";
 import { installTapHaptics } from "./haptics";
+import type { IconSlug } from "./icons";
 import { nextFixture } from "../engine/competitions";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
@@ -14,13 +15,14 @@ import { AchievementsScreen } from "./Achievements";
 import { CareerScreen } from "./Career";
 import { TrophyRoomScreen } from "./TrophyRoom";
 import { continueGame } from "./actions";
-import { Crest, Icon, textOn, visibleColor } from "./components";
+import { Crest, Icon, textOn, visibleColor, GIcon } from "./components";
 import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
 import { CompsScreen } from "./screens/Comps";
 import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
 import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
 import { PlayerScreen } from "./screens/Player";
+import { CompareScreen } from "./Compare";
 import { SquadScreen, TacticsScreen } from "./screens/Squad";
 import { StartScreen } from "./screens/Start";
 import { AdminScreen } from "./screens/Admin";
@@ -32,12 +34,12 @@ import { TrainingScreen } from "./screens/Training";
 import { InboxScreen } from "./Inbox";
 import { PressConferenceScreen } from "./PressConference";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "home", label: "Início", icon: "home" },
-  { id: "squad", label: "Elenco", icon: "squad" },
-  { id: "comps", label: "Torneios", icon: "trophy" },
-  { id: "market", label: "Mercado", icon: "market" },
-  { id: "club", label: "Clube", icon: "club" },
+const TABS: { id: Tab; label: string; icon: IconSlug }[] = [
+  { id: "home", label: "Início", icon: "inicio" },
+  { id: "squad", label: "Elenco", icon: "elenco" },
+  { id: "comps", label: "Torneios", icon: "competicoes" },
+  { id: "market", label: "Mercado", icon: "mercado" },
+  { id: "club", label: "Clube", icon: "clube" },
 ];
 
 function routeTitle(r: Route): string {
@@ -65,6 +67,7 @@ function routeTitle(r: Route): string {
     case "trophies": return "Sala de troféus";
     case "achievements": return "Conquistas";
     case "career": return "Carreira";
+    case "compare": return "Comparar jogadores";
     case "sponsors": return "Patrocínios";
     case "facilities": return "Estrutura";
     case "setpieces": return "Bola parada";
@@ -187,6 +190,7 @@ export function App() {
       case "trophies": content = <TrophyRoomScreen />; break;
       case "achievements": content = <AchievementsScreen />; break;
       case "career": content = <CareerScreen />; break;
+      case "compare": content = <CompareScreen ids={top.ids} />; break;
       case "sponsors": content = <SponsorsScreen />; break;
       case "facilities": content = <FacilitiesScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;
@@ -230,14 +234,14 @@ export function App() {
       )}
       {showFab && (
         <button className={`fab${fabHidden ? " fab-hide" : ""}`} onClick={continueGame}>
-          <Icon name="play" fill size={20} /> {matchToday ? "Jogar" : "Continuar"}
+          <GIcon slug={matchToday ? "jogar" : "continuar"} size={22} /> {matchToday ? "Jogar" : "Continuar"}
         </button>
       )}
       {!fullScreen && !hideNav && (
         <nav className="bottomnav">
           {TABS.map((t) => (
             <button key={t.id} className={!top && nav.tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-              <Icon name={t.icon} />
+              <GIcon slug={t.icon} size={25} />
               {t.label}
               {t.id === "club" && (w.career?.offers.length ?? 0) > 0 && <i className="nav-badge" />}
             </button>

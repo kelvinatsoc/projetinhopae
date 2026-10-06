@@ -91,7 +91,7 @@ export function monthlyMood(w: World) {
       p.promise = undefined;
       if (share >= E) {
         addMorale(p, 6);
-        addNews(w, "dressing", `🤝 ${p.name} elogia a palavra do treinador`, `Você prometeu mais minutos e cumpriu: ele jogou ${pl} de ${av} jogos.`, { pid: p.id });
+        addNews(w, "dressing", `🤝 ${p.name} elogia a palavra do técnico`, `Você prometeu mais minutos e cumpriu: ele jogou ${pl} de ${av} jogos.`, { pid: p.id });
       } else {
         p.wantsOut = true;
         p.bp = 1;

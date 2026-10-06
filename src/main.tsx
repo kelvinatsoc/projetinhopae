@@ -4,6 +4,14 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "./ui/App";
 import "./styles.css";
 import "./ui/redesign.css";
+// tipografia embutida no pacote (sem rede em tempo de execução): títulos/números e rótulos em pixel
+import "@fontsource/chakra-petch/latin-600.css";
+import "@fontsource/chakra-petch/latin-700.css";
+import "@fontsource/chakra-petch/latin-700-italic.css";
+import "@fontsource/press-start-2p/latin-400.css";
+import "./ui/premium.css";
+// tema "Era PS1": vence a camada premium (painéis chanfrados, fonte de pixel, sem desfoque)
+import "./ui/ps1.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 

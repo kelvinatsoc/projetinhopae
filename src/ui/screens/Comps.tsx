@@ -3,7 +3,7 @@ import { formatDate } from "../../engine/calendar";
 import { clubFixtures, fixtureById, sortTable, STAGE_NAMES, tieAggregate } from "../../engine/competitions";
 import type { Competition, Fixture, TableRow, Tie, World } from "../../engine/types";
 import { push, useWorld } from "../../store";
-import { CompLogo, Crest } from "../components";
+import { CompLogo, Crest, Ic, Icon } from "../components";
 import { CompHeader } from "../CompTheme";
 import { compTheme } from "../compThemes";
 
@@ -18,7 +18,7 @@ export function CompsScreen() {
   return (
     <div className="page">
       <div className="chips">
-        <button className={`chip${sel === "mine" ? " active" : ""}`} onClick={() => setSel("mine")}>📅 Meus jogos</button>
+        <button className={`chip${sel === "mine" ? " active" : ""}`} onClick={() => setSel("mine")}><Ic n="calendar" /> Meus jogos</button>
         {[...mine, ...comps.filter((c) => !mine.includes(c))].map((c) => (
           <button key={c.id} className={`chip${sel === c.id ? " active" : ""}`} onClick={() => setSel(c.id)}><CompLogo id={c.id} size={16} /> {c.short}{mine.includes(c) ? " •" : ""}</button>
         ))}
@@ -29,7 +29,7 @@ export function CompsScreen() {
           <CompHeader id={comp.id} title={`${comp.name} ${comp.season}`} sub={compTheme(comp.id, comp.color).motto} right={<span className="ct-pill">{STAGE_NAMES[comp.stage]}</span>} />
           {comp.champion && (
             <div className="card row" style={{ borderColor: "var(--gold)" }}>
-              <span style={{ fontSize: 26 }}>🏆</span><Crest club={w.clubs[comp.champion]} size={30} /><b>{w.clubs[comp.champion].name}</b><span className="muted small">campeão</span>
+              <span className="champ-ic"><Icon name="trophy" size={24} /></span><Crest club={w.clubs[comp.champion]} size={30} /><b>{w.clubs[comp.champion].name}</b><span className="muted small">campeão</span>
             </div>
           )}
           {comp.format === "league" && <LeagueView w={w} comp={comp} />}

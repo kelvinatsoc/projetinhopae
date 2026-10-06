@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
 import { attendance, handStyle, handmadeKeys, isBigGame, normStadium, proceduralStyle, stadiumStyleFor } from "../src/data/stadiumStyles";
 
-type C = { id: string; stadium: string; capacity: number; colors: [string, string, string]; rep: number };
+type C = { id: string; stadium: string; capacity: number; colors: [string, string, string]; rep: number; minor?: string };
 const clubs = (db as unknown as { clubs: C[] }).clubs;
 const byId = (id: string) => clubs.find((c) => c.id === id)!;
 
@@ -22,7 +22,8 @@ describe("estilos de estádio", () => {
     expect(handStyle("Morumbi")?.key).toBe("morumbis");
   });
   it("pelo menos 40 dos maiores estádios do banco são feitos à mão", () => {
-    const top = [...new Map(clubs.map((c) => [normStadium(c.stadium), c])).values()].sort((a, b) => b.capacity - a.capacity).slice(0, 45);
+    // clubes da pirâmide nacional e estrangeiros (os que só jogam o estadual usam estilos genéricos)
+    const top = [...new Map(clubs.filter((c) => !c.minor).map((c) => [normStadium(c.stadium), c])).values()].sort((a, b) => b.capacity - a.capacity).slice(0, 45);
     expect(top.filter((c) => stadiumStyleFor(c).handmade).length).toBeGreaterThanOrEqual(42);
     expect(handmadeKeys().length).toBeGreaterThanOrEqual(40);
   });

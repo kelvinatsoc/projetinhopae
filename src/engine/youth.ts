@@ -101,7 +101,7 @@ function toPeneira(w: World, club: Club, kids: Player[]) {
 export function youthIntake(w: World) {
   const user = w.clubs[w.userClubId];
   // o clube do usuário fica por último: as escolhas dele nunca mudam a safra da IA
-  // clubes fictícios dos estaduais não têm categorias de base
+  // clubes que só jogam o estadual (reais ou fictícios) não têm safra anual: o elenco se renova com livres
   for (const club of Object.values(w.clubs)) if (club.id !== user.id && !club.minor) intakeForClub(w, club);
   resolvePeneiraAuto(w); // segurança: nunca duas peneiras ao mesmo tempo
   const kids = intakeForClub(w, user, { pending: true });

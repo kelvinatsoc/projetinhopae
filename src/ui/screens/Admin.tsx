@@ -163,8 +163,8 @@ export function AdminSettingsCard() {
       )}
       {sheet === "forgot" && (
         <Sheet title="Esqueci a senha" onClose={() => setSheet(null)}>
-          <p className="small">Digite o nome do treinador deste save para apagar a senha.</p>
-          <input className="text mt8" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do treinador" />
+          <p className="small">Digite o nome do técnico deste save para apagar a senha.</p>
+          <input className="text mt8" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do técnico" />
           <button className="btn primary block mt12" onClick={() => {
             let okName = false;
             update((x) => { okName = adminForgotPin(x, name); });
@@ -303,7 +303,7 @@ function ClubTab() {
       {!isUser && (
         <div className="card">
           <button className="btn gold block" onClick={() => setTakeOver(true)}>🤝 Assumir este clube</button>
-          <div className="tiny muted mt8">Você vira o treinador do {c.name} na hora, sem ser demitido. As notícias continuam.</div>
+          <div className="tiny muted mt8">Você vira o técnico do {c.name} na hora, sem ser demitido. As notícias continuam.</div>
         </div>
       )}
 
