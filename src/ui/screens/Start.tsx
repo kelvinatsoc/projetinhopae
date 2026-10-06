@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Div } from "../../engine/types";
+import type { WorldData } from "../../data/worldTypes";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
 import { createScenarioWorld, SCENARIO_BY_ID, SCENARIOS } from "../../engine/scenarios";
 import "../progression.css";
@@ -113,7 +114,8 @@ const DIV_LABEL: Record<string, string> = { A: "Série A", B: "Série B", C: "S�
 
 function NewGame({ onBack }: { onBack: () => void }) {
   const [db, setDb] = useState<Database | null>(null);
-  const [div, setDiv] = useState<Div>("A");
+  const [world, setWorld] = useState<WorldData | undefined>(undefined);
+  const [div, setDiv] = useState<string>("A");
   const [clubId, setClubId] = useState<string | null>(null);
   const [name, setName] = useState(() => {
     try { return localStorage.getItem("managerName") ?? ""; } catch { return ""; }
@@ -124,17 +126,24 @@ function NewGame({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     loadDatabase().then(setDb);
+    loadWorldFile().then(setWorld);
   }, []);
 
-  const clubs = useMemo(() => (db ? db.clubs.filter((c) => c.div === div).sort((a, b) => b.level - a.level || a.name.localeCompare(b.name)) : []), [db, div]);
-  const selected = db?.clubs.find((c) => c.id === clubId);
+  // clubes do exterior (abas por liga) quando há dados do mundo
+  const all = useMemo(() => (db ? [...db.clubs, ...(world?.clubs ?? [])] : []), [db, world]);
+  const clubs = useMemo(() => {
+    const lg = world?.leagues.find((l) => l.id === div);
+    const list = lg ? all.filter((c) => lg.clubs.includes(c.id)) : all.filter((c) => c.div === div && !(world?.clubs.some((x) => x.id === c.id)));
+    return list.sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
+  }, [all, div, world]);
+  const selected = all.find((c) => c.id === clubId);
 
   function start() {
     if (!db || !clubId) return;
     setCreating(true);
     try { localStorage.setItem("managerName", name); } catch { /* ignore */ }
     setTimeout(async () => {
-      const w = createWorld(db, { managerName: name.trim() || "Professor", clubId, settings: { casual, legendFreq }, world: await loadWorldFile() });
+      const w = createWorld(db, { managerName: name.trim() || "Professor", clubId, settings: { casual, legendFreq }, world });
       resetNav();
       startNewWorld(w);
     }, 30);
@@ -157,6 +166,13 @@ function NewGame({ onBack }: { onBack: () => void }) {
           <button key={d} className={div === d ? "active" : ""} onClick={() => setDiv(d)}>{DIV_LABEL[d]}</button>
         ))}
       </div>
+      {world && (
+        <div className="chips">
+          {world.leagues.map((l) => (
+            <button key={l.id} className={`chip${div === l.id ? " active" : ""}`} onClick={() => setDiv(l.id)}>{flag(l.country)} {l.short}</button>
+          ))}
+        </div>
+      )}
       {!db && <div className="empty">Carregando elencos…</div>}
       {!db && <div className="club-pick-grid">{Array.from({ length: 9 }, (_, i) => <div key={i} className="skeleton" style={{ height: 110 }} />)}</div>}
       {selected && <PickPreview c={selected} />}

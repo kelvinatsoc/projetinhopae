@@ -125,6 +125,8 @@ function progressLeague(w: World, comp: Competition): boolean {
   comp.stage = "done";
   comp.done = true;
   awardWorldComp(w, comp);
+  const up = comp.table.findIndex((r) => r.club === w.userClubId);
+  if (up >= 0) w.wl.userLast = { comp: comp.id, pos: up + 1, season: comp.season, year: w.season };
   const champ = w.clubs[comp.champion];
   worldNews(w, `🏆 ${champ.name} é campeão: ${comp.name} ${comp.label}`, `${champ.full} conquista o título com ${comp.table[0].pts} pontos.`, { force: comp.champion === w.userClubId, clubId: champ.id });
   return true;

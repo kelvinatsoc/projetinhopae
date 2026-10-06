@@ -522,6 +522,8 @@ export interface WorldLeagues {
   seeds?: { ucl: string[]; uel: string[] };
   /** último campeão da Champions (para a Intercontinental) */
   lastUcl?: string;
+  /** clube do usuário no exterior: posição final na última liga encerrada (para a diretoria) */
+  userLast?: { comp: string; pos: number; season: number; year: number };
 }
 export interface NationalTeam {
   id: string; // nt-BRA

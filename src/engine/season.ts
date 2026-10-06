@@ -90,6 +90,17 @@ export function startSeason(w: World, e: SeasonEntrants) {
 // ---------------------------------------------------------------- diretoria
 export function setBoardObjective(w: World) {
   const user = w.clubs[w.userClubId];
+  if (user.league) {
+    // clube do exterior: meta pela força dentro da liga
+    const peers = Object.values(w.clubs).filter((c) => c.league === user.league).sort((a, b) => b.level + b.rep / 20 - (a.level + a.rep / 20));
+    const rank = peers.findIndex((c) => c.id === user.id) + 1;
+    const n = peers.length;
+    const [code, text] = rank <= 2 ? ["W-title", "Brigar pelo título (terminar entre os 2)"] : rank <= 6 ? ["W-top", "Vaga europeia/continental (terminar entre os 6)"]
+      : rank <= n / 2 ? ["W-mid", "Terminar na primeira metade da tabela"] : ["W-stay", `Campanha segura (até ${Math.max(1, n - 3)}º)`];
+    w.board.objective = text;
+    w.board.objectiveCode = code;
+    return;
+  }
   const peers = Object.values(w.clubs).filter((c) => c.div === user.div).sort((a, b) => b.level + b.rep / 20 - (a.level + a.rep / 20));
   const rank = peers.findIndex((c) => c.id === user.id) + 1;
   let code = "mid", text = "Fazer uma campanha segura";
@@ -121,6 +132,10 @@ function objectiveMet(w: World, pos: number | null, promoted: boolean): boolean 
     case "B-mid": return pos <= 8;
     case "B-stay": return pos <= 16;
     case "C-stay": return pos <= 18;
+    case "W-title": return pos <= 2;
+    case "W-top": return pos <= 6;
+    case "W-mid": return pos <= Math.ceil(Object.values(w.clubs).filter((c) => c.league === w.clubs[w.userClubId].league).length / 2);
+    case "W-stay": return pos <= Object.values(w.clubs).filter((c) => c.league === w.clubs[w.userClubId].league).length - 3;
     default: return true;
   }
 }
@@ -207,7 +222,8 @@ export function endSeason(w: World): string[] {
     }
   }
   const userLeague = user.div === "A" ? A : user.div === "B" ? B : C;
-  const userPos = tablePosition(userLeague, user.id);
+  // exterior: a posição da liga que terminou neste ano (temporada ago–mai)
+  const userPos = user.league ? (w.wl?.userLast?.year === y ? w.wl.userLast.pos : null) : tablePosition(userLeague, user.id);
   w.history.push({
     season: y, champions, userPos: userPos ?? undefined, userDiv: user.div,
     topScorer: top ? { pid: top.pid, name: w.players[top.pid].name, goals: top.goals, clubId: w.players[top.pid].clubId! } : undefined,

@@ -498,6 +498,12 @@ export function nextFixture(w: World, clubId: string): Fixture | undefined {
 }
 
 export function leagueOf(w: World, clubId: string): Competition | undefined {
+  const lg = w.clubs[clubId]?.league;
+  if (lg) {
+    // liga do mundo (Argentina: o torneio em andamento)
+    const list = [w.comps[lg], w.comps[`${lg}a`], w.comps[`${lg}c`]].filter((c): c is Competition => !!c && c.teams.includes(clubId));
+    return list.find((c) => !c.done) ?? list[list.length - 1];
+  }
   const div = w.clubs[clubId]?.div;
   return div === "A" ? w.comps.serieA : div === "B" ? w.comps.serieB : div === "C" ? w.comps.serieC : undefined;
 }

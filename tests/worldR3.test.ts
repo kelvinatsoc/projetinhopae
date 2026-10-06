@@ -79,6 +79,20 @@ describe("mundo R3: Mundial de Clubes", () => {
   });
 });
 
+describe("mundo R3: começar num clube do exterior", () => {
+  it("o usuário joga a temporada europeia inteira e a diretoria avalia pela liga", () => {
+    const w = createWorld(db as Database, { managerName: "T", clubId: "eng1-c1", seed: 33, world: makeWorldFixture() });
+    expect(w.board.objectiveCode).toBe("W-title");
+    playUntil(w, (x) => x.season === 2027 && x.day >= 200);
+    const mine = w.fixtures.filter((f) => f.result && (f.home === "eng1-c1" || f.away === "eng1-c1"));
+    expect(w.wl!.userLast?.comp).toBe("eng1");
+    expect(w.managerHistory.some((h) => h.season === 2027 || h.season === 2026)).toBe(true);
+    expect(mine.some((f) => f.comp === "eng1" && f.result!.stats.shots[0] > 0)).toBe(true);
+    expect(w.clubs["eng1-c1"].finance.lastIncome?.tv ?? 0).toBeGreaterThan(0);
+    expect(dup(w.fixtures)).toEqual([]);
+  }, 120_000);
+});
+
 describe("mundo R3: técnico de seleção", () => {
   it("convite pela reputação, convocação escolhida e jogos que param o Continuar", () => {
     const w = createWorld(db as Database, { managerName: "T", clubId: "flamengo", seed: 12, world: makeWorldFixture() });
