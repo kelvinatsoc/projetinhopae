@@ -1,0 +1,37 @@
+/* Sede 3D do clube */
+.hq { position: relative; }
+.hq-stage {
+  position: relative; height: 380px; overflow: hidden; touch-action: none;
+  border: 3px solid #0b1430; outline: 2px solid #6f86c7; outline-offset: -5px;
+  box-shadow: 4px 4px 0 #000;
+  background: linear-gradient(180deg, #284a8f, #0c1a3e);
+}
+.hq-canvas { position: absolute; inset: 0; display: block; image-rendering: pixelated; }
+.hq-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #ffe066; font-family: var(--pixel); font-size: 11px; text-shadow: 2px 2px 0 #000; }
+.hq-pin {
+  position: absolute; left: 0; top: 0; z-index: 2; will-change: transform;
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px 3px 5px; min-height: 28px;
+  font-family: var(--ps-font); font-size: 12px; font-weight: 700; font-style: italic; color: #fff; text-transform: uppercase; white-space: nowrap;
+  background: linear-gradient(180deg, #2a55c9, #0f2a7a); border: 2px solid #fff; border-color: #c8d6ff #0a1745 #0a1745 #c8d6ff;
+  box-shadow: 2px 2px 0 #000; transition: opacity 0.2s;
+}
+.hq-pin::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -5px; border: 5px solid transparent; border-top-color: #0f2a7a; border-bottom: 0; }
+.hq-hint {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2; pointer-events: none;
+  font-family: var(--pixel); font-size: 8px; color: #fff; background: rgba(0,0,0,0.55); padding: 4px 6px; text-shadow: 1px 1px 0 #000;
+}
+.hq-menu {
+  margin-top: 10px; padding: 10px; color: #fff;
+  background: linear-gradient(180deg, #1b3a8f, #0b1c52); border: 3px solid; border-color: #9fb6ff #050c2a #050c2a #9fb6ff;
+  box-shadow: 4px 4px 0 #000; animation: hq-pop 0.18s steps(3) both;
+}
+@keyframes hq-pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.hq-menu-head { display: flex; align-items: center; gap: 8px; font-family: var(--ps-font); font-style: italic; font-size: 20px; text-transform: uppercase; color: #ffe066; text-shadow: 2px 2px 0 #000; }
+.hq-menu-head b { flex: 1; }
+.hq-x { width: 44px; height: 44px; font-size: 24px; background: #c0262d; color: #fff; border: 2px solid; border-color: #ff9a9e #5a0a0e #5a0a0e #ff9a9e; }
+.hq-menu-items { display: grid; gap: 8px; margin-top: 8px; }
+.hq-menu-items .btn { justify-content: flex-start; }
+@media (prefers-reduced-motion: reduce) { .hq-menu { animation: none; } }
+
+/* menu do prédio por cima do mapa (sempre visível, sem rolar) */
+.hq-menu { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5; margin: 0; }

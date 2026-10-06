@@ -3,10 +3,11 @@ import type { Div } from "../../engine/types";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
 import { createScenarioWorld, SCENARIO_BY_ID, SCENARIOS } from "../../engine/scenarios";
 import "../progression.css";
+import { mediaUrl } from "../mediaUrl";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, openWorld, startNewWorld } from "../actions";
-import { clubStars, Crest, stadiumSrc, Stars, visibleColor } from "../components";
+import { clubStars, Crest, stadiumSrc, Stars, visibleColor, Ic, Icon } from "../components";
 import type { CSSProperties } from "react";
 import { flag } from "../flags";
 import type { Club } from "../../engine/types";
@@ -59,9 +60,10 @@ export function StartScreen() {
 
   return (
     <div className="start-bg">
-      <div className="col gap12" style={{ maxWidth: 480, margin: "0 auto", width: "100%" }}>
+      <div className="start-stadium" aria-hidden="true"><img src={mediaUrl("stadiums/Q155174.webp")} alt="" decoding="async" /></div>
+      <div className="col gap12 start-panel" style={{ maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <div className="center" style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 54 }}>⚽</div>
+          <div className="start-ball"><Icon name="ball" size={44} /></div>
           <div className="logo">Lendas <span>da Base</span></div>
           <p className="muted">Jogo de técnico de futebol brasileiro. Séries A, B e C, Copa do Brasil, Libertadores e Sul-Americana — e lendas renascendo nas categorias de base.</p>
         </div>
@@ -73,7 +75,7 @@ export function StartScreen() {
               </button>
             )}
             <button className="btn gold block" onClick={() => setMode("new")}>＋ Novo jogo</button>
-            <button className="btn block" onClick={() => setMode("scenarios")}>🎯 Desafios</button>
+            <button className="btn block" onClick={() => setMode("scenarios")}><Ic n="target" size={18} /> Desafios</button>
             {saves.length > 0 && <button className="btn block" onClick={() => setMode("load")}>Carregar jogo salvo</button>}
             <label className="btn ghost block">
               Importar arquivo de save
@@ -143,7 +145,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
   return (
     <div className="page" style={{ maxWidth: 560, margin: "0 auto", paddingTop: 16, paddingBottom: 120 }}>
       <div className="row">
-        <button className="btn sm" onClick={onBack}>← Voltar</button>
+        <button className="btn sm" onClick={onBack}><Icon name="back" size={18} /> Voltar</button>
         <h2 className="grow center">Novo jogo</h2>
         <span style={{ width: 70 }} />
       </div>
@@ -217,7 +219,7 @@ function Scenarios({ onBack }: { onBack: () => void }) {
   return (
     <div className="page" style={{ maxWidth: 560, margin: "0 auto", paddingTop: 16, paddingBottom: 120 }}>
       <div className="row">
-        <button className="btn sm" onClick={onBack}>← Voltar</button>
+        <button className="btn sm" onClick={onBack}><Icon name="back" size={18} /> Voltar</button>
         <h2 className="grow center">Desafios</h2>
         <span style={{ width: 70 }} />
       </div>
@@ -233,7 +235,7 @@ function Scenarios({ onBack }: { onBack: () => void }) {
             {sel === s.id && (
               <>
                 <div className="small mt8">{s.desc}</div>
-                <div className="small mt8">🎯 <b>{s.goal}</b></div>
+                <div className="small mt8"><Ic n="target" /> <b>{s.goal}</b></div>
               </>
             )}
           </div>
@@ -265,7 +267,7 @@ function PickPreview({ c }: { c: DbClub }) {
         <Crest club={fakeClub(c)} size={60} />
         <div className="grow" style={{ minWidth: 0 }}>
           <h2 className="ellipsis" style={{ fontSize: 28 }}>{c.name}</h2>
-          <div className="small ellipsis" style={{ opacity: 0.9 }}>{flag("BRA")} {c.city}/{c.region} · 🏟️ {c.stadium}</div>
+          <div className="small ellipsis" style={{ opacity: 0.9 }}>{flag("BRA")} {c.city}/{c.region} · <Ic n="stadium" size={13} /> {c.stadium}</div>
           <Stars n={clubStars(c.level)} />
         </div>
       </div>

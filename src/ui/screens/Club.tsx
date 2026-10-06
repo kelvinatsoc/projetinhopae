@@ -4,6 +4,9 @@ import { COMP_META } from "../../engine/competitions";
 import { kitSupplier, shirtSponsor, stadiumName } from "../../engine/sponsors";
 import { BrandLogo } from "../BrandLogo";
 import "../economy.css";
+import { ClubHQ } from "../hq/ClubHQ";
+import { nextFixture } from "../../engine/competitions";
+import type { IconSlug } from "../icons";
 import { estadualTitles } from "../../engine/estaduais";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
 import { clubStrength, squadOf } from "../../engine/lineup";
@@ -15,7 +18,7 @@ import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
 import { loadMedia, saveMedia, setSoundEnabled, soundEnabled } from "../audio";
-import { Avatar, clubStars, CompLogo, Crest, PlayerRow, StadiumPhoto, stadiumSrc, Stars } from "../components";
+import { Avatar, clubStars, CompLogo, Crest, Icon, PlayerRow, StadiumPhoto, stadiumSrc, Stars, Ic, GIcon } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
 import { resizeImage } from "./Player";
@@ -43,7 +46,7 @@ export function ClubScreen() {
             <div className="small"><Stars n={clubStars(clubStrength(w, c))} /></div>
           </div>
         </div>
-        <div className="small mt8" style={{ opacity: 0.85 }}>🏟️ {stadiumName(w, c)} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
+        <div className="small mt8" style={{ opacity: 0.85 }}><Ic n="stadium" /> {stadiumName(w, c)} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
       </div>
 
       <div className="grid3">
@@ -52,7 +55,8 @@ export function ClubScreen() {
         <div className="stat-box tap" onClick={() => push({ name: "trophies" })}><b>{titles}</b><span>títulos</span></div>
       </div>
 
-      <h3>Gestão</h3>
+      <h3>Sede do clube</h3>
+      <ClubHQ club={c} matchToday={nextFixture(w, c.id)?.day === w.day} fallback={
       <div className="tiles">
         <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
         <Tile icon="👔" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
@@ -63,6 +67,11 @@ export function ClubScreen() {
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
         <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
+      </div>
+      } />
+      <div className="row gap8 wrap">
+        <button className="btn sm" onClick={() => push({ name: "settings" })}><GIcon slug="configuracoes" size={18} /> Ajustes</button>
+        <button className="btn sm" onClick={() => push({ name: "facilities" })}><GIcon slug="estrutura" size={18} /> Estrutura</button>
       </div>
 
       <h3>Glória</h3>
@@ -77,18 +86,31 @@ export function ClubScreen() {
       </div>
 
       <div className="grid2 mt8">
-        <button className="btn" onClick={saveNow}>💾 Salvar</button>
-        <button className="btn" onClick={async () => { await saveWorld(w); setWorld(null); resetNav(); }}>🚪 Sair para o menu</button>
+        <button className="btn" onClick={saveNow}><GIcon slug="salvar" size={20} /> Salvar</button>
+        <button className="btn" onClick={async () => { await saveWorld(w); setWorld(null); resetNav(); }}><Ic n="door" size={18} /> Sair para o menu</button>
       </div>
       <div style={{ height: 30 }} />
     </div>
   );
 }
 
+// emojis antigos → ícones próprios (src/ui/components.tsx)
+const TILE_ICON: Record<string, string> = {
+  "💰": "coins", "👔": "briefcase", "🏛️": "bank", "🏗️": "crane", "🤝": "handshake", "💬": "chat",
+  "🏋️": "dumbbell", "🌱": "sprout", "⚙️": "gear", "🏆": "trophy", "⭐": "star", "🏅": "medal",
+  "🧭": "compass", "📜": "scroll", "🔎": "search", "🛠️": "wrench",
+};
+
+const TILE_SLUG: Record<string, IconSlug> = {
+  "💰": "financas", "👔": "olheiros", "🏛️": "diretoria", "🏗️": "estrutura", "🤝": "patrocinios", "💬": "vestiario",
+  "🏋️": "treino", "🌱": "base", "⚙️": "configuracoes", "🏆": "competicoes", "⭐": "lendas", "🏅": "conquistas",
+  "🧭": "carreira", "🔎": "clube",
+};
+
 function Tile({ icon, label, sub, tint, wide, hot, onClick }: { icon: string; label: string; sub: string; tint: string; wide?: boolean; hot?: boolean; onClick: () => void }) {
   return (
     <button className={`tile${wide ? " wide" : ""}${hot ? " hot" : ""}`} style={{ "--tint": tint } as CSSProperties} onClick={onClick}>
-      <span className="ti">{icon}</span>
+      <span className="ti">{TILE_SLUG[icon] ? <GIcon slug={TILE_SLUG[icon]!} size={26} /> : TILE_ICON[icon] ? <Icon name={TILE_ICON[icon]} size={26} /> : icon}</span>
       <span><b>{label}</b><small>{sub}</small></span>
     </button>
   );
@@ -111,7 +133,7 @@ export function ClubInfoScreen({ id }: { id: string }) {
             <div className="small">{c.country === "BRA" ? `${c.city}/${c.region}` : `${flag(c.country)} ${c.city || c.country}`} · {c.div === "F" ? "Exterior" : `Série ${c.div}`}</div>
           </div>
         </div>
-        <div className="small mt12">🏟️ {stadiumName(w, c)} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
+        <div className="small mt12"><Ic n="stadium" /> {stadiumName(w, c)} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
       </div>
       <StadiumPhoto club={c} />
       {(kitSupplier(w, c) || shirtSponsor(w, c)) && (
@@ -154,9 +176,15 @@ export function FinancesScreen() {
   const totalOut = Object.values(exp).reduce((s, v) => s + v, 0);
   return (
     <div className="page">
-      <div className="grid2">
-        <div className="stat-box"><b style={{ fontSize: 15 }}>{formatMoney(c.balance)}</b><span>saldo atual</span></div>
-        <div className="stat-box"><b style={{ fontSize: 15, color: totalIn - totalOut >= 0 ? "var(--accent)" : "var(--danger)" }}>{formatMoney(totalIn - totalOut)}</b><span>resultado em {w.season}</span></div>
+      <div className="fin-hero">
+        <span className="fin-ic"><Icon name="coins" size={22} /></span>
+        <small>Saldo atual</small>
+        <b className="big-num">{formatMoney(c.balance)}</b>
+        <div className="fin-split">
+          <span>Receitas <b className="big-num">{formatMoney(totalIn)}</b></span>
+          <span>Despesas <b className="big-num">{formatMoney(totalOut)}</b></span>
+          <span className={totalIn - totalOut >= 0 ? "pos" : "neg"}>Resultado <b className="big-num">{formatMoney(totalIn - totalOut)}</b></span>
+        </div>
       </div>
       <div className="card">
         <h3>Receitas {w.season}</h3>
@@ -206,7 +234,7 @@ export function HistoryScreen() {
             <b style={{ width: 44 }}>{h.season}</b>
             <Crest club={w.clubs[h.clubId]} size={18} />
             <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div} · {h.pos ?? "-"}º</span>
-            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}>🏆</span>)}
+            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={16} /></span>)}
             {h.admin && <span title="Temporada com edições do administrador">🛠️</span>}
           </div>
         ))}
@@ -311,7 +339,7 @@ export function SettingsScreen() {
           {c.customCrest && <button className="btn sm" onClick={() => { update(() => { c.customCrest = undefined; }); autosave(); }}>Padrão</button>}
         </div>
         <div className="row mt12">
-          <span style={{ fontSize: 26 }}>📣</span>
+          <span className="big-ic"><Icon name="megaphone" size={24} /></span>
           <label className="btn sm grow">
             {hasGoal ? "Trocar áudio do gol (canto/hino)" : "Áudio do gol (canto/hino)"}
             <input type="file" accept="audio/*" hidden onChange={(e) => {
@@ -332,16 +360,16 @@ export function SettingsScreen() {
         <h3>Backup</h3>
         <div className="grid2 mt8">
           <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
-          <button className="btn sm" onClick={saveNow}>💾 Salvar agora</button>
+          <button className="btn sm" onClick={saveNow}><Ic n="save" /> Salvar agora</button>
         </div>
         <button className="btn sm block mt8" onClick={() => {
           let n = 0;
           update((x) => { n = repairWorld(x); });
           if (n) autosave();
           toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
-        }}>🩺 Verificar save</button>
+        }}><Ic n="check" /> Verificar save</button>
         <p className="tiny muted mt8">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}). Notas estimadas pelo jogo — edite no perfil do jogador.</p>
-        <button className="btn sm block mt8" onClick={() => push({ name: "credits" })}>📜 Créditos das fotos, escudos e sons</button>
+        <button className="btn sm block mt8" onClick={() => push({ name: "credits" })}><Ic n="scroll" /> Créditos das fotos, escudos e sons</button>
       </div>
     </div>
   );
@@ -419,7 +447,7 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
   return (
     <div className="start-bg" style={{ justifyContent: "flex-start", paddingTop: "calc(24px + env(safe-area-inset-top))" }}>
       <div className="col gap12" style={{ maxWidth: 520, margin: "0 auto", width: "100%" }}>
-        <div className="center"><div style={{ fontSize: 48 }}>🏆</div><h1>Fim da temporada {last?.season}</h1></div>
+        <div className="center"><div className="big-ic gold"><Icon name="trophy" size={46} /></div><h1>Fim da temporada {last?.season}</h1></div>
         {last && (
           <div className="card">
             {Object.entries(last.champions).map(([comp, club]) => (
@@ -442,7 +470,7 @@ export function FiredScreen() {
     return (
       <div className="start-bg">
         <div className="col gap12" style={{ maxWidth: 520, margin: "0 auto", width: "100%" }}>
-          <div className="center"><div style={{ fontSize: 48 }}>📉</div><h1>Você foi demitido</h1><p className="muted">Mas o futebol dá voltas. Estes clubes querem você:</p></div>
+          <div className="center"><div className="big-ic"><Icon name="trend" size={46} /></div><h1>Você foi demitido</h1><p className="muted">Mas o futebol dá voltas. Estes clubes querem você:</p></div>
           <OfferList w={w} onAccepted={() => { forceBack(); setTab("home"); }} />
         </div>
       </div>
@@ -457,7 +485,7 @@ export function FiredScreen() {
   return (
     <div className="start-bg">
       <div className="col gap12" style={{ maxWidth: 520, margin: "0 auto", width: "100%" }}>
-        <div className="center"><div style={{ fontSize: 48 }}>📉</div><h1>Você foi demitido</h1><p className="muted">Mas o futebol dá voltas. Estes clubes querem você:</p></div>
+        <div className="center"><div className="big-ic"><Icon name="trend" size={46} /></div><h1>Você foi demitido</h1><p className="muted">Mas o futebol dá voltas. Estes clubes querem você:</p></div>
         {offers.map((c) => <ClubOffer key={c.id} w={w} c={c} />)}
       </div>
     </div>
