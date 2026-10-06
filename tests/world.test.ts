@@ -74,6 +74,16 @@ describe("mundo: um ano inteiro com Europa e seleções", () => {
   });
 
   it("a Copa do Mundo 2026 teve 48 seleções, 32 no mata-mata e um campeão", () => {
+    const wc = w.intl!.comps["wc-2026"];
+    expect(wc.teams).toHaveLength(48);
+    expect(wc.groups).toHaveLength(12);
+    expect(wc.groups.every((g) => g.teams.length === 4 && g.table.every((r) => r.p === 3))).toBe(true);
+    expect(wc.ties.filter((t) => t.stage === "r32")).toHaveLength(16);
+    expect(wc.ties.filter((t) => t.stage === "final")).toHaveLength(1);
+    const final = w.intl!.fixtures.find((f) => f.comp === "wc-2026" && f.stage === "final")!;
+    expect(final.day).toBe(worldCupDays(2026).final); // 19/jul
+    // convocados da Copa voltaram aos clubes
+    expect(Object.values(w.players).some((p) => p.away)).toBe(false);
     const h = w.intl!.honors.find((x) => x.comp === "wc" && x.season === 2026);
     expect(h).toBeTruthy();
     expect(w.intl!.nts[h!.winner].trophies.length).toBe(1);
