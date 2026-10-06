@@ -14,6 +14,7 @@ import { aiTalk, reactions, suggest, talkCtx, talkEffect, type Reaction, type Ta
 import { clubInjuryMult } from "./facilities";
 import { cornerQuality, freeKickXgFor, ROUTINES, takerFor } from "./setpieces";
 import { hasTrait } from "./traits";
+import { instructionFx, NEUTRAL_FX, plannedMentality, roleAt, roleEff, roleStars, type RoleDef, type TacticFx } from "./tactics";
 import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, World } from "./types";
 
 interface Side {
@@ -37,6 +38,10 @@ interface Side {
   captain?: number;
   mods: Map<number, PMods>; // efeitos de cada jogador nesta partida (matchmods.ts)
   sm: SideMult; // efeitos do time (refeitos em recompute)
+  fx: TacticFx; // instruções do time (tactics.ts)
+  roles: (RoleDef | null)[]; // função de cada slot (só o usuário define)
+  baseM: number; // mentalidade escolhida antes do jogo (as mudanças programadas partem dela)
+  manualM?: boolean; // o técnico mexeu na mentalidade durante o jogo: desliga as mudanças programadas
 }
 
 const SHOOT_W: Record<Pos, number> = { GOL: 0, ZAG: 0.12, LD: 0.12, LE: 0.12, VOL: 0.14, MC: 0.28, MEI: 0.5, PD: 0.55, PE: 0.55, ATA: 0.85 };
@@ -119,8 +124,9 @@ export class MatchSim {
         mentality: club.tactic.mentality, pressing: club.tactic.pressing, goals: 0,
         played: lineup.starters.filter((x): x is number => x !== null), rating: new Map(), yellows: new Set(),
         att: 0, mid: 0, def: 0, gk: 0, auto: this.userSide !== idx, captain: lineup.captain ?? club.setPieces?.cap,
-        mods: new Map(), sm: NEUTRAL_SIDE,
+        mods: new Map(), sm: NEUTRAL_SIDE, fx: NEUTRAL_FX, roles: [], baseM: club.tactic.mentality,
       };
+      side.roles = slots.map((pos, k) => roleAt(club.tactic, k, pos));
       for (const id of side.played) side.rating.set(id, 6.0);
       return side;
     };
@@ -180,32 +186,49 @@ export class MatchSim {
     for (let i = 0; i < 2; i++) {
       const s = this.sides[i];
       let d = 0, dw = 0, m = 0, mw = 0, a = 0, aw = 0, gk = 30, count = 0;
+      let d0 = 0, m0 = 0, a0 = 0, rd = 0, rm = 0, ra = 0; // pesos originais e ajustes das funções
       s.onPitch.forEach((id, k) => {
         if (id == null) return;
         count++;
         const p = this.player(id);
         const pos = s.slots[k];
-        const eff = ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100)) * this.pm(s, id).eff;
+        const role = this.roleOf(s, k);
+        const eff = ovrAt(p, pos) * (0.7 + 0.3 * (p.cond / 100)) * (0.97 + 0.06 * (p.morale / 100)) * this.pm(s, id).eff * this.pm(s, id).conf * (role ? roleEff(roleStars(p, role, pos)) : 1);
         if (pos === "GOL") gk = eff;
-        d += eff * DEF_W[pos]; dw += DEF_W[pos];
-        m += eff * MID_W[pos]; mw += MID_W[pos];
-        a += eff * ATT_W[pos]; aw += ATT_W[pos];
+        const wd = Math.max(0, DEF_W[pos] + (role?.d ?? 0)), wm = Math.max(0, MID_W[pos] + (role?.m ?? 0)), wa = Math.max(0, ATT_W[pos] + (role?.a ?? 0));
+        d0 += DEF_W[pos]; m0 += MID_W[pos]; a0 += ATT_W[pos];
+        if (role) { rd += role.d; rm += role.m; ra += role.a; }
+        d += eff * wd; dw += wd;
+        m += eff * wm; mw += wm;
+        a += eff * wa; aw += wa;
       });
-      const line = (sum: number, w: number, base: number) => (w > 0 ? (sum / w) * Math.pow(w / base, 0.3) : 30);
+      // funções mudam QUEM pesa em cada setor (média) e trocam força entre setores (±4%, soma zero);
+      // o tamanho do setor (pow) usa os pesos originais para a função não "criar" jogador a mais
+      const line = (sum: number, w: number, w0: number, base: number) => (w > 0 ? (sum / w) * Math.pow(w0 / base, 0.3) : 30);
+      const net = (rd + rm + ra) / 3;
+      const rk = (x: number) => clamp(1 + 0.06 * (x - net), 0.96, 1.04);
       const shortHanded = count < 11 ? Math.pow(0.93, 11 - count) : 1;
       const home = i === 0 && !this.f.neutral ? 1 : 0;
-      s.def = line(d, dw, BASE.def) * shortHanded * (1 - 0.03 * s.mentality) * (1 + 0.03 * home);
-      s.mid = line(m, mw, BASE.mid) * shortHanded * (1 + 0.025 * (s.pressing - 1)) * (1 + 0.03 * home);
-      s.att = line(a, aw, BASE.att) * shortHanded * (1 + 0.04 * s.mentality) * (1 + 0.07 * home);
+      s.def = line(d, dw, d0, BASE.def) * rk(rd) * shortHanded * (1 - 0.03 * s.mentality) * (1 + 0.03 * home);
+      s.mid = line(m, mw, m0, BASE.mid) * rk(rm) * shortHanded * (1 + 0.025 * (s.pressing - 1)) * (1 + 0.03 * home);
+      s.att = line(a, aw, a0, BASE.att) * rk(ra) * shortHanded * (1 + 0.04 * s.mentality) * (1 + 0.07 * home);
       // jogadas, entrosamento, foco do treino, turbo do admin e preleção (matchmods.ts)
       const sm = sideMult(this.w, this.f, s.club, s.slots, s.onPitch, this.sides[1 - i].mentality, s.mentality, s.captain);
       s.sm = sm;
+      // instruções do time (linha, largura, ritmo, passes, contrapressão, cera)
+      s.fx = s.club.tactic.ti ? instructionFx(this.w, s.club.tactic, s.slots, s.onPitch, s.goals - this.sides[1 - i].goals, this.minute) : NEUTRAL_FX;
       const k = commonFactor(sm, this.talk[i]);
-      s.def *= sm.def * k;
-      s.mid *= sm.mid * k;
-      s.att *= sm.att * k;
+      s.def *= sm.def * k * s.fx.def;
+      s.mid *= sm.mid * k * s.fx.mid;
+      s.att *= sm.att * k * s.fx.att;
       s.gk = gk * sm.gk + sm.gkPlus;
     }
+  }
+
+  /** Função do slot (a substituição de um goleiro de emergência pode trocar a posição). */
+  private roleOf(side: Side, k: number): RoleDef | null {
+    const r = side.roles[k];
+    return r && r.pos.includes(side.slots[k]) ? r : null;
   }
 
   private ev(e: MatchEvent) {
@@ -226,7 +249,8 @@ export class MatchSim {
       if (id == null || id === exclude) return;
       const p = this.player(id);
       ids.push(id);
-      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1));
+      const role = key === "shoot" || key === "assist" ? this.roleOf(side, k) : null;
+      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1) * (role ? role[key as "shoot" | "assist"] : 1));
     });
     if (!ids.length) return null;
     return pickWeighted(ids, ws);
@@ -276,12 +300,16 @@ export class MatchSim {
         for (const id of s.onPitch) {
           if (id == null) continue;
           const p = this.player(id);
-          const rate = 0.26 * (1.25 - (p.attrs.fis / 100) * 0.6) * (1 + 0.15 * (s.pressing - 1)) * this.pm(s, id).fatigue * s.sm.fatigue;
+          const role = this.roleOf(s, s.onPitch.indexOf(id));
+          const rate = 0.26 * (1.25 - (p.attrs.fis / 100) * 0.6) * (1 + 0.15 * (s.pressing - 1)) * this.pm(s, id).fatigue * s.sm.fatigue * s.fx.fatigue * (role?.fatigue ?? 1);
           p.cond = clamp(p.cond - rate * 5, 5, 100);
         }
       }
       this.recompute();
     }
+
+    // mudanças de mentalidade programadas (vencendo / perdendo na reta final)
+    if (min >= 60 && min % 5 === 0) this.plannedShifts();
 
     // posse de bola
     const pm = Math.pow(H.mid, 3);
@@ -294,7 +322,7 @@ export class MatchSim {
 
     // chance de finalização neste minuto
     const ratio = S.att / Math.max(20, O.def);
-    const openness = 1 + 0.06 * S.mentality + 0.03 * O.mentality;
+    const openness = (1 + 0.06 * S.mentality + 0.03 * O.mentality) * S.fx.open * O.fx.openAgainst;
     // estadual: quem vence por 2+ tira o pé e quem perde fecha a casinha (evita 10 x 0 contra os pequenos);
     // o 1,5 repõe o volume de chutes perdido na compressão (média ~2,6 gols/jogo)
     const lead = S.goals - O.goals;
@@ -329,7 +357,7 @@ export class MatchSim {
       const F = this.sides[foulSide];
       this.stats.fouls[foulSide]++;
       this.phase.foul = foulSide as 0 | 1;
-      if (chance(0.17)) this.card(foulSide, F);
+      if (chance(0.17 * F.fx.card)) this.card(foulSide, F);
       else if (foulSide === 1 - atk && chance(SET_PIECE.freeKick * S.sm.setPiece)) this.freeKick(atk);
       else if (this.live && chance(0.04)) this.ev({ min, type: "info", text: phrase("info", { t: S.club.name, p: this.name(this.pickOnPitch(S, ATT_W, "dri")) }) });
     }
@@ -354,7 +382,7 @@ export class MatchSim {
     if (shooter == null) return;
     const sp = this.player(shooter);
     const z = gauss(0, 1);
-    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg, 0.02, 0.6);
+    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg * S.fx.xg * O.fx.xgAgainst, 0.02, 0.6);
     const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter, 2, "assist") : null;
     const kind = hasTrait(sp, "CHF") && !hasTrait(sp, "MAT") ? "long" : undefined;
     this.finishShot(atk, shooter, assister, xg, kind);
@@ -378,7 +406,7 @@ export class MatchSim {
       if (id == null || id === taker) return;
       const p = this.player(id);
       ids.push(id);
-      ws.push(HEADER_W[S.slots[k]] * Math.pow(p.height / 185, 2) * Math.pow(p.attrs.fis / 70, 2) * this.pm(S, id).header);
+      ws.push(HEADER_W[S.slots[k]] * Math.pow(p.height / 185, 2) * Math.pow(p.attrs.fis / 70, 2) * this.pm(S, id).header * (this.roleOf(S, k)?.header ?? 1));
     });
     if (!ids.length) return;
     const shooter = pickWeighted(ids, ws);
@@ -604,7 +632,23 @@ export class MatchSim {
 
   setMentality(sideIdx: 0 | 1, m: number) {
     this.sides[sideIdx].mentality = clamp(m, -2, 2);
+    this.sides[sideIdx].manualM = true;
     this.recompute();
+  }
+
+  /** Mentalidade programada pelo técnico (Tática > mudanças no jogo). Não sorteia nada. */
+  private plannedShifts() {
+    let changed = false;
+    this.sides.forEach((s, i) => {
+      if (s.manualM || !s.club.tactic.shift) return;
+      const m = plannedMentality(s.club.tactic, s.baseM, s.goals - this.sides[1 - i].goals, this.minute);
+      if (m !== s.mentality) {
+        s.mentality = m;
+        changed = true;
+        if (this.live) this.ev({ min: this.minute, type: "info", side: i as 0 | 1, text: `📋 ${s.club.name} muda a postura: ${m > s.baseM ? "vai para cima" : m < s.baseM ? "fecha a casinha" : "volta ao plano inicial"}.` });
+      }
+    });
+    if (changed) this.recompute();
   }
 
   private lastWindowMin = [-10, -10];

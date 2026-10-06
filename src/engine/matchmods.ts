@@ -5,6 +5,9 @@
 import { adminCheats } from "./admin";
 import { isBigMatch } from "./common";
 import { chemOf } from "./dressing";
+import { linkMult, teamLinkAvg } from "./chemistry";
+import { confidenceMult } from "./form";
+import { famMult, familiarityOf } from "./tactics";
 import { H, hidOf } from "./personality";
 import { clamp, hashString, makeRng } from "./rng";
 import { staffStars } from "./staff";
@@ -15,6 +18,7 @@ import type { Club, Fixture, Player, Pos, World } from "./types";
 /** Multiplicadores de um jogador numa partida. */
 export interface PMods {
   eff: number; // forma do dia (rendimento)
+  conf: number; // confiança pela fase (rendimento)
   shoot: number; // peso para ser o finalizador
   assist: number; // peso para dar a assistência
   card: number; // peso para levar cartão
@@ -90,6 +94,7 @@ export function playerMods(w: World, f: Fixture, p: Player, isUser: boolean, big
   const fis = isUser ? staffStars(w, w.clubs[w.userClubId], "fis") : 3;
   return {
     eff: formOf(w, f, p, big),
+    conf: confidenceMult(p), // fase boa embala (form.ts); fora da nota para não virar bola de neve // fase boa embala (form.ts)
     shoot: mat ? 1.25 : chf && p.pos !== "ATA" ? 1.2 : 1,
     xg: mat ? 1.08 : chf ? 0.9 : 1,
     assist: t("GAR") ? 1.4 : 1,
@@ -126,12 +131,16 @@ export function sideMult(
     if (slots[k] === "GOL" && hasTrait(p, "MUR")) mur = true;
   });
   const chem = 1 + (0.04 * (chemOf(w, club) - 70)) / 100;
+  // entrosamento dos pares em campo e familiaridade com o sistema (só o usuário; IA = 1)
+  const pairs = isUser ? linkMult(teamLinkAvg(w, club, ids)) : 1;
+  const fam = isUser ? famMult(familiarityOf(w, club)) : 1;
+  const cap = captainMult(w, club, ids, captain);
   const fm = isUser ? focusMods(club) : { att: 1, def: 1, fatigue: 1, setPiece: 1, pen: 0 };
   const boost = isUser ? (adminCheats(w).boost ?? 0) : 0;
   const counter = oppMentality >= 1 || ownMentality <= -1;
   const b = 1 + boost;
   return {
-    common: chem * lid,
+    common: chem * lid * pairs * fam * cap,
     att: fm.att * (counter ? 1 + Math.min(0.03, 0.015 * nVel) : 1) * b,
     mid: b,
     def: fm.def * (1 + Math.min(0.02, 0.01 * nDes)) * b,
@@ -142,4 +151,18 @@ export function sideMult(
     penPlus: fm.pen,
     fatigue: fm.fatigue,
   };
+}
+
+/**
+ * Influência do capitão em campo: liderança (fama, tempo de casa, profissionalismo e temperamento).
+ * Pequena (−0,4% a +0,8%) e igual para todos os clubes.
+ */
+export function captainMult(w: World, _club: Club, ids: (number | null)[], captain?: number): number {
+  if (captain == null || !ids.includes(captain)) return 1;
+  const p = w.players[captain];
+  if (!p) return 1;
+  const h = hidOf(p);
+  const ten = Math.max(0, w.season - p.joined);
+  const lead = (p.fame - 40) / 60 + Math.min(ten, 6) / 6 + (h[H.pro] - 10) / 10 - Math.max(0, h[H.temp] - 14) / 6;
+  return clamp(1 + 0.003 * lead, 0.996, 1.008);
 }

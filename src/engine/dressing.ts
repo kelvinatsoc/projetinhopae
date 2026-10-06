@@ -3,6 +3,9 @@
 import { absDay } from "./common";
 import { defaultRole, ROLE_LABEL, ROLE_RANK, ROLE_SHARE, roleOf, seasonsAtClub } from "./contracts";
 import { addNews } from "./news";
+import { ensureLinks, growLinks, onLeaveLinks } from "./chemistry";
+import { addFan } from "./narrative";
+import { growFamiliarity } from "./tactics";
 import { H, hidOf } from "./personality";
 import { age } from "./player";
 import { chance, clamp } from "./rng";
@@ -45,6 +48,22 @@ export function afterUserMatch(w: World, f: Fixture, r: MatchResult, userIdx: 0 
     p.pt = [pt[0] + (on ? 1 : 0), pt[1] + 1];
   }
   addChem(club, 0.5);
+  // entrosamento entre pares e familiaridade com o sistema (chemistry.ts / tactics.ts)
+  const lu = r.lineups[userIdx];
+  growLinks(w, club, lu, lu.slice(0, 11));
+  growFamiliarity(club, 1.2);
+}
+
+/** Um jogador deixou o clube do usuário (venda, dispensa): entrosamento e torcida sentem. */
+export function onLeaveUserClub(w: World, p: Player) {
+  const club = w.clubs[w.userClubId];
+  if (!club) return;
+  onLeaveLinks(w, club, p);
+  if (p.fav) {
+    addFan(w, -6);
+    addNews(w, "dressing", `💔 Torcida protesta pela saída de ${p.name}`, `Ele era ídolo da arquibancada. O humor da torcida caiu.`, { pid: p.id });
+    delete p.fav;
+  }
 }
 
 /** Líderes do vestiário: fama, tempo de casa, idade e a jogada "Líder". */
@@ -104,6 +123,18 @@ export function monthlyMood(w: World) {
       }
     }
   }
+  // pedidos de quem está voando: valorização (contrato curto) ou um clube maior (ambicioso)
+  for (const p of userPlayers(w, club)) {
+    const hm = p.hm ?? 0;
+    if (hm < 2 || p.loan) continue;
+    const hid = hidOf(p);
+    if (hm === 2 && p.contractEnd <= w.season + 1) {
+      addNews(w, "contract", `📝 ${p.name} quer ser valorizado`, `Vivendo grande fase, ele espera uma renovação com aumento. Renove no perfil antes que outros clubes apareçam.`, { pid: p.id });
+    } else if (hm >= 3 && hid[H.amb] >= 15 && hid[H.loy] < 12 && club.rep < 75 && !p.wantsOut && age(p, w.season) <= 29) {
+      p.wantsOut = true;
+      addNews(w, "dressing", `🚀 ${p.name} quer dar um passo maior`, `Depois de ${hm} meses em alta, ele acha que merece um clube maior e pediu para ser negociado. Uma conversa ou um novo contrato pode segurar.`, { pid: p.id });
+    }
+  }
   // entrosamento
   addChem(club, 2 + tacticalChemBonus(club));
   // líderes
@@ -156,6 +187,9 @@ export function managerChanged(w: World) {
   const club = w.clubs[w.userClubId];
   if (!club) return;
   club.chem = 50;
+  for (const c of Object.values(w.clubs)) if (c.id !== club.id) { delete c.links; delete c.lastXI; delete c.tfam; }
+  delete club.links;
+  ensureLinks(w, club);
   for (const id of club.players) {
     const p = w.players[id];
     if (p) clearMood(p);

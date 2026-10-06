@@ -144,6 +144,12 @@ export interface Player {
   clause?: number; // multa rescisória
   goalBonus?: number;
   sellOn?: { club: string; pct: number };
+  // --- dinâmica (opcionais)
+  acad?: string; // clube onde foi formado
+  mr?: number; // soma das notas no mês (evolução pela forma)
+  px?: number; // acumulador de crescimento do potencial (fase espetacular)
+  hm?: number; // meses seguidos em alta
+  fav?: boolean; // ídolo da torcida
 }
 
 export type CrestPattern =
@@ -167,6 +173,21 @@ export interface Tactic {
   formation: string;
   mentality: number; // -2 (retranca) a +2 (tudo ao ataque)
   pressing: number; // 0 baixa, 1 média, 2 alta
+  // --- tática a fundo (opcionais; ausentes = neutro, ver tactics.ts)
+  ti?: Partial<TeamInstr>;
+  roles?: (string | null)[]; // função por slot da formação (RoleId)
+  preset?: string;
+  shift?: { lead?: number; leadMin?: number; trail?: number; trailMin?: number }; // mentalidade programada
+}
+
+/** Instruções do time: 0/1/2 (1 = normal). */
+export interface TeamInstr {
+  line: number; // linha defensiva: recuada / normal / adiantada
+  width: number; // largura
+  tempo: number; // ritmo
+  direct: number; // passes curtos / mistos / diretos
+  cpress: boolean; // contrapressão
+  waste: boolean; // fazer cera quando estiver vencendo
 }
 
 export interface Lineup {
@@ -211,6 +232,9 @@ export interface Club {
   youthCoach?: number; // formação da base 1-5 (padrão: youthLevel)
   train?: { focus: TeamFocus; int: 0 | 1 | 2 };
   chem?: number; // entrosamento 0-100
+  tfam?: Record<string, number>; // familiaridade tática por formação 0-100 (só o usuário)
+  links?: Record<string, number>; // entrosamento entre pares "a-b" (parte construída em campo, só o usuário)
+  lastXI?: number[]; // titulares do último jogo (rodízio demais atrasa o entrosamento)
   expansions?: number;
   loanedOut?: number[];
   // --- economia e dia de jogo (Trilha C, opcionais)
@@ -373,6 +397,7 @@ export interface SeasonSummary {
   userDiv?: Div;
   topScorer?: { pid: number; name: string; goals: number; clubId: string };
   bestPlayer?: { pid: number; name: string; clubId: string; rating: number };
+  revelation?: { pid: number; name: string; clubId: string; rating: number; age: number };
 }
 
 // ---------------------------------------------------------------- progressão (troféus, conquistas, desafios, carreira)
