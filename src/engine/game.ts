@@ -3,7 +3,6 @@ import { applyDerbyOutcome } from "./narrative";
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
 import { achievementsAfterMatch } from "./achievements";
 import { adminCheats } from "./admin";
-import { projectTick } from "./board";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
 import { goalBonuses } from "./contracts";
@@ -172,7 +171,6 @@ function dailyTick(w: World) {
   trainingDaily(w);
   peneiraTick(w);
   scoutTick(w);
-  projectTick(w);
   if (d === 90 || d === 243) addNews(w, "transfer", "Janela de transferências fechada", "Agora só é possível contratar jogadores livres.");
   if (d === 181) addNews(w, "transfer", "Janela de transferências aberta", "A janela do meio do ano vai até 31 de agosto.");
   if (d === 300) {

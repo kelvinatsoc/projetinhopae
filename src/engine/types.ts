@@ -37,7 +37,6 @@ export interface StaffMember { id: number; role: StaffRole; name: string; nat: s
 export type IntakeQuality = "fraca" | "normal" | "boa" | "dourada";
 export interface PlayerLoan { from: string; until: number; half?: boolean; wagePct: number; opt?: number; since: number }
 export interface PlayerPromise { until: number; base: [number, number] }
-export interface BoardProject { kind: "stadium" | "ct" | "yfac" | "yrec" | "ycoach"; start: number; done: number; add?: number; cost: number }
 export interface ScoutMission { id: number; region: string; focus: "young" | "ready" | "cheap"; until: number; next: number }
 export interface ScoutState { k: Record<number, number>; queue: number[]; missions: ScoutMission[]; recs: number[] }
 export interface AdminCheats {
@@ -212,7 +211,6 @@ export interface Club {
   youthCoach?: number; // formação da base 1-5 (padrão: youthLevel)
   train?: { focus: TeamFocus; int: 0 | 1 | 2 };
   chem?: number; // entrosamento 0-100
-  proj?: BoardProject[];
   expansions?: number;
   loanedOut?: number[];
   // --- economia e dia de jogo (Trilha C, opcionais)

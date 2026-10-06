@@ -368,6 +368,7 @@ export function CreditsScreen() {
         <p>Elencos, estádios e datas: <b>Wikipedia</b> (CC BY-SA) e <b>Wikidata</b> (CC0).</p>
         <p className="mt8">Fotos de jogadores e estádios: <b>Wikimedia Commons</b>, com licenças livres. Cada autor está listado abaixo.</p>
         <p className="mt8">Fotos: <b>TheSportsDB.com</b> (carregadas da internet quando há conexão).</p>
+        <p className="mt8">Retratos dos elencos: <b>ogol.com.br</b> e <b>site oficial do São Paulo FC</b> (uso pessoal).</p>
         <p className="mt8">Rostos dos jogadores criados pelo jogo (regens): pessoas que não existem, geradas por IA (StyleGAN, thispersondoesnotexist.com).</p>
         <p className="mt8">Escudos, logos e uniformes são marcas dos respectivos clubes e entidades. Logos de competições (CBF, CONMEBOL, federações estaduais), de fornecedoras de material e de patrocinadores, assim como nomes de veículos de imprensa e emissoras, são marcas registradas dos seus donos, usadas aqui sem autorização ou vínculo. Este é um projeto pessoal, sem fins lucrativos e não publicado.</p>
       </div>

@@ -270,7 +270,7 @@ function ClubTab() {
         <Slider label="Capacidade do estádio" value={draft.capacity} min={1000} max={120000} step={500} fmt={(v) => v.toLocaleString("pt-BR")} onChange={(v) => setDraft({ ...draft, capacity: v })} />
         <Slider label="Ingresso médio" value={draft.ticket} min={5} max={300} fmt={(v) => `R$ ${v}`} onChange={(v) => setDraft({ ...draft, ticket: v })} />
         {dirty && <button className="btn primary block mt8" onClick={() => run((x) => adminClub(x, c.id, draft))}>Aplicar</button>}
-        <button className="btn sm block mt8" disabled={!c.proj?.length} onClick={() => run((x) => adminFinishProjects(x, c.id))}>⚡ Concluir obras agora{c.proj?.length ? ` (${c.proj.length})` : ""}</button>
+        <button className="btn sm block mt8" disabled={!c.fac?.builds.length} onClick={() => run((x) => adminFinishProjects(x, c.id))}>⚡ Concluir obras agora{c.fac?.builds.length ? ` (${c.fac.builds.length})` : ""}</button>
       </div>
 
       {isUser && (

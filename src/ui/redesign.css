@@ -122,28 +122,28 @@ h3 {
   color: var(--club-ink);
   box-shadow: 0 10px 30px color-mix(in srgb, var(--club) 45%, transparent), 0 0 0 4px color-mix(in srgb, var(--club) 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.5);
   transition: transform 0.15s var(--ease);
-  animation: fab-in 0.45s var(--ease) both, fab-glow 2.6s ease-in-out 0.5s infinite;
+  animation: fab-in 0.18s ease-out backwards, fab-glow 2.6s ease-in-out 0.5s infinite;
 }
 .fab:active { transform: translateX(-50%) scale(0.94); }
 .fab small { font-family: system-ui, sans-serif; font-size: 11px; font-weight: 700; text-transform: none; letter-spacing: 0; opacity: 0.75; }
-@keyframes fab-in { from { opacity: 0; transform: translate(-50%, 30px) scale(0.8); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes fab-in { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translateX(-50%); } }
 @keyframes fab-glow {
   0%, 100% { box-shadow: 0 10px 30px color-mix(in srgb, var(--club) 45%, transparent), 0 0 0 4px color-mix(in srgb, var(--club) 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.5); }
   50% { box-shadow: 0 10px 36px color-mix(in srgb, var(--club) 65%, transparent), 0 0 0 9px color-mix(in srgb, var(--club) 6%, transparent), inset 0 1px 0 rgba(255,255,255,0.5); }
 }
 
 /* ---------- transição entre telas ---------- */
-.screen { animation: screen-in 0.32s var(--ease) both; }
-.screen.from-tab { animation-name: screen-fade; }
-@keyframes screen-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
-@keyframes screen-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* Só opacidade: um transform na tela vira bloco de contenção dos filhos position:fixed
+   (FAB, folhas, modais), que pulavam durante a animação. Curta e sem quadro em branco. */
+.screen { animation: screen-in 0.16s ease-out; }
+.screen.from-tab { animation-duration: 0.12s; }
+@keyframes screen-in { from { opacity: 0.35; } to { opacity: 1; } }
 
 /* ---------- blocos básicos ---------- */
 .page { padding: 14px; gap: 14px; }
 .card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 14px; box-shadow: var(--shadow);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .card.tap, .tap { transition: transform 0.15s var(--ease); }
 .card.tap:active, .tile:active { transform: scale(0.97); }
@@ -170,17 +170,16 @@ h3 {
 .ovr { font-family: var(--display); font-size: 17px; border-radius: 10px; }
 .hero { border-radius: 24px; }
 .tbl tr.me td { background: color-mix(in srgb, var(--club) 22%, transparent); }
-.sheet { border-radius: 26px 26px 0 0; background: var(--bg2); animation: sheet-up 0.3s var(--ease); }
+.sheet { border-radius: 26px 26px 0 0; background: var(--bg2); animation: sheet-up 0.2s var(--ease); }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 
 .toast {
   bottom: auto; top: calc(var(--top-h) + 12px + env(safe-area-inset-top));
   border-radius: 18px; padding: 12px 18px;
-  background: color-mix(in srgb, var(--bg2) 88%, transparent);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--bg2) 96%, transparent);
   border: 1px solid color-mix(in srgb, var(--club) 45%, transparent);
   box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-  animation: toast-in 0.35s var(--ease);
+  animation: toast-in 0.18s var(--ease);
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, -20px) scale(0.95); } to { opacity: 1; transform: translateX(-50%); } }
 
@@ -232,8 +231,8 @@ h3 {
 .match-hero .mh-info { display: flex; gap: 10px; font-size: 12px; opacity: 0.85; justify-content: center; flex-wrap: wrap; }
 .match-hero .mh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .match-hero .mh-actions button {
-  min-height: 44px; border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; background: rgba(0,0,0,0.35);
-  color: #fff; font-weight: 700; cursor: pointer; backdrop-filter: blur(6px); transition: transform 0.15s var(--ease);
+  min-height: 44px; border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; background: rgba(0,0,0,0.5);
+  color: #fff; font-weight: 700; cursor: pointer; transition: transform 0.15s var(--ease);
 }
 .match-hero .mh-actions button:active { transform: scale(0.95); }
 
@@ -383,8 +382,7 @@ h3 {
 .action-dock {
   position: sticky; z-index: 5; bottom: calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));
   padding: 8px; border-radius: 22px; border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg2) 85%, transparent);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--bg2) 95%, transparent);
 }
 
 /* estados vazios convidativos */
@@ -424,3 +422,12 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Menos movimento: sem animações de entrada nem escala ao tocar */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* Telas cheias (partida, coletiva): sem barra superior, o aviso cobria o placar.
+   Desce para a parte de baixo, acima do botão de ação. */
+.app.no-chrome .toast { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); }

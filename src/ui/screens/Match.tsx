@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { formatDate } from "../../engine/calendar";
 import { COMP_META, fixtureById, STAGE_NAMES, tieAggregate } from "../../engine/competitions";
 import { finishUserMatch, loadRng, saveRng } from "../../engine/game";
@@ -15,8 +16,12 @@ import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
 import { Pitch } from "./Squad";
+import { CompBumper, CompHeader } from "../CompTheme";
+import { compTheme, themeClass, themeVars } from "../compThemes";
+import { haptic } from "../haptics";
 import "../talk.css";
 import "../narrative.css";
+import "../matchday.css";
 import { derbyIntensity, derbyName } from "../../data/rivalries";
 import { pressDone } from "../../engine/press";
 
@@ -91,14 +96,14 @@ export function PreMatchScreen() {
   const mine = Math.round(lineupStrength(w, user, myLineup));
   const theirs = Math.round(lineupStrength(w, opp, oppLineup));
   const out = user.players.map((id) => w.players[id]).filter((p) => p && !p.youth && (p.injury > 0 || (p.bans[f.comp] ?? 0) > 0));
-  const meta = COMP_META[f.comp];
+  const theme = compTheme(f.comp, COMP_META[f.comp]?.color);
   const tie = f.tie ? w.comps[f.comp].ties.find((t) => t.id === f.tie) : undefined;
   const agg = tie && f.leg === 2 ? tieAggregate(w, tie) : null;
 
   return (
     <div className="page">
-      <div className="hero" style={{ background: `linear-gradient(135deg, ${meta.color}, #0b1a12)` }}>
-        <div className="row small gap8"><CompLogo id={f.comp} size={22} /><span><b>{meta.name}</b> · {stageLabel(w, f)}</span></div>
+      <CompHeader id={f.comp} title={COMP_META[f.comp]?.short} sub={`${stageLabel(w, f)}${theme.motto ? ` · ${theme.motto}` : ""}`} />
+      <div className={`hero ct-hero ${themeClass(theme)}`} style={themeVars(theme)}>
         <div className="row" style={{ justifyContent: "space-around", margin: "12px 0" }}>
           {[f.home, f.away].map((id) => (
             <div key={id} className="col center" style={{ alignItems: "center", width: 130 }}>
@@ -143,11 +148,10 @@ export function PreMatchScreen() {
         <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}>🎤 Coletiva pré-jogo (opcional)</button>
       )}
 
-      <div className="grid2 action-dock">
-        <button className="btn" onClick={() => goToMatch(true)}>⏩ Rápido</button>
-        <button className="btn primary" onClick={() => goToMatch(false)}>▶ Jogar</button>
-      </div>
-      <div style={{ height: 20 }} />
+      {createPortal(<div className="pm-dock" role="toolbar" aria-label="Começar a partida">
+        <button className="btn lg" onClick={() => { haptic("tap"); goToMatch(true); }}>⏩ Rápido</button>
+        <button className="btn primary lg" onClick={() => { haptic("success"); goToMatch(false); }}>▶ Jogar</button>
+      </div>, document.body)}
     </div>
   );
 }
@@ -159,6 +163,26 @@ function scoreName(c: { name: string; abbr: string }) {
 
 const SPEEDS = [{ l: "1x", ms: 650 }, { l: "2x", ms: 320 }, { l: "4x", ms: 120 }, { l: "8x", ms: 45 }];
 const FIELD_KEY = "ldb.matchField";
+const SPEED_KEY = "ldb.matchSpeed";
+const FEED_KEY = "ldb.matchFeed";
+
+/** Última velocidade usada (índice em SPEEDS ou "hl" = melhores momentos). */
+function readSpeed(): { i: number; hl: boolean } {
+  try {
+    const v = localStorage.getItem(SPEED_KEY);
+    if (v === "hl") return { i: 0, hl: true };
+    const n = Number(v);
+    return { i: n >= 0 && n < SPEEDS.length ? n : 0, hl: false };
+  } catch {
+    return { i: 0, hl: false };
+  }
+}
+function saveSpeed(v: number | "hl") {
+  try { localStorage.setItem(SPEED_KEY, String(v)); } catch { /* sem armazenamento */ }
+}
+function readFeedOpen(): boolean {
+  try { return localStorage.getItem(FEED_KEY) !== "0"; } catch { return true; }
+}
 const HIGHLIGHT_MS = 650; // nos melhores momentos cada lance roda na velocidade 1x
 const INTRO_MS = 2600;
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
@@ -185,7 +209,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const simRef = useRef<MatchSim | null>(null);
   const [tick, setTick] = useState(0);
   const [result, setResult] = useState<MatchResult | null>(null);
-  const [speed, setSpeed] = useState(0); // começa sempre em 1x; o jogador acelera se quiser
+  const [speed, setSpeed] = useState(() => readSpeed().i); // lembra a última velocidade usada
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
   const [subs, setSubs] = useState(false);
@@ -198,7 +222,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [cine, setCine] = useState(false); // cena de lance decisivo na tela (relógio segura)
   const cineRef = useRef(false);
   cineRef.current = cine;
-  const [hl, setHl] = useState(false); // "só os melhores momentos": pula direto para o próximo lance importante
+  const [hl, setHl] = useState(() => readSpeed().hl);
+  const [bumper, setBumper] = useState(!quick);
+  const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
   const [gfx, setGfx] = useState<GraphicsMode>(() => readGraphics());
   const headRef = useRef<HTMLDivElement>(null);
   const celebrated = useRef(new Set<MatchEvent>());
@@ -291,7 +317,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   // abertura (estádio + escudos) e apito inicial
   useEffect(() => {
-    if (quick) return;
+    if (quick || bumper) return;
     if (intro) {
       const t = window.setTimeout(() => setIntro(false), INTRO_MS);
       return () => window.clearTimeout(t);
@@ -300,11 +326,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       started.current = true;
       if (soundEnabled()) whistle(1);
     }
-  }, [intro]);
+  }, [intro, bumper]);
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs || intro || hold || halfSheet || cine) return;
+    if (!sim || quick || paused || result || subs || intro || bumper || hold || halfSheet || cine) return;
     const t = window.setInterval(() => {
       let evs = sim.step();
       if (hl) {
@@ -337,7 +363,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       setTick((x) => x + 1);
     }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, intro, hold, halfSheet, hl, cine]);
+  }, [sim, speed, paused, result, subs, intro, bumper, hold, halfSheet, hl, cine]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -348,18 +374,28 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const showField = field && !quick;
   const awayBar = visibleColor(A.club.colors) === visibleColor(H.club.colors) ? "#9aa5a0" : visibleColor(A.club.colors);
 
+  const theme = compTheme(f.comp, COMP_META[f.comp]?.color);
+  const over = !!result || sim.finished;
+  const skipToEnd = () => { haptic("tap"); setIntro(false); setBumper(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); };
+  const pickSpeed = (i: number) => { setHl(false); setSpeed(i); saveSpeed(i); };
+  const toggleHl = () => { setHl((x) => { saveSpeed(x ? speed : "hl"); return !x; }); };
+  const cycleGfx = () => { const m = gfx === "leve" ? "ultra" : gfx === "ultra" ? "ps1" : "leve"; setGfx(m); saveGraphics(m); };
+  const goOn = () => { haptic("success"); forceBack(); };
+  const toggleFeed = () => setFeedOpen((o) => { try { localStorage.setItem(FEED_KEY, o ? "0" : "1"); } catch { /* */ } return !o; });
+
   return (
-    <div style={{ minHeight: "100vh", paddingBottom: 90 }}>
-      <div className="mv-head" ref={headRef}>
+    <div className={`mx${over ? " mx-over" : ""}${showField ? " mx-field" : ""}`}>
+      {bumper && <CompBumper id={f.comp} onDone={() => setBumper(false)} />}
+      <div className={`mv-head ct-frame ${themeClass(theme)}`} style={themeVars(theme)} ref={headRef}>
         <div className="mv-topline">
-          <span className="small muted ellipsis">{COMP_META[f.comp].short} · {stageLabel(w, f)}</span>
+          <span className="small ellipsis"><CompLogo id={f.comp} size={14} /> {COMP_META[f.comp].short} · {stageLabel(w, f)}</span>
           {!quick && (
             <div className="mv-toggle" role="group" aria-label="Como acompanhar o jogo">
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}>📺 Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}>📜 Lances</button>
               {field && (
-                <button aria-pressed={gfx === "ultra"} title="Gráficos" onClick={() => { const m = gfx === "ultra" ? "leve" : "ultra"; setGfx(m); saveGraphics(m); }}>
-                  {gfx === "ultra" ? "✨ Ultra" : "🪶 Leve"}
+                <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → Retrô PS1" onClick={cycleGfx}>
+                  {gfx === "ultra" ? "✨ Ultra" : gfx === "ps1" ? "📼 PS1" : "🪶 Leve"}
                 </button>
               )}
             </div>
@@ -370,16 +406,34 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           <div className="center">
             <div className="score kbd">{H.goals} : {A.goals}</div>
             {sim.pens && <div className="small">pên. {sim.pens[0]} × {sim.pens[1]}</div>}
-            <span className="minute">{result || sim.finished ? "Fim" : sim.minute === 0 ? "0'" : sim.half === 2 && sim.minute === 45 ? "Intervalo" : sim.displayMinute()}</span>
+            <span className="minute">{over ? "Fim" : sim.minute === 0 ? "0'" : sim.half === 2 && sim.minute === 45 ? "Intervalo" : sim.displayMinute()}</span>
           </div>
           <div className="team"><Crest club={A.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(A.club)}</span></div>
         </div>
-        <div className={showField ? "mv-momentum" : ""} style={showField ? undefined : { padding: "0 12px 10px" }}>
+        <div className="mv-momentum">
           <div className="momentum">
             <i style={{ width: `${poss0}%`, background: visibleColor(H.club.colors) }} />
             <i style={{ width: `${100 - poss0}%`, background: awayBar }} />
           </div>
-          <div className={`row tiny muted${showField ? "" : " mt8"}`}><span>Posse {poss0}%</span><span className="right">{100 - poss0}%</span></div>
+        </div>
+        {/* barra de controle fixa logo abaixo do placar: nunca precisa rolar */}
+        <div className="mv-ctrl" role="toolbar" aria-label="Controles da partida">
+          {over ? (
+            <>
+              <button className="btn sm" onClick={() => replace({ name: "press", fid: f.id, phase: "post" })}>🎤 Coletiva</button>
+              <button className="btn primary grow mv-go" onClick={goOn}>Continuar ▶</button>
+            </>
+          ) : (
+            <>
+              <button className="btn sm mv-pp" aria-label={paused ? "Retomar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
+              <div className="seg grow mv-speeds">
+                {SPEEDS.map((sp, i) => <button key={sp.l} className={!hl && speed === i ? "active" : ""} onClick={() => pickSpeed(i)}>{sp.l}</button>)}
+                <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={toggleHl}>⭐</button>
+                <button aria-label="Pular para o resultado" title="Resultado" onClick={skipToEnd}>⏭</button>
+              </div>
+              <button className="btn sm" aria-label="Tática e substituições" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
+            </>
+          )}
         </div>
         {showField && (
           <MatchView
@@ -387,71 +441,64 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             tick={tick}
             msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
             ultra={gfx === "ultra"}
+            ps1={gfx === "ps1"}
             paused={(paused || subs) && !result}
-            intro={intro}
+            intro={intro && !bumper}
             goalHold={hl || speed <= 1}
             onGoal={celebrate}
             onBeat={beat}
             onSkipIntro={() => setIntro(false)}
             onCinema={setCine}
+            hudFrame={[theme.base, theme.primary]}
           />
         )}
       </div>
 
-      <DerbyBanner home={f.home} away={f.away} />
+      <div className="mx-side">
+        <DerbyBanner home={f.home} away={f.away} />
 
-      {flash && !result && !sim.finished && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+        {/* No PS1 o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
+        {flash && !over && !(showField && gfx === "ps1") && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
-      {!quick && !result && !sim.finished && (
-        <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>
-          <LiveAdvice sim={sim} side={userSide} onApplied={() => setTick((x) => x + 1)} />
-        </div>
-      )}
-
-      <div className="page">
-        <div className="seg">
-          <button className={view === "feed" ? "active" : ""} onClick={() => setView("feed")}>Lances</button>
-          <button className={view === "stats" ? "active" : ""} onClick={() => setView("stats")}>Estatísticas</button>
-          <button className={view === "teams" ? "active" : ""} onClick={() => setView("teams")}>Times</button>
-        </div>
-
-        {result && <PostMatchCard w={w} f={f} r={result} label={resultLabel(w, f, result)} />}
-
-        {view === "feed" && (
-          <div className="feed">
-            {events.map((e, i) => (
-              <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
-                <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
-                {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
-                <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
-              </div>
-            ))}
-            {!events.length && <div className="empty">A bola vai rolar…</div>}
+        {!quick && !over && (
+          <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>
+            <LiveAdvice sim={sim} side={userSide} onApplied={() => setTick((x) => x + 1)} />
           </div>
         )}
-        {view === "stats" && <StatsTable sim={sim} />}
-        {view === "teams" && <TeamsView sim={sim} w={w} />}
-      </div>
 
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 15, background: "var(--bg2)", borderTop: "1px solid var(--line)", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))" }}>
-        <div style={{ maxWidth: 536, margin: "0 auto" }}>
-          {result ? (
-            <div className="row gap8">
-              <button className="btn" style={{ flex: 1 }} onClick={() => replace({ name: "press", fid: f.id, phase: "post" })}>🎤 Coletiva</button>
-              <button className="btn primary" style={{ flex: 1 }} onClick={() => { forceBack(); }}>Continuar</button>
+        <div className="page">
+          {result && <PostMatchCard w={w} f={f} r={result} label={resultLabel(w, f, result)} />}
+
+          <div className="row gap8">
+            <div className="seg grow">
+              <button className={view === "feed" ? "active" : ""} onClick={() => { setView("feed"); if (!feedOpen) toggleFeed(); }}>Lances</button>
+              <button className={view === "stats" ? "active" : ""} onClick={() => { setView("stats"); if (!feedOpen) toggleFeed(); }}>Estatísticas</button>
+              <button className={view === "teams" ? "active" : ""} onClick={() => { setView("teams"); if (!feedOpen) toggleFeed(); }}>Times</button>
             </div>
-          ) : (
-            <div className="row gap8">
-              <button className="btn sm" aria-label={paused ? "Continuar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
-              <div className="seg grow">
-                {SPEEDS.map((s, i) => <button key={s.l} className={!hl && speed === i ? "active" : ""} onClick={() => { setHl(false); setSpeed(i); }}>{s.l}</button>)}
-                <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={() => setHl((x) => !x)}>⭐</button>
-              </div>
-              <button className="btn sm" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
-              <button className="btn sm" aria-label="Pular para o fim" onClick={() => { setIntro(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); }}>⏭</button>
+            <button className="btn sm" aria-expanded={feedOpen} aria-label={feedOpen ? "Recolher" : "Expandir"} onClick={toggleFeed}>{feedOpen ? "▴" : "▾"}</button>
+          </div>
+
+          {feedOpen && view === "feed" && (
+            <div className="feed">
+              {events.map((e, i) => (
+                <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
+                  <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
+                  {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
+                  <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
+                </div>
+              ))}
+              {!events.length && <div className="empty">A bola vai rolar…</div>}
             </div>
           )}
+          {feedOpen && view === "stats" && <StatsTable sim={sim} />}
+          {feedOpen && view === "teams" && <TeamsView sim={sim} w={w} />}
         </div>
+
+        {over && (
+          <div className="sticky-cta mx-cta">
+            <button className="btn primary block lg" onClick={goOn}>Continuar ▶</button>
+          </div>
+        )}
       </div>
 
       {halfSheet && !result && !subs && (

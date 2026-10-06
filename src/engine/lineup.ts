@@ -25,10 +25,16 @@ const selectScore = (p: Player, pos: Parameters<typeof ovrAt>[1], rotate: boolea
 };
 
 /** Melhor escalação para uma formação (atribuição gulosa jogador x posição). */
-export function autoLineup(w: World, club: Club, compId?: string, formation = club.tactic.formation, rotate = true): Lineup {
+export function autoLineup(
+  w: World, club: Club, compId?: string, formation = club.tactic.formation, rotate = true,
+  opts?: { exclude?: Set<number>; youthBonus?: number },
+): Lineup {
   const slots = FORMATIONS[formation] ?? FORMATIONS["4-3-3"];
-  let pool = squadOf(w, club).filter((p) => isAvailable(p, compId));
-  if (pool.length < 14) pool = squadOf(w, club, true).filter((p) => isAvailable(p, compId));
+  const ex = opts?.exclude;
+  let pool = squadOf(w, club, !!ex).filter((p) => isAvailable(p, compId) && !ex?.has(p.id));
+  if (pool.length < 14) pool = squadOf(w, club, true).filter((p) => isAvailable(p, compId) && !ex?.has(p.id));
+  if (pool.length < 14 && ex) pool = squadOf(w, club, true).filter((p) => isAvailable(p, compId)); // sem gente: ninguém descansa
+  const yb = opts?.youthBonus ?? 0;
   // nota de cada jogador por posição, calculada uma vez só (formações repetem posições)
   const n = pool.length;
   const byPos = new Map<string, Float64Array>();
@@ -36,7 +42,7 @@ export function autoLineup(w: World, club: Club, compId?: string, formation = cl
     let scores = byPos.get(slot.pos);
     if (!scores) {
       scores = new Float64Array(n);
-      for (let i = 0; i < n; i++) scores[i] = selectScore(pool[i], slot.pos, rotate);
+      for (let i = 0; i < n; i++) scores[i] = selectScore(pool[i], slot.pos, rotate) + (pool[i].youth ? yb : 0);
       byPos.set(slot.pos, scores);
     }
     return scores;

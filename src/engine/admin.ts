@@ -2,7 +2,7 @@
 // Toda operação passa por markAdmin (marca a temporada com 🛠️) e nunca lança erro:
 // entrada inválida devolve { ok: false } sem mexer no mundo.
 import { LEGEND_BY_ID, type LegendDef } from "../data/legends";
-import { finishAllProjects } from "./board";
+import { finishAllBuilds } from "./facilities";
 import { inWindow } from "./calendar";
 import { sortTable } from "./competitions";
 import { withWorldRng } from "./common";
@@ -213,7 +213,8 @@ export function adminAllStaffFive(w: World): AdminResult {
 }
 
 export function adminFinishProjects(w: World, clubId = w.userClubId): AdminResult {
-  const n = finishAllProjects(w, clubId);
+  const c = w.clubs[clubId];
+  const n = c ? finishAllBuilds(c) : 0;
   if (!n) return fail("Não há obras em andamento.");
   return markAdmin(w, `${n} obra${n > 1 ? "s" : ""} concluída${n > 1 ? "s" : ""} na hora`);
 }
