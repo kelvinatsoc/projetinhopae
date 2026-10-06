@@ -2,6 +2,7 @@
 import { Capacitor } from "@capacitor/core";
 import type { World } from "./engine/types";
 import { toast } from "./store";
+import { encodeWorld, readRecord } from "./savePack";
 
 const DB_NAME = "lendas-da-base";
 const STORE = "saves";
@@ -56,7 +57,9 @@ export function metaOf(w: World): SaveMeta {
 }
 
 export async function saveWorld(w: World): Promise<void> {
-  await tx(STORE, "readwrite", (s) => s.put({ id: w.saveId, world: w }));
+  // formato compacto (jogadores em colunas + gzip); saves antigos ({ world }) continuam sendo lidos
+  const packed = await encodeWorld(w);
+  await tx(STORE, "readwrite", (s) => s.put({ id: w.saveId, ...packed }));
   await tx("meta", "readwrite", (s) => s.put(metaOf(w)));
   try {
     localStorage.setItem("lastSave", w.saveId);
@@ -66,8 +69,8 @@ export async function saveWorld(w: World): Promise<void> {
 }
 
 export async function loadWorld(id: string): Promise<World | null> {
-  const rec = await tx<{ id: string; world: World } | undefined>(STORE, "readonly", (s) => s.get(id));
-  return rec?.world ?? null;
+  const rec = await tx<{ id: string; world?: World; fmt?: string; data?: unknown } | undefined>(STORE, "readonly", (s) => s.get(id));
+  return readRecord(rec);
 }
 
 export async function listSaves(): Promise<SaveMeta[]> {
