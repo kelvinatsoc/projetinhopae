@@ -73,6 +73,7 @@ export type Route =
   | { name: "trophies" }
   | { name: "achievements" }
   | { name: "career" }
+  | { name: "compare"; ids: number[] }
   | { name: "sponsors" }
   | { name: "facilities" }
   | { name: "setpieces" };

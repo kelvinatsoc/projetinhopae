@@ -21,6 +21,7 @@ import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
 import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
 import { PlayerScreen } from "./screens/Player";
+import { CompareScreen } from "./Compare";
 import { SquadScreen, TacticsScreen } from "./screens/Squad";
 import { StartScreen } from "./screens/Start";
 import { AdminScreen } from "./screens/Admin";
@@ -65,6 +66,7 @@ function routeTitle(r: Route): string {
     case "trophies": return "Sala de troféus";
     case "achievements": return "Conquistas";
     case "career": return "Carreira";
+    case "compare": return "Comparar jogadores";
     case "sponsors": return "Patrocínios";
     case "facilities": return "Estrutura";
     case "setpieces": return "Bola parada";
@@ -187,6 +189,7 @@ export function App() {
       case "trophies": content = <TrophyRoomScreen />; break;
       case "achievements": content = <AchievementsScreen />; break;
       case "career": content = <CareerScreen />; break;
+      case "compare": content = <CompareScreen ids={top.ids} />; break;
       case "sponsors": content = <SponsorsScreen />; break;
       case "facilities": content = <FacilitiesScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { CompareIconBtn } from "../Compare";
 import { userWindowOpen } from "../../engine/admin";
 import { windowLabel } from "../../engine/calendar";
 import { formatMoney } from "../../engine/finance";
@@ -86,7 +87,7 @@ function Search() {
         <div className="list">
           {results.map((p) => (
             <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-              right={<span className="small muted" style={{ whiteSpace: "nowrap" }}>{formatMoney(playerValue(p, w.season))}</span>} />
+              right={<><CompareIconBtn p={p} withStarter /><span className="small muted" style={{ whiteSpace: "nowrap" }}>{formatMoney(playerValue(p, w.season))}</span></>} />
           ))}
         </div>
         {!results.length && <div className="empty">Nenhum jogador encontrado com esses filtros.</div>}
@@ -149,7 +150,7 @@ function Shortlist() {
       <div className="list">
         {list.map((p) => (
           <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-            right={<span className="small muted">{formatMoney(playerValue(p, w.season))}</span>} />
+            right={<><CompareIconBtn p={p} withStarter /><span className="small muted">{formatMoney(playerValue(p, w.season))}</span></>} />
         ))}
       </div>
       {!list.length && <div className="empty">Toque em “Observar” no perfil de um jogador para acompanhá-lo aqui.</div>}
@@ -165,7 +166,7 @@ function LegendsMarket() {
       <div className="list">
         {list.map((p) => (
           <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-            right={<span className="small muted">{formatMoney(playerValue(p, w.season))}</span>} />
+            right={<><CompareIconBtn p={p} withStarter /><span className="small muted">{formatMoney(playerValue(p, w.season))}</span></>} />
         ))}
       </div>
       {!list.length && <div className="empty">Nenhuma lenda renascida em outros clubes ainda. Elas aparecem nas bases a partir do fim de janeiro.</div>}
