@@ -238,13 +238,10 @@ export function monthlyTraining(w: World) {
   // só o clube do usuário tem plano de treino (limpa sobras de um clube antigo)
   for (const c of Object.values(w.clubs)) if (c.train && c.id !== w.userClubId) delete c.train;
   const moves: { p: Player; d: number }[] = [];
-<<<<<<< HEAD
   // jogadores de ligas do exterior evoluem só a cada trimestre (desempenho)
   const quarter = monthOf(w.season, w.day) % 3 === 0;
-=======
   const breakouts: Player[] = [];
   const benched: Player[] = [];
->>>>>>> origin/claude/ecstatic-tesla-mamls5
   for (const p of Object.values(w.players)) {
     if (!quarter && p.clubId && w.clubs[p.clubId]?.league && p.clubId !== w.userClubId) continue;
     const mine = isUserOwned(w, p);
