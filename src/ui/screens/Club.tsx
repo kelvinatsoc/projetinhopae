@@ -4,6 +4,8 @@ import { COMP_META } from "../../engine/competitions";
 import { kitSupplier, shirtSponsor, stadiumName } from "../../engine/sponsors";
 import { BrandLogo } from "../BrandLogo";
 import "../economy.css";
+import { ClubHQ } from "../hq/ClubHQ";
+import { nextFixture } from "../../engine/competitions";
 import type { IconSlug } from "../icons";
 import { estadualTitles } from "../../engine/estaduais";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
@@ -53,7 +55,8 @@ export function ClubScreen() {
         <div className="stat-box tap" onClick={() => push({ name: "trophies" })}><b>{titles}</b><span>títulos</span></div>
       </div>
 
-      <h3>Gestão</h3>
+      <h3>Sede do clube</h3>
+      <ClubHQ club={c} matchToday={nextFixture(w, c.id)?.day === w.day} fallback={
       <div className="tiles">
         <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
         <Tile icon="👔" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
@@ -64,6 +67,11 @@ export function ClubScreen() {
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
         <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
+      </div>
+      } />
+      <div className="row gap8 wrap">
+        <button className="btn sm" onClick={() => push({ name: "settings" })}><GIcon slug="configuracoes" size={18} /> Ajustes</button>
+        <button className="btn sm" onClick={() => push({ name: "facilities" })}><GIcon slug="estrutura" size={18} /> Estrutura</button>
       </div>
 
       <h3>Glória</h3>
