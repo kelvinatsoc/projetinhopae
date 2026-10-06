@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { formatDate } from "../../engine/calendar";
 import { sortTable, STAGE_NAMES } from "../../engine/competitions";
-import { intlKind } from "../../engine/international";
-import type { Club, Competition, Fixture, NationalTeam, TableRow, World } from "../../engine/types";
-import { push, useWorld } from "../../store";
+import { intlKind, pickSquad } from "../../engine/international";
+import type { Club, Competition, Fixture, MatchResult, NationalTeam, TableRow, World } from "../../engine/types";
+import { acceptNtJob, declineNtJob, eligible, playNtMatch, resignNtJob, toggleSquad, toggleXI } from "../../engine/ntManager";
+import { autosave } from "../actions";
+import { back, push, update, useWorld } from "../../store";
 import { CompHeader } from "../CompTheme";
 import { compTheme } from "../compThemes";
 import { Crest, Ovr } from "../components";
@@ -191,6 +193,7 @@ export function NationalTeamsScreen() {
   if (!nts.length) return <div className="page"><div className="empty">Sem seleções neste jogo.</div></div>;
   return (
     <div className="page">
+      <NtJobCard />
       {CONFEDS.map((cf) => {
         const list = nts.filter((n) => n.confed === cf).sort((a, b) => b.level - a.level);
         if (!list.length) return null;
@@ -238,6 +241,7 @@ export function NationalTeamScreen({ id }: { id: string }) {
       {games.length > 0 && (
         <div className="card flat"><h3>Jogos</h3><div className="list mt8">{games.map((f) => <IntlFixtureLine key={f.id} w={w} f={f} />)}</div></div>
       )}
+      {w.ntJob === id && <SquadPicker w={w} id={id} />}
       <div className="card flat">
         <h3>{called.length ? `Convocados (${called.length})` : "Principais jogadores"}</h3>
         <div className="list mt8">
@@ -252,6 +256,125 @@ export function NationalTeamScreen({ id }: { id: string }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- técnico de seleção
+/** Convite (aceitar/recusar) ou o cargo atual na seleção. */
+export function NtJobCard() {
+  const w = useWorld();
+  const intl = w.intl;
+  if (!intl) return null;
+  if (w.ntJob) {
+    const nt = intl.nts[w.ntJob];
+    return (
+      <div className="card row gap8" onClick={() => push({ name: "nt", id: w.ntJob! })} style={{ cursor: "pointer" }}>
+        <span style={{ fontSize: 24 }}>{flag(nt.fifa)}</span>
+        <div className="grow"><b>Técnico da seleção ({nt.name})</b><div className="small muted">Toque para convocar e ver os jogos.</div></div>
+      </div>
+    );
+  }
+  const o = intl.offer;
+  if (!o) return null;
+  const nt = intl.nts[o.nt];
+  return (
+    <div className="card" style={{ borderColor: "var(--gold)" }}>
+      <div className="row gap8"><span style={{ fontSize: 24 }}>{flag(nt.fifa)}</span><b className="grow">Convite: técnico da seleção ({nt.name})</b></div>
+      <div className="small muted mt8">Você acumula o cargo com o clube. Os jogos da seleção param o Continuar.</div>
+      <div className="row gap8 mt8">
+        <button className="btn primary" onClick={() => { update((x) => { acceptNtJob(x); }); autosave(); }}>Aceitar</button>
+        <button className="btn" onClick={() => update((x) => declineNtJob(x))}>Recusar</button>
+      </div>
+    </div>
+  );
+}
+
+/** Convocação manual (até 26) da seleção do usuário. */
+function SquadPicker({ w, id }: { w: World; id: string }) {
+  const intl = w.intl!;
+  const squad = new Set(intl.userSquad ?? []);
+  const list = eligible(w, id).slice(0, 60);
+  return (
+    <div className="card flat">
+      <div className="row"><h3 className="grow">Sua convocação ({squad.size}/26)</h3>
+        <button className="btn sm" onClick={() => update((x) => { x.intl!.userSquad = pickSquad(x, x.intl!.nts[id], 26).map((p) => p.id); })}>Automática</button>
+      </div>
+      <div className="small muted">Vale a partir da próxima data FIFA ou torneio.</div>
+      <div className="list mt8">
+        {list.map((p) => (
+          <div key={p.id} className="list-item" onClick={() => update((x) => toggleSquad(x, p.id))}>
+            <input type="checkbox" readOnly checked={squad.has(p.id)} />
+            <Ovr v={p.ovr} />
+            <span className="tiny muted" style={{ width: 30 }}>{p.pos}</span>
+            <span className="grow ellipsis">{p.name}{p.injury > 0 ? " 🚑" : ""}</span>
+            {p.clubId && w.clubs[p.clubId] && <Crest club={w.clubs[p.clubId]} size={18} />}
+          </div>
+        ))}
+      </div>
+      <button className="btn sm mt8" onClick={() => { if (confirm("Deixar a seleção?")) update((x) => resignNtJob(x)); }}>Pedir demissão da seleção</button>
+    </div>
+  );
+}
+
+/** Jogo da seleção do usuário: escolher os 11, a postura e jogar. */
+export function NtMatchScreen({ id }: { id: number }) {
+  const w = useWorld();
+  const intl = w.intl;
+  const [mentality, setMentality] = useState<-1 | 0 | 1>(0);
+  const [result, setResult] = useState<MatchResult | null>(null);
+  const f = intl?.fixtures.find((x) => x.id === id);
+  if (!intl || !f || !w.ntJob) return <div className="page"><div className="empty">Jogo não encontrado.</div></div>;
+  const squad = (intl.callups[w.ntJob] ?? []).map((pid) => w.players[pid]).filter(Boolean).sort((a, b) => b.ovr - a.ovr);
+  const xi = new Set(intl.userXI ?? []);
+  const comp = intl.comps[f.comp];
+  const r = result ?? f.result;
+  const ntNm = (nid: string) => intl.nts[nid]?.name ?? nid;
+  return (
+    <div className="page">
+      <CompHeader id={f.comp} title={`${comp?.name ?? ""} ${comp?.label ?? ""}`} sub={STAGE_NAMES[f.stage] ?? ""} />
+      <div className="card row gap12" style={{ justifyContent: "center" }}>
+        <NtBadge w={w} id={f.home} bold />
+        <b className="kbd" style={{ fontSize: 22 }}>{r ? `${r.hg} x ${r.ag}` : "x"}</b>
+        <NtBadge w={w} id={f.away} bold />
+      </div>
+      {r ? (
+        <div className="card">
+          <h3>Gols</h3>
+          {r.events.filter((e) => e.type === "goal").map((e, i) => <div key={i} className="small">{e.min}' {e.pid != null ? w.players[e.pid]?.name : ""} ({ntNm(e.side === 0 ? f.home : f.away)})</div>)}
+          {r.pens && <div className="small">Pênaltis: {r.pens[0]} x {r.pens[1]}</div>}
+          <button className="btn primary mt8" onClick={() => back()}>Continuar</button>
+        </div>
+      ) : (
+        <>
+          <div className="card">
+            <div className="seg">
+              {([[-1, "Defensivo"], [0, "Equilibrado"], [1, "Ofensivo"]] as const).map(([m, l]) => (
+                <button key={m} className={mentality === m ? "active" : ""} onClick={() => setMentality(m)}>{l}</button>
+              ))}
+            </div>
+            <button className="btn primary mt8" style={{ width: "100%" }} onClick={() => {
+              let res: MatchResult | null = null;
+              update((x) => { const fx = x.intl!.fixtures.find((y) => y.id === id)!; res = playNtMatch(x, fx, mentality); });
+              setResult(res);
+              autosave();
+            }}>Jogar</button>
+          </div>
+          <div className="card flat">
+            <h3>Titulares ({xi.size}/11, o resto é completado automaticamente)</h3>
+            <div className="list mt8">
+              {squad.map((p) => (
+                <div key={p.id} className="list-item" onClick={() => update((x) => toggleXI(x, p.id))}>
+                  <input type="checkbox" readOnly checked={xi.has(p.id)} />
+                  <Ovr v={p.ovr} />
+                  <span className="tiny muted" style={{ width: 30 }}>{p.pos}</span>
+                  <span className="grow ellipsis">{p.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { continueGame } from "./actions";
 import { Crest, Icon, textOn, visibleColor } from "./components";
 import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
 import { CompsScreen } from "./screens/Comps";
-import { NationalTeamScreen, NationalTeamsScreen } from "./screens/World";
+import { NationalTeamScreen, NationalTeamsScreen, NtMatchScreen } from "./screens/World";
 import { HomeScreen, NewsScreen } from "./screens/Home";
 import { MarketScreen } from "./screens/Market";
 import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
@@ -71,6 +71,7 @@ function routeTitle(r: Route): string {
     case "setpieces": return "Bola parada";
     case "nts": return "Seleções";
     case "nt": return "Seleção";
+    case "ntmatch": return "Jogo da seleção";
     default: return "";
   }
 }
@@ -195,6 +196,7 @@ export function App() {
       case "setpieces": content = <SetPiecesScreen />; break;
       case "nts": content = <NationalTeamsScreen />; break;
       case "nt": content = <NationalTeamScreen id={top.id} key={top.id} />; break;
+      case "ntmatch": content = <NtMatchScreen id={top.id} key={top.id} />; break;
       default: content = null;
     }
   }

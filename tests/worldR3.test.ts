@@ -7,6 +7,8 @@ import { simulateFixture } from "../src/engine/match";
 import { createWorld, type Database } from "../src/engine/world";
 import { fastFixture } from "../src/engine/worldLeagues";
 import { intlDaily, simulateIntlDay } from "../src/engine/international";
+import { acceptNtJob, eligible, ntJobTick, playNtMatch, toggleSquad } from "../src/engine/ntManager";
+import { ensureCareer } from "../src/engine/career";
 import type { Fixture, World } from "../src/engine/types";
 import { makeWorldFixture } from "./fixtures/worldFixture";
 
@@ -75,6 +77,44 @@ describe("mundo R3: Mundial de Clubes", () => {
     expect(dup(w.fixtures)).toEqual([]);
     expect(w.clubs[cwc.champion!].trophies.some((t) => t.comp === "cwc")).toBe(true);
   });
+});
+
+describe("mundo R3: técnico de seleção", () => {
+  it("convite pela reputação, convocação escolhida e jogos que param o Continuar", () => {
+    const w = createWorld(db as Database, { managerName: "T", clubId: "flamengo", seed: 12, world: makeWorldFixture() });
+    ensureCareer(w).rep = 88;
+    w.day = 31; // 1º de fevereiro
+    loadRng(w);
+    ntJobTick(w);
+    saveRng(w);
+    expect(w.intl!.offer?.nt).toBe("nt-BRA");
+    expect(acceptNtJob(w)).toBe(true);
+    expect(w.ntJob).toBe("nt-BRA");
+    // troca um convocado: tira o primeiro e põe o 30º melhor
+    const el = eligible(w, "nt-BRA");
+    const out = w.intl!.userSquad![0];
+    toggleSquad(w, out);
+    const extra = el.find((p) => !w.intl!.userSquad!.includes(p.id) && p.id !== out)!;
+    toggleSquad(w, extra.id);
+    let stops = 0;
+    for (let i = 0; i < 200 && stops < 2; i++) {
+      const r = advance(w);
+      if (r.reason === "ntMatch" && r.fixture) {
+        stops++;
+        expect(w.intl!.callups["nt-BRA"]).toContain(extra.id);
+        expect(w.intl!.callups["nt-BRA"]).not.toContain(out);
+        const res = playNtMatch(w, r.fixture, 1);
+        expect(r.fixture.result).toBeTruthy();
+        expect(res.hg + res.ag).toBeGreaterThanOrEqual(0);
+      } else if (r.reason === "match" && r.fixture) {
+        loadRng(w);
+        const res = simulateFixture(w, r.fixture);
+        saveRng(w);
+        finishUserMatch(w, r.fixture, res);
+      } else break;
+    }
+    expect(stops).toBe(2);
+  }, 60_000);
 });
 
 describe("mundo R3: Euro e Copa América 2028 (+ eliminatórias da Euro em 2027)", () => {

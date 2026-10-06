@@ -9,6 +9,7 @@ import { forceBack, setTab, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
 import { clubStars, Crest, Stars } from "./components";
 import "./progression.css";
+import { NtJobCard } from "./screens/World";
 
 /** Lista de propostas com aceitar/recusar (usada também na tela de demissão). */
 export function OfferList({ w, onAccepted }: { w: World; onAccepted?: () => void }) {
@@ -63,6 +64,7 @@ export function CareerScreen() {
   const clubs = new Set([...w.managerHistory.map((h) => h.clubId), w.userClubId]).size;
   return (
     <div className="page">
+      <NtJobCard />
       <div className="card">
         <div className="card-title"><h3>👔 {w.managerName}</h3><span className="tag">{repLabel(car.rep)}</span></div>
         <div className="row small"><span className="grow muted">Reputação</span><b>{car.rep}/100</b></div>

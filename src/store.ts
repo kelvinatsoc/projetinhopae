@@ -77,7 +77,8 @@ export type Route =
   | { name: "facilities" }
   | { name: "setpieces" }
   | { name: "nts" }
-  | { name: "nt"; id: string };
+  | { name: "nt"; id: string }
+  | { name: "ntmatch"; id: number };
 
 interface NavState {
   tab: Tab;

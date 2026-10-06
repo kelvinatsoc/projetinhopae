@@ -503,6 +503,8 @@ export interface World {
   // --- mundo (opcionais: só existem quando há dados mundiais)
   wl?: WorldLeagues;
   intl?: IntlState;
+  /** seleção que o usuário treina (acumulando com o clube) */
+  ntJob?: string;
 }
 
 // ---------------------------------------------------------------- mundo: ligas estrangeiras e seleções
@@ -547,6 +549,12 @@ export interface IntlState {
   year?: number;
   /** campeões dos torneios de seleções já encerrados */
   honors: { comp: string; name: string; season: number; winner: string; runnerUp?: string }[];
+  /** convite para técnico de seleção (válido até o dia `until` da temporada `season`) */
+  offer?: { nt: string; season: number; until: number };
+  declined?: string[];
+  /** técnico de seleção: convocação escolhida e os 11 titulares */
+  userSquad?: number[];
+  userXI?: number[];
 }
 
 // ---------------------------------------------------------------- narrativa e mídia

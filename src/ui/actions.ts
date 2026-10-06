@@ -134,6 +134,7 @@ export function continueGame() {
     }
     push({ name: "prematch" });
   }
+  else if (r.reason === "ntMatch" && r.fixture) push({ name: "ntmatch", id: r.fixture.id });
   else if (r.reason === "seasonEnd") finishSeason();
   autosave();
 }

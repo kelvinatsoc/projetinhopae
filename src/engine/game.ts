@@ -7,6 +7,7 @@ import { yearLen } from "./calendar";
 import { intlDaily, simulateIntlDay } from "./international";
 import { compactResult, createWorldSeason, fastFixture } from "./worldLeagues";
 import { maybeCreateIntercontinental } from "./continental";
+import { userNtFixtureOn } from "./ntManager";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
 import { goalBonuses } from "./contracts";
@@ -28,7 +29,7 @@ import { aiTransferDay, expireOffers } from "./transfers";
 import type { Fixture, MatchResult, World } from "./types";
 import { legendWave, peneiraTick, previewIntake, youthIntake } from "./youth";
 
-export type StopReason = "match" | "seasonEnd" | "idle";
+export type StopReason = "match" | "ntMatch" | "seasonEnd" | "idle";
 
 export interface AdvanceResult {
   reason: StopReason;
@@ -237,6 +238,9 @@ export function advance(w: World, maxDays = 400): AdvanceResult {
         w.pendingMatch = uf.id;
         return { reason: "match", fixture: uf, news };
       }
+      // técnico de seleção: o jogo da seleção também para o Continuar
+      const nf = w.ntJob ? userNtFixtureOn(w, w.day) : undefined;
+      if (nf) return { reason: "ntMatch", fixture: nf, news };
       simulateDay(w, w.day);
       news.push(...progressCompetitions(w));
       for (const n of news.splice(0)) addNews(w, "season", n, "");

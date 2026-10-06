@@ -8,6 +8,7 @@ import { elevenStrength, quickEleven, quickResult } from "./fastsim";
 import { chance, randInt, rand, shuffle } from "./rng";
 import type { Competition, Fixture, IntlState, NationalTeam, Player, Pos, Tie, World } from "./types";
 import { worldNews } from "./worldLeagues";
+import { ntJobTick } from "./ntManager";
 
 export const INTL_META: Record<string, { name: string; short: string; color: string }> = {
   fr: { name: "Amistosos internacionais", short: "Amistosos", color: "#64748b" },
@@ -92,7 +93,11 @@ export function callUp(w: World, ntId: string, until: number, size: 23 | 26 = 23
   const nt = intl.nts[ntId];
   if (!nt) return [];
   release(w, ntId, false);
-  const squad = pickSquad(w, nt, size, fixed, idx);
+  // seleção do usuário: a convocação escolhida por ele (completada se faltar gente)
+  const mine = ntId === w.ntJob && intl.userSquad?.length
+    ? intl.userSquad.map((id) => w.players[id]).filter((p) => p && p.clubId && p.injury <= 7 && p.nat === nt.fifa)
+    : null;
+  const squad = mine && mine.length >= 16 ? mine.slice(0, 26) : pickSquad(w, nt, size, fixed, idx);
   for (const p of squad) p.away = ntId;
   intl.callups[ntId] = squad.map((p) => p.id);
   intl.rel[ntId] = until;
@@ -416,7 +421,7 @@ function finishIntlComp(w: World, comp: Competition, winner: string, runnerUp?: 
   w.intl!.honors.push({ comp: intlKind(comp.id), name: comp.name, season: comp.season, winner, runnerUp });
 }
 
-function progressIntl(w: World) {
+export function progressIntl(w: World) {
   const intl = w.intl!;
   for (const comp of Object.values(intl.comps)) {
     if (comp.done) continue;
@@ -448,7 +453,7 @@ function ntEleven(w: World, ntId: string, day: number): Player[] {
   return quickEleven(squad, undefined, ntId);
 }
 
-function applyIntl(w: World, f: Fixture, xi: [Player[], Player[]]) {
+export function applyIntl(w: World, f: Fixture, xi: [Player[], Player[]]) {
   const intl = w.intl!;
   const comp = intl.comps[f.comp];
   const r = f.result!;
@@ -485,6 +490,7 @@ export function simulateIntlDay(w: World, day: number) {
   let any = false;
   for (const f of intl.fixtures) {
     if (f.day !== day || f.result) continue;
+    if (w.ntJob && (f.home === w.ntJob || f.away === w.ntJob)) continue; // o usuário joga a partida
     const xiH = ntEleven(w, f.home, day), xiA = ntEleven(w, f.away, day);
     const nH = intl.nts[f.home], nA = intl.nts[f.away];
     const sH = 0.7 * elevenStrength(xiH, nH.level) + 0.3 * nH.level;
@@ -501,6 +507,7 @@ export function intlDaily(w: World) {
   const intl = w.intl;
   if (!intl) return;
   ensureIntlYear(w);
+  ntJobTick(w);
   const day = w.day;
   // devolve quem terminou a data FIFA (ou foi eliminado)
   for (const [id, until] of Object.entries(intl.rel)) if (until < day) release(w, id, true);
