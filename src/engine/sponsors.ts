@@ -26,6 +26,13 @@ const BRANDS: Record<SponsorSlot, string[]> = {
   kit: POOL.kit,
 };
 
+/** Marcas globais para clubes do exterior. */
+export const GLOBAL_BRANDS: Record<SponsorSlot, string[]> = {
+  shirt: ["Emirates", "Etihad Airways", "Qatar Airways", "Spotify", "Rakuten", "Standard Chartered", "Jeep", "Visit Saudi"],
+  stadium: ["Allianz", "Emirates", "Etihad", "Signal Iduna", "Mapfre", "Riyadh Air"],
+  kit: ["Nike", "Adidas", "Puma", "New Balance", "Castore", "Macron", "Kappa", "Joma"],
+};
+
 /** Contratos reais de cada clube (fornecedora, master e naming rights onde existe). */
 export const REAL_SPONSORS = REAL_JSON as Record<string, { kit?: string; shirt?: string; stadium?: string }>;
 const LOGOS = LOGOS_JSON as Record<string, string>;
@@ -59,6 +66,7 @@ function realDeal(w: World, c: Club, slot: SponsorSlot): SponsorDeal | undefined
 export function seedRealSponsors(w: World) {
   for (const c of Object.values(w.clubs)) {
     if (c.sponsors) continue;
+    if (c.league && !REAL_SPONSORS[c.id]) continue; // clubes do exterior não recebem marcas brasileiras
     const deals: SponsorState["deals"] = {};
     for (const slot of SLOTS) {
       const d = realDeal(w, c, slot);
@@ -101,7 +109,8 @@ export function makeOffers(w: World, c: Club, slot: SponsorSlot): SponsorDeal[] 
   const rng = makeRng(hashString(`sponsor:${w.seed}:${w.season}:${c.id}:${slot}`));
   const base = slotBase(c, slot);
   const real = REAL_SPONSORS[c.id]?.[slot];
-  const names = BRANDS[slot].filter((b) => b !== real);
+  // clube do exterior: marcas globais, não as do futebol brasileiro
+  const names = (c.league && c.country !== "BRA" ? GLOBAL_BRANDS[slot] : BRANDS[slot]).filter((b) => b !== real);
   const out: SponsorDeal[] = [];
   // perfis: seguro (fixo alto), equilibrado, arrojado (fixo baixo, bônus gordos)
   const profiles = [

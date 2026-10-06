@@ -1,3 +1,4 @@
+import { leagueMoney } from "./worldMoney";
 import { derbyCrowdMult, derbyTicketMult } from "./narrative";
 // Finanças simplificadas: TV, patrocínio, bilheteria, premiações, salários e custos.
 import { clamp, gauss } from "./rng";
@@ -41,6 +42,7 @@ export function addExpense(c: Club, key: string, v: number) {
 
 /** Receita anual de TV (R$). */
 export function annualTV(c: Club): number {
+  if (c.league) return Math.round((40_000_000 + c.rep * c.rep * 15_000) * leagueMoney(c));
   switch (c.div) {
     case "A": return 50_000_000 + Math.max(0, c.rep - 50) * 3_000_000;
     case "B": return 10_000_000 + c.rep * 250_000;
@@ -52,6 +54,7 @@ export function annualTV(c: Club): number {
 
 export function annualSponsor(c: Club): number {
   const r2 = c.rep * c.rep;
+  if (c.league) return Math.round(r2 * 9_000 * leagueMoney(c));
   switch (c.div) {
     case "A": return r2 * 10_000;
     case "B": return r2 * 3_000;
@@ -62,6 +65,7 @@ export function annualSponsor(c: Club): number {
 }
 
 export function monthlyStaff(c: Club): number {
+  if (c.league) return Math.round((800_000 + c.rep * 40_000) * leagueMoney(c));
   switch (c.div) {
     case "A": return 2_000_000 + c.rep * 60_000;
     case "B": return 300_000 + c.rep * 5_000;
@@ -88,7 +92,8 @@ export function wageBill(w: World, c: Club): number {
 /** Processamento mensal (dia 1 de cada mês) para os clubes brasileiros. */
 export function monthlyFinances(w: World) {
   for (const c of Object.values(w.clubs)) {
-    if (c.div === "F") continue;
+    // estrangeiros: só o clube do usuário (num clube de liga do mundo) tem o mês contabilizado
+    if (c.div === "F" && !(c.league && c.id === w.userClubId)) continue;
     addIncome(c, "tv", Math.round(annualTV(c) / 12));
     // contratos de patrocínio escolhidos pelo clube (sponsors.ts); sem escolha, o valor genérico
     addIncome(c, "sponsor", Math.round((c.sponsors ? sponsorAnnual(w, c) : annualSponsor(c)) / 12));

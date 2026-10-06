@@ -13,6 +13,7 @@ import { age, generatePlayer, playerValue, roundMoney, wageFor } from "./player"
 import { chance, clamp, pick, pickWeighted, rand, randInt, shuffle } from "./rng";
 import { hasTrait } from "./traits";
 import type { Club, Player, Pos, TraitId, TransferOffer, World } from "./types";
+import { leagueMoney, leaguePriceMult, leagueWageMult } from "./worldMoney";
 
 export function isStarter(w: World, p: Player): boolean {
   if (!p.clubId) return false;
@@ -29,12 +30,13 @@ export function askingPrice(w: World, p: Player): number {
   let mult = 1.2 + (isStarter(w, p) ? 0.35 : 0) + yearsLeft * 0.07;
   if (p.listed) mult = 0.95;
   if (p.legend) mult += 0.6;
-  return roundMoney(v * mult);
+  const seller = p.loan ? w.clubs[p.loan.from] : w.clubs[p.clubId];
+  return roundMoney(v * mult * leaguePriceMult(seller));
 }
 
 /** Salário que o jogador pede para assinar com um clube. */
 export function wageDemand(w: World, p: Player, club: Club): number {
-  const base = wageFor(p.ovr, club.rep, age(p, w.season));
+  const base = wageFor(p.ovr, club.rep, age(p, w.season)) * (club.league ? leagueWageMult(club) : 1);
   const from = p.clubId ? w.clubs[p.clubId] : null;
   let mult = 1.05;
   if (from && from.rep > club.rep + 10) mult += 0.25; // descer de patamar custa caro
@@ -196,6 +198,46 @@ export function aiTransferDay(w: World) {
     if (short.length) aiSignFree(w, pick(short));
   }
   aiOffersForUser(w);
+  if (w.wl) aiWorldBuy(w);
+}
+
+/**
+ * Mercado mundial: clubes ricos do exterior levam joias brasileiras (jovens de alto potencial ou titulares
+ * em alta), pagando acima do valor. Pelo jogador do usuário, chega uma proposta.
+ */
+export function aiWorldBuy(w: World) {
+  if (!chance(0.3)) return;
+  const rich = Object.values(w.clubs).filter((c) => c.league && c.id !== w.userClubId && leagueMoney(c) >= 1.2 && c.balance > 20_000_000);
+  if (!rich.length) return;
+  const buyer = pickWeighted(rich, rich.map((c) => leagueMoney(c) * c.rep));
+  const targets: Player[] = [];
+  for (const p of Object.values(w.players)) {
+    if (!p.clubId || p.youth || p.loan || p.legend) continue;
+    const club = w.clubs[p.clubId];
+    if (!club || club.country !== "BRA" || club.league) continue;
+    const a = age(p, w.season);
+    const gem = a <= 23 && p.pot >= Math.max(78, buyer.level);
+    const star = a <= 28 && p.ovr >= buyer.level - 2;
+    if (!gem && !star) continue;
+    if (w.offers.some((o) => o.pid === p.id && o.status === "pending")) continue;
+    targets.push(p);
+  }
+  if (!targets.length) return;
+  const p = pickWeighted(targets, targets.map((x) => x.pot + x.ovr - 120));
+  const seller = w.clubs[p.clubId!];
+  const fee = roundMoney(playerValue(p, w.season) * (1.3 + rand() * 0.9) * Math.sqrt(leagueMoney(buyer)));
+  if (fee > buyer.balance * 0.6) return;
+  if (seller.id === w.userClubId) {
+    const offer: TransferOffer = { id: w.nextId++, pid: p.id, from: buyer.id, to: seller.id, fee, status: "pending", day: w.day, season: w.season, byUser: false };
+    w.offers.push(offer);
+    addNews(w, "offer", `🌍 ${buyer.name} quer ${p.name}`, `Proposta do exterior: ${formatMoney(fee)} pelo ${posLabel(p.pos)}. Responda no Mercado em até 10 dias.`, { pid: p.id, clubId: buyer.id });
+    return;
+  }
+  if (squadOf(w, seller).length <= 20) return;
+  completeTransfer(w, p, buyer, fee, wageDemand(w, p, buyer), randInt(3, 5));
+  addNews(w, "transfer", `🌍 ${p.name} troca o ${seller.name} pelo ${buyer.name}`,
+    `O ${buyer.full} pagou ${formatMoney(fee)} pelo ${posLabel(p.pos)} de ${age(p, w.season)} anos.`, { pid: p.id, clubId: buyer.id, world: true });
+  if (squadOf(w, seller).length < 22) aiSignFree(w, seller);
 }
 
 function aiTryBuy(w: World, buyer: Club) {

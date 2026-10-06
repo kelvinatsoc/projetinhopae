@@ -138,7 +138,7 @@ export function wouldStart(w: World, club: Club, p: Player): boolean {
 /** Dia de janela: clubes da IA emprestam jovens. */
 export function aiLoanDay(w: World) {
   if (!chance(0.3)) return;
-  const lenders = Object.values(w.clubs).filter((c) => c.id !== w.userClubId && c.div === "A" && c.rep >= 70);
+  const lenders = Object.values(w.clubs).filter((c) => c.id !== w.userClubId && (c.div === "A" || !!c.league) && c.rep >= 70);
   if (!lenders.length) return;
   const lender = pick(lenders);
   const sq = squadOf(w, lender);
@@ -147,7 +147,8 @@ export function aiLoanDay(w: World) {
   const cands = sq.filter((p) => !p.loan && !p.legend && age(p, w.season) <= 21 && p.ovr < lender.level - 6 && !starters.has(p.id));
   if (!cands.length) return;
   const p = pick(cands);
-  const borrowers = shuffle(Object.values(w.clubs).filter((c) => c.id !== w.userClubId && (c.div === "B" || c.div === "C") && squadOf(w, c).length < MAX_SQUAD));
+  const borrowers = shuffle(Object.values(w.clubs).filter((c) => c.id !== w.userClubId && squadOf(w, c).length < MAX_SQUAD &&
+    (c.div === "B" || c.div === "C" || (!!lender.league && (c.div === "A" || (c.league === lender.league && c.rep < lender.rep - 10))))));
   for (const b of borrowers.slice(0, 6)) {
     if (!wouldStart(w, b, p)) continue;
     moveToLoan(w, p, b, { half: windowIndex(w.day) === 0 && chance(0.5), wagePct: 1 });

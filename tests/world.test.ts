@@ -10,9 +10,9 @@ import { isAvailable } from "../src/engine/lineup";
 import type { Fixture, World } from "../src/engine/types";
 import { makeWorldFixture } from "./fixtures/worldFixture";
 
-function playUntil(w: World, stop: (w: World) => boolean, maxSteps = 900) {
+function playUntil(w: World, stop: (w: World) => boolean, maxSteps = 900, step = 400) {
   for (let i = 0; i < maxSteps && !stop(w); i++) {
-    const r = advance(w);
+    const r = advance(w, step);
     if (r.reason === "match" && r.fixture) {
       loadRng(w);
       const res = simulateFixture(w, r.fixture);
@@ -148,11 +148,11 @@ describe("mundo: convocações", () => {
     expect(squad.map((p) => p.id)).toContain(best.id);
     // primeira data FIFA (março)
     const win = intlWindows(2026)[0];
-    playUntil(w, (x) => x.day >= win.start + 1);
+    playUntil(w, (x) => x.day >= win.start + 1, 2000, 1);
     const called = w.intl!.callups["nt-BRA"].map((id) => w.players[id]);
     expect(called.length).toBeGreaterThan(15);
     expect(called.every((p) => p.away === "nt-BRA" && !isAvailable(p))).toBe(true);
-    playUntil(w, (x) => x.day >= win.end + 2);
+    playUntil(w, (x) => x.day >= win.end + 2, 2000, 1);
     expect(called.every((p) => !p.away)).toBe(true);
     expect(called.some((p) => (p.caps ?? 0) > 0)).toBe(true);
   }, 60_000);
