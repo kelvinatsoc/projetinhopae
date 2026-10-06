@@ -328,3 +328,12 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; 
 .empty { text-align: center; color: var(--muted); padding: 24px 12px; }
 .divider { height: 1px; background: var(--line); margin: 4px 0; }
 .kbd { font-variant-numeric: tabular-nums; }
+
+/* ---------- forma e evolução (form.ts) ---------- */
+.form-dots { display: inline-flex; gap: 4px; align-items: center; }
+.form-dots .fd { display: inline-grid; place-items: center; border-radius: 50%; color: #fff; font-style: normal; font-weight: 800; text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
+.form-dots .fd.empty { background: transparent; border: 1.5px dashed var(--line); }
+.trend-arrow { font-weight: 800; white-space: nowrap; }
+.trend-arrow.up { color: var(--accent); }
+.trend-arrow.down { color: var(--danger); }
+.trend-arrow.flat { color: var(--muted); }
