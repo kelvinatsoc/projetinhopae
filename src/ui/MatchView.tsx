@@ -2275,6 +2275,13 @@ export function MatchView(props: MatchViewProps) {
             style: stadiumStyleFor(sim.sides[0].club, !!sim.f.neutral),
             clubColors: [anim.colors.home.shirt, anim.colors.away.shirt],
             reduced: anim.reduced,
+            festa: anim.crowd && anim.festa ? {
+              level: anim.festa.level,
+              selecao: anim.crowd.selecao,
+              colors: sim.sides[anim.crowd.side].club.colors,
+              abbr: hudAbbr(sim.sides[anim.crowd.side].club.abbr, sim.sides[anim.crowd.side].club.name),
+              side: anim.crowd.side,
+            } : undefined,
           });
           canvas.style.display = "none";
           resize();
