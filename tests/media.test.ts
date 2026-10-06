@@ -21,7 +21,7 @@ describe("mídia real", () => {
     expect(fictional.every((p) => p.img?.startsWith("r"))).toBe(true);
     expect(all.filter((p) => p.real).every((p) => !p.img?.startsWith("r"))).toBe(true);
     // jogadores reais com foto no banco recebem a chave do Wikidata
-    const withPhoto = (db as Database).players.filter((dp) => dp.img).length;
+    const withPhoto = (db as Database).players.filter((dp) => dp.img || dp.pi).length;
     expect(all.filter((p) => p.real && p.img).length).toBe(withPhoto);
 
     youthIntake(w);
@@ -55,7 +55,7 @@ describe("mídia real", () => {
 
 describe("fotos do TheSportsDB", () => {
   it("migrateWorld tira rosto de IA de jogador real e aplica a foto do TheSportsDB", () => {
-    const dp = (db as Database).players.find((x) => x.c === "sao-paulo")!;
+    const dp = (db as Database).players.find((x) => x.c === "sao-paulo" && !x.pi)!; // sem retrato do elenco: usa o TheSportsDB
     registerMedia({ regenFaces: FACES, sportsdb: { [`${dp.n}|${dp.b}`]: "cutout/teste.png" } });
     const w = createWorld(db as Database, { managerName: "T", clubId: "sao-paulo", seed: 3 });
     const p = Object.values(w.players).find((x) => x.real && x.name === dp.n && x.born === dp.b)!;
