@@ -42,6 +42,33 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wm  # noqa: E402
 from clubs_catalog import ALL_CLUBS, BR_CLUBS  # noqa: E402
 
+
+def _world_entries():
+    """Clubes do world_catalog.py e seleções (nt-XXX). Título final e wikitext vêm do cache do
+    fetch_world.py (index.php?action=raw, 4 s); nada de api.php da Wikipedia para eles."""
+    try:
+        import world_catalog as WC
+        import world_http as WH
+    except ImportError:
+        return []
+    sq = load(os.path.join(WH.CACHE, "squads.json"), {})
+    teams = load(os.path.join(WH.CACHE, "teams.json"), {})
+    out = []
+    for c in WC.clubs():
+        t = teams.get(c["id"], {})
+        cols = [x for x in (t.get("strColour1"), t.get("strColour2")) if x]
+        out.append({"id": c["id"], "wiki": (sq.get("clubs", {}).get(c["id"]) or {}).get("title") or c["wiki"],
+                    "full": "", "colors": cols, "world": True})
+    for code, _, _, _, _, wiki in WC.NATIONS:
+        t = teams.get("nt-" + code, {})
+        cols = [x for x in (t.get("strColour1"), t.get("strColour2")) if x]
+        out.append({"id": "nt-" + code, "wiki": (sq.get("nations", {}).get(code) or {}).get("title") or wiki,
+                    "full": "", "colors": cols, "world": True})
+    return out
+
+
+WORLD = "--world" in sys.argv
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCACHE = os.path.join(ROOT, "scripts", "cache")
 MEDIA = os.path.join(ROOT, "public", "media", "kits")
@@ -190,7 +217,7 @@ def template_params(text: str, names_re: str) -> dict | None:
     return out
 
 
-EN_INFOBOX = r"Infobox[ _]+football[ _]+club|Football[ _]+club[ _]+infobox|Infobox[ _]+Football[ _]+club"
+EN_INFOBOX = r"Infobox[ _]+national[ _]+football[ _]+team|Infobox[ _]+football[ _]+club|Football[ _]+club[ _]+infobox|Infobox[ _]+Football[ _]+club"
 PT_INFOBOX = r"Info/Clube[ _]+de[ _]+futebol|Info/Clube[ _]+futebol"
 
 
@@ -259,6 +286,10 @@ def kits_season(kits: list) -> tuple:
 
 
 # ---------------------------------------------------------------- etapa 1: leitura das infoboxes
+WORLD_CLUBS: list = []
+KIT_CLUBS: list = list(ALL_CLUBS)
+
+
 def work(name):
     return os.path.join(WORK, name)
 
@@ -266,9 +297,13 @@ def work(name):
 def resolve_titles() -> dict:
     """{clubId: {"en": título atual no enwiki|None, "pt": título no ptwiki|None}} (em cache).
     Segue redirecionamentos; se o título do catálogo não existir, tenta o nome oficial."""
+    if WORLD:
+        return {c["id"]: {"en": c["wiki"], "pt": None} for c in WORLD_CLUBS}
     path = work("titles.json")
     out = load(path, None)
     if out is not None:
+        for c in WORLD_CLUBS:
+            out[c["id"]] = {"en": c["wiki"], "pt": None}
         return out
     cands = {}
     for c in ALL_CLUBS:
@@ -301,11 +336,16 @@ def resolve_titles() -> dict:
             if "enwiki" in sl and "ptwiki" in sl and sl["enwiki"]["title"] in br:
                 out[br[sl["enwiki"]["title"]]]["pt"] = sl["ptwiki"]["title"]
     save(path, out)
+    for c in WORLD_CLUBS:
+        out[c["id"]] = {"en": c["wiki"], "pt": None}
     return out
 
 
 def raw_page(wiki: str, title: str, cache_path: str | None) -> str:
     """Wikitexto de um artigo (usa o cache dos outros scripts; senão baixa para $KITS_CACHE)."""
+    if cache_path == "world":
+        import world_http as WH
+        return WH.wiki_raw(title)[0] or ""
     if cache_path and os.path.exists(cache_path):
         with open(cache_path, encoding="utf-8") as f:
             t = f.read()
@@ -334,10 +374,10 @@ def parse():
     """Lê as infoboxes (en + pt) e escolhe, por clube, a fonte mais atual."""
     titles = resolve_titles()
     specs = {}
-    for c in ALL_CLUBS:
+    for c in KIT_CLUBS:
         cid = c["id"]
         en_title = titles[cid]["en"] or c["wiki"]
-        shared = None if cid in TITLE_FIX else os.path.join(SCACHE, "wikitext", cid + ".txt")
+        shared = "world" if c.get("world") else None if cid in TITLE_FIX else os.path.join(SCACHE, "wikitext", cid + ".txt")
         en_t = raw_page("en", en_title, shared)
         en_p = template_params(clean_wikitext(en_t), EN_INFOBOX) or {}
         en_k = kits_from_params(en_p, {x: "pattern_" + x for x in PARTS}, EN_COLOR, True)
@@ -441,7 +481,7 @@ def info(specs: dict | None = None) -> dict:
     save(path, inf)
     # o que não está na Commons pode ser arquivo local da Wikipedia em inglês
     miss = [n for n in needed_files(specs) if not inf.get(n, {}).get("exists") and not inf.get(n, {}).get("enChecked")]
-    if miss:
+    if miss and not WORLD:  # world: só Commons (nada de api.php da Wikipedia)
         query_info(EN_API, miss, inf, "en", path)
         for n in miss:  # a API do enwiki também enxerga a Commons: confere pelo endereço
             if inf.get(n, {}).get("exists") and "commons.wikimedia.org" in (inf[n].get("desc") or ""):
@@ -491,7 +531,7 @@ def download(specs: dict | None = None):
     todo = [n for n in need if not os.path.exists(os.path.join(MEDIA, names[n])) and failed.get(n, 0) < 3]
     # prioridade: contornos, clubes da conferência visual, depois a ordem do catálogo
     order = {title_key(v): -1 for v in OVERLAYS.values()}
-    clubs = [c for c in QA_CLUBS] + [c["id"] for c in ALL_CLUBS]
+    clubs = [c for c in QA_CLUBS] + [c["id"] for c in KIT_CLUBS]
     ch = chosen(specs)
     for i, cid in enumerate(clubs):
         for k in ch.get(cid, []):
@@ -531,7 +571,7 @@ def club_colors(cid: str) -> list:
     for c in db.get("clubs", []):
         if c.get("id") == cid and c.get("colors"):
             return c["colors"]
-    cat = next((c for c in ALL_CLUBS if c["id"] == cid), {})
+    cat = next((c for c in KIT_CLUBS if c["id"] == cid), {})
     return cat.get("colors") or ["#FFFFFF", "#111111"]
 
 
@@ -609,7 +649,7 @@ def build(specs: dict | None = None):
     have = {n: names[n] for n in names if os.path.exists(os.path.join(MEDIA, names[n]))}
     out, used = {}, set()
     stats = {"patterns": 0, "colors": 0, "synthetic": 0, "kits": 0, "dropped": set()}
-    for c in ALL_CLUBS:
+    for c in KIT_CLUBS:
         cid = c["id"]
         sp = specs.get(cid, {})
         kits = []
@@ -651,6 +691,10 @@ def build(specs: dict | None = None):
             print(f"  AVISO: contorno ausente: {ov}")
     # kits.json compacto (uma linha por clube)
     os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+    if WORLD:
+        prev = load(OUT_JSON, {})
+        prev.update(out)
+        out = prev
     lines = [f" {json.dumps(cid)}: {json.dumps(out[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in out]
     with open(OUT_JSON, "w", encoding="utf-8") as f:
         f.write("{\n" + ",\n".join(lines) + "\n}\n")
@@ -663,10 +707,14 @@ def build(specs: dict | None = None):
         cred[f"kits/{have[n]}"] = {"file": title, "author": m.get("author") or "desconhecido",
                                    "license": m.get("license") or "ver página do arquivo",
                                    "url": m.get("desc") or base + wm.norm_file(title)}
+    if WORLD:
+        prev = load(CREDITS, {})
+        prev.update(cred)
+        cred = prev
     save(CREDITS, cred)
     # remove arquivos que não são mais usados
     keep = {have[n] for n in used} | {"credits.json"}
-    if all(n in inf for n in needed_files(specs)):
+    if not WORLD and all(n in inf for n in needed_files(specs)):
         for f in os.listdir(MEDIA):
             if f not in keep and not f.endswith(".tmp"):
                 os.remove(os.path.join(MEDIA, f))
@@ -750,6 +798,14 @@ def qa(clubs=None):
 
 # ---------------------------------------------------------------- linha de comando
 def main(argv):
+    global WORLD_CLUBS, KIT_CLUBS
+    WORLD_CLUBS = _world_entries() if WORLD else []
+    KIT_CLUBS = WORLD_CLUBS if WORLD else list(ALL_CLUBS)
+    if WORLD:  # cache separado; o resultado é MESCLADO ao kits.json existente
+        global WORK
+        WORK = os.path.join(WORK, "world")
+        os.makedirs(WORK, exist_ok=True)
+    argv = [a for a in argv if a != "--world"]
     stages = argv or ["parse", "info", "download", "build"]
     specs = None
     for st in stages:
