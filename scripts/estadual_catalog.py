@@ -11,7 +11,8 @@ antigos clubes fictícios. Campos extras em relação a clubs_catalog.py:
   sd     disputa a Série D 2026 (en.wikipedia "2026 Campeonato Brasileiro Série D")
   ground (nome, capacidade) provisórios, quando o Wikidata não tiver o estádio
 
-Força: Série D 2026 -> level 50–54; só estadual -> 48–51. rep 10–40 (tradição/torcida).
+Força: valores da tabela + 7 de calibração (fica na faixa 55–61, a mesma dos antigos fictícios dos
+estaduais, para manter as médias de gols/goleadas). Série D 2026 acima dos só-estaduais.
 Cores None -> extraídas do escudo oficial (build_database.py).
 
 Fonte do elenco, nesta ordem: real-squads (rs) -> "Elenco" da pt.wiki -> elenco gerado no jogo
@@ -20,7 +21,7 @@ com semente fixa pelo id do clube (flag "gs" no banco).
 
 
 def E(id, name, full, abbr, uf, city, level, rep, rs=None, wiki=None, pt=None, sd=False, colors=None, ground=None):
-    return dict(id=id, name=name, full=full, abbr=abbr, region=uf, city=city, div="D", level=level, rep=rep,
+    return dict(id=id, name=name, full=full, abbr=abbr, region=uf, city=city, div="D", level=level + 7, rep=rep,
                 colors=colors, crest="solid", wiki=wiki or full, pt=pt or full, rs=rs, sd=sd, minor=uf,
                 ground=ground)
 

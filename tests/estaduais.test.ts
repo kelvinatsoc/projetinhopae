@@ -61,11 +61,11 @@ describe("campeonatos estaduais", () => {
     expect(minors.length).toBeGreaterThanOrEqual(60);
     for (const m of minors) {
       expect(m.region).toBe(m.minor);
-      expect(m.logo, `${m.id} tem escudo oficial`).toBe(true);
       expect(m.stadium).not.toMatch(/^Estádio (de|Municipal de) /);
       expect(m.players.filter((id) => !w.players[id].youth).length).toBeGreaterThanOrEqual(20);
       for (const id of ["serieA", "serieB", "serieC", "copaBR"]) expect(w.comps[id].teams).not.toContain(m.id);
     }
+    expect(minors.filter((m) => m.logo).length).toBeGreaterThanOrEqual(15); // escudos oficiais (o resto: padrão gerado)
     // participantes reais de 2026 entram primeiro
     for (const def of ESTADUAIS) {
       for (const id of def.real2026) {
@@ -159,6 +159,13 @@ describe("campeonatos estaduais", () => {
     w.history.push({ season: 2025, champions: { "est-PA": old.id } } as World["history"][number]);
     const loaned = w.players[w.clubs.remo.players[0]];
     loaned.sellOn = { club: old.id, pct: 10 };
+    // jogador do Remo emprestado ao fictício: tem de voltar ao Remo quando o fictício sair
+    const lent = w.players[w.clubs.remo.players.find((id) => w.players[id].pos === "ATA" && id !== loaned.id)!];
+    w.clubs.remo.players = w.clubs.remo.players.filter((id) => id !== lent.id);
+    old.players.push(lent.id);
+    lent.clubId = old.id;
+    lent.loan = { from: "remo", until: 2030, wagePct: 50, since: 2026 };
+    w.clubs.remo.loanedOut = [lent.id];
     const save = JSON.parse(JSON.stringify(w)) as World;
     migrateWorld(save, db as Database);
     // reais já existem, fictícios continuam até a virada (nenhum jogo da temporada mexe)
@@ -175,6 +182,8 @@ describe("campeonatos estaduais", () => {
     for (const c of estComps(save)) for (const id of c.teams) expect(isFictional(save.clubs[id])).toBe(false);
     expect(Object.values(save.players).some((p) => p.clubId && !save.clubs[p.clubId])).toBe(false);
     expect(save.players[loaned.id]?.sellOn).toBeUndefined();
+    expect(save.players[lent.id]?.clubId).toBe("remo");
+    expect(save.players[lent.id]?.loan).toBeUndefined();
     expect(save.formerClubs?.[old.id]).toBe(old.name);
     // a tela de histórico abre e mostra o campeão que saiu do mundo
     const { HistoryScreen } = await import("../src/ui/screens/Club");

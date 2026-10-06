@@ -144,7 +144,18 @@ export function applyEstadualSwap(w: World) {
   const gone = new Set<string>();
   for (const c of Object.values(w.clubs)) {
     if (!c.fictional || needed.has(c.id) || c.id === w.userClubId) continue;
-    for (const id of c.players) if (w.players[id]?.clubId === c.id) delete w.players[id];
+    for (const id of c.players) {
+      const p = w.players[id];
+      if (!p || p.clubId !== c.id) continue;
+      const lender = p.loan && w.clubs[p.loan.from];
+      if (lender && !lender.fictional) {
+        // emprestado ao fictício: volta para o dono
+        p.clubId = lender.id;
+        lender.players.push(p.id);
+        lender.loanedOut = lender.loanedOut?.filter((x) => x !== p.id);
+        delete p.loan;
+      } else delete w.players[id];
+    }
     (w.formerClubs ??= {})[c.id] = c.name;
     delete w.clubs[c.id];
     gone.add(c.id);
@@ -157,6 +168,11 @@ export function applyEstadualSwap(w: World) {
     }
     w.offers = w.offers.filter((o) => w.players[o.pid] && !gone.has(o.from) && !gone.has(o.to));
     w.shortlist = w.shortlist.filter((id) => !!w.players[id]);
+    if (w.scout) {
+      for (const id of Object.keys(w.scout.k)) if (!w.players[Number(id)]) delete w.scout.k[Number(id)];
+      w.scout.queue = w.scout.queue.filter((id) => !!w.players[id]);
+      w.scout.recs = w.scout.recs.filter((id) => !!w.players[id]);
+    }
     for (const n of w.news) if (n.clubId && gone.has(n.clubId)) delete n.clubId;
     for (const m of w.inbox?.msgs ?? []) if (m.clubId && gone.has(m.clubId)) delete m.clubId;
     if (w.career) w.career.offers = w.career.offers.filter((o) => !gone.has(o.clubId));
