@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { formatMoney } from "../engine/finance";
+import { ratingColor, streakOf, trendOf } from "../engine/form";
 import { playerImagePath, sportsdbUrl } from "../engine/media";
 import { age } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
@@ -218,6 +219,9 @@ export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
         {injured && <span title="Lesionado">🚑</span>}
         {banned && <span title="Suspenso">🟥</span>}
         {p.listed && <span title="À venda">💲</span>}
+        {streakOf(p) === "hot" && <span title="Em alta">🔥</span>}
+        {streakOf(p) === "cold" && <span title="Em baixa">🧊</span>}
+        {p.fav && <span title="Ídolo da torcida">❤️</span>}
       </div>
       <Avatar p={p} club={club} season={season} size={64} />
       <div className="pc-name">{p.name.split(" ").slice(-1)[0]}</div>
@@ -247,9 +251,41 @@ export function Bar({ v, color }: { v: number; color?: string }) {
   );
 }
 
-export function Stars({ n, max = 5 }: { n: number; max?: number }) {
+export function Stars({ n, max = 5, half }: { n: number; max?: number; half?: boolean }) {
+  if (half) {
+    // meias estrelas (aptidão por função): ★★★⯪☆
+    const full = Math.floor(n), h = n - full >= 0.5 ? 1 : 0;
+    return <span className="stars" aria-label={`${n} de ${max} estrelas`} style={{ color: "var(--gold)", letterSpacing: 1 }}>{"★".repeat(full)}{h ? "⯪" : ""}{"☆".repeat(Math.max(0, max - full - h))}</span>;
+  }
   const full = Math.max(1, Math.round(n));
   return <span style={{ color: "var(--gold)", letterSpacing: 1 }}>{"★".repeat(full)}{"☆".repeat(Math.max(0, max - full))}</span>;
+}
+
+/** Bolinhas das últimas 5 notas (mais antiga à esquerda). */
+export function FormDots({ p, size = 22 }: { p: Player; size?: number }) {
+  const f = p.form.slice(-5);
+  return (
+    <span className="form-dots" aria-label={`Últimas notas: ${f.map((x) => x.toFixed(1)).join(", ") || "sem jogos"}`}>
+      {Array.from({ length: 5 }, (_, i) => {
+        const r = f[i - (5 - f.length)];
+        return r == null
+          ? <i key={i} className="fd empty" style={{ width: size, height: size }} />
+          : <i key={i} className="fd" style={{ width: size, height: size, background: ratingColor(r), fontSize: size * 0.45 }}>{r.toFixed(1)}</i>;
+      })}
+    </span>
+  );
+}
+
+/** Seta "em evolução / em queda" (combina treino mensal e fase). */
+export function TrendArrow({ p, label }: { p: Player; label?: boolean }) {
+  const t = trendOf(p);
+  const s = streakOf(p);
+  const txt = t === "up" ? "Em evolução" : t === "down" ? "Em queda" : "Estável";
+  return (
+    <span className={`trend-arrow ${t ?? "flat"}`} title={txt}>
+      {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}{s === "hot" ? " 🔥" : s === "cold" ? " 🧊" : ""}
+    </span>
+  );
 }
 
 export function clubStars(level: number) {

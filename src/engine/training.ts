@@ -4,6 +4,9 @@
 import { adminCheats } from "./admin";
 import { monthOf } from "./calendar";
 import { facilitiesDaily } from "./facilities";
+import { decayFamiliarity, growFamiliarity } from "./tactics";
+import { monthlyLinks } from "./chemistry";
+import { expectedRating, streakOf, updateFanFavourite } from "./form";
 import { addNews } from "./news";
 import { H, hidOf } from "./personality";
 import { age, applyDelta, devParams, FOCUS_ATTRS } from "./player";
@@ -66,8 +69,35 @@ function playFactorOf(p: Player, club: Club | null): number {
   return ma >= 3 ? 1.25 : ma >= 1 ? 1.05 : 0.85;
 }
 
+/**
+ * Evolução pela forma (além do treino): notas acima do esperado aceleram, abaixo travam.
+ * Pesa mais nos jovens e precisa de minutos; sem jogar (e sem lesão) um adulto estagna e cai devagar.
+ * Determinística (não sorteia). Devolve a variação mensal em pontos de overall e o desvio de nota.
+ */
+export function formDevelopment(p: Player, ageY: number): { delta: number; res: number } {
+  if (p.youth) return { delta: 0, res: 0 };
+  const ma = p.ma ?? 0;
+  if (ma >= 1 && p.mr != null) {
+    const res = clamp(p.mr / ma - expectedRating(p), -1, 1.2);
+    const ageK = ageY <= 21 ? 1.3 : ageY <= 24 ? 1 : ageY <= 28 ? 0.7 : 0.5;
+    return { delta: res * 0.3 * ageK * Math.min(1, ma / 3), res };
+  }
+  if (ma === 0 && p.clubId && p.injury === 0 && ageY >= 20 && ageY <= 31) return { delta: -0.06, res: 0 };
+  return { delta: 0, res: 0 };
+}
+
+/** Potencial é teto macio: quem joga muito acima do esperado perto do teto pode subir o potencial. */
+export function potentialGrowth(p: Player, ageY: number, res: number): boolean {
+  if (res < 0.7 || (p.ma ?? 0) < 2 || ageY > 30 || p.ovr < p.pot - 2 || p.pot >= 95) return false;
+  p.px = Math.round(((p.px ?? 0) + (res - 0.4) * 0.6) * 1000) / 1000;
+  if (p.px < 1) return false;
+  p.px -= 1;
+  p.pot += 1;
+  return true;
+}
+
 /** Evolução de um jogador em um treino mensal. Consome o gerador global (dentro do avanço do dia). */
-export function monthlyDevelop(w: World, p: Player) {
+export function monthlyDevelop(w: World, p: Player): { potUp: boolean } {
   const club = p.clubId ? w.clubs[p.clubId] : null;
   const user = !!club && club.id === w.userClubId;
   const a = age(p, w.season);
@@ -89,6 +119,9 @@ export function monthlyDevelop(w: World, p: Player) {
     mean *= 1.1 - 0.0095 * pro; // profissionais caem mais devagar
   }
   let delta = mean + gauss(0, sd * Math.sqrt(FRAC));
+  const fd = formDevelopment(p, a);
+  delta += fd.delta;
+  const potUp = potentialGrowth(p, a, fd.res);
   if (p.legend && a <= 23) delta = Math.max(delta, Math.min(gap, 2.5) * FRAC);
   delta = clamp(delta, -1.5, 2.0);
   // acumulador fracionário: só mexe no overall quando completa um ponto inteiro
@@ -115,6 +148,7 @@ export function monthlyDevelop(w: World, p: Player) {
   }
   p.dx = Math.round(p.dx * 1000) / 1000; // save enxuto
   if (p.pot < p.ovr) p.pot = p.ovr;
+  return { potUp };
 }
 
 /** Jogada de lenda que desperta com o overall (uma por mês, no máximo). Devolve a jogada despertada. */
@@ -204,18 +238,27 @@ export function monthlyTraining(w: World) {
   // só o clube do usuário tem plano de treino (limpa sobras de um clube antigo)
   for (const c of Object.values(w.clubs)) if (c.train && c.id !== w.userClubId) delete c.train;
   const moves: { p: Player; d: number }[] = [];
+<<<<<<< HEAD
   // jogadores de ligas do exterior evoluem só a cada trimestre (desempenho)
   const quarter = monthOf(w.season, w.day) % 3 === 0;
+=======
+  const breakouts: Player[] = [];
+  const benched: Player[] = [];
+>>>>>>> origin/claude/ecstatic-tesla-mamls5
   for (const p of Object.values(w.players)) {
     if (!quarter && p.clubId && w.clubs[p.clubId]?.league && p.clubId !== w.userClubId) continue;
     const mine = isUserOwned(w, p);
     const prev = p.ovr;
-    monthlyDevelop(w, p);
+    const playedMonth = p.ma ?? 0;
+    const dev = monthlyDevelop(w, p);
+    if (mine && dev.potUp) breakouts.push(p);
+    if (mine && !p.youth && playedMonth === 0 && p.injury === 0 && age(p, w.season) <= 24 && p.clubId === w.userClubId) benched.push(p);
     if (p.tf) {
       if (p.clubId === w.userClubId) individualTick(w, p, user);
       else if (!mine) delete p.tf; // vendido: o treino individual fica para trás
     }
     p.ma = 0;
+    delete p.mr;
     if (p.lockedTraits) unlockLegendTrait(w, p);
     if (mine) {
       p.ot = [p.ot?.[1] ?? prev, prev];
@@ -227,15 +270,38 @@ export function monthlyTraining(w: World) {
       delete p.trend;
     }
   }
-  if (moves.length) {
+  // entrosamento e familiaridade tática (clube do usuário)
+  if (user) {
+    monthlyLinks(w, user);
+    decayFamiliarity(user);
+    growFamiliarity(user, trainOf(user).focus === "tat" ? 6 : 2.5);
+    for (const id of user.players) {
+      const p = w.players[id];
+      if (!p) continue;
+      updateFanFavourite(w, p);
+      p.hm = streakOf(p) === "hot" ? (p.hm ?? 0) + 1 : 0;
+      if (!p.hm) delete p.hm;
+    }
+  }
+  for (const p of breakouts) {
+    addNews(w, "training", `💥 ${p.name} explodiu na temporada!`, `Jogando muito acima do esperado, ele rompeu o teto que os olheiros previam: o potencial subiu para ${p.pot}.`, { pid: p.id });
+  }
+  if (moves.length || benched.length) {
     moves.sort((a, b) => Math.abs(b.d) - Math.abs(a.d) || b.d - a.d);
     const month = MONTHS_PT[monthOf(w.season, w.day) === 0 ? 0 : monthOf(w.season, w.day) - 1];
     const up = moves.filter((m) => m.d > 0).length;
     const down = moves.length - up;
     const list = moves.slice(0, 5).map((m) => `${m.p.name} ${m.d > 0 ? "▲" : "▼"}${Math.abs(m.d)}`).join(" · ");
-    addNews(w, "training", `📈 Treino de ${month}: ${list}`,
-      `${up} jogador${up === 1 ? "" : "es"} evoluí${up === 1 ? "u" : "ram"}${down ? ` e ${down} caí${down === 1 ? "u" : "ram"} de rendimento` : ""}. As setas ▲▼ aparecem ao lado dos nomes no elenco.`,
-      { pid: moves[0].p.id });
+    const hot = (user?.players ?? []).map((id) => w.players[id]).filter((p) => p && streakOf(p) === "hot").map((p) => p.name);
+    const cold = (user?.players ?? []).map((id) => w.players[id]).filter((p) => p && streakOf(p) === "cold").map((p) => p.name);
+    const lines = [
+      moves.length ? `${up} jogador${up === 1 ? "" : "es"} evoluí${up === 1 ? "u" : "ram"}${down ? ` e ${down} caí${down === 1 ? "u" : "ram"} de rendimento` : ""}.` : "Ninguém mudou de overall neste mês.",
+      hot.length ? `🔥 Em alta: ${hot.slice(0, 4).join(", ")} — boas notas aceleram a evolução.` : "",
+      cold.length ? `🧊 Em baixa: ${cold.slice(0, 4).join(", ")}.` : "",
+      benched.length ? `🪑 Sem minutos no mês: ${benched.slice(0, 4).map((p) => p.name).join(", ")} — jovem parado não evolui.` : "",
+      "As setas ▲▼ aparecem ao lado dos nomes no elenco.",
+    ].filter(Boolean);
+    addNews(w, "training", `📈 Relatório de desenvolvimento (${month})${list ? `: ${list}` : ""}`, lines.join(" "), { pid: moves[0]?.p.id });
   }
 }
 

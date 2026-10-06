@@ -188,6 +188,7 @@ export function endSeason(w: World): string[] {
   // destaques
   let top: { pid: number; goals: number } | null = null;
   let bestP: { pid: number; r: number } | null = null;
+  let rev: { pid: number; r: number } | null = null; // revelação: até 21 anos
   for (const p of Object.values(w.players)) {
     if (!p.clubId || w.clubs[p.clubId].div !== "A") continue;
     const g = p.compGoals.serieA ?? 0;
@@ -196,6 +197,10 @@ export function endSeason(w: World): string[] {
       const r = p.stats.ratingSum / p.stats.apps;
       if (!bestP || r > bestP.r) bestP = { pid: p.id, r };
     }
+    if (p.stats.apps >= 12 && y - p.born <= 21) {
+      const r = p.stats.ratingSum / p.stats.apps;
+      if (!rev || r > rev.r) rev = { pid: p.id, r };
+    }
   }
   const userLeague = user.div === "A" ? A : user.div === "B" ? B : C;
   const userPos = tablePosition(userLeague, user.id);
@@ -203,7 +208,9 @@ export function endSeason(w: World): string[] {
     season: y, champions, userPos: userPos ?? undefined, userDiv: user.div,
     topScorer: top ? { pid: top.pid, name: w.players[top.pid].name, goals: top.goals, clubId: w.players[top.pid].clubId! } : undefined,
     bestPlayer: bestP ? { pid: bestP.pid, name: w.players[bestP.pid].name, clubId: w.players[bestP.pid].clubId!, rating: Math.round(bestP.r * 100) / 100 } : undefined,
+    revelation: rev ? { pid: rev.pid, name: w.players[rev.pid].name, clubId: w.players[rev.pid].clubId!, rating: Math.round(rev.r * 100) / 100, age: y - w.players[rev.pid].born } : undefined,
   });
+  seasonAwards(w, bestP?.pid, rev?.pid);
 
   // diretoria
   const promotedUser = (B.promoted ?? []).includes(user.id) || (C.promoted ?? []).includes(user.id);
@@ -469,3 +476,19 @@ export function boardAfterMatch(w: World, won: boolean, draw: boolean, oppStrong
   checkSacking(w);
 }
 
+
+/** Prêmios da temporada (Série A): craque e revelação viram notícia; ídolo e moral para os do usuário. */
+function seasonAwards(w: World, best?: number, rev?: number) {
+  const give = (pid: number | undefined, title: string, emoji: string) => {
+    const p = pid != null ? w.players[pid] : undefined;
+    if (!p) return;
+    const club = p.clubId ? w.clubs[p.clubId] : undefined;
+    const avg = p.stats.apps ? (p.stats.ratingSum / p.stats.apps).toFixed(2) : "-";
+    const mine = p.clubId === w.userClubId;
+    p.fame = Math.min(100, p.fame + 5);
+    if (mine) { p.morale = Math.min(100, p.morale + 10); p.fav = true; }
+    addNews(w, "season", `${emoji} ${title}: ${p.name}${club ? ` (${club.name})` : ""}`, `Média ${avg} em ${p.stats.apps} jogos na Série A.${mine ? " Orgulho do seu elenco!" : ""}`, { pid: p.id, clubId: club?.id });
+  };
+  give(best, "Craque da temporada", "🏅");
+  if (rev !== best) give(rev, "Revelação da temporada", "🌟");
+}

@@ -13,7 +13,10 @@ import { askingPrice, canAfford, evaluateUserBid, playerWillingness, releasePlay
 import type { Attrs, Player, World } from "../../engine/types";
 import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, cardTier, Crest, Flag, PosBadge, Sheet } from "../components";
+import { Avatar, Bar, cardTier, Crest, Flag, FormDots, PosBadge, Sheet, Stars, TrendArrow } from "../components";
+import { bestPartners } from "../../engine/chemistry";
+import { awardsOf, expectedRating, formResidual, injuryProne, pendingRequest, streakOf } from "../../engine/form";
+import { roleStars, rolesFor } from "../../engine/tactics";
 import { loadCredits, type Credit } from "../credits";
 import { COUNTRY_NAME, flag } from "../flags";
 import { potRangeLabel } from "../../engine/scouting";
@@ -118,7 +121,13 @@ export function PlayerScreen({ id }: { id: number }) {
       {!mine && !ownedOut && p.loan && club && (
         <div className="banner">📤 Emprestado pelo {parent?.name ?? "?"} ao {club.name} até {loanUntilLabel(p)}. Não pode ser negociado agora.</div>
       )}
-      {mine && p.wantsOut && <div className="banner red">😤 Quer ser negociado — converse, prometa minutos ou venda.</div>}
+      {mine && p.wantsOut && <div className="banner red">😤 {pendingRequest(w, p) === "bigger" ? `Depois de ${p.hm} meses em alta, quer um clube maior` : "Quer ser negociado"} — converse, prometa minutos ou venda.</div>}
+      {mine && pendingRequest(w, p) === "raise" && (
+        <div className="banner blue row gap8">
+          <span className="grow">📝 Em grande fase, quer ser valorizado: renove com aumento antes que outros clubes apareçam.</span>
+          <button className="btn sm primary" onClick={() => setSheet("renew")}>Renovar</button>
+        </div>
+      )}
 
       {legend && (
         <div className="card" style={{ borderColor: "#8a6a00" }}>
@@ -165,6 +174,9 @@ export function PlayerScreen({ id }: { id: number }) {
           {Object.entries(p.bans).filter(([, n]) => n > 0).map(([c, n]) => <span key={c} className="tag danger">Suspenso: {COMP_META[c]?.short} ({n})</span>)}
         </div>
       </div>
+
+      <FormCard w={w} p={p} mine={mine} />
+      <RolesCard w={w} p={p} mine={mine} />
 
       <PlayerInsightCards p={p} />
 
@@ -489,5 +501,78 @@ function InteractionSheet({ p, onClose }: { p: Player; onClose: () => void }) {
         </>
       )}
     </Sheet>
+  );
+}
+
+/** Fase: últimas 5 notas, moral, seta de evolução, sequência e selos (ídolo, propenso a lesões). */
+function FormCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
+  const res = formResidual(p, 5);
+  const streak = streakOf(p);
+  const exp = expectedRating(p);
+  const awards = awardsOf(w, p.id);
+  return (
+    <div className="card">
+      <div className="row"><h3 className="grow">Fase</h3><TrendArrow p={p} label /></div>
+      <div className="row gap8 mt8" style={{ justifyContent: "space-between" }}>
+        <FormDots p={p} size={30} />
+        <span className="tiny muted" style={{ textAlign: "right" }}>esperado<br /><b style={{ color: "var(--text)" }}>{exp.toFixed(1)}</b></span>
+      </div>
+      <div className="attr mt12">
+        <span className="muted">Moral</span>
+        <Bar v={p.morale} />
+        <b className="kbd" style={{ textAlign: "right" }}>{Math.round(p.morale)}</b>
+      </div>
+      <div className="row gap8 wrap mt8 small">
+        {streak === "hot" && <span className="tag good">🔥 Em alta: confiança lá em cima</span>}
+        {streak === "cold" && <span className="tag danger">🧊 Em baixa: precisa de confiança</span>}
+        {!streak && p.form.length >= 3 && <span className="tag">{res >= 0.25 ? "Acima do esperado" : res <= -0.25 ? "Abaixo do esperado" : "Dentro do esperado"}</span>}
+        {p.fav && <span className="tag legend">❤️ Ídolo da torcida</span>}
+        {injuryProne(p) && <span className="tag danger">🩹 Propenso a lesões</span>}
+        {(p.hm ?? 0) >= 2 && mine && <span className="tag good">📈 {p.hm} meses em alta</span>}
+      </div>
+      {awards.length > 0 && (
+        <div className="row gap8 wrap mt8 small">
+          {awards.map((a) => <span key={`${a.season}-${a.kind}`} className="tag legend" title={`${a.label} (${a.season})`}>{a.emoji} {a.label} {a.season}</span>)}
+        </div>
+      )}
+      <div className="tiny muted mt8">Boas notas com minutos aceleram a evolução (principalmente dos jovens) e podem até subir o potencial; banco e notas ruins travam.{p.form.length === 0 ? ` ${age(p, w.season) <= 21 ? "Ainda sem jogos nesta fase." : ""}` : ""}</div>
+    </div>
+  );
+}
+
+/** Aptidão por função tática (estrelas) e entrosamento com os parceiros. */
+function RolesCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
+  const club = p.clubId ? w.clubs[p.clubId] : null;
+  const poss = [p.pos, ...p.sec];
+  const seen = new Set<string>();
+  const rows = poss.flatMap((pos) => rolesFor(pos).filter((r) => !seen.has(r.id) && seen.add(r.id)).map((r) => ({ r, pos, s: roleStars(p, r, pos) })))
+    .sort((a, b) => b.s - a.s).slice(0, 5);
+  const partners = mine && club && !p.youth ? bestPartners(w, club, p) : [];
+  if (!rows.length && !partners.length) return null;
+  return (
+    <div className="card">
+      <h3>Funções táticas</h3>
+      <div className="col gap4 mt8">
+        {rows.map(({ r, pos, s }) => (
+          <div key={r.id} className="row gap8 small" title={r.desc}>
+            <PosBadge pos={pos} />
+            <span className="grow ellipsis">{r.label}</span>
+            <Stars n={s} half />
+          </div>
+        ))}
+      </div>
+      {partners.length > 0 && (
+        <>
+          <div className="small muted mt12">🤝 Mais entrosado com</div>
+          <div className="row gap8 wrap mt4">
+            {partners.map(({ p: q, v }) => (
+              <span key={q.id} className="tag" style={{ cursor: "pointer", borderColor: v >= 70 ? "var(--accent)" : undefined }} onClick={() => push({ name: "player", id: q.id })}>
+                {q.name.split(" ").slice(-1)[0]} · {v}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

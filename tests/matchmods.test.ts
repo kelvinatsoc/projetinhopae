@@ -70,6 +70,7 @@ describe("efeitos no jogo (matchmods)", () => {
       return JSON.stringify(r);
     };
     w.clubs.flamengo.chem = 70;
+    delete w.clubs.flamengo.links; // sem pares registrados = neutro (chemistry.ts)
     expect(run("flamengo")).toBe(run("gremio"));
   });
 

@@ -1,7 +1,7 @@
 // Mercado de transferências: propostas do usuário, ofertas da IA e negócios entre clubes da IA.
 import { adminCheats, userWindowOpen } from "./admin";
 import { clauseDay, ensureClause, seasonsAtClub } from "./contracts";
-import { clearMood, idolSold, onJoinUserClub } from "./dressing";
+import { clearMood, idolSold, onJoinUserClub, onLeaveUserClub } from "./dressing";
 import { addExpense, addIncome, formatMoney } from "./finance";
 import { autoLineup, squadOf } from "./lineup";
 import { moveBack, clearLoanedOut } from "./loans";
@@ -134,6 +134,7 @@ export function completeTransfer(w: World, p: Player, buyer: Club, fee: number, 
   w.offers = w.offers.filter((o) => o.pid !== p.id || o.status === "done");
   if (buyer.id === w.userClubId) onJoinUserClub(w, p);
   else if (current?.id === w.userClubId || seller?.id === w.userClubId) {
+    onLeaveUserClub(w, p);
     clearMood(p);
     p.goalBonus = undefined;
   }
@@ -160,7 +161,7 @@ export function releasePlayer(w: World, p: Player, compensate: boolean) {
       addExpense(club, "release", Math.round(p.wage * months * 0.5));
     }
     detachFromClub(club, p.id);
-    if (club.id === w.userClubId) clearMood(p);
+    if (club.id === w.userClubId) { onLeaveUserClub(w, p); clearMood(p); }
   }
   p.clubId = null;
   p.youth = false;

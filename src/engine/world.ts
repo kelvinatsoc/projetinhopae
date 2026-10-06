@@ -1,3 +1,5 @@
+import { ensureLinks } from "./chemistry";
+import { ROLES } from "./tactics";
 import { inboxOf } from "./inbox";
 import { narrativeOf } from "./narrative";
 // Criação de um novo jogo a partir do banco de dados (src/data/database.json).
@@ -167,6 +169,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
   seedRealSponsors(w);
   startSeason(w, initialEntrants(w));
   const user = w.clubs[w.userClubId];
+  ensureLinks(w, user); // entrosamento entre pares (chemistry.ts)
   addNews(w, "info", `Bem-vindo ao ${user.name}!`,
     `${w.managerName}, você é o novo técnico do ${user.full}. Hoje é ${formatDate(w.season, w.day)} de ${w.season}. ` +
     `Monte o time em Elenco › Tática e toque em "Continuar" para avançar até o próximo jogo. ` +
@@ -263,9 +266,25 @@ export function migrateWorld(w: World, db: Database, world?: WorldData): { repai
   for (const c of Object.values(w.clubs)) { migrateSponsors(c, w); migrateFacilities(c); migrateSetPieces(c); }
   for (const comp of Object.values(w.comps)) if (COMP_META[comp.id]) comp.name = COMP_META[comp.id].name; // nomes oficiais
   seedRealSponsors(w); // saves sem patrocínio: clubes ganham os contratos reais
+  migrateDynamics(w); // tática a fundo, entrosamento, forma e prêmios (idempotente)
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };
+}
+
+/** Tática a fundo e entrosamento (opcionais): saves antigos ganham pares e funções válidas. */
+export function migrateDynamics(w: World) {
+  const user = w.clubs[w.userClubId];
+  if (user) ensureLinks(w, user);
+  for (const c of Object.values(w.clubs)) {
+    const t = c.tactic;
+    if (c.id !== w.userClubId) { delete c.links; delete c.lastXI; delete c.tfam; }
+    if (t.roles && (!Array.isArray(t.roles) || t.roles.some((r) => r != null && !(r in ROLES)))) t.roles = Array.isArray(t.roles) ? t.roles.map((r) => (r != null && r in ROLES ? r : null)) : undefined;
+    if (t.ti) for (const k of ["line", "width", "tempo", "direct"] as const) {
+      const v = t.ti[k];
+      if (v !== undefined && !(v === 0 || v === 1 || v === 2)) t.ti[k] = 1;
+    }
+  }
 }
 
 /** Progressão (troféus, conquistas, desafios, carreira): campos opcionais que saves antigos não têm. */

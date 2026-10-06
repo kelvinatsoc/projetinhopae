@@ -1,0 +1,13 @@
+/* Tela de Tática: medidores, campo com arrastar, linhas de entrosamento e funções. */
+.tac-meters { display: grid; grid-template-columns: 1fr; gap: 6px; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.tac-meter { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+.tac-meter .kbd { text-align: right; font-size: 12px; }
+.tac-pitch { touch-action: none; user-select: none; -webkit-user-select: none; }
+.tac-pitch .chem-lines { z-index: 0; }
+.tac-pitch .slot { z-index: 1; transition: transform 0.12s ease-out; }
+.tac-pitch .slot.dragging { z-index: 5; transition: none; opacity: 0.9; }
+.tac-pitch .slot.dragging .avatar { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--gold); }
+.tac-pitch .slot.drop .avatar { box-shadow: 0 0 0 3px #fff, 0 0 12px 2px var(--accent); }
+.role-stars { font-size: 10px; line-height: 1; color: var(--gold); text-shadow: 0 1px 2px #000; letter-spacing: 0.5px; }
+.role-opt { min-height: 52px; }
+.role-opt.on { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; }

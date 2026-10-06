@@ -83,6 +83,7 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       const rating = r.ratings[id] ?? 6;
       p.stats.apps++;
       p.ma = (p.ma ?? 0) + 1; // jogos no mês (evolução mensal)
+      p.mr = Math.round(((p.mr ?? 0) + rating) * 10) / 10; // notas do mês (evolução pela forma)
       p.stats.ratingSum += rating;
       p.form.push(rating);
       if (p.form.length > 5) p.form.shift();

@@ -166,6 +166,7 @@ export function generatePlayer(w: World, club: Club | null, level: number, ageYe
   });
   if (club) {
     p.clubId = club.id;
+    if (youth) p.acad = club.id; // formado no clube (entrosamento de quem veio da mesma base)
     club.players.push(p.id);
     p.wage = wageFor(p.ovr, club.rep, ageYears);
     p.contractEnd = w.season + (youth ? randInt(1, 3) : randInt(0, 3));

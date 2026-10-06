@@ -1,19 +1,23 @@
 import { useMemo, useState } from "react";
+import { teamLinkAvg } from "../../engine/chemistry";
 import { chemOf } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
-import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
-import { age, playerValue, shortName } from "../../engine/player";
+import { awardsOf, formResidual, pendingRequest, streakOf } from "../../engine/form";
+import { lineupStrength, squadOf, validLineup } from "../../engine/lineup";
+import { age, playerValue } from "../../engine/player";
 import { potRangeLabel } from "../../engine/scouting";
-import { FORMATION_DESC, FORMATIONS, MENTALITY_NAMES, ovrAt, POS_ORDER, PRESSING_NAMES } from "../../engine/positions";
-import type { Club, Lineup, Player, World } from "../../engine/types";
-import { push, toast, update, useWorld } from "../../store";
-import { autosave } from "../actions";
-import { TacticsAdvice } from "../Assistant";
-import { Avatar, Bar, Ovr, PlayerCard, PlayerRow, PosBadge } from "../components";
+import { POS_ORDER } from "../../engine/positions";
+import { familiarityOf } from "../../engine/tactics";
+import type { Player, World } from "../../engine/types";
+import { push, useWorld } from "../../store";
+import { FormDots, PlayerCard, PlayerRow, TrendArrow } from "../components";
 import { AcademyScreen } from "./Academy";
 import { TrainingScreen } from "./Training";
+import { Pitch, TacticsScreen } from "./Tactics";
 
-type Sort = "pos" | "ovr" | "age" | "cond" | "value";
+export { Pitch, TacticsScreen };
+
+type Sort = "pos" | "ovr" | "age" | "cond" | "value" | "form";
 
 export function SquadScreen() {
   const [tab, setTab] = useState<"list" | "tactics" | "train" | "youth">("list");
@@ -51,6 +55,7 @@ function SquadList() {
     age: (a, b) => a.born - b.born,
     cond: (a, b) => a.cond - b.cond,
     value: (a, b) => playerValue(b, w.season) - playerValue(a, w.season),
+    form: (a, b) => formResidual(b, 5) - formResidual(a, 5) || b.ovr - a.ovr,
   };
   list.sort(sorters[sort]);
   const avg = list.length ? Math.round(list.reduce((s, p) => s + p.ovr, 0) / list.length) : 0;
@@ -64,13 +69,14 @@ function SquadList() {
       </div>
       <div className="row">
       <div className="small muted grow" title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas no elenco e o foco Tático no treino)">
-        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b> · média {avg}
+        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b> · em campo {Math.round(teamLinkAvg(w, club, lineup.starters))} · 📘 {Math.round(familiarityOf(w, club))}% · média {avg}
       </div>
       <div className="view-toggle">
         <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
         <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
       </div>
       </div>
+      <SquadPulse w={w} players={squadOf(w, club)} />
       <div className="chips">
         {([["all", "Todos"], ["starters", "Titulares"], ["out", "Lesionados/suspensos"], ["listed", "À venda"]] as const).map(([k, l]) => (
           <button key={k} className={`chip${filter === k ? " active" : ""}`} onClick={() => setFilter(k)}>{l}</button>
@@ -78,7 +84,7 @@ function SquadList() {
       </div>
       <div className="chips">
         <span className="small muted" style={{ alignSelf: "center" }}>Ordenar:</span>
-        {([["pos", "Posição"], ["ovr", "Overall"], ["age", "Idade"], ["cond", "Condição"], ["value", "Valor"]] as const).map(([k, l]) => (
+        {([["pos", "Posição"], ["ovr", "Overall"], ["form", "Fase"], ["age", "Idade"], ["cond", "Condição"], ["value", "Valor"]] as const).map(([k, l]) => (
           <button key={k} className={`chip${sort === k ? " active" : ""}`} onClick={() => setSort(k)}>{l}</button>
         ))}
       </div>
@@ -93,7 +99,7 @@ function SquadList() {
         <div className="list">
           {list.map((p) => (
             <PlayerRow key={p.id} p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-              right={starters.has(p.id) ? <span className="tag good">titular</span> : undefined} />
+              right={<span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span>} />
           ))}
         </div>
       </div>
@@ -104,172 +110,26 @@ function SquadList() {
   );
 }
 
-/** Reencaixa os mesmos 11 jogadores numa nova formação. */
-function refit(w: World, formation: string, current: Lineup): Lineup {
-  const slots = FORMATIONS[formation];
-  const players = current.starters.filter((x): x is number => x != null).map((id) => w.players[id]);
-  const pairs: { s: number; p: Player; v: number }[] = [];
-  slots.forEach((slot, s) => players.forEach((p) => pairs.push({ s, p, v: ovrAt(p, slot.pos) })));
-  pairs.sort((a, b) => b.v - a.v);
-  const starters: (number | null)[] = slots.map(() => null);
-  const used = new Set<number>();
-  for (const { s, p } of pairs) {
-    if (starters[s] != null || used.has(p.id)) continue;
-    starters[s] = p.id;
-    used.add(p.id);
-  }
-  return { ...current, starters };
-}
-
-export function TacticsScreen() {
-  const w = useWorld();
-  const club = w.clubs[w.userClubId];
-  const lineup = validLineup(w, club);
-  const [sel, setSel] = useState<number | null>(null); // slot selecionado
-  const slots = FORMATIONS[club.tactic.formation] ?? FORMATIONS["4-3-3"];
-
-  function save(l: Lineup) {
-    update(() => { club.lineup = l; });
-    autosave();
-  }
-
-  function setFormation(f: string) {
-    update(() => {
-      const cur = validLineup(w, club);
-      club.tactic.formation = f;
-      club.lineup = refit(w, f, cur);
-    });
-    autosave();
-  }
-
-  function tapSlot(i: number) {
-    if (sel === null) { setSel(i); return; }
-    if (sel === i) { setSel(null); return; }
-    const s = lineup.starters.slice();
-    [s[sel], s[i]] = [s[i], s[sel]];
-    save({ ...lineup, starters: s });
-    setSel(null);
-  }
-
-  function tapReserve(p: Player) {
-    if (p.injury > 0) { toast(`${p.name} está lesionado.`); return; }
-    if (sel !== null) {
-      const s = lineup.starters.slice();
-      const out = s[sel];
-      s[sel] = p.id;
-      let bench = lineup.bench.filter((b) => b !== p.id);
-      if (out != null && lineup.bench.includes(p.id)) bench = [...bench, out];
-      save({ ...lineup, starters: s, bench });
-      setSel(null);
-      return;
-    }
-    // sem posição selecionada: entra/sai do banco
-    if (lineup.bench.includes(p.id)) save({ ...lineup, bench: lineup.bench.filter((b) => b !== p.id) });
-    else if (lineup.bench.length < 9) save({ ...lineup, bench: [...lineup.bench, p.id] });
-    else toast("O banco já tem 9 jogadores. Tire alguém antes.");
-  }
-
-  const startersSet = new Set(lineup.starters.filter((x): x is number => x != null));
-  const others = squadOf(w, club, true).filter((p) => !startersSet.has(p.id)).sort((a, b) => {
-    const ba = lineup.bench.includes(a.id) ? 0 : 1, bb = lineup.bench.includes(b.id) ? 0 : 1;
-    if (ba !== bb) return ba - bb;
-    if (sel !== null) return ovrAt(b, slots[sel].pos) - ovrAt(a, slots[sel].pos);
-    return POS_ORDER[a.pos] - POS_ORDER[b.pos] || b.ovr - a.ovr;
-  });
-
-  return (
-    <div className="page">
-      <TacticsAdvice />
-      <div className="chips">
-        {Object.keys(FORMATIONS).map((f) => (
-          <button key={f} className={`chip${club.tactic.formation === f ? " active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
-        ))}
-      </div>
-      <div className="small muted">{FORMATION_DESC[club.tactic.formation]} · força {Math.round(lineupStrength(w, club, lineup))}</div>
-
-      <Pitch w={w} club={club} lineup={lineup} sel={sel} onTap={tapSlot} />
-
-      <div className="row gap8">
-        <button className="btn sm" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar automaticamente</button>
-        <button className="btn sm" onClick={() => push({ name: "setpieces" })}>🎯 Bola parada</button>
-        {sel !== null && <span className="small muted">Toque em outro jogador para trocar</span>}
-      </div>
-
-      <div className="card flat">
-        <b className="small">Mentalidade</b>
-        <div className="seg mt8">
-          {[-2, -1, 0, 1, 2].map((m) => (
-            <button key={m} className={club.tactic.mentality === m ? "active" : ""} onClick={() => { update(() => { club.tactic.mentality = m; }); autosave(); }}>
-              {MENTALITY_NAMES[m].split(" ")[0]}
-            </button>
-          ))}
-        </div>
-        <b className="small" style={{ display: "block", marginTop: 10 }}>Marcação</b>
-        <div className="seg mt8">
-          {[0, 1, 2].map((m) => (
-            <button key={m} className={club.tactic.pressing === m ? "active" : ""} onClick={() => { update(() => { club.tactic.pressing = m; }); autosave(); }}>
-              {PRESSING_NAMES[m].replace("Marcação ", "")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <h3>Banco ({lineup.bench.length}/9) e reservas</h3>
-      <div className="card flat" style={{ padding: "2px 10px" }}>
-        <div className="list">
-          {others.map((p) => {
-            const onBench = lineup.bench.includes(p.id);
-            return (
-              <div key={p.id} className="list-item" onClick={() => tapReserve(p)}>
-                <Avatar p={p} club={club} season={w.season} size={36} />
-                <div className="grow">
-                  <div className="row gap4"><b className="ellipsis">{p.name}</b>{p.youth && <span className="tag">base</span>}{p.legend && <span className="tag legend">★</span>}{p.injury > 0 && <span className="tag danger">🚑</span>}</div>
-                  <div className="row gap8 small muted"><PosBadge pos={p.pos} /><span style={{ width: 46 }}><Bar v={p.cond} /></span>{sel !== null && <span>na posição: {ovrAt(p, slots[sel].pos)}</span>}</div>
-                </div>
-                {onBench && <span className="tag good">banco</span>}
-                <Ovr v={p.ovr} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <div style={{ height: 40 }} />
-    </div>
+/** Fase do elenco: quem está em alta/baixa, pedidos em aberto e prêmios recentes. */
+function SquadPulse({ w, players }: { w: World; players: Player[] }) {
+  const hot = players.filter((p) => streakOf(p) === "hot");
+  const cold = players.filter((p) => streakOf(p) === "cold");
+  const reqs = players.map((p) => ({ p, r: pendingRequest(w, p) })).filter((x) => x.r);
+  const last = w.history[w.history.length - 1]?.season;
+  const awards = last == null ? [] : players.flatMap((p) => awardsOf(w, p.id).filter((a) => a.season === last).map((a) => ({ p, a })));
+  if (!hot.length && !cold.length && !reqs.length && !awards.length) return null;
+  const chip = (p: Player, label: string, cls = "") => (
+    <button key={`${label}-${p.id}`} className={`chip ${cls}`} onClick={() => push({ name: "player", id: p.id })}>{label} {p.name.split(" ").slice(-1)[0]}</button>
   );
-}
-
-export function Pitch({ w, club, lineup, sel, onTap }: { w: World; club: Club; lineup: Lineup; sel: number | null; onTap?: (i: number) => void }) {
-  const slots = FORMATIONS[club.tactic.formation] ?? FORMATIONS["4-3-3"];
   return (
-    <div className="pitch">
-      <svg className="lines" viewBox="0 0 100 140" preserveAspectRatio="none">
-        <g fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.5">
-          <rect x="3" y="3" width="94" height="134" />
-          <line x1="3" y1="70" x2="97" y2="70" />
-          <circle cx="50" cy="70" r="11" />
-          <rect x="22" y="3" width="56" height="20" />
-          <rect x="36" y="3" width="28" height="8" />
-          <rect x="22" y="117" width="56" height="20" />
-          <rect x="36" y="129" width="28" height="8" />
-        </g>
-      </svg>
-      {slots.map((s, i) => {
-        const id = lineup.starters[i];
-        const p = id != null ? w.players[id] : null;
-        const fit = p ? ovrAt(p, s.pos) : 0;
-        return (
-          <div key={i} className={`slot${sel === i ? " selected" : ""}${p ? "" : " empty"}`} style={{ left: `${s.x}%`, top: `${100 - s.y * 0.92 - 4}%` }} onClick={() => onTap?.(i)}>
-            {p ? <Avatar p={p} club={club} season={w.season} size={40} /> : <div className="avatar" style={{ width: 40, height: 40 }} />}
-            <span className="nm">{p ? shortName(p.name) : s.pos}</span>
-            {p && (
-              <span className="meta">
-                <span className="pos" style={{ background: fit >= p.ovr - 1 ? "#1f9d55" : fit >= p.ovr - 6 ? "#c78a12" : "#c0392b", minWidth: 0 }}>{s.pos} {fit}</span>
-              </span>
-            )}
-            {p && <span style={{ width: 36 }}><Bar v={p.cond} /></span>}
-          </div>
-        );
-      })}
+    <div className="card flat squad-pulse">
+      <div className="row"><b className="small grow">Fase do elenco</b><span className="tiny muted">🔥 {hot.length} · 🧊 {cold.length}</span></div>
+      {awards.length > 0 && <div className="chips mt4">{awards.map(({ p, a }) => chip(p, `${a.emoji} ${a.label.split(" ")[0]}`, "active"))}</div>}
+      {reqs.length > 0 && <div className="chips mt4">{reqs.map(({ p, r }) => chip(p, r === "raise" ? "📝 Quer aumento:" : "🚀 Quer clube maior:"))}</div>}
+      {(hot.length > 0 || cold.length > 0) && (
+        <div className="chips mt4">{hot.slice(0, 4).map((p) => chip(p, "🔥"))}{cold.slice(0, 3).map((p) => chip(p, "🧊"))}</div>
+      )}
+      <div className="tiny muted mt4">Boa fase com minutos acelera a evolução; banco e notas ruins travam.</div>
     </div>
   );
 }

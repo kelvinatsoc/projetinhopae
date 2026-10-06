@@ -115,7 +115,7 @@ export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: num
     const md = ctx ? playerMods(w, ctx.f, pl, isUser) : null;
     const fm = (md?.fatigue ?? 1) * sm.fatigue;
     const c = horizon ? Math.max(5, pl.cond - fatigueRate(pl.attrs.fis, p) * fm * horizon * 0.5) : pl.cond;
-    const eff = ovrAt(pl, pos) * (0.7 + 0.3 * (c / 100)) * (0.97 + 0.06 * (pl.morale / 100)) * (md?.eff ?? 1);
+    const eff = ovrAt(pl, pos) * (0.7 + 0.3 * (c / 100)) * (0.97 + 0.06 * (pl.morale / 100)) * (md ? md.eff * md.conf : 1);
     if (pos === "GOL") { gk = eff; penSave = md?.penSave ?? 0; }
     else {
       // cobrador: o Batedor de pênalti, senão o melhor finalizador (como no motor)
