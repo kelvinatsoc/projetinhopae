@@ -5,6 +5,7 @@ import { activeDeal, BONUS_LABEL, currentOffers, EMPTY_SLOT_PCT, signSponsor, SL
 import type { SponsorDeal } from "../engine/types";
 import { toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
+import { BrandLogo } from "./BrandLogo";
 import { Sheet } from "./components";
 import "./economy.css";
 
@@ -17,7 +18,7 @@ export function SponsorsScreen() {
     <div className="page">
       <div className="card">
         <div className="card-title"><h3>🤝 Receita de patrocínio</h3><b>{formatMoney(sponsorAnnual(w, c))}/ano</b></div>
-        <div className="tiny muted">Espaço vazio rende só {Math.round(EMPTY_SLOT_PCT * 100)}% com anunciantes avulsos. Bônus são pagos no início da temporada seguinte.</div>
+        <div className="tiny muted">Marcas e logos reais (marcas registradas dos seus donos). Espaço vazio rende só {Math.round(EMPTY_SLOT_PCT * 100)}% com anunciantes avulsos. Bônus são pagos no início da temporada seguinte.</div>
       </div>
       {SLOTS.map((slot) => {
         const info = SLOT_INFO[slot];
@@ -29,7 +30,7 @@ export function SponsorsScreen() {
             <div className="tiny muted">{info.desc}</div>
             {deal ? (
               <div className="eco-signed mt8">
-                <b>{deal.brand}</b>
+                <BrandLogo brand={deal.brand} size={30} withName />
                 <div className="small">{formatMoney(deal.annual)}/ano · até {deal.until}</div>
                 {deal.bonus.map((b) => <span key={b.kind} className="eco-tag">🏆 {BONUS_LABEL[b.kind]}: +{formatMoney(b.value)}</span>)}
               </div>
@@ -39,7 +40,7 @@ export function SponsorsScreen() {
                 <div className="eco-offers">
                   {list.map((o) => (
                     <div key={o.id} className="eco-offer" role="button" tabIndex={0} onClick={() => setPick(o)}>
-                      <div className="row"><span className="brand grow">{o.brand}</span><b>{formatMoney(o.annual)}</b></div>
+                      <div className="row"><span className="brand grow"><BrandLogo brand={o.brand} size={22} withName /></span><b>{formatMoney(o.annual)}</b></div>
                       <div className="tiny muted">{o.years} {o.years > 1 ? "temporadas" : "temporada"} · {o.bonus.length ? "com bônus" : "valor fixo, sem bônus"}</div>
                       {o.bonus.map((b) => <span key={b.kind} className="eco-tag">🏆 {BONUS_LABEL[b.kind]}: +{formatMoney(b.value)}</span>)}
                     </div>

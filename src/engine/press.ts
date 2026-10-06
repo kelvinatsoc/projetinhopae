@@ -1,6 +1,7 @@
 // Coletivas de imprensa antes e depois dos jogos do usuário.
 // As perguntas saem do contexto (fase, rival, clássico, moral do elenco, diretoria, resultado)
 // e são sorteadas com um gerador determinístico por mundo + jogo (não mexe no gerador global).
+import { pressOutlets } from "./outlets";
 import { derbyIntensity, derbyName } from "../data/rivalries";
 import { seeded } from "./common";
 import { addBoard, addFan, addPlayerMorale, addSquadMorale, narrativeOf, squadPlayers } from "./narrative";
@@ -32,7 +33,6 @@ export interface PressCtx {
   sadPid?: number; starPid?: number;
 }
 
-const REPORTERS = ["Rádio Gaúcha", "GE", "Lance!", "ESPN", "Rádio Itatiaia", "TNT Sports", "Jornal local", "Podcast da torcida", "SporTV", "Placar"];
 
 export const pressKey = (fid: number, phase: PressPhase) => `${fid}:${phase}`;
 export const pressDone = (w: World, fid: number, phase: PressPhase) => !!w.narrative?.press?.includes(pressKey(fid, phase));
@@ -165,6 +165,7 @@ export function generatePress(w: World, f: Fixture, phase: PressPhase): PressQue
     if (!topics.includes(t) && !(t === "rival" && topics.includes("derby"))) topics.push(t);
   }
   const all: PressTone[] = ["calm", "confident", "aggressive", "deflect"];
+  const outlets = pressOutlets(w.clubs[w.userClubId]?.region);
   return topics.slice(0, 3).map((topic, i) => {
     const pid = topic === "player" ? ctx.sadPid : undefined;
     const pName = pid != null ? w.players[pid]?.name : undefined;
@@ -174,7 +175,7 @@ export function generatePress(w: World, f: Fixture, phase: PressPhase): PressQue
       tone,
       text: pickR(r, ANSWERS[topic][tone]).replace(/\{o\}/g, ctx.oppName).replace(/\{p\}/g, pName ?? "ele"),
     }));
-    return { id: `${phase}${i}`, topic, reporter: pickR(r, REPORTERS), text: questionText(ctx, topic, r, pName), pid, answers };
+    return { id: `${phase}${i}`, topic, reporter: pickR(r, outlets), text: questionText(ctx, topic, r, pName), pid, answers };
   });
 }
 

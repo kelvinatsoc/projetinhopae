@@ -5,16 +5,22 @@ import { createEstaduais, isEstadual, progressEstadual } from "./estaduais";
 import { rand, shuffle } from "./rng";
 import type { Club, Competition, Fixture, TableRow, Tie, World } from "./types";
 
+// nomes comerciais oficiais (temporada 2025/26) dos estaduais; a estrutura continua em estaduais.ts
+const ESTADUAL_OFFICIAL: Record<string, string> = {
+  "est-SP": "Paulistão Casas Bahia",
+  "est-RS": "Gauchão Ipiranga",
+};
+
 export const COMP_META: Record<string, { name: string; short: string; color: string; tier: number }> = {
-  serieA: { name: "Brasileirão Série A", short: "Série A", color: "#22c55e", tier: 1 },
-  serieB: { name: "Brasileirão Série B", short: "Série B", color: "#3b82f6", tier: 4 },
+  serieA: { name: "Brasileirão Betano Série A", short: "Série A", color: "#22c55e", tier: 1 },
+  serieB: { name: "Brasileirão Superbet Série B", short: "Série B", color: "#3b82f6", tier: 4 },
   serieC: { name: "Brasileirão Série C", short: "Série C", color: "#a855f7", tier: 5 },
-  copaBR: { name: "Copa do Brasil", short: "Copa do Brasil", color: "#eab308", tier: 2 },
-  liberta: { name: "Copa Libertadores", short: "Libertadores", color: "#d4a017", tier: 0 },
-  sula: { name: "Copa Sul-Americana", short: "Sul-Americana", color: "#06b6d4", tier: 3 },
+  copaBR: { name: "Copa Betano do Brasil", short: "Copa do Brasil", color: "#eab308", tier: 2 },
+  liberta: { name: "CONMEBOL Libertadores", short: "Libertadores", color: "#d4a017", tier: 0 },
+  sula: { name: "CONMEBOL Sul-Americana", short: "Sul-Americana", color: "#06b6d4", tier: 3 },
 };
 // estaduais: nomes em português nas telas de tabela, jogos, histórico e troféus
-ESTADUAIS.forEach((e, i) => { COMP_META[e.id] = { name: e.name, short: e.short, color: e.color, tier: 10 + i }; });
+ESTADUAIS.forEach((e, i) => { COMP_META[e.id] = { name: ESTADUAL_OFFICIAL[e.id] ?? e.name, short: e.short, color: e.color, tier: 10 + i }; });
 
 export const STAGE_NAMES: Record<string, string> = {
   league: "Pontos corridos",

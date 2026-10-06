@@ -440,6 +440,7 @@ function PhotoCredit({ p }: { p: Player }) {
     return () => { alive = false; };
   }, [real]);
   if (!p.photo && p.ext) return <div className="tiny mt8" style={{ opacity: 0.7 }}>📷 Foto: TheSportsDB.com</div>;
+  if (!p.photo && p.img && /^[os]\d/.test(p.img)) return <div className="tiny mt8" style={{ opacity: 0.7 }}>📷 Foto: {p.img.startsWith("s") ? "São Paulo FC" : "ogol.com.br"}</div>;
   if (!p.photo && p.img?.startsWith("r")) return <div className="tiny mt8" style={{ opacity: 0.7 }}>Rosto gerado por IA (pessoa que não existe).</div>;
   if (!real || !credit) return null;
   return (

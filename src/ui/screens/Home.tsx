@@ -7,6 +7,8 @@ import { fanMood } from "../../engine/narrative";
 import { LEGENDS } from "../../data/legends";
 import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
+import { broadcasters, newsSource } from "../../engine/outlets";
+import { stadiumName } from "../../engine/sponsors";
 import { CompLogo, Crest, visibleColor } from "../components";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
@@ -163,8 +165,9 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
       </div>
       <div className="mh-info">
         <span>📅 {formatDate(w.season, f.day)}</span>
-        <span className="ellipsis" style={{ maxWidth: "60%" }}>🏟️ {f.neutral ? "Campo neutro" : home.stadium}</span>
+        <span className="ellipsis" style={{ maxWidth: "60%" }}>🏟️ {f.neutral ? "Campo neutro" : stadiumName(w, home)}</span>
       </div>
+      {broadcasters(f).length > 0 && <div className="mh-info"><span>📺 {broadcasters(f).join(" · ")}</span></div>}
       <div className="mh-actions">
         <button onClick={() => push({ name: "tactics" })}>📋 Escalação</button>
         <button onClick={() => push({ name: "club", id: opp.id })}>🔎 {opp.name.length > 12 ? opp.abbr : opp.name}</button>
@@ -245,7 +248,7 @@ export function NewsScreen() {
             <span style={{ fontSize: 22 }}>{ICON[n.kind] ?? "📣"}</span>
             <div className="grow">
               <b>{n.title}</b>
-              <div className="tiny muted">{formatDate(n.season, n.day)} {n.season}</div>
+              <div className="tiny muted">{newsSource(w, n) ? `📰 ${newsSource(w, n)} · ` : ""}{formatDate(n.season, n.day)} {n.season}</div>
             </div>
             {!n.read && <span className="tag good">novo</span>}
           </div>

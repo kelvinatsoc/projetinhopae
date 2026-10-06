@@ -6,7 +6,7 @@ import { gateRevenue, monthlyFinances } from "../src/engine/finance";
 import { MatchSim } from "../src/engine/match";
 import { getRngState, setRngState } from "../src/engine/rng";
 import { bestTaker, freeKickXgFor, ROUTINES, setRoutine, setTaker, takerFor } from "../src/engine/setpieces";
-import { bonusMet, currentOffers, makeOffers, settleSponsorBonuses, signSponsor, sponsorAnnual } from "../src/engine/sponsors";
+import { bonusMet, currentOffers, makeOffers, migrateSponsors, settleSponsorBonuses, signSponsor, sponsorAnnual } from "../src/engine/sponsors";
 import type { Fixture, World } from "../src/engine/types";
 import { createWorld, migrateWorld, type Database } from "../src/engine/world";
 
@@ -31,6 +31,10 @@ describe("patrocínios", () => {
   it("assinar muda a receita mensal e paga bônus de fim de temporada", () => {
     const w = fresh();
     const c = w.clubs.flamengo;
+    // começa com os contratos reais; aqui os espaços ficam livres para testar a assinatura
+    expect(c.sponsors!.deals.shirt!.brand).toBe("Betano");
+    expect(c.sponsors!.deals.kit!.brand).toBe("adidas");
+    c.sponsors!.deals = {};
     const offers = currentOffers(w, c);
     for (const slot of ["shirt", "stadium", "kit"]) {
       const o = offers.filter((x) => x.slot === slot)[2];
@@ -49,6 +53,22 @@ describe("patrocínios", () => {
     expect(paid).toBeGreaterThan(0);
     expect(c.balance - bal).toBe(paid);
     expect(settleSponsorBonuses(w, c)).toBe(0); // uma vez só
+  });
+
+  it("contratos reais e saves antigos com marcas fictícias", () => {
+    const w = fresh();
+    expect(w.clubs.palmeiras.sponsors!.deals.stadium!.brand).toBe("Allianz Parque");
+    expect(w.clubs["sao-paulo"].sponsors!.deals.shirt!.brand).toBe("Superbet");
+    expect(w.clubs.corinthians.sponsors!.deals.kit!.brand).toBe("Nike");
+    // renovação: o parceiro real aparece entre as ofertas
+    expect(makeOffers(w, w.clubs.flamengo, "shirt")[0].brand).toBe("Betano");
+    const c = w.clubs.flamengo;
+    c.sponsors = { deals: { shirt: { id: "x", slot: "shirt", brand: "Banco Arapuã", annual: 1e6, years: 2, bonus: [], since: w.season, until: w.season + 1 } },
+      offers: { season: w.season, list: [{ id: "y", slot: "kit", brand: "Bicuda", annual: 1, years: 1, bonus: [] }] } };
+    migrateSponsors(c, w);
+    expect(c.sponsors.deals.shirt!.brand).toBe("Betano");
+    expect(c.sponsors.deals.shirt!.annual).toBe(1e6);
+    expect(c.sponsors.offers).toBeUndefined();
   });
 
   it("cláusulas", () => {

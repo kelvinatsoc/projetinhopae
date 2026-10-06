@@ -12,7 +12,8 @@ import { migrateBoardProjects } from "./board";
 import { migrateFacilities } from "./facilities";
 import { repairWorld } from "./integrity";
 import { migrateSetPieces } from "./setpieces";
-import { migrateSponsors } from "./sponsors";
+import { COMP_META } from "./competitions";
+import { migrateSponsors, seedRealSponsors } from "./sponsors";
 import { addNews } from "./news";
 import { assignRegenFace, legendImage, sportsdbPath } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
@@ -34,6 +35,7 @@ export interface DbPlayer {
   o: number; pt: number; fm: number; y: 0 | 1; no?: number;
   q?: string; // item do Wikidata
   img?: 1; // foto real em public/media/players/<q>.webp
+  pi?: string; // retrato do elenco atual (ogol / site do clube) em public/media/players/<pi>.webp
 }
 
 export interface Database {
@@ -112,6 +114,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
     }
     if (dp.img && dp.q) p.img = dp.q;
     p.ext = sportsdbPath(dp.n, dp.b);
+    if (dp.pi) { p.img = dp.pi; delete p.ext; } // retrato do elenco atual vence as outras fontes
     p.clubId = club.id;
     club.players.push(p.id);
     const foreignMult = club.country === "BRA" ? 1 : 0.5;
@@ -125,6 +128,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
   // jogadores livres no mercado
   for (let i = 0; i < 160; i++) generatePlayer(w, null, randInt(50, 68), randInt(22, 32));
 
+  seedRealSponsors(w);
   startSeason(w, initialEntrants(w));
   const user = w.clubs[w.userClubId];
   ensureLinks(w, user); // entrosamento entre pares (chemistry.ts)
@@ -188,15 +192,21 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
     }
   }
   const photos = new Map<string, string>();
-  for (const dp of db.players) if (dp.img && dp.q) photos.set(`${dp.n}|${dp.b}`, dp.q);
+  const portraits = new Map<string, string>();
+  for (const dp of db.players) {
+    if (dp.img && dp.q) photos.set(`${dp.n}|${dp.b}`, dp.q);
+    if (dp.pi) portraits.set(`${dp.n}|${dp.b}`, dp.pi);
+  }
   for (const p of Object.values(w.players)) {
     if (p.legend) {
       p.img ??= legendImage(p.legend);
     } else if (p.real) {
       // jogador real nunca usa rosto de IA (saves antigos podiam ter herdado um "r…")
       if (p.img?.startsWith("r")) delete p.img;
+      const portrait = portraits.get(`${p.name}|${p.born}`);
+      if (portrait) p.img = portrait;
       if (!p.img) p.img = photos.get(`${p.name}|${p.born}`);
-      const ext = sportsdbPath(p.name, p.born);
+      const ext = portrait ? undefined : sportsdbPath(p.name, p.born);
       if (ext) p.ext = ext; else delete p.ext;
     } else {
       assignRegenFace(w, p);
@@ -209,8 +219,10 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
   migrateProgression(w);
   // economia e dia de jogo (opcionais): repara sub-objetos inválidos
   migrateBoardProjects(w); // obras antigas da diretoria → Estrutura
-  for (const c of Object.values(w.clubs)) { migrateSponsors(c); migrateFacilities(c); migrateSetPieces(c); }
-  migrateDynamics(w);
+  for (const c of Object.values(w.clubs)) { migrateSponsors(c, w); migrateFacilities(c); migrateSetPieces(c); }
+  for (const comp of Object.values(w.comps)) if (COMP_META[comp.id]) comp.name = COMP_META[comp.id].name; // nomes oficiais
+  seedRealSponsors(w); // saves sem patrocínio: clubes ganham os contratos reais
+  migrateDynamics(w); // tática a fundo, entrosamento, forma e prêmios (idempotente)
   const repaired = repairWorld(w);
   w.version = Math.max(from, SAVE_VERSION);
   return { repaired, newer: from > SAVE_VERSION };
