@@ -215,7 +215,7 @@ export function HistoryScreen() {
         <div key={s.season} className="card small">
           <b>{s.season}</b>
           {Object.entries(s.champions).map(([comp, club]) => (
-            <div key={comp} className="row gap8 mt8"><span className="muted" style={{ width: 110 }}>{COMP_META[comp]?.short}</span><Crest club={w.clubs[club]} size={16} />{w.clubs[club]?.name}</div>
+            <div key={comp} className="row gap8 mt8"><span className="muted" style={{ width: 110 }}>{COMP_META[comp]?.short}</span>{w.clubs[club] && <Crest club={w.clubs[club]} size={16} />}{w.clubs[club]?.name ?? w.formerClubs?.[club] ?? club}</div>
           ))}
           {s.topScorer && <div className="mt8">⚽ Artilheiro da Série A: {s.topScorer.name} ({s.topScorer.goals})</div>}
           {s.bestPlayer && <div>🏅 Craque da Série A: {s.bestPlayer.name} (nota {s.bestPlayer.rating})</div>}
@@ -423,7 +423,7 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
         {last && (
           <div className="card">
             {Object.entries(last.champions).map(([comp, club]) => (
-              <div key={comp} className="row gap8" style={{ padding: "4px 0" }}><CompLogo id={comp} size={20} /><span className="muted small" style={{ width: 96 }}>{COMP_META[comp]?.short}</span><Crest club={w.clubs[club]} size={20} /><b>{w.clubs[club]?.name}</b></div>
+              <div key={comp} className="row gap8" style={{ padding: "4px 0" }}><CompLogo id={comp} size={20} /><span className="muted small" style={{ width: 96 }}>{COMP_META[comp]?.short}</span>{w.clubs[club] && <Crest club={w.clubs[club]} size={20} />}<b>{w.clubs[club]?.name ?? w.formerClubs?.[club] ?? club}</b></div>
             ))}
             {last.topScorer && <div className="small mt8">⚽ Artilheiro: {last.topScorer.name} ({last.topScorer.goals} gols)</div>}
           </div>

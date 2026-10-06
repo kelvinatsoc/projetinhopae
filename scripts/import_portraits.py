@@ -69,6 +69,8 @@ def main():
         if not cid:
             unknown[e["club"]] += 1
             continue
+        if clubs[cid].get("minor"):
+            continue  # clubes dos estaduais: retratos pelo id do oGol no build_database.py
         portraits[cid].append((e["name"], os.path.join(ARQ, "public", e["photo"].lstrip("/")), "o" + pid.lstrip("-"), False))
     for pid, e in json.load(open(os.path.join(ARQ, "lib/player-portraits.json"))).items():
         if "/spfc/" in e.get("photo", ""):
@@ -124,6 +126,8 @@ def main():
             out[f"{p['n']}|{p.get('b')}"] = key
             used.add(key)
     for p in db["players"]:
+        if clubs[p["c"]].get("minor"):
+            continue  # "pi" dos clubes dos estaduais vem do build (id do oGol)
         d = clubs[p["c"]]["div"]
         stats[d][0] += 1
         k = out.get(f"{p['n']}|{p.get('b')}")

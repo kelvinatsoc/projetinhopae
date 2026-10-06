@@ -103,6 +103,7 @@ export function newPlayerBase(w: World, fields: Partial<Player> & Pick<Player, "
     ...fields,
   };
   recalcOvr(p);
+  if (p.pot < p.ovr) p.pot = p.ovr; // arredondamento dos atributos pode passar o potencial em 1
   initPlayerExtras(w, p); // atributos ocultos e jogadas (gerador próprio: não mexe no global)
   w.players[p.id] = p;
   assignRegenFace(w, p);

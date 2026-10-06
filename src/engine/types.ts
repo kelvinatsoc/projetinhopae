@@ -241,7 +241,11 @@ export interface Club {
   sponsors?: SponsorState;
   fac?: FacilityState;
   setPieces?: SetPieceConfig;
-  minor?: string; // UF: clube fictício que só disputa o estadual (fora da pirâmide nacional)
+  /** UF: clube que só disputa o estadual (fora da pirâmide nacional A–C e do sorteio da Série D).
+   *  Real (vem do banco, flag "minor") ou fictício (fictional). */
+  minor?: string;
+  fictional?: boolean; // clube inventado (último recurso para completar um estadual)
+  genSquad?: boolean; // clube real sem elenco publicado: jogadores gerados com semente fixa
 }
 
 export interface FinanceBook {
@@ -487,6 +491,10 @@ export interface World {
   ach?: AchState;
   scenario?: ScenarioState;
   career?: CareerState;
+  /** save antigo com clubes fictícios nos estaduais: trocados pelos reais na virada da temporada */
+  pendingEstadualSwap?: boolean;
+  /** nomes de clubes que saíram do mundo (fictícios dos estaduais), para o histórico de campeões */
+  formerClubs?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------- narrativa e mídia
