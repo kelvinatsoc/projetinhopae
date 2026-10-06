@@ -8,6 +8,11 @@ dados inicial do jogo: src/data/database.json
   Não existe fonte aberta de "notas" de jogadores, então a estimativa usa:
     força do clube + fama (nº de idiomas com artigo na Wikipedia) + idade.
   Depois o elenco é normalizado para a média do clube (campo "level" do catálogo).
+- clubes dos estaduais (estadual_catalog.py, "minor"): elenco 2026 do real-squads.json (oGol, via
+  Arquibancada) ou da predefinição "Elenco" da pt.wiki (scripts/data/estaduais_src/); sem nenhum dos
+  dois, sai com "gs": 1 e o jogo gera o elenco com semente fixa. Retratos "o<id>" do real-squads.
+- "pi" (retrato do elenco atual) vem de src/data/portraits.json, então o build é idempotente
+  (scripts/check_idempotent.py confere).
 - OVERRIDES permite corrigir à mão as notas de quem você achar injustiçado :)
 - mídia real (opcional): escudo ("logo"), foto do estádio ("stadiumImg"), fundação e apelidos
   vêm de scripts/cache/club_media.json (fetch_club_media.py); o item do Wikidata ("q") e a foto
@@ -28,7 +33,9 @@ from clubs_catalog import ALL_CLUBS  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "scripts", "cache", "raw.json")
-OUT = os.path.join(ROOT, "src", "data", "database.json")
+OUT = os.environ.get("DB_OUT") or os.path.join(ROOT, "src", "data", "database.json")
+PORTRAITS = os.path.join(ROOT, "src", "data", "portraits.json")  # import_portraits.py: {"nome|ano": chave}
+EST_SRC = os.path.join(ROOT, "scripts", "data", "estaduais_src")
 CLUB_MEDIA = os.path.join(ROOT, "scripts", "cache", "club_media.json")
 QIDS_EXTRA = os.path.join(ROOT, "scripts", "cache", "player_qids_extra.json")
 MEDIA = os.path.join(ROOT, "public", "media")
@@ -140,6 +147,12 @@ STADIUMS = {
     "corinthians": ("Neo Química Arena", 48905), "santos": ("Vila Belmiro", 16068), "bahia": ("Arena Fonte Nova", 50025),
     # o artigo do catálogo é o do Barra de Teresópolis (RJ); o Barra do jogo é o de Santa Catarina
     "barra-sc": ("Arena Barra FC", 5500),
+    # clubes dos estaduais (infobox da pt.wiki, quando o Wikidata não tem o estádio certo)
+    "iguatu": ("Morenão", 8000), "maracana-ce": ("Almir Dutra", 2500), "jaboatao": ("Gileno de Carli", 5459),
+    "porto-ba": ("Agnaldo Bento dos Santos", 5000), "cameta": ("Parque do Bacurau", 8000),
+    "goiatuba": ("Divino Garcia Rosa", 15000), "tuna-luso": ("Francisco Vasques", 6000),
+    "decisao": ("José Dionísio do Carmo", 6100), "maguary": ("Arthur Tavares de Melo", 4000),
+    "capital-to": ("Nilton Santos", 12000),
 }
 
 # posições secundárias plausíveis para cada posição principal
@@ -338,6 +351,73 @@ def stadium_of(c, info):
     return stadium, capacity, fixed or bool(ground), fixed or cap_ok
 
 
+def crest_colors(cid):
+    """Duas cores dominantes do escudo oficial (para clubes sem cores no catálogo)."""
+    path = os.path.join(MEDIA, "crests", cid + ".webp")
+    if not os.path.exists(path):
+        return None
+    from PIL import Image
+    im = Image.open(path).convert("RGBA").resize((64, 64))
+    counts = {}
+    for r, g, b, a in im.getdata():
+        if a < 200:
+            continue
+        key = (r // 32 * 32 + 16, g // 32 * 32 + 16, b // 32 * 32 + 16)
+        counts[key] = counts.get(key, 0) + 1
+    if not counts:
+        return None
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    def snap(c):
+        r, g, b = c
+        if max(c) < 70:
+            return "#111111"
+        if min(c) > 200:
+            return "#FFFFFF"
+        return "#%02X%02X%02X" % c
+    out = []
+    for c, _n in ranked:
+        h = snap(c)
+        if all(abs(int(h[1:3], 16) - int(o[1:3], 16)) + abs(int(h[3:5], 16) - int(o[3:5], 16)) +
+               abs(int(h[5:7], 16) - int(o[5:7], 16)) > 120 for o in out):
+            out.append(h)
+        if len(out) == 2:
+            break
+    if len(out) == 1:
+        out.append("#FFFFFF" if out[0] != "#FFFFFF" else "#111111")
+    return out
+
+
+RS_POS = {"GK": "GK", "DEF": "DF", "MID": "MF", "ATT": "FW"}
+
+
+def estadual_players(c, rs_all, pt_elencos):
+    """Jogadores de um clube dos estaduais no formato de raw.json (+ "pi" e camisas sem repetição)."""
+    out, used = [], set()
+    if c.get("rs") and c["rs"] in rs_all:
+        for p in rs_all[c["rs"]]["players"]:
+            age = int(p.get("age") or 25)
+            num = p.get("number")
+            if num in used:
+                num = None
+            if num:
+                used.add(num)
+            kind = "youth" if (num is None and age <= 20) else "first"
+            key = "o" + str(p["id"]).lstrip("-")
+            out.append({"name": p["name"], "pos": RS_POS.get(p.get("position"), "MF"), "kind": kind,
+                        "dob": f"{SEASON - age}-01-01", "no": str(num or ""), "sl": 0,
+                        "pi": key if has_media(f"players/{key}.webp") else None})
+    elif c["id"] in pt_elencos:
+        grp = {"G": "GK", "Z": "DF", "LD": "DF", "LE": "DF", "V": "MF", "M": "MF", "A": "FW", "PD": "FW", "PE": "FW"}
+        for q in pt_elencos[c["id"]]:
+            num = q.get("num") or ""
+            if num in used:
+                num = ""
+            if num:
+                used.add(num)
+            out.append({"name": q["label"], "pos": grp.get(q["pos"], "MF"), "kind": "first", "no": num, "sl": 0})
+    return out
+
+
 def main():
     with open(RAW, encoding="utf-8") as f:
         raw = json.load(f)
@@ -358,12 +438,18 @@ def main():
     if os.path.exists(PT):
         with open(PT, encoding="utf-8") as f:
             pt_all = json.load(f)
+    portraits = load_json(PORTRAITS, {})
+    rs_all = load_json(os.path.join(EST_SRC, "real-squads.json"), {})
+    pt_elencos = load_json(os.path.join(EST_SRC, "pt_elencos.json"), {})
+    pt_all = {**pt_all, **pt_elencos}
     clubs_out, players_out = [], []
     seen_links = set()
     for c in ALL_CLUBS:
         rc = raw["clubs"].get(c["id"], {"infobox": {}, "players": []})
+        if c.get("minor"):
+            rc = {"infobox": {}, "players": estadual_players(c, rs_all, pt_elencos)}
         info = rc.get("infobox", {})
-        colors = c["colors"]
+        colors = c["colors"] or (crest_colors(c["id"]) if c.get("minor") else None)
         if not colors:
             body = info.get("body1") or "#1B3E8F"
             sec = info.get("shorts1") or info.get("socks1") or "#FFFFFF"
@@ -383,6 +469,11 @@ def main():
         if vq and not cap_ok:
             wd_cap = mv.get("capacity") or 0
             capacity = known.get("capacity") or (wd_cap if 1500 <= wd_cap <= 120000 else capacity)
+        if c.get("ground"):  # clubes dos estaduais: estádio do catálogo quando o Wikidata não ajudou
+            if not vq or not (known.get("name") or mv.get("labelPt") or mv.get("labelEn")):
+                stadium = c["ground"][0]
+            if not vq or not (known.get("capacity") or 1500 <= (mv.get("capacity") or 0) <= 120000):
+                capacity = c["ground"][1]
         founded = mc.get("founded") or year_only(info.get("founded"))
         nicks = mc.get("nicknames") or clean_nicks(info.get("nickname"))
         country = "BRA" if c["div"] != "F" else c["region"]
@@ -393,6 +484,10 @@ def main():
             "crest": c["crest"], "stadium": stadium, "capacity": capacity,
             "founded": founded or "", "nickname": join_max(nicks or [], 60),
         }
+        if c.get("minor"):
+            club["minor"] = c["minor"]
+            if len(rc["players"]) < 16:
+                club["gs"] = 1
         if has_media(f"crests/{c['id']}.webp"):
             club["logo"] = 1
         if vq and has_media(f"stadiums/{vq}.webp"):
@@ -430,7 +525,7 @@ def main():
                 "age": age, "born": born, "foot": foot, "height": p.get("height") or None,
                 "fame": int(p.get("sl") or 0), "kind": kind, "no": p.get("no") or "",
                 "q": p.get("qid") or qids_extra.get(c["id"] + "|" + p["name"]),
-                "qsrc": "raw" if p.get("qid") else "extra",
+                "qsrc": "raw" if p.get("qid") else "extra", "pi": p.get("pi"),
             })
         # posições detalhadas da Wikipedia em português
         pt_list = pt_all.get(c["id"]) or []
@@ -516,6 +611,7 @@ def main():
                 "fm": x["fame"], "y": 1 if x["kind"] == "youth" else 0,
                 **({"no": int(num)} if num and int(num) < 100 else {}),
                 **({"q": x["q"]} if x["q"] else {}),
+                **({"pi": x["pi"]} if x["pi"] else {}),
                 "_qsrc": x["qsrc"],
             })
 
@@ -530,9 +626,13 @@ def main():
                     print(f"  aviso: {q} repetido ({', '.join(x['c'] + ':' + x['n'] for x in ps)}) — "
                           f"ignorado em {p['c']}:{p['n']}")
                     del p["q"]
-    n_img = 0
+    n_img = n_pi = 0
     for p in players_out:
         del p["_qsrc"]
+        pi = p.get("pi") or portraits.get(f"{p['n']}|{p['b']}")
+        if pi:
+            p["pi"] = pi
+            n_pi += 1
         if p.get("q") and has_media(f"players/{p['q']}.webp"):
             p["img"] = 1
             n_img += 1
@@ -544,7 +644,7 @@ def main():
         json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
     print(f"ok -> {OUT}: {len(clubs_out)} clubes, {len(players_out)} jogadores "
           f"({os.path.getsize(OUT) // 1024} KB); escudos: {n_logo}, fotos de estádio: {n_st}, "
-          f"jogadores com QID: {sum(1 for p in players_out if p.get('q'))}, com foto: {n_img}")
+          f"jogadores com QID: {sum(1 for p in players_out if p.get('q'))}, com foto: {n_img}, com retrato: {n_pi}")
 
 
 if __name__ == "__main__":

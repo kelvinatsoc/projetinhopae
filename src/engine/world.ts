@@ -17,6 +17,7 @@ import { assignRegenFace, legendImage, sportsdbPath } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
 import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } from "./rng";
 import { initialEntrants, startSeason } from "./season";
+import { generateRealSquad, migrateRealEstaduais } from "./estaduais";
 import { freeShirt } from "./transfers";
 import type { Club, CrestPattern, Div, Pos, Settings, World } from "./types";
 
@@ -26,6 +27,8 @@ export interface DbClub {
   founded?: string; nickname?: string;
   logo?: 1; // escudo oficial em public/media/crests/<id>.webp
   stadiumImg?: string; // foto do estádio em public/media/stadiums/<stadiumImg>.webp
+  minor?: string; // UF: clube real que só disputa o estadual (fora da pirâmide nacional)
+  gs?: 1; // sem elenco publicado: o jogo gera o elenco (semente fixa pelo id do clube)
 }
 
 export interface DbPlayer {
@@ -84,41 +87,9 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
   for (const c of db.clubs) w.clubs[c.id] = makeClub(c);
 
   // jogadores reais
-  for (const dp of db.players) {
-    const club = w.clubs[dp.c];
-    if (!club) continue;
-    const ageY = w.season - dp.b;
-    const p = newPlayerBase(w, {
-      name: dp.n,
-      nat: dp.nat,
-      born: dp.b,
-      pos: dp.p,
-      sec: dp.s ?? [],
-      foot: dp.f,
-      height: dp.h,
-      attrs: makeAttrs(dp.p, dp.o, { height: dp.h, age: ageY }),
-      pot: Math.max(dp.pt, dp.o),
-      youth: dp.y === 1 && ageY <= 20,
-      real: true,
-      fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
-      shirt: dp.no,
-    });
-    if (p.ovr !== dp.o) {
-      // o overall real manda; os extras (que dependem do overall) são refeitos com o mesmo gerador próprio
-      p.ovr = dp.o;
-      delete p.hid;
-      delete p.traits;
-      initPlayerExtras(w, p);
-    }
-    if (dp.img && dp.q) p.img = dp.q;
-    p.ext = sportsdbPath(dp.n, dp.b);
-    if (dp.pi) { p.img = dp.pi; delete p.ext; } // retrato do elenco atual vence as outras fontes
-    p.clubId = club.id;
-    club.players.push(p.id);
-    const foreignMult = club.country === "BRA" ? 1 : 0.5;
-    p.wage = Math.round(wageFor(p.ovr, club.rep, ageY) * foreignMult * (0.85 + rand() * 0.3));
-    p.contractEnd = w.season + randInt(1, 3);
-  }
+  for (const dp of db.players) addDbPlayer(w, dp);
+  // clubes reais dos estaduais sem elenco publicado: elenco gerado com semente fixa (id do clube)
+  for (const club of Object.values(w.clubs)) if (club.genSquad) generateRealSquad(w, club);
 
   // completa elencos e categorias de base
   for (const club of Object.values(w.clubs)) fillSquad(w, club);
@@ -135,6 +106,43 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
     `Fique de olho nas categorias de base: lendas do futebol podem renascer por lá!`);
   w.rng = getRngState();
   return w;
+}
+
+/** Cria em w um jogador real do banco de dados, no clube dele. */
+function addDbPlayer(w: World, dp: DbPlayer) {
+  const club = w.clubs[dp.c];
+  if (!club) return;
+  const ageY = w.season - dp.b;
+  const p = newPlayerBase(w, {
+    name: dp.n,
+    nat: dp.nat,
+    born: dp.b,
+    pos: dp.p,
+    sec: dp.s ?? [],
+    foot: dp.f,
+    height: dp.h,
+    attrs: makeAttrs(dp.p, dp.o, { height: dp.h, age: ageY }),
+    pot: Math.max(dp.pt, dp.o),
+    youth: dp.y === 1 && ageY <= 20,
+    real: true,
+    fame: clamp(Math.round(11 * Math.log1p(dp.fm)), 0, 100),
+    shirt: dp.no,
+  });
+  if (p.ovr !== dp.o) {
+    // o overall real manda; os extras (que dependem do overall) são refeitos com o mesmo gerador próprio
+    p.ovr = dp.o;
+    delete p.hid;
+    delete p.traits;
+    initPlayerExtras(w, p);
+  }
+  if (dp.img && dp.q) p.img = dp.q;
+  p.ext = sportsdbPath(dp.n, dp.b);
+  if (dp.pi) { p.img = dp.pi; delete p.ext; } // retrato do elenco atual vence as outras fontes
+  p.clubId = club.id;
+  club.players.push(p.id);
+  const foreignMult = club.country === "BRA" ? 1 : 0.5;
+  p.wage = Math.round(wageFor(p.ovr, club.rep, ageY) * foreignMult * (0.85 + rand() * 0.3));
+  p.contractEnd = w.season + randInt(1, 3);
 }
 
 function makeClub(c: DbClub): Club {
@@ -166,6 +174,8 @@ function makeClub(c: DbClub): Club {
     stadiumImg: c.stadiumImg,
     founded: c.founded, nickname: c.nickname,
     jersey: JERSEYS[hashString(c.id) % JERSEYS.length],
+    ...(c.minor ? { minor: c.minor } : {}),
+    ...(c.gs ? { genSquad: true } : {}),
   };
 }
 
@@ -210,6 +220,7 @@ export function migrateWorld(w: World, db: Database): { repaired: number; newer:
     }
   }
   if (from < 3) migrateTo3(w);
+  migrateRealEstaduais(w, db, { makeClub, addDbPlayer, fillSquad });
   fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
   narrativeOf(w); // trilha A: torcida, coletivas e interações
   inboxOf(w);
@@ -252,13 +263,14 @@ function fillSquad(w: World, club: Club) {
     generatePlayer(w, club, club.level - 6, randInt(19, 32), pos);
   }
   // base
-  const youthTarget = club.country === "BRA" ? 4 + club.youthLevel : 3;
+  // quem só joga o estadual não tem categoria de base (nem safra anual)
+  const youthTarget = club.minor ? 0 : club.country === "BRA" ? 4 + club.youthLevel : 3;
   const youth = club.players.map((id) => w.players[id]).filter((p) => p?.youth).length;
   for (let i = youth; i < youthTarget; i++) {
     const ageY = randInt(15, 18);
     const ovr = clamp(Math.round(40 + club.youthLevel * 2.5 + (ageY - 15) * 3 + gauss(0, 4)), 32, 70);
     const p = generatePlayer(w, club, ovr, ageY, undefined, true);
-    p.pot = clamp(Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7)), ovr + 5, 90);
+    p.pot = clamp(Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7)), Math.max(ovr + 5, p.ovr), 90);
     p.fame = 1;
   }
   // camisas

@@ -44,7 +44,7 @@ ESTADUAL_CLUBS = [
     E("altos", "Altos", "Associação Atlética de Altos", "ALT", "PI", "Altos", 52, 22, "-80", sd=True, ground=("Lindolfo Monteiro", 6000)),
     E("river-pi", "River-PI", "River Atlético Clube", "RIV", "PI", "Teresina", 50, 28, "-81", ground=("Albertão", 44200)),
     E("tocantinopolis", "Tocantinópolis", "Tocantinópolis Esporte Clube", "TOC", "TO", "Tocantinópolis", 50, 16, "-82", sd=True, ground=("Ribeirão", 3000)),
-    E("capital-to", "Capital-TO", "Capital Futebol Clube", "CAP", "TO", "Palmas", 50, 16, "-83", wiki="Capital CF", sd=True, ground=("Nilton Santos", 12000)),
+    E("capital-to", "Capital-TO", "Capital Futebol Clube", "CAP", "TO", "Palmas", 50, 16, "-83", wiki="Capital Futebol Clube (Tocantins)", pt="Capital Futebol Clube (Tocantins)", ground=("Nilton Santos", 12000)),
     E("rio-branco-ac", "Rio Branco-AC", "Rio Branco Football Club", "RBA", "AC", "Rio Branco", 49, 26, "-84", ground=("Arena da Floresta", 20000)),
     E("humaita", "Humaitá", "Sport Clube Humaitá", "HUM", "AC", "Porto Acre", 49, 14, "-85", sd=True, ground=("Arena da Floresta", 20000)),
     E("trem", "Trem", "Trem Desportivo Clube", "TRE", "AP", "Macapá", 49, 18, "-86", sd=True, ground=("Zerão", 13680)),
@@ -83,7 +83,7 @@ ESTADUAL_CLUBS = [
     E("jacuipense", "Jacuipense", "Esporte Clube Jacuipense", "JAC", "BA", "Riachão do Jacuípe", 51, 16, sd=True),
     E("porto-ba", "Porto", "Porto Sport Club", "PSC", "BA", "Porto Seguro", 50, 12, sd=True),
     E("bahia-de-feira", "Bahia de Feira", "Associação Desportiva Bahia de Feira", "BDF", "BA", "Feira de Santana", 50, 18),
-    E("barcelona-ba", "Barcelona-BA", "Barcelona Futebol Clube", "BAR", "BA", "Ilhéus", 49, 10, wiki="Barcelona Futebol Clube (BA)", pt="Barcelona Futebol Clube (Bahia)"),
+    E("galicia", "Galícia", "Galícia Esporte Clube", "GAL", "BA", "Salvador", 49, 16),
     # Paraense
     E("tuna-luso", "Tuna Luso", "Tuna Luso Brasileira", "TUN", "PA", "Belém", 51, 30, sd=True),
     E("aguia-maraba", "Águia de Marabá", "Águia de Marabá Futebol Clube", "AGU", "PA", "Marabá", 51, 22, sd=True),

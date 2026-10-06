@@ -1,24 +1,28 @@
-// Campeonatos estaduais (jan–mar): formatos simplificados, clubes fictícios para completar
-// as chaves, premiação e cobrança da diretoria.
+// Campeonatos estaduais (jan–mar): formatos simplificados, clubes reais de cada estado (fictícios só
+// como último recurso), premiação e cobrança da diretoria.
 import { ESTADUAIS, ESTADUAL_BY_ID, ESTADUAL_PRIZES, isEstadualId, type EstadualDef } from "../data/estaduais";
 import { estadualDays } from "./calendar";
 import { addFixture, createTie, newRow, roundRobin, sortTable } from "./competitions";
 import { awardPrize } from "./finance";
 import { addNews } from "./news";
 import { generatePlayer, wageFor } from "./player";
-import { clamp, hashString, randInt, shuffle } from "./rng";
+import { clamp, getRngState, hashString, randInt, setRngState, shuffle } from "./rng";
 import { freeShirt } from "./transfers";
 import type { Club, Competition, CrestPattern, Pos, TableRow, World } from "./types";
+import type { Database, DbClub, DbPlayer } from "./world";
 
 export { ESTADUAIS, isEstadualId };
 export const isEstadual = (comp: Competition) => isEstadualId(comp.id);
 
 const strength = (c: Club) => c.level + c.rep / 20;
 
+/** Clube fictício (inventado para completar a chave). Saves antigos não têm a flag: o id "est-xx-n" denuncia. */
+export const isFictional = (c: Club) => !!c.fictional || /^est-[a-z]{2}-\d+$/.test(c.id);
+
 /** Clubes reais do estado (os mais fortes primeiro). */
 function realClubs(w: World, def: EstadualDef): Club[] {
   return Object.values(w.clubs)
-    .filter((c) => c.country === "BRA" && c.region === def.uf && !c.minor)
+    .filter((c) => c.country === "BRA" && c.region === def.uf && !isFictional(c))
     .sort((a, b) => strength(b) - strength(a) || a.id.localeCompare(b.id));
 }
 
@@ -26,13 +30,36 @@ const CRESTS: CrestPattern[] = ["solid", "vstripes", "hoops", "sash", "diagonal"
 const PALETTE = ["#FFFFFF", "#000000", "#C8102E", "#0033A0", "#007A33", "#FFD100", "#6B2C91", "#F47B20", "#7A1F1F", "#0B6E99"];
 const SQUAD: Pos[] = ["GOL", "GOL", "ZAG", "ZAG", "ZAG", "ZAG", "LD", "LD", "LE", "LE", "VOL", "VOL", "MC", "MC", "MEI", "MEI", "PD", "PD", "PE", "PE", "ATA", "ATA", "ATA"];
 
+/** Elenco de 23 jogadores gerados na força do clube. */
+function generateSquad(w: World, club: Club, wageMult: number) {
+  for (const pos of SQUAD) {
+    const p = generatePlayer(w, club, club.level - 2 + randInt(-2, 2), randInt(19, 32), pos);
+    p.wage = Math.round(wageFor(p.ovr, club.rep, w.season - p.born) * wageMult);
+    p.contractEnd = w.season + randInt(1, 2);
+    p.pot = Math.max(p.pot, p.ovr);
+    p.shirt = freeShirt(w, club, pos);
+  }
+}
+
+/**
+ * Clube real dos estaduais sem elenco publicado (flag genSquad): nome, escudo, estádio e cores reais,
+ * jogadores gerados com semente fixa pelo id do clube (o mesmo elenco em qualquer jogo novo).
+ */
+export function generateRealSquad(w: World, club: Club) {
+  if (club.players.some((id) => w.players[id] && !w.players[id].youth)) return;
+  const saved = getRngState();
+  setRngState(hashString(`squad:${club.id}`) || 1);
+  generateSquad(w, club, 0.7);
+  setRngState(saved);
+}
+
 function makeMinorClub(w: World, def: EstadualDef, i: number): Club {
   const [name, full, abbr, city] = def.minors[i];
   const h = hashString(`${def.id}:${i}`);
   const c1 = PALETTE[2 + (h % (PALETTE.length - 2))];
   const c2 = h % 3 === 0 ? "#000000" : "#FFFFFF";
   const rep = 10 + (h % 12);
-  const level = 56 + (h % 4);
+  const level = 50 + (h % 4);
   const club: Club = {
     id: `${def.id.toLowerCase()}-${i + 1}`, name, full, abbr, region: def.uf, city, country: "BRA",
     colors: [c1, c2, c1], crest: CRESTS[h % CRESTS.length],
@@ -41,20 +68,17 @@ function makeMinorClub(w: World, def: EstadualDef, i: number): Club {
     players: [], tactic: { formation: "4-4-2", mentality: 0, pressing: 1 },
     youthLevel: 1, youthFac: 1, youthCoach: 1, facilities: 1, ticket: 12,
     history: [], trophies: [], finance: { income: {}, expense: {} },
-    jersey: "football", minor: def.uf,
+    jersey: "football", minor: def.uf, fictional: true,
   };
   w.clubs[club.id] = club;
-  for (const pos of SQUAD) {
-    const p = generatePlayer(w, club, level - 2 + randInt(-2, 2), randInt(19, 32), pos);
-    p.wage = Math.round(wageFor(p.ovr, rep, w.season - p.born) * 0.6);
-    p.contractEnd = w.season + randInt(1, 2);
-    p.pot = Math.max(p.pot, p.ovr);
-    p.shirt = freeShirt(w, club, pos);
-  }
+  generateSquad(w, club, 0.6);
   return club;
 }
 
-/** Garante os clubes fictícios necessários para completar cada estadual (idempotente). */
+/**
+ * Último recurso: clubes fictícios só quando o estado não tem clubes reais suficientes para a chave
+ * (com o banco atual isso não acontece em nenhum estadual). Idempotente.
+ */
 export function ensureMinorClubs(w: World) {
   for (const def of ESTADUAIS) {
     const need = def.size - Math.min(def.size, realClubs(w, def).length);
@@ -64,18 +88,89 @@ export function ensureMinorClubs(w: World) {
   }
 }
 
-function entrants(w: World, def: EstadualDef): string[] {
-  const real = realClubs(w, def).slice(0, def.size).map((c) => c.id);
-  const minors = Object.values(w.clubs).filter((c) => c.minor === def.uf).map((c) => c.id).sort();
-  return [...real, ...minors].slice(0, def.size);
+/** Participantes: os reais da edição 2026 (por força) → outros reais do estado → fictícios só se faltar gente. */
+export function estadualEntrants(w: World, def: EstadualDef): string[] {
+  const real = realClubs(w, def);
+  const listed = new Set(def.real2026);
+  const ordered = [...real.filter((c) => listed.has(c.id)), ...real.filter((c) => !listed.has(c.id))].map((c) => c.id);
+  const fict = Object.values(w.clubs).filter((c) => c.region === def.uf && isFictional(c)).map((c) => c.id).sort();
+  return [...ordered, ...fict].slice(0, def.size);
+}
+
+// ---------------------------------------------------------------- saves antigos
+type MigrateHelpers = {
+  makeClub: (c: DbClub) => Club;
+  addDbPlayer: (w: World, dp: DbPlayer) => void;
+  fillSquad: (w: World, club: Club) => void;
+};
+
+/**
+ * Saves antigos (idempotente, sem mudar SAVE_VERSION): os clubes reais dos estaduais que faltam entram
+ * já (fora de qualquer competição, então não mexem nos jogos da temporada em andamento) e os fictícios
+ * ficam marcados para sair na virada da temporada (w.pendingEstadualSwap).
+ */
+export function migrateRealEstaduais(w: World, db: Database, h: MigrateHelpers) {
+  const missing = db.clubs.filter((c) => c.minor && !w.clubs[c.id]);
+  if (missing.length) {
+    const saved = getRngState();
+    for (const dc of missing) {
+      setRngState(hashString(`club:${dc.id}`) || 1);
+      const club = h.makeClub(dc);
+      w.clubs[club.id] = club;
+      for (const dp of db.players) if (dp.c === club.id) h.addDbPlayer(w, dp);
+      if (club.genSquad) generateRealSquad(w, club);
+      h.fillSquad(w, club);
+    }
+    setRngState(saved);
+  }
+  for (const c of Object.values(w.clubs)) if (isFictional(c) && !c.fictional) c.fictional = true;
+  const anyFictional = Object.values(w.clubs).some((c) => c.fictional);
+  if (anyFictional) w.pendingEstadualSwap = true;
+  else delete w.pendingEstadualSwap;
+}
+
+/**
+ * Virada da temporada (chamado por createEstaduais, com os jogos da temporada anterior já encerrados):
+ * tira os fictícios que os clubes reais tornaram desnecessários e limpa as referências a eles
+ * (empréstimos, cláusulas de revenda, propostas, notícias, convites). O nome fica em w.formerClubs
+ * para o histórico de campeões.
+ */
+export function applyEstadualSwap(w: World) {
+  if (!w.pendingEstadualSwap) return;
+  const needed = new Set(ESTADUAIS.flatMap((def) => estadualEntrants(w, def).filter((id) => {
+    // só continua o fictício que ainda é indispensável (o estado não tem reais suficientes)
+    return isFictional(w.clubs[id]) && realClubs(w, def).length < def.size;
+  })));
+  const gone = new Set<string>();
+  for (const c of Object.values(w.clubs)) {
+    if (!c.fictional || needed.has(c.id) || c.id === w.userClubId) continue;
+    for (const id of c.players) if (w.players[id]?.clubId === c.id) delete w.players[id];
+    (w.formerClubs ??= {})[c.id] = c.name;
+    delete w.clubs[c.id];
+    gone.add(c.id);
+  }
+  if (gone.size) {
+    for (const p of Object.values(w.players)) {
+      if (p.clubId && gone.has(p.clubId)) p.clubId = null;
+      if (p.loan && gone.has(p.loan.from)) delete p.loan;
+      if (p.sellOn && gone.has(p.sellOn.club)) delete p.sellOn;
+    }
+    w.offers = w.offers.filter((o) => w.players[o.pid] && !gone.has(o.from) && !gone.has(o.to));
+    w.shortlist = w.shortlist.filter((id) => !!w.players[id]);
+    for (const n of w.news) if (n.clubId && gone.has(n.clubId)) delete n.clubId;
+    for (const m of w.inbox?.msgs ?? []) if (m.clubId && gone.has(m.clubId)) delete m.clubId;
+    if (w.career) w.career.offers = w.career.offers.filter((o) => !gone.has(o.clubId));
+  }
+  if (!Object.values(w.clubs).some((c) => c.fictional && !needed.has(c.id))) delete w.pendingEstadualSwap;
 }
 
 /** Cria os estaduais da temporada (chamado por createSeasonCompetitions). */
 export function createEstaduais(w: World) {
+  applyEstadualSwap(w);
   ensureMinorClubs(w);
   const d = estadualDays(w.season);
   ESTADUAIS.forEach((def, i) => {
-    const teams = entrants(w, def);
+    const teams = estadualEntrants(w, def);
     if (teams.length < def.size) return;
     const comp: Competition = {
       id: def.id, name: def.name, short: def.short, format: def.format === "groups16" ? "groups" : "league",
