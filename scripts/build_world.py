@@ -92,18 +92,47 @@ def has_media(p):
     return os.path.exists(os.path.join(MEDIA, p))
 
 
+# Notas à mão dos craques (o estimador não distingue bem a elite): "Nome": ovr
+STARS = {
+    "Kylian Mbappé": 91, "Erling Haaland": 91, "Mohamed Salah": 89, "Vinícius Júnior": 89, "Jude Bellingham": 89,
+    "Lamine Yamal": 90, "Rodri": 89, "Harry Kane": 90, "Ousmane Dembélé": 90, "Kevin De Bruyne": 86,
+    "Virgil van Dijk": 89, "Raphinha": 89, "Pedri": 89, "Bukayo Saka": 88, "Declan Rice": 88, "Martin Ødegaard": 87,
+    "Florian Wirtz": 88, "Jamal Musiala": 88, "Lautaro Martínez": 88, "Federico Valverde": 88, "Thibaut Courtois": 89,
+    "Alisson": 89, "Gianluigi Donnarumma": 88, "Joshua Kimmich": 88, "Achraf Hakimi": 88, "Vitinha": 88,
+    "Khvicha Kvaratskhelia": 87, "Cole Palmer": 87, "Phil Foden": 86, "William Saliba": 88, "Rúben Dias": 87,
+    "Alexis Mac Allister": 87, "Bruno Fernandes": 87, "Antoine Griezmann": 85, "Robert Lewandowski": 86,
+    "Frenkie de Jong": 87, "Marc-André ter Stegen": 85, "Jan Oblak": 87, "Alessandro Bastoni": 87, "Nicolò Barella": 87,
+    "Hakan Çalhanoğlu": 85, "Victor Osimhen": 86, "Rafael Leão": 85, "Kenan Yıldız": 84, "Scott McTominay": 85,
+    "Kevin Diks": 80, "Joško Gvardiol": 86, "Marquinhos": 86, "Nuno Mendes": 87, "Désiré Doué": 86,
+    "João Neves": 87, "Bradley Barcola": 85, "Michael Olise": 88, "Luis Díaz": 87, "Alexander Isak": 88,
+    "Hugo Ekitiké": 85, "Viktor Gyökeres": 86, "Mikel Oyarzabal": 84, "Nico Williams": 85, "Julián Álvarez": 88,
+    "Antonio Rüdiger": 86, "Éder Militão": 85, "Trent Alexander-Arnold": 85, "Eduardo Camavinga": 84,
+    "Aurélien Tchouaméni": 85, "Rodrygo": 84, "Arda Güler": 84, "Brahim Díaz": 81, "Andriy Lunin": 80,
+    "Cristiano Ronaldo": 85, "Karim Benzema": 85, "Sadio Mané": 82, "Riyad Mahrez": 81, "Lionel Messi": 86,
+    "Luis Suárez": 79, "Son Heung-min": 83, "Leroy Sané": 84, "Serge Gnabry": 83, "Piero Hincapié": 83,
+    "Marc Guéhi": 84, "Mike Maignan": 87, "Emiliano Martínez": 86, "Ollie Watkins": 84, "Morgan Rogers": 83,
+    "Bruno Guimarães": 86, "Sandro Tonali": 85, "Moisés Caicedo": 87, "Enzo Fernández": 85, "João Pedro": 84,
+    "Dušan Vlahović": 83, "Paulo Dybala": 82, "Ademola Lookman": 84, "Christian Pulisic": 85, "Luka Modrić": 83,
+}
+
+
 def estimate(cid, lvl, cand):
     """Mesmo estimador do build_database.py (força do clube + fama + idade, normalizado ao level)."""
     for x in cand:
-        x["raw"] = lvl + B.fame_adj(x["fame"]) + B.age_adj(x["age"]) + B.gauss_det(x["name"], cid, "ovr") * 2.0
+        x["raw"] = lvl + B.fame_adj(x["fame"]) + B.age_adj(x["age"]) + B.gauss_det(x["name"], cid, "ovr") * 1.0
     first = sorted(cand, key=lambda z: -z["raw"])
     shift = 0
     if len(first) >= 11:
         top = first[:16]
-        shift = (lvl + 1.0) - sum(x["raw"] for x in top) / len(top)
-    cap = min(92, lvl + 11)
+        shift = (lvl - 0.5) - sum(x["raw"] for x in top) / len(top)
+    # elencos de liga estrangeira: espalha menos que no Brasil (fama do Wikidata satura nos grandes)
+    mean = (lvl - 0.5)
+    cap = min(93, lvl + 6)
     for x in cand:
-        x["ovr"] = int(round(max(45, min(cap, x["raw"] + shift))))
+        o = mean + (x["raw"] + shift - mean) * 0.8
+        x["ovr"] = int(round(max(45, min(cap, o))))
+        if x["name"] in STARS and x["fame"] >= 40:  # homônimos pouco conhecidos ficam de fora
+            x["ovr"] = STARS[x["name"]]
         x["pot"] = B.potential(x["ovr"], x["age"], x["fame"], x["name"])
 
 
