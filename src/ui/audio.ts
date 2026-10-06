@@ -5,6 +5,7 @@
 // O usuário pode carregar o próprio áudio (hino/canto) do seu clube, que toca nos gols — fica
 // salvo só no aparelho dele.
 import { mediaUrl } from "./mediaUrl";
+import { BR_SOUNDS, type CrowdProfile, type Mood } from "./torcida";
 
 let ctx: AudioContext | null = null;
 let enabled = readEnabled();
@@ -42,6 +43,7 @@ export function setSoundEnabled(v: boolean) {
   enabled = v;
   if (!v) {
     stopCrowd();
+    stopAtmosphere();
     stopChant();
     customGoal?.pause();
   }
@@ -53,6 +55,61 @@ export function setSoundEnabled(v: boolean) {
 export function soundEnabled(): boolean {
   enabled = readEnabled();
   return enabled;
+}
+
+// ---------------------------------------------------------------- volume geral + "abafar" nos menus
+let master: GainNode | null = null;
+let volume = readVolume();
+let menuDuck = false;
+
+function readVolume(): number {
+  try {
+    const v = localStorage.getItem("crowdVol");
+    if (v !== null && !Number.isNaN(Number(v))) return Math.max(0, Math.min(1, Number(v)));
+  } catch { /* ignore */ }
+  return 0.8;
+}
+
+/** Volume da torcida e dos efeitos (0..1), salvo no aparelho. */
+export function crowdVolume(): number {
+  return volume;
+}
+
+function masterLevel() {
+  return volume * (menuDuck ? 0.22 : 1);
+}
+
+function applyMaster(ramp = 0.35) {
+  if (!master || !ctx) return;
+  const t = ctx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(masterLevel(), t + ramp);
+}
+
+export function setCrowdVolume(v: number) {
+  volume = Math.max(0, Math.min(1, v));
+  try {
+    localStorage.setItem("crowdVol", String(Math.round(volume * 100) / 100));
+  } catch { /* ignore */ }
+  applyMaster(0.1);
+}
+
+/** Abaixa todo o som do estádio enquanto um menu (intervalo, substituições, pausa) está aberto. */
+export function duckForMenu(on: boolean) {
+  if (menuDuck === on) return;
+  menuDuck = on;
+  applyMaster(on ? 0.4 : 0.8);
+}
+
+/** Saída comum de todos os sons (passa pelo volume geral). */
+function out(c: AudioContext): AudioNode {
+  if (!master) {
+    master = c.createGain();
+    master.gain.value = masterLevel();
+    master.connect(c.destination);
+  }
+  return master;
 }
 
 function ac(): AudioContext | null {
@@ -126,7 +183,7 @@ function playBuffer(c: AudioContext, buf: AudioBuffer, gain: number, opts: { whe
     f.frequency.value = opts.lowpass;
     node = node.connect(f);
   }
-  node.connect(g).connect(c.destination);
+  node.connect(g).connect(out(c));
   const t = opts.when ?? c.currentTime;
   src.start(t);
   if (opts.dur) {
@@ -224,7 +281,7 @@ function synthWhistle(c: AudioContext, times: number) {
     g.gain.linearRampToValueAtTime(0.12, t + 0.02);
     g.gain.setValueAtTime(0.12, t + (i === times - 1 ? 0.7 : 0.25));
     g.gain.linearRampToValueAtTime(0, t + (i === times - 1 ? 0.8 : 0.32));
-    o.connect(g).connect(c.destination);
+    o.connect(g).connect(out(c));
     o.start(t); vib.start(t);
     o.stop(t + 0.9); vib.stop(t + 0.9);
   }
@@ -243,7 +300,7 @@ function synthRoar(c: AudioContext, home: boolean) {
   g.gain.setValueAtTime(0, c.currentTime);
   g.gain.linearRampToValueAtTime(peak, c.currentTime + 0.35);
   g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 3.8);
-  src.connect(bp).connect(g).connect(c.destination);
+  src.connect(bp).connect(g).connect(out(c));
   src.start();
   src.stop(c.currentTime + 4);
 }
@@ -260,7 +317,7 @@ function synthOoh(c: AudioContext) {
   g.gain.setValueAtTime(0, c.currentTime);
   g.gain.linearRampToValueAtTime(0.06, c.currentTime + 0.2);
   g.gain.linearRampToValueAtTime(0, c.currentTime + 1.3);
-  o.connect(f).connect(g).connect(c.destination);
+  o.connect(f).connect(g).connect(out(c));
   o.start();
   o.stop(c.currentTime + 1.4);
 }
@@ -276,7 +333,7 @@ export function startCrowd() {
   preload();
   const gain = c.createGain();
   gain.gain.value = 0;
-  gain.connect(c.destination);
+  gain.connect(out(c));
   const me: Crowd = { gain, stop: null, level: 1 };
   crowd = me;
   const fadeIn = () => {
@@ -351,6 +408,214 @@ function duckCrowd(seconds: number, to = 0.45) {
   me.gain.gain.linearRampToValueAtTime(base, t + seconds + 0.5);
 }
 
+// ---------------------------------------------------------------- torcida brasileira (mixador em camadas)
+// Camadas em laço (ambiente, canto, vaia) com ganhos que seguem o humor da torcida (torcida.ts),
+// mais os disparos (gol, "uhhh", olé). Tudo passa por um filtro que deixa torcida pequena mais
+// "magra" e a do estádio lotado mais cheia. Clubes estrangeiros não usam isto (ver startCrowd).
+interface Layer { src: AudioBufferSourceNode | null; g: GainNode; target: number }
+interface Atmos {
+  p: CrowdProfile;
+  bus: GainNode;
+  tone: BiquadFilterNode;
+  bed: Layer;
+  chant: Layer;
+  boo: Layer;
+  mood: Mood;
+  lastOle: number;
+  festaUntil: number;
+}
+let atmos: Atmos | null = null;
+
+/** Volume base das camadas da torcida brasileira. */
+const BR_LEVEL = { bed: 0.36, chant: 0.42, boo: 0.5, goal: 0.95, goalAway: 0.3, ooh: 0.6, ole: 0.55 };
+
+function brPaths(p: CrowdProfile): string[] {
+  return [p.bed, p.chant, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, ...p.goal];
+}
+
+function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean): Layer {
+  const g = c.createGain();
+  g.gain.value = 0;
+  g.connect(bus);
+  const layer: Layer = { src: null, g, target: 0 };
+  const startWith = (b: AudioBuffer | null, alt: boolean) => {
+    if (!me() || !enabled) return;
+    if (!b) {
+      if (!alt && fallback) void sample(fallback).then((fb) => startWith(fb, true));
+      return;
+    }
+    const src = c.createBufferSource();
+    src.buffer = b;
+    src.loop = true;
+    if (b.duration > 2) {
+      src.loopStart = 0.03;
+      src.loopEnd = b.duration - 0.03;
+    }
+    src.connect(g);
+    src.start(c.currentTime, Math.random() * b.duration);
+    layer.src = src;
+    rampLayer(c, layer, 1.5);
+  };
+  void sample(path).then((b) => startWith(b, false));
+  return layer;
+}
+
+function rampLayer(c: AudioContext, l: Layer, secs: number) {
+  const t = c.currentTime;
+  l.g.gain.cancelScheduledValues(t);
+  l.g.gain.setValueAtTime(l.g.gain.value, t);
+  l.g.gain.linearRampToValueAtTime(l.target, t + secs);
+}
+
+/**
+ * Liga a torcida brasileira da partida (ambiente + canto + vaia em camadas). Para clubes
+ * estrangeiros, quem chama usa startCrowd() (som genérico de antes).
+ */
+export function startAtmosphere(p: CrowdProfile) {
+  const c = ac();
+  if (!c || atmos) return;
+  preload();
+  for (const path of brPaths(p)) void sample(path);
+  const bus = c.createGain();
+  bus.gain.value = 1;
+  const tone = c.createBiquadFilter();
+  tone.type = "lowpass";
+  // torcida pequena: som mais distante e abafado
+  tone.frequency.value = 2200 + p.size * 12000;
+  tone.Q.value = 0.4;
+  tone.connect(bus);
+  bus.connect(out(c));
+  const holder: { a: Atmos | null } = { a: null };
+  const me = () => atmos === holder.a && atmos !== null;
+  const a: Atmos = {
+    p, bus, tone,
+    bed: { src: null, g: c.createGain(), target: 0 },
+    chant: { src: null, g: c.createGain(), target: 0 },
+    boo: { src: null, g: c.createGain(), target: 0 },
+    mood: { intensity: 1, chant: 0.6, boo: false, ole: false },
+    lastOle: -1e9,
+    festaUntil: 0,
+  };
+  holder.a = a;
+  atmos = a;
+  a.bed = loopLayer(c, tone, p.bed, SAMPLE.crowd, me);
+  a.chant = loopLayer(c, tone, p.chant, null, me);
+  a.boo = loopLayer(c, tone, BR_SOUNDS.boo, null, me);
+  setLayerTargets(c, a, 2);
+}
+
+function setLayerTargets(c: AudioContext, a: Atmos, secs: number) {
+  const m = a.mood;
+  const loud = 0.55 + 0.45 * a.p.size;
+  const festa = c.currentTime < a.festaUntil ? 1.25 : 1;
+  a.bed.target = BR_LEVEL.bed * loud * m.intensity;
+  a.chant.target = BR_LEVEL.chant * loud * m.chant * Math.min(1.3, m.intensity) * festa;
+  a.boo.target = m.boo ? BR_LEVEL.boo * loud : 0;
+  rampLayer(c, a.bed, secs);
+  rampLayer(c, a.chant, secs);
+  rampLayer(c, a.boo, m.boo ? secs * 2 : secs);
+}
+
+/** Desliga a torcida brasileira com fade. */
+export function stopAtmosphere() {
+  const a = atmos;
+  atmos = null;
+  if (!a || !ctx) return;
+  const t = ctx.currentTime;
+  a.bus.gain.cancelScheduledValues(t);
+  a.bus.gain.setValueAtTime(a.bus.gain.value, t);
+  a.bus.gain.linearRampToValueAtTime(0, t + 0.8);
+  window.setTimeout(() => {
+    for (const l of [a.bed, a.chant, a.boo]) {
+      try { l.src?.stop(); } catch { /* já parou */ }
+    }
+    a.bus.disconnect();
+  }, 900);
+}
+
+/** A torcida brasileira está tocando? */
+export function atmosphereOn(): boolean {
+  return atmos !== null;
+}
+
+/** Atualiza as camadas com o humor da torcida (chamado a cada minuto simulado). */
+export function updateAtmosphere(m: Mood) {
+  const a = atmos;
+  const c = ctx;
+  if (!a || !c || !enabled) return;
+  a.mood = m;
+  setLayerTargets(c, a, 1.6);
+  // olé: no máximo a cada 25 s
+  if (m.ole && c.currentTime - a.lastOle > 25) {
+    a.lastOle = c.currentTime;
+    playBr(BR_SOUNDS.ole, BR_LEVEL.ole);
+  }
+}
+
+function playBr(path: string, gain: number, opts: { rate?: number; lowpass?: number } = {}, fallback?: () => void) {
+  const a = atmos;
+  const c = ctx;
+  if (!a || !c) return;
+  const b = ready.get(path);
+  if (b === undefined) {
+    void sample(path).then((buf) => {
+      if (buf && atmos === a) playBufferTo(c, a.tone, buf, gain, opts);
+      else if (!buf) fallback?.();
+    });
+    return;
+  }
+  if (b) playBufferTo(c, a.tone, b, gain, opts);
+  else fallback?.();
+}
+
+function playBufferTo(c: AudioContext, dest: AudioNode, buf: AudioBuffer, gain: number, opts: { rate?: number; lowpass?: number }) {
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  if (opts.rate) src.playbackRate.value = opts.rate;
+  const g = c.createGain();
+  g.gain.value = gain;
+  let node: AudioNode = src;
+  if (opts.lowpass) {
+    const f = c.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = opts.lowpass;
+    node = node.connect(f);
+  }
+  node.connect(g).connect(dest);
+  src.start();
+}
+
+/** Gol com a torcida brasileira: explosão, depois festa (canto mais alto por um tempo). */
+function atmosphereGoal(forCrowd: boolean): boolean {
+  const a = atmos;
+  const c = ctx;
+  if (!a || !c) return false;
+  if (forCrowd) {
+    const path = a.p.goal[Math.floor(Math.random() * a.p.goal.length)];
+    playBr(path, BR_LEVEL.goal * (0.75 + 0.25 * a.p.size), {}, () => goalRoarGeneric(true));
+    a.festaUntil = c.currentTime + 14;
+    // a explosão cobre o ambiente; o canto volta mais forte logo depois
+    const t = c.currentTime;
+    for (const l of [a.bed, a.chant]) {
+      l.g.gain.cancelScheduledValues(t);
+      l.g.gain.setValueAtTime(l.g.gain.value, t);
+      l.g.gain.linearRampToValueAtTime(l.target * 0.4, t + 0.3);
+    }
+    window.setTimeout(() => { if (atmos === a && ctx) setLayerTargets(ctx, a, 2.5); }, 4500);
+  } else {
+    // gol do visitante: o estádio silencia e só o setor visitante comemora, lá longe
+    playSample(SAMPLE.goal, 300, (cc, b) => playBuffer(cc, b, BR_LEVEL.goalAway, { lowpass: 1500 }), (cc) => synthRoar(cc, false));
+    const t = c.currentTime;
+    for (const l of [a.bed, a.chant]) {
+      l.g.gain.cancelScheduledValues(t);
+      l.g.gain.setValueAtTime(l.g.gain.value, t);
+      l.g.gain.linearRampToValueAtTime(l.target * 0.3, t + 0.6);
+    }
+    window.setTimeout(() => { if (atmos === a && ctx) setLayerTargets(ctx, a, 4); }, 5000);
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------- efeitos
 /** Apito do árbitro: 1 = início, 2 = intervalo, 3 = fim de jogo (o último é longo). */
 export function whistle(times = 1) {
@@ -367,8 +632,16 @@ export function whistle(times = 1) {
   }, (c) => synthWhistle(c, n));
 }
 
-/** Explosão da torcida no gol (mais forte para a torcida da casa/do usuário). */
-export function goalRoar(home: boolean) {
+/**
+ * Explosão da torcida no gol (mais forte para a torcida da casa/do usuário). Com a torcida
+ * brasileira ligada, `side` (lado que marcou) decide se a arquibancada explode ou silencia.
+ */
+export function goalRoar(home: boolean, side?: 0 | 1) {
+  if (atmos && side !== undefined && atmosphereGoal(side === atmos.p.side)) return;
+  goalRoarGeneric(home);
+}
+
+function goalRoarGeneric(home: boolean) {
   // sorteia entre as gravações de gol já carregadas
   const alt = ready.get(SAMPLE.goal2);
   const path = home && alt && Math.random() < 0.4 ? SAMPLE.goal2 : SAMPLE.goal;
@@ -381,6 +654,10 @@ export function goalRoar(home: boolean) {
 
 /** "Uhhh" da torcida numa chance perdida. */
 export function ooh() {
+  if (atmos) {
+    playBr(BR_SOUNDS.ooh, BR_LEVEL.ooh, { rate: 0.96 + Math.random() * 0.08 }, () => playSample(SAMPLE.ooh, 300, (c, b) => playBuffer(c, b, LEVEL.ooh), (c) => synthOoh(c)));
+    return;
+  }
   playSample(SAMPLE.ooh, 300, (c, b) => {
     playBuffer(c, b, LEVEL.ooh, { rate: 0.96 + Math.random() * 0.08 });
   }, (c) => synthOoh(c));

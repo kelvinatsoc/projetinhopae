@@ -24,6 +24,8 @@ import { StadiumBanner } from "./StadiumBanner";
 import { stadiumStyleFor } from "../data/stadiumStyles";
 import { ballHeight, hudAbbr, hudName, toWorld, type Ps1Snapshot } from "./ps1/model";
 import type { Ps1Renderer } from "./ps1/Ps1Renderer";
+import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
+import { Festa2D } from "./torcida2d";
 
 // ---------------------------------------------------------------- geometria (pixels de jogo)
 import { W, H, PX0, PX1, PY0, PY1, PL, PW, CX, CY, POST, BOX_D, BOX_H, SPOT } from "./pitchGeom";
@@ -250,6 +252,7 @@ const fwd = (side: 0 | 1) => (side === 0 ? 1 : -1);
 interface Stadium {
   bg: HTMLCanvasElement;
   crowd: HTMLCanvasElement[]; // quadros da torcida pulando: [0..2] normal, [3,4] casa festeja, [5,6] visitante festeja
+  fans: Fan[];
 }
 
 function px(g: CanvasRenderingContext2D, x: number, y: number, w = 1, h = 1) {
@@ -464,7 +467,7 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   for (let i = 0; i < 3; i++) frame(() => Math.random() < 0.05, false);
   for (let i = 0; i < 2; i++) frame((f) => f.sec === 0 && Math.random() < 0.55, i === 0);
   for (let i = 0; i < 2; i++) frame((f) => f.sec === 1 && Math.random() < 0.6, false);
-  return { bg, crowd };
+  return { bg, crowd, fans };
 }
 
 // ---------------------------------------------------------------- a animação
@@ -502,12 +505,22 @@ class PitchAnim {
   frozen = false;
   pfx = new PixelFX();
   lastCine: number | null = null;
+  /** torcida brasileira: perfil (null = clube estrangeiro, sem festa) e a festa nas arquibancadas */
+  crowd: CrowdProfile | null;
+  festa: Festa2D | null = null;
 
   constructor(sim: MatchSim, cb: Callbacks) {
     this.sim = sim;
     this.cb = cb;
     this.colors = sideColors(sim);
     this.stadium = buildStadium(sim, this.colors);
+    this.crowd = crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, sim.userSide ?? 0);
+    if (this.crowd) {
+      const cc = sim.sides[this.crowd.side].club;
+      const lvl = this.crowd.selecao ? 1 : Math.max(festaLevel(cc, !!sim.f.neutral), 0.25);
+      this.festa = new Festa2D(this.stadium.fans, { club: cc.colors, selecao: this.crowd.selecao }, lvl, false);
+      if (sim.minute === 0 && sim.half === 1) this.festa.tifo(8000);
+    }
     this.seen = sim.events.length;
     this.formations = sim.sides.map((s) => {
       const f = FORMATIONS[s.club.tactic.formation];
@@ -1239,6 +1252,7 @@ class PitchAnim {
       this.say(e.text, atk, 1);
     }
     this.cheer = { side: !this.sim.f.neutral || atk === 0 ? (atk as 0 | 1) : 0, until: this.now + 2600 };
+    if (this.festa && this.crowd) this.festa.goal(atk === this.crowd.side);
     this.flashUntil = this.now + 1400;
     const gx = goalX(atk);
     const cy = scorer && scorer.y < CY ? PY0 + 3 : PY1 - 3;
@@ -1521,12 +1535,14 @@ class PitchAnim {
       d.speed = 1.35;
     }
     this.say(`${this.sim.sides[0].club.name} e ${this.sim.sides[1].club.name} entram em campo`);
+    this.festa?.tifo(10000);
     if (this.reduced) this.snapToTargets();
   }
 
   // ------------------------------------------------ física
   update(dt: number) {
     this.now += dt;
+    this.festa?.update(dt, this.now);
     while (this.acts.length && this.acts[0].t <= this.now) this.acts.shift()!.f();
     const sp = this.spd();
     const b = this.ball;
@@ -1613,6 +1629,7 @@ class PitchAnim {
     const crowd = this.stadium.crowd;
     const fi = this.reduced ? -1 : cheering ? (this.cheer.side === 0 ? 3 : 5) + (Math.floor(now / 140) % 2) : Math.floor(now / 260) % 3;
     if (fi >= 0) g.drawImage(crowd[fi], 0, 0);
+    this.festa?.draw(g);
     this.drawBoards(g, cheering);
     if (!this.reduced && now < this.flashUntil) {
       g.fillStyle = "#ffffff";
@@ -2155,6 +2172,7 @@ export function MatchView(props: MatchViewProps) {
     const ps1On = !!propsRef.current.ps1;
     anim.rich = !!propsRef.current.ultra || ps1On;
     anim.reduced = prefersReducedMotion();
+    if (anim.festa) anim.festa.reduced = anim.reduced;
     anim.ms = propsRef.current.msPerMin;
     anim.goalHold = propsRef.current.goalHold;
     animRef.current = anim;
