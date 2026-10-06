@@ -17,7 +17,7 @@ import type { Club, World } from "../../engine/types";
 import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
-import { loadMedia, saveMedia, setSoundEnabled, soundEnabled } from "../audio";
+import { crowdVolume, loadMedia, saveMedia, setCrowdVolume, setSoundEnabled, soundEnabled } from "../audio";
 import { Avatar, clubStars, CompLogo, Crest, Icon, PlayerRow, StadiumPhoto, stadiumSrc, Stars, Ic, GIcon } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
@@ -293,6 +293,7 @@ export function SettingsScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
   const [sound, setSound] = useState(soundEnabled());
+  const [vol, setVol] = useState(() => Math.round(crowdVolume() * 100));
   const [hasGoal, setHasGoal] = useState(false);
   useEffect(() => { loadMedia(`goal:${c.id}`).then((d) => setHasGoal(!!d)).catch(() => undefined); }, [c.id]);
 
@@ -305,8 +306,14 @@ export function SettingsScreen() {
           <input type="checkbox" checked={w.settings.casual} onChange={(e) => { update((x) => { x.settings.casual = e.target.checked; }); autosave(); }} /></div>
         <div className="switch"><div><b>Salvar automaticamente</b><div className="small muted">Salva depois de cada jogo.</div></div>
           <input type="checkbox" checked={w.settings.autoSave} onChange={(e) => { update((x) => { x.settings.autoSave = e.target.checked; }); }} /></div>
-        <div className="switch"><div><b>Sons da partida</b><div className="small muted">Torcida, apito e gol (sintetizados).</div></div>
+        <div className="switch"><div><b>Sons da partida</b><div className="small muted">Torcida, apito e gol (gravações reais; nos jogos no Brasil, a torcida brasileira canta, vaia e grita olé).</div></div>
           <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); setSoundEnabled(e.target.checked); }} /></div>
+        {sound && (
+          <label className="col gap8" style={{ paddingTop: 10 }}>
+            <span className="row"><b className="grow">Volume da torcida</b><span className="small muted">{vol}%</span></span>
+            <input type="range" min={0} max={100} step={5} value={vol} aria-label="Volume da torcida" onChange={(e) => { const v = Number(e.target.value); setVol(v); setCrowdVolume(v / 100); }} />
+          </label>
+        )}
         <div className="switch"><div><b>Rostos ilustrados</b><div className="small muted">Para jogadores reais sem foto livre (em vez da silhueta).</div></div>
           <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
         <div className="switch"><div><b>Tema claro</b></div>

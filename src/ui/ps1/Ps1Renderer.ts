@@ -7,6 +7,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { StadiumStyle } from "../../data/stadiumStyles";
 import { PITCH_LEN, PITCH_WID } from "../pitchGeom";
 import { drawText, textWidth } from "./font";
+import { CrowdFx, type StandInfo } from "./crowdFx";
 import {
   behindGoalCam, broadcastCam, easeCam, facingAngle, internalRes, ReplayBuffer,
   type CamPose, type Ps1Player, type Ps1Snapshot,
@@ -29,6 +30,8 @@ export interface Ps1Options {
   /** cores dos clubes (para a torcida e os mosaicos) */
   clubColors: [string, string];
   reduced: boolean;
+  /** torcida brasileira: festa nas arquibancadas (omitido = clube estrangeiro, sem festa) */
+  festa?: { level: number; selecao: boolean; colors: [string, string, string]; abbr: string; side: 0 | 1 };
 }
 
 const HALF_L = PITCH_LEN / 2;
@@ -244,6 +247,8 @@ export class Ps1Renderer {
   private time = 0;
   private shirtTex = new Map<string, THREE.Texture>();
   private v3 = new THREE.Vector3();
+  private stands: StandInfo[] = [];
+  private festa: CrowdFx | null = null;
 
   constructor(opts: Ps1Options) {
     this.opts = opts;
@@ -328,6 +333,14 @@ export class Ps1Renderer {
     this.buildBoards();
     this.buildStands(st);
     this.buildLights(st);
+    const fo = this.opts.festa;
+    if (fo) {
+      // arquibancada oposta (a que a câmera mostra) + o fundo da torcida dona da casa
+      const end = fo.side === 0 ? 0 : 1;
+      const stands = this.stands.filter((s, i) => i === 0 || s.t === end);
+      this.festa = new CrowdFx({ ...fo, stands }, this.uniforms);
+      this.scene.add(this.festa.group);
+    }
     this.buildBall();
   }
 
@@ -608,6 +621,7 @@ export class Ps1Renderer {
     if (st.shape !== "open-end") sides.push({ len: PITCH_WID + 2 * back, rot: Math.PI / 2, x: -HALF_L - back, z: 0, t: 0, d: endDepth, h: endH, roof: st.roof === "full" || st.roof === "partial" });
     else sides.push({ len: PITCH_WID * 0.6, rot: Math.PI / 2, x: -HALF_L - back - 30, z: 0, t: 0, d: 4, h: 2.5, roof: false });
     sides.push({ len: PITCH_WID + 2 * back, rot: -Math.PI / 2, x: HALF_L + back, z: 0, t: 1, d: endDepth, h: endH, roof: st.roof === "full" });
+    this.stands = sides.map((s) => ({ len: s.len, rot: s.rot, x: s.x, z: s.z, t: s.t, d: s.d, h: s.h }));
     for (const s of sides) {
       const parts = this.stand(s.len, s.d, 1.6, s.h, this.crowdTex[s.t], st.concrete);
       const [ramp, ...rest] = parts;
@@ -950,6 +964,7 @@ export class Ps1Renderer {
     if (live.celebrating && !this.wasCelebrating && live.goalSide != null) {
       this.goalTimer = 2600;
       this.clipSide = live.goalSide;
+      this.festa?.goal(this.time, live.goalSide === this.opts.festa?.side);
       this.pendingClip = this.time + 700; // mais um tiquinho: a bola estufando a rede
     }
     this.wasCelebrating = live.celebrating;
@@ -994,6 +1009,7 @@ export class Ps1Renderer {
     // torcida pulando no gol: a textura "sobe e desce" 1 texel
     const jump = snap.cheer ? (Math.floor(this.time / 120) % 2) / 64 : 0;
     for (const t of this.crowdTex) t.offset.y = jump;
+    this.festa?.update(this.time, dt, !!snap.cheer && this.clipSide === this.opts.festa?.side, this.opts.reduced);
 
     const to = replaying ? behindGoalCam(this.clipSide, b.x, b.z) : broadcastCam(b.x, b.z, this.res.aspect);
     this.cam = this.cam && !replaying ? easeCam(this.cam, to, dt, 380) : replaying && this.cam ? easeCam(this.cam, to, dt, 180) : to;
@@ -1102,6 +1118,7 @@ export class Ps1Renderer {
       if (m.isMesh) m.geometry.dispose();
     });
     for (const m of this.mats) m.dispose();
+    this.festa?.dispose();
     this.postMat.dispose();
     for (const t of this.textures) t.dispose();
     for (const t of this.shirtTex.values()) t.dispose();

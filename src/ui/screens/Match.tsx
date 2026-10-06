@@ -11,7 +11,8 @@ import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reac
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
 import { forceBack, getWorld, push, replace, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
-import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
+import { duckForMenu, goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
+import { crowdMood, crowdProfile } from "../torcida";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
@@ -248,6 +249,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     simRef.current = s;
   }
   const sim = simRef.current;
+  const profile = useMemo(() => (sim ? crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, userSide) : null), [sim]);
+  const streak = useRef(0);
+  // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
+  useEffect(() => {
+    duckForMenu(!quick && !result && (paused || subs || halfSheet));
+  }, [paused, subs, halfSheet, result]);
 
   function later(fn: () => void, ms: number) {
     timers.current.push(window.setTimeout(fn, ms));
@@ -265,6 +272,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     setFlash(null);
     setHold(false);
     stopCrowd();
+    stopAtmosphere();
     autosave(true);
   }
 
@@ -273,7 +281,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     if (!sim || celebrated.current.has(e)) return;
     celebrated.current.add(e);
     const homeCrowd = !sim.f.neutral && e.side === 0;
-    if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide);
+    if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide, e.side);
     const head = headRef.current?.getBoundingClientRect();
     setFlashTop(fieldRef.current && head ? Math.min(head.bottom + 10, window.innerHeight * 0.56) : null);
     setFlash(e);
@@ -307,9 +315,15 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (quick) return;
     loadMedia(`goal:${w.userClubId}`).then((d) => setCustomGoalAudio(d)).catch(() => undefined);
-    if (soundEnabled()) startCrowd();
+    if (soundEnabled()) {
+      // torcida brasileira (camadas, cantos, vaia, olé) ou o som genérico de antes
+      if (profile) startAtmosphere(profile);
+      else startCrowd();
+    }
     return () => {
       stopCrowd();
+      stopAtmosphere();
+      duckForMenu(false);
       for (const t of timers.current) window.clearTimeout(t);
       window.clearTimeout(flashTimer.current);
     };
@@ -358,6 +372,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           setHalfSheet(true);
         }
         else if (e.type === "end") whistle(3);
+      }
+      if (profile) {
+        const atk = sim.phase.atk ?? null;
+        streak.current = atk === profile.side ? streak.current + 1 : 0;
+        updateAtmosphere(crowdMood({ minute: sim.minute, goals: [sim.sides[0].goals, sim.sides[1].goals], poss: [sim.stats.poss[0], sim.stats.poss[1]], shots: [sim.stats.shots[0], sim.stats.shots[1]], atk, streak: streak.current }, profile.side, profile.size));
       }
       if (sim.finished) finish();
       setTick((x) => x + 1);
