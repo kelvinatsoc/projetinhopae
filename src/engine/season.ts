@@ -23,6 +23,7 @@ import { yearLen } from "./calendar";
 import { fastFixture, compactResult, carryCompIds, restoreCarry, takeCarry, worldBalance } from "./worldLeagues";
 import { intlYearEnd, simulateIntlDay } from "./international";
 import { createYearLeagues } from "./worldYear";
+import { createClubWorldCup } from "./continental";
 import { applyResult } from "./game";
 import { progressCompetitions } from "./competitions";
 
@@ -76,6 +77,7 @@ export function startSeason(w: World, e: SeasonEntrants) {
   w.fixtures = [];
   createSeasonCompetitions(w, e);
   createYearLeagues(w); // mundo: Argentina e MLS (fev–dez)
+  createClubWorldCup(w); // Mundial de Clubes (2029, 2033...)
   for (const c of Object.values(w.clubs)) {
     if (c.id !== w.userClubId) c.tactic.formation = bestFormationFor(w, c);
   }

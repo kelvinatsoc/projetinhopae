@@ -6,6 +6,7 @@ import { adminCheats } from "./admin";
 import { yearLen } from "./calendar";
 import { intlDaily, simulateIntlDay } from "./international";
 import { compactResult, createWorldSeason, fastFixture } from "./worldLeagues";
+import { maybeCreateIntercontinental } from "./continental";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
 import { goalBonuses } from "./contracts";
@@ -148,6 +149,7 @@ function simulateDay(w: World, day: number) {
 /** Mundo: cria as temporadas ago–mai no dia 181 e cuida das seleções. */
 function worldDaily(w: World) {
   if (w.wl && w.day === 181) createWorldSeason(w);
+  if (w.wl) maybeCreateIntercontinental(w);
   if (w.intl) intlDaily(w);
 }
 

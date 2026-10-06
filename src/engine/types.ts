@@ -518,6 +518,8 @@ export interface WorldLeagues {
   createdYear?: number;
   /** vagas reais na primeira Champions/Europa League */
   seeds?: { ucl: string[]; uel: string[] };
+  /** último campeão da Champions (para a Intercontinental) */
+  lastUcl?: string;
 }
 export interface NationalTeam {
   id: string; // nt-BRA

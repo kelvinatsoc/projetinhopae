@@ -2,6 +2,7 @@
 import { continentalDays, copaDays, isWorldCupYear, leagueDays, serieBPlayoffDays, serieCDays } from "./calendar";
 import { ESTADUAIS } from "../data/estaduais";
 import { createEstaduais, isEstadual, progressEstadual } from "./estaduais";
+import { progressHooks } from "./hooks";
 import { rand, shuffle } from "./rng";
 import type { Club, Competition, Fixture, TableRow, Tie, World } from "./types";
 
@@ -43,8 +44,7 @@ export function registerComp(id: string, meta: { name: string; short: string; co
   COMP_META[id] = meta;
 }
 
-/** Ganchos de avanço de fase para competições de outros módulos (mundo). Devolvem true se trataram a competição. */
-export const progressHooks: ((w: World, comp: Competition, news: string[]) => boolean)[] = [];
+export { progressHooks } from "./hooks";
 
 // ---------------------------------------------------------------- índices
 let idxWorld: World | null = null;

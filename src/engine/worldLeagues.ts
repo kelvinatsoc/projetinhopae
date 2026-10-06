@@ -1,8 +1,9 @@
+import { progressHooks } from "./hooks";
 // Ligas estrangeiras (Europa e resto do mundo): criação da temporada ago–mai, avanço, títulos,
 // finanças por liga, simulação rápida dos jogos sem o usuário e a virada do ano (competições "carry").
 import type { WorldData } from "../data/worldTypes";
 import { euroLeagueDays, yearLen } from "./calendar";
-import { addFixture, compFixtures, needsPenalties, newComp, newRow, progressHooks, registerComp, resetFixtureIndex, roundRobin, sortTable, stageDone } from "./competitions";
+import { addFixture, compFixtures, needsPenalties, newComp, newRow, registerComp, resetFixtureIndex, roundRobin, sortTable, stageDone } from "./competitions";
 import { elevenStrength, quickEleven, quickResult } from "./fastsim";
 import { squadOf } from "./lineup";
 import { addNews } from "./news";
@@ -10,6 +11,7 @@ import { shuffle } from "./rng";
 import type { Club, Competition, Fixture, MatchResult, NewsKind, World } from "./types";
 import { createUefaSeason, UEFA_METAS } from "./uefa";
 import { registerYearMetas } from "./worldYear";
+import { createAcle, registerContinentalMetas } from "./continental";
 
 export { LEAGUE_MONEY, leagueWageMult, worldBalance } from "./worldMoney";
 
@@ -35,6 +37,7 @@ export function registerWorldMetas(w: World) {
   Object.values(w.wl.leagues).forEach((l, i) => registerComp(l.id, { name: l.name, short: l.short, color: l.color, tier: 30 + i }));
   for (const [id, m] of Object.entries(UEFA_METAS)) registerComp(id, m);
   registerYearMetas(w);
+  registerContinentalMetas();
 }
 
 export function initWorldLeagues(w: World, data: WorldData, migrating: boolean) {
@@ -80,7 +83,7 @@ export function createWorldSeason(w: World) {
     if (old) { prev[l.id] = sortTable(old.table.slice()).map((r) => r.club); dropComp(w, l.id); }
   }
   const prevUcl = w.comps.ucl?.champion;
-  for (const id of Object.keys(UEFA_METAS)) if (w.comps[id]) dropComp(w, id);
+  for (const id of [...Object.keys(UEFA_METAS), "acle"]) if (w.comps[id]) dropComp(w, id);
   for (const l of Object.values(wl.leagues)) {
     if (l.calendar !== "aug-may") continue;
     const teams = leagueClubs(w, l.id);
@@ -98,6 +101,7 @@ export function createWorldSeason(w: World) {
   }
   wl.createdYear = y;
   createUefaSeason(w, prev, prevUcl);
+  createAcle(w, prev);
   worldNews(w, `Começa a temporada europeia ${seasonLabel(y)}`, "As grandes ligas da Europa voltam a campo em agosto. Acompanhe tudo em Competições › Europa.", { force: true });
 }
 

@@ -1,8 +1,9 @@
+import { progressHooks } from "./hooks";
 // Champions League e Europa League no formato 2024+ (simplificado): fase de liga de 36 clubes com 8 jogos
 // (4 em casa, 4 fora, adversários todos diferentes), 1º–8º direto às oitavas, 9º–24º no playoff (ida e volta),
 // mata-mata em ida e volta e final em jogo único em campo neutro.
 import { intlWindows, onOrAfter, yearLen } from "./calendar";
-import { addFixture, allTiesDone, createTie, newComp, newRow, progressHooks, sortTable, stageDone, stageTies, winners } from "./competitions";
+import { addFixture, allTiesDone, createTie, newComp, newRow, sortTable, stageDone, stageTies, winners } from "./competitions";
 import { awardPrize } from "./finance";
 import { rand, shuffle } from "./rng";
 import type { Club, Competition, World } from "./types";
@@ -190,6 +191,7 @@ function progressUefa(w: World, comp: Competition): boolean {
   } else if (comp.stage === "final" && allTiesDone(comp, "final")) {
     const t = stageTies(comp, "final")[0];
     comp.champion = t.winner;
+    if (comp.id === "ucl" && w.wl) w.wl.lastUcl = t.winner;
     comp.runnerUp = t.winner === t.a ? t.b : t.a;
     comp.stage = "done";
     comp.done = true;

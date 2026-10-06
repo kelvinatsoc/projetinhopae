@@ -21,7 +21,7 @@ export const REGIONS: { id: CompRegion; label: string }[] = [
 
 /** Região de uma competição de clubes no navegador. */
 export function compRegion(c: Competition): CompRegion {
-  if (c.id === "liberta" || c.id === "sula" || c.id === "ucl" || c.id === "uel") return "CONT";
+  if (["liberta", "sula", "ucl", "uel", "acle", "cwc", "intercontinental"].includes(c.id)) return "CONT";
   if (!c.region || c.region === "BRA") return "BRA";
   if (c.region === "UEFA") return "UEFA";
   return "WORLD";

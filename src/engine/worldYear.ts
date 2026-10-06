@@ -1,7 +1,8 @@
+import { progressHooks } from "./hooks";
 // Ligas do mundo no ano civil (fev–dez): Argentina (Torneo Apertura e Clausura, em duas zonas + mata-mata)
 // e MLS (conferências Leste/Oeste + playoffs). Formatos simplificados; jogos sem o usuário na simulação rápida.
 import { dayOf, intlWindows, isClubWorldCupYear, isWorldCupYear, onOrAfter, spreadPick, weeklyPool } from "./calendar";
-import { addFixture, allTiesDone, createTie, newComp, newRow, progressHooks, registerComp, roundRobin, sortTable, stageDone, stageTies, winners } from "./competitions";
+import { addFixture, allTiesDone, createTie, newComp, newRow, registerComp, roundRobin, sortTable, stageDone, stageTies, winners } from "./competitions";
 import { shuffle } from "./rng";
 import type { Club, Competition, World } from "./types";
 import { awardWorldComp, worldNews } from "./worldLeagues";

@@ -100,6 +100,31 @@ const THEMES: Record<string, CompTheme> = {
     key: "fr", primary: "#64748b", secondary: "#1e293b", accent: "#e2e8f0", ink: "#ffffff", base: "#0f172a",
     pattern: P.grid("rgba(255,255,255,0.04)"), font: "rounded", trophy: "🤝", motto: "Data FIFA", bumper: "sweep",
   },
+  acle: {
+    key: "acle", primary: "#0e7c86", secondary: "#071c2c", accent: "#d4af37", ink: "#ffffff", base: "#04121c",
+    pattern: P.hex("rgba(212,175,55,0.12)"), font: "broadcast", trophy: "🏆", motto: "A elite da Ásia", bumper: "shine",
+  },
+  cwc: {
+    key: "cwc", primary: "#c9a227", secondary: "#111111", accent: "#ffffff", ink: "#ffffff", base: "#050505",
+    pattern: P.rays("rgba(201,162,39,0.14)"), font: "serif", trophy: "🌍", motto: "Os campeões do planeta", bumper: "stars",
+  },
+  euro: {
+    key: "euro", primary: "#143cdb", secondary: "#0a0f3c", accent: "#ffd400", ink: "#ffffff", base: "#050822",
+    pattern: P.dots("rgba(255,212,0,0.14)"), font: "broadcast", trophy: "🏆", motto: "O melhor da Europa", bumper: "stars",
+  },
+  ca: {
+    key: "ca", primary: "#d4a017", secondary: "#0b2a6b", accent: "#ffffff", ink: "#ffffff", base: "#061433",
+    pattern: P.stripes("rgba(255,255,255,0.05)"), font: "serif", trophy: "🏆", motto: "A taça mais antiga das seleções", bumper: "shine",
+  },
+  euroq: {
+    key: "euroq", primary: "#143cdb", secondary: "#0a0f3c", accent: "#ffffff", ink: "#ffffff", base: "#050822",
+    pattern: P.grid("rgba(255,255,255,0.05)"), font: "condensed", trophy: "🎟️", motto: "Rumo à Euro", bumper: "flag",
+  },
+  arg1a: { key: "arg1a", primary: "#75aadb", secondary: "#0b2140", accent: "#ffffff", ink: "#ffffff", base: "#06121f", pattern: P.stripes("rgba(255,255,255,0.08)"), font: "condensed", trophy: "🏆", motto: "Pasión argentina", bumper: "flag" },
+  arg1c: { key: "arg1c", primary: "#75aadb", secondary: "#0b2140", accent: "#f6b40e", ink: "#ffffff", base: "#06121f", pattern: P.stripes("rgba(255,255,255,0.08)"), font: "condensed", trophy: "🏆", motto: "Pasión argentina", bumper: "flag" },
+  usa1: { key: "usa1", primary: "#001f5b", secondary: "#000c24", accent: "#e31b23", ink: "#ffffff", base: "#000816", pattern: P.diag("rgba(255,255,255,0.06)"), font: "broadcast", trophy: "🏆", motto: "Major League Soccer", bumper: "sweep" },
+  ksa1: { key: "ksa1", primary: "#0f8a4b", secondary: "#03240f", accent: "#d4af37", ink: "#ffffff", base: "#021508", pattern: P.hex("rgba(212,175,55,0.1)"), font: "broadcast", trophy: "🏆", motto: "Roshn Saudi League", bumper: "sweep" },
+  jpn1: { key: "jpn1", primary: "#d7000f", secondary: "#1a1a1a", accent: "#ffffff", ink: "#ffffff", base: "#0d0d0d", pattern: P.dots("rgba(255,255,255,0.08)"), font: "rounded", trophy: "🏆", motto: "Meiji Yasuda J1 League", bumper: "sweep" },
   eng1: { key: "eng1", primary: "#3d195b", secondary: "#12051f", accent: "#00ff85", ink: "#ffffff", base: "#0c0316", pattern: P.diag("rgba(0,255,133,0.08)"), font: "broadcast", trophy: "🏆", motto: "A liga mais rica do mundo", bumper: "sweep" },
   esp1: { key: "esp1", primary: "#ee2523", secondary: "#2a0505", accent: "#ffcd00", ink: "#ffffff", base: "#140303", pattern: P.stripes("rgba(255,255,255,0.05)"), font: "broadcast", trophy: "🏆", motto: "El fútbol de los cracks", bumper: "sweep" },
   ita1: { key: "ita1", primary: "#008fd7", secondary: "#04203a", accent: "#ffffff", ink: "#ffffff", base: "#031423", pattern: P.grid("rgba(255,255,255,0.05)"), font: "serif", trophy: "🏆", motto: "Il calcio", bumper: "shine" },
@@ -132,7 +157,7 @@ const cache = new Map<string, CompTheme>();
 export function compTheme(id: string, fallbackColor?: string): CompTheme {
   const hit = cache.get(id);
   if (hit) return hit;
-  let t = THEMES[id] ?? (/^(wc|wcq|fr)-/.test(id) ? THEMES[id.split("-")[0]] : undefined);
+  let t = THEMES[id] ?? (/^(wc|wcq|fr|euro|euroq|ca)-/.test(id) ? THEMES[id.split("-")[0]] : undefined);
   if (!t && id.startsWith("est-")) {
     const [p, s, a] = ESTADUAL_PAL[id] ?? [fallbackColor ?? "#e11d48", "#111827", "#ffffff"];
     t = {
