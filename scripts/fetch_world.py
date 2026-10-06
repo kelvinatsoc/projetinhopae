@@ -352,6 +352,16 @@ def step_teams():
 
 
 # ---------------------------------------------------------------- etapa media
+def shrink(path, size=None, quality=75):
+    """Recomprime para caber no teto do APK (escudo 256px q75; estádio 480x270 q60)."""
+    from PIL import Image
+    im = Image.open(path)
+    im.load()
+    if size:
+        im = im.convert("RGB").resize(size, Image.LANCZOS)
+    im.save(path, "WEBP", quality=quality, method=6)
+
+
 def step_media():
     from fetch_club_media import to_logo_webp, to_stadium_webp
     teams = load(TEAMS, {})
@@ -363,6 +373,7 @@ def step_media():
         if t.get("strBadge") and not os.path.exists(out):
             data = H.download(t["strBadge"])
             if data and to_logo_webp(data, out):
+                shrink(out)
                 ok += 1
             else:
                 miss += 1
@@ -374,6 +385,7 @@ def step_media():
                 try:
                     if data:
                         to_stadium_webp(data, out)
+                        shrink(out, (480, 270), 60)
                 except Exception as e:  # imagem corrompida
                     print("  estádio falhou", tid, e)
     print(f"media: {ok} escudos novos, {miss} falhas", flush=True)
