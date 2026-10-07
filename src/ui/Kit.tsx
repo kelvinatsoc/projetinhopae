@@ -27,6 +27,10 @@ export type Kit = {
   shirt?: string;
   /** uniforme liso gerado a partir das cores do clube (sem dados na Wikipedia) */
   synthetic?: boolean;
+  /** padrão do corpo detectado no PNG (listras verticais, horizontais, faixa diagonal, metades, faixa no peito) */
+  pat?: "stripes" | "hoops" | "sash" | "halves" | "band";
+  /** cor secundária do padrão */
+  st?: string;
 };
 
 type Part = "la" | "b" | "ra" | "sh" | "so";

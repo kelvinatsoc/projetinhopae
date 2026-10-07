@@ -336,13 +336,13 @@
  },
  "river-plate": {
   "kit": "adidas",
-  "shirt": "Betano",
-  "src": "ptwiki:Club Atlético River Plate"
+  "shirt": "Codere",
+  "src": "manual"
  },
  "boca-juniors": {
   "kit": "adidas",
   "shirt": "Betsson",
-  "src": "ptwiki:Club Atlético Boca Juniors"
+  "src": "manual"
  },
  "racing": {
   "kit": "Nike",
@@ -696,5 +696,511 @@
  "puerto-cabello": {
   "kit": "adidas",
   "src": "ptwiki:Academia Puerto Cabello"
+ },
+ "moto-club": {
+  "shirt": "Maranhão",
+  "src": "wikidata"
+ },
+ "sao-jose-rs": {
+  "shirt": "Banco do Estado do Rio Grande do Sul",
+  "src": "wikidata"
+ },
+ "gas": {
+  "shirt": "Caracaraí",
+  "src": "wikidata"
+ },
+ "arsenal": {
+  "kit": "adidas",
+  "shirt": "Emirates",
+  "src": "manual"
+ },
+ "aston-villa": {
+  "kit": "adidas",
+  "shirt": "Betano",
+  "src": "manual"
+ },
+ "chelsea": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "everton": {
+  "kit": "Castore",
+  "shirt": "Stake",
+  "src": "manual"
+ },
+ "liverpool-eng": {
+  "kit": "adidas",
+  "shirt": "Standard Chartered",
+  "src": "manual"
+ },
+ "manchester-city": {
+  "shirt": "Etihad Airways",
+  "kit": "Puma",
+  "src": "wikidata+manual"
+ },
+ "manchester-united": {
+  "shirt": "Snapdragon",
+  "kit": "adidas",
+  "src": "wikidata+manual"
+ },
+ "newcastle-united": {
+  "shirt": "Sela",
+  "kit": "adidas",
+  "src": "wikidata+manual"
+ },
+ "tottenham": {
+  "shirt": "AIA",
+  "kit": "Nike",
+  "src": "wikidata+manual"
+ },
+ "athletic-bilbao": {
+  "kit": "Castore",
+  "shirt": "Kutxabank",
+  "src": "manual"
+ },
+ "barcelona-esp": {
+  "kit": "Nike",
+  "shirt": "Spotify",
+  "src": "wikidata+manual"
+ },
+ "atletico-madrid": {
+  "kit": "Nike",
+  "shirt": "Riyadh Air",
+  "src": "manual"
+ },
+ "real-madrid": {
+  "kit": "adidas",
+  "shirt": "Emirates",
+  "src": "wikidata+manual"
+ },
+ "atalanta": {
+  "kit": "Joma",
+  "src": "wikidata"
+ },
+ "bologna": {
+  "shirt": "Liu·Jo",
+  "src": "wikidata"
+ },
+ "cagliari": {
+  "shirt": "Birra Ichnusa",
+  "src": "wikidata"
+ },
+ "genoa": {
+  "kit": "Kappa",
+  "src": "wikidata"
+ },
+ "inter-milan": {
+  "kit": "Nike",
+  "shirt": "Betsson",
+  "src": "wikidata+manual"
+ },
+ "juventus": {
+  "kit": "adidas",
+  "shirt": "Save the Children",
+  "src": "wikidata+manual"
+ },
+ "ac-milan": {
+  "kit": "Puma",
+  "shirt": "Emirates",
+  "src": "wikidata+manual"
+ },
+ "roma": {
+  "shirt": "Eurobet",
+  "kit": "adidas",
+  "src": "wikidata+manual"
+ },
+ "napoli": {
+  "kit": "EA7",
+  "shirt": "MSC",
+  "src": "manual"
+ },
+ "torino": {
+  "kit": "Joma",
+  "src": "wikidata"
+ },
+ "udinese": {
+  "kit": "Macron",
+  "shirt": "Dacia",
+  "src": "wikidata"
+ },
+ "borussia-dortmund": {
+  "shirt": "Vodafone",
+  "kit": "Puma",
+  "src": "wikidata+manual"
+ },
+ "eintracht-frankfurt": {
+  "shirt": "Indeed",
+  "src": "wikidata"
+ },
+ "gladbach": {
+  "shirt": "Deutsche Postbank",
+  "src": "wikidata"
+ },
+ "hamburger-sv": {
+  "shirt": "HanseMerkur Versicherungsgruppe",
+  "src": "wikidata"
+ },
+ "hoffenheim": {
+  "shirt": "SAP",
+  "src": "wikidata"
+ },
+ "koln": {
+  "shirt": "REWE",
+  "src": "wikidata"
+ },
+ "bayer-leverkusen": {
+  "shirt": "Barmenia Gothaer",
+  "kit": "New Balance",
+  "src": "wikidata+manual"
+ },
+ "bayern-munich": {
+  "shirt": "Telekom",
+  "kit": "adidas",
+  "src": "wikidata+manual"
+ },
+ "angers": {
+  "shirt": "Scania",
+  "src": "wikidata"
+ },
+ "lyon": {
+  "kit": "adidas",
+  "shirt": "Emirates",
+  "src": "wikidata"
+ },
+ "marseille": {
+  "shirt": "CMA CGM",
+  "kit": "Puma",
+  "src": "wikidata+manual"
+ },
+ "paris-fc": {
+  "shirt": "Vinci",
+  "src": "wikidata"
+ },
+ "psg": {
+  "kit": "Nike",
+  "shirt": "Qatar Airways",
+  "src": "wikidata+manual"
+ },
+ "benfica": {
+  "kit": "adidas",
+  "shirt": "Emirates",
+  "src": "manual"
+ },
+ "maritimo": {
+  "shirt": "Madeira Brewery",
+  "src": "wikidata"
+ },
+ "porto": {
+  "shirt": "Betano",
+  "kit": "New Balance",
+  "src": "wikidata+manual"
+ },
+ "santa-clara": {
+  "shirt": "Banco Santander (Portugal)",
+  "src": "wikidata"
+ },
+ "sporting-cp": {
+  "shirt": "Betano",
+  "kit": "Nike",
+  "src": "wikidata+manual"
+ },
+ "besiktas": {
+  "shirt": "Vodafone",
+  "src": "wikidata"
+ },
+ "fenerbahce": {
+  "shirt": "Turkish Airlines",
+  "src": "wikidata"
+ },
+ "hearts": {
+  "shirt": "Save the Children",
+  "src": "wikidata"
+ },
+ "rangers": {
+  "shirt": "32Red",
+  "src": "wikidata"
+ },
+ "al-ahli": {
+  "shirt": "Saudi Company for Artificial Intelligence",
+  "src": "wikidata"
+ },
+ "al-hilal": {
+  "kit": "Puma",
+  "shirt": "Savvy Games",
+  "src": "manual"
+ },
+ "al-nassr": {
+  "kit": "adidas",
+  "shirt": "KAFD",
+  "src": "manual"
+ },
+ "kawasaki-frontale": {
+  "shirt": "Fujitsu",
+  "src": "wikidata"
+ },
+ "yokohama-f-marinos": {
+  "shirt": "Nissan",
+  "src": "wikidata"
+ },
+ "nagoya-grampus": {
+  "shirt": "Toyota",
+  "src": "wikidata"
+ },
+ "kyoto-sanga": {
+  "shirt": "Kyocera",
+  "src": "wikidata"
+ },
+ "vissel-kobe": {
+  "shirt": "Rakuten Group, Inc.",
+  "src": "wikidata"
+ },
+ "sanfrecce-hiroshima": {
+  "shirt": "Mazda",
+  "src": "wikidata"
+ },
+ "inter-miami": {
+  "kit": "adidas",
+  "shirt": "Royal Caribbean",
+  "src": "manual"
+ },
+ "nt-BRA": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-ARG": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-URU": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-COL": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-ECU": {
+  "kit": "Marathon",
+  "src": "manual"
+ },
+ "nt-PAR": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-CHI": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-PER": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-BOL": {
+  "kit": "Marathon",
+  "src": "manual"
+ },
+ "nt-VEN": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-FRA": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-ESP": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-ENG": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-POR": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-GER": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-NED": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-BEL": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-ITA": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-CRO": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-SUI": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-DEN": {
+  "kit": "Hummel",
+  "src": "manual"
+ },
+ "nt-AUT": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-NOR": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-TUR": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-SCO": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-POL": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-SRB": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-UKR": {
+  "kit": "Joma",
+  "src": "manual"
+ },
+ "nt-USA": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-MEX": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-CAN": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-CRC": {
+  "kit": "New Balance",
+  "src": "manual"
+ },
+ "nt-PAN": {
+  "kit": "Reebok",
+  "src": "manual"
+ },
+ "nt-JAM": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-JPN": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-KOR": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-IRN": {
+  "kit": "Merooj",
+  "src": "manual"
+ },
+ "nt-AUS": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-KSA": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-QAT": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-UZB": {
+  "kit": "Joma",
+  "src": "manual"
+ },
+ "nt-MAR": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-SEN": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-EGY": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-NGA": {
+  "kit": "Nike",
+  "src": "manual"
+ },
+ "nt-CIV": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-ALG": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-TUN": {
+  "kit": "Kappa",
+  "src": "manual"
+ },
+ "nt-CZE": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-BIH": {
+  "kit": "Macron",
+  "src": "manual"
+ },
+ "nt-SWE": {
+  "kit": "adidas",
+  "src": "manual"
+ },
+ "nt-RSA": {
+  "kit": "Le Coq Sportif",
+  "src": "manual"
+ },
+ "nt-GHA": {
+  "kit": "Puma",
+  "src": "manual"
+ },
+ "nt-CPV": {
+  "kit": "Tempo",
+  "src": "manual"
+ },
+ "nt-COD": {
+  "kit": "Le Coq Sportif",
+  "src": "manual"
+ },
+ "nt-HAI": {
+  "kit": "Saeta",
+  "src": "manual"
+ },
+ "nt-CUW": {
+  "kit": "Kappa",
+  "src": "manual"
+ },
+ "nt-IRQ": {
+  "kit": "Jako",
+  "src": "manual"
+ },
+ "nt-JOR": {
+  "kit": "Jako",
+  "src": "manual"
+ },
+ "nt-NZL": {
+  "kit": "Nike",
+  "src": "manual"
  }
 }

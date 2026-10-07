@@ -3,6 +3,7 @@ import { LEGENDS, TIER_NAMES } from "../../data/legends";
 import { COMP_META } from "../../engine/competitions";
 import { kitSupplier, shirtSponsor, stadiumName } from "../../engine/sponsors";
 import { BrandLogo } from "../BrandLogo";
+import { crestFor, KitShirt } from "../Uniforms";
 import "../economy.css";
 import { ClubHQ } from "../hq/ClubHQ";
 import { nextFixture } from "../../engine/competitions";
@@ -17,7 +18,8 @@ import type { Club, World } from "../../engine/types";
 import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
-import { crowdVolume, loadMedia, saveMedia, setCrowdVolume, setSoundEnabled, soundEnabled } from "../audio";
+import { setSpecialsEnabled, specialsEnabled } from "../specials";
+import { crowdVolume,loadMedia, saveMedia, setCrowdVolume, setSoundEnabled, soundEnabled } from "../audio";
 import { Avatar, clubStars, CompLogo, Crest, Icon, PlayerRow, StadiumPhoto, stadiumSrc, Stars, Ic, GIcon } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
@@ -63,6 +65,7 @@ export function ClubScreen() {
         <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
         <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
         <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
+        <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
         <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
@@ -142,6 +145,12 @@ export function ClubInfoScreen({ id }: { id: string }) {
           {shirtSponsor(w, c) && <div><span className="tiny muted">Patrocínio master</span><BrandLogo brand={shirtSponsor(w, c)} size={26} withName /></div>}
         </div>
       )}
+      <div className="card tap row gap8" onClick={() => push({ name: "kits", id: c.id })}>
+        <KitShirt clubId={c.id} which={0} width={46} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
+        <KitShirt clubId={c.id} which={1} width={46} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
+        <div className="grow"><b>Uniformes</b><div className="tiny muted">Titular, reserva e terceiro · fornecedor e patrocínio</div></div>
+        <span className="muted">›</span>
+      </div>
       <div className="grid3">
         <div className="stat-box"><b>{Math.round(clubStrength(w, c))}</b><span>força</span></div>
         <div className="stat-box"><b>{squad.length}</b><span>jogadores</span></div>
@@ -293,6 +302,7 @@ export function SettingsScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
   const [sound, setSound] = useState(soundEnabled());
+  const [specials, setSpecials] = useState(specialsEnabled());
   const [vol, setVol] = useState(() => Math.round(crowdVolume() * 100));
   const [hasGoal, setHasGoal] = useState(false);
   useEffect(() => { loadMedia(`goal:${c.id}`).then((d) => setHasGoal(!!d)).catch(() => undefined); }, [c.id]);
@@ -314,6 +324,8 @@ export function SettingsScreen() {
             <input type="range" min={0} max={100} step={5} value={vol} aria-label="Volume da torcida" onChange={(e) => { const v = Number(e.target.value); setVol(v); setCrowdVolume(v / 100); }} />
           </label>
         )}
+        <div className="switch"><div><b>Golpes especiais</b><div className="small muted">Chute Trovão, Folha Seca, Bicicleta, Voo do Gato… câmera lenta e o nome do golpe na tela nos lances decisivos (só visual, não muda o resultado).</div></div>
+          <input type="checkbox" checked={specials} onChange={(e) => { setSpecials(e.target.checked); setSpecialsEnabled(e.target.checked); }} /></div>
         <div className="switch"><div><b>Rostos ilustrados</b><div className="small muted">Para jogadores reais sem foto livre (em vez da silhueta).</div></div>
           <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
         <div className="switch"><div><b>Tema claro</b></div>

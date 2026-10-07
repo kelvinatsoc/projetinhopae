@@ -1,4 +1,5 @@
 import { SponsorsScreen } from "./Sponsors";
+import { UniformsScreen } from "./Uniforms";
 import { FacilitiesScreen } from "./Facilities";
 import { SetPiecesScreen } from "./SetPieces";
 import { useEffect, useRef, useState } from "react";
@@ -70,6 +71,7 @@ function routeTitle(r: Route): string {
     case "career": return "Carreira";
     case "compare": return "Comparar jogadores";
     case "sponsors": return "Patrocínios";
+    case "kits": return "Uniformes";
     case "facilities": return "Estrutura";
     case "setpieces": return "Bola parada";
     case "nts": return "Seleções";
@@ -181,6 +183,7 @@ export function App() {
       case "career": content = <CareerScreen />; break;
       case "compare": content = <CompareScreen ids={top.ids} />; break;
       case "sponsors": content = <SponsorsScreen />; break;
+      case "kits": content = <UniformsScreen id={top.id} key={top.id} />; break;
       case "facilities": content = <FacilitiesScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;
       case "nts": content = <NationalTeamsScreen />; break;

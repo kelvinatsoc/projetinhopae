@@ -642,6 +642,66 @@ def shirt_color(kit: dict) -> str:
     return "#%02X%02X%02X" % (round(r / n), round(g / n), round(b / n))
 
 
+def body_style(kit: dict) -> dict:
+    """Padrão do corpo da camisa para o campinho/3D: {"pat": stripes|hoops|sash|halves|band, "st": cor}.
+    Camisa lisa (ou só detalhes pequenos) = {}."""
+    from PIL import Image
+    bx, by, bw, bh = BOXES["b"]
+    img = Image.new("RGBA", (bw, bh), kit["b"])
+    if kit.get("pb"):
+        _paste_pattern(img, os.path.join(MEDIA, kit["pb"]), (0, 0, bw, bh))
+    px = img.load()
+    y0, y1 = 10, bh - 2
+    cells = [[px[x, y][:3] for x in range(1, bw - 1)] for y in range(y0, y1)]
+    buckets = {}
+    for row in cells:
+        for c in row:
+            k = (c[0] // 48, c[1] // 48, c[2] // 48)
+            a = buckets.setdefault(k, [0, 0, 0, 0])
+            a[0] += c[0]; a[1] += c[1]; a[2] += c[2]; a[3] += 1
+    tops = sorted(buckets.values(), key=lambda a: -a[3])
+    total = sum(a[3] for a in tops)
+    if len(tops) < 2 or tops[1][3] < 0.15 * total:
+        return {}
+    A = tuple(round(v / tops[0][3]) for v in tops[0][:3])
+    B = tuple(round(v / tops[1][3]) for v in tops[1][:3])
+    d = lambda c, q: sum((c[i] - q[i]) ** 2 for i in range(3))
+    m = [[d(c, B) < d(c, A) for c in row] for row in cells]
+    H, W = len(m), len(m[0])
+    th = sum(m[y][x] != m[y][x + 1] for y in range(H) for x in range(W - 1)) / H  # trocas por linha
+    tv = sum(m[y][x] != m[y + 1][x] for y in range(H - 1) for x in range(W)) / W  # trocas por coluna
+    st = "#%02X%02X%02X" % B
+    if th >= 2.5 and th > 2.5 * tv:
+        return {"pat": "stripes", "st": st}
+    if tv >= 2.5 and tv > 2.5 * th:
+        return {"pat": "hoops", "st": st}
+    if th < 1.6 and tv < 1.6:
+        left = sum(m[y][x] for y in range(H) for x in range(W // 2))
+        right = sum(m[y][x] for y in range(H) for x in range(W // 2, W))
+        if abs(left - right) > 0.6 * (left + right) and th > 0.6:
+            return {"pat": "halves", "st": st}
+        if th > 0.6 and tv > 0.6:
+            return {"pat": "sash", "st": st}
+        if tv >= 0.9 and th < 0.5:
+            return {"pat": "band", "st": st}
+    return {}
+
+
+def style():
+    """Acrescenta pat/st aos uniformes já gerados (sem rede)."""
+    data = load(OUT_JSON, {})
+    n = 0
+    for kits in data.values():
+        for k in kits:
+            k.pop("pat", None); k.pop("st", None)
+            k.update(body_style(k))
+            n += bool(k.get("pat"))
+    lines = [f" {json.dumps(cid)}: {json.dumps(data[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in data]
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
+        f.write("{\n" + ",\n".join(lines) + "\n}\n")
+    print(f"style: {n} uniformes com padrão no corpo")
+
+
 def build(specs: dict | None = None):
     specs = specs or load(work("specs.json"), None) or parse()
     inf = load(work("info.json"), {})
@@ -682,6 +742,7 @@ def build(specs: dict | None = None):
             stats["colors"] += 1
         for k in kits:
             k["shirt"] = shirt_color(k)
+            k.update(body_style(k))
         stats["kits"] += len(kits)
         out[cid] = kits
     for ov in OVERLAYS.values():
@@ -806,7 +867,7 @@ def main(argv):
         WORK = os.path.join(WORK, "world")
         os.makedirs(WORK, exist_ok=True)
     argv = [a for a in argv if a != "--world"]
-    stages = argv or ["parse", "info", "download", "build"]
+    stages = argv or ["parse", "info", "download", "build"]  # "style" recalcula só os padrões
     specs = None
     for st in stages:
         if st == "parse":
@@ -817,8 +878,10 @@ def main(argv):
             download(specs)
         elif st == "build":
             build(specs)
+        elif st == "style":
+            style()
         elif st == "qa":
-            qa([a for a in argv if a not in ("parse", "info", "download", "build", "qa")] or None)
+            qa([a for a in argv if a not in ("parse", "info", "download", "build", "qa", "style")] or None)
             break
         else:
             print(f"etapa desconhecida: {st}")
