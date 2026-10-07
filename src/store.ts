@@ -75,6 +75,7 @@ export type Route =
   | { name: "career" }
   | { name: "compare"; ids: number[] }
   | { name: "sponsors" }
+  | { name: "kits"; id: string }
   | { name: "facilities" }
   | { name: "setpieces" }
   | { name: "nts" }

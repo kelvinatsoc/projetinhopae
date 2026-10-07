@@ -43,8 +43,10 @@ export interface KitColors {
   sleeve: string;
   shorts: string;
   socks: string;
-  pattern: "solid" | "stripes" | "hoops";
+  pattern: "solid" | "stripes" | "hoops" | "sash" | "halves";
   stripe: string;
+  /** uniforme real usado ("clubId:índice"), para a textura do 3D (src/ui/kitTexture.ts) */
+  ref?: string;
 }
 
 export interface SideColors {
@@ -91,14 +93,15 @@ function kitsClash(a: KitColors, b: KitColors): boolean {
 
 /** Uniforme titular a partir das cores do clube (o escudo dá uma dica do padrão da camisa). */
 /** Uniforme real (Wikipedia) convertido para as cores do campinho. */
-function realKit(k: Kit): KitColors {
+function realKit(k: Kit, clubId: string, i: number): KitColors {
   const shirt = k.shirt ?? k.b;
-  return { ...kitFrom(shirt, k.sh, k.so), sleeve: k.la };
+  const pattern: KitColors["pattern"] = !k.pat || !k.st ? "solid" : k.pat === "band" ? "hoops" : k.pat;
+  return { ...kitFrom(shirt, k.sh, k.so, pattern, k.st ?? k.sh), sleeve: k.la, ref: `${clubId}:${i}` };
 }
 
 function homeKitOf(club: Club): KitColors {
   const real = kitsOf(club.id)[0];
-  if (real) return realKit(real);
+  if (real) return realKit(real, club.id, 0);
   const [c0, c1, c2] = club.colors;
   const white = lum(c0) > 0.9;
   if (club.crest === "hoops" && !white) return kitFrom(c0, c1 === c0 ? "#f2f2f2" : "#f2f2f2", c0, "hoops", c1);
@@ -115,7 +118,7 @@ export function sideColors(sim: MatchSim): SideColors {
   const home = homeKitOf(sim.sides[0].club);
   const [a0, a1, a2] = sim.sides[1].club.colors;
   const candidates: KitColors[] = [
-    ...kitsOf(sim.sides[1].club.id).map(realKit),
+    ...kitsOf(sim.sides[1].club.id).map((k, i) => realKit(k, sim.sides[1].club.id, i)),
     homeKitOf(sim.sides[1].club),
     kitFrom(a1, a0, a1),
     kitFrom("#f4f4f4", a0, "#f4f4f4"),
@@ -187,6 +190,7 @@ interface Dude extends SpriteDude {
   socks: string;
   pattern: KitColors["pattern"];
   stripe: string;
+  kitRef?: string;
   skin: string;
   hair: string;
   seed: number;
@@ -596,6 +600,7 @@ class PitchAnim {
     d.socks = gk ? gkc : kit.socks;
     d.pattern = gk ? "solid" : kit.pattern;
     d.stripe = kit.stripe;
+    d.kitRef = gk ? undefined : kit.ref;
     const lk = looksOf(pid != null ? this.sim.w.players[pid] : undefined);
     d.skin = lk.skin;
     d.hair = lk.hair;
@@ -1730,6 +1735,10 @@ class PitchAnim {
     } else if (d.pattern === "hoops") {
       g.fillStyle = d.stripe;
       g.fillRect(x - 2, y - 4, 4, 1);
+    } else if (d.pattern === "sash" || d.pattern === "halves") {
+      g.fillStyle = d.stripe;
+      if (d.pattern === "halves") g.fillRect(x, y - 5, 2, 2);
+      else { g.fillRect(x - 1, y - 5, 1, 1); g.fillRect(x, y - 4, 1, 1); }
     }
     if (d.sleeve !== d.shirt) {
       g.fillStyle = d.sleeve;
@@ -2076,7 +2085,7 @@ function ps1Snapshot(a: PitchAnim): Ps1Snapshot {
       dive: now < d.dive ? clamp(1 - (d.dive - now) / 450, 0, 1) : -1,
       diveDir: d.diveDir, down: now < d.down, arms: now < d.arms, sad: d.sad,
       pose, poseS: pose ? clamp((now - (d.poseT0 ?? now)) / span, 0, 1) : 0,
-      shirt: d.shirt, sleeve: d.sleeve, pattern: d.pattern, stripe: d.stripe, shorts: d.shorts, socks: d.socks,
+      shirt: d.shirt, sleeve: d.sleeve, pattern: d.pattern, stripe: d.stripe, shorts: d.shorts, socks: d.socks, kit: d.kitRef,
       skin: d.skin, hair: d.hair, num: d.look?.num ?? 0, name: d.side === 2 ? "" : hudName(a.name(d)),
     });
   });

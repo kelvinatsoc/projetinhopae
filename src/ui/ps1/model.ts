@@ -29,6 +29,8 @@ export interface Ps1Player {
   sleeve: string;
   pattern: string;
   stripe: string;
+  /** uniforme real ("clubId:índice"): o tronco usa makeKitTexture (src/ui/kitTexture.ts) */
+  kit?: string;
   shorts: string;
   socks: string;
   skin: string;

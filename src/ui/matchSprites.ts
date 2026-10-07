@@ -135,7 +135,7 @@ export interface SpriteDude {
   sleeve: string;
   shorts: string;
   socks: string;
-  pattern: "solid" | "stripes" | "hoops";
+  pattern: "solid" | "stripes" | "hoops" | "sash" | "halves";
   stripe: string;
   skin: string;
   hair: string;
@@ -253,6 +253,8 @@ export function drawPitchDude(g: CanvasRenderingContext2D, d: SpriteDude, now: n
     R(tx + 1, ty0, 1, th, d.stripe);
     R(tx + 3, ty0, 1, th, d.stripe);
   } else if (d.pattern === "hoops") R(tx, ty0 + 1, w, 1, d.stripe);
+  else if (d.pattern === "halves") R(tx + (w >> 1), ty0, w - (w >> 1), th, d.stripe);
+  else if (d.pattern === "sash") for (let i = 0; i < th; i++) R(tx + 1 + i, ty0 + i, 1, 1, d.stripe);
   if (d.sleeve !== d.shirt) {
     R(tx, ty0, 1, 1, d.sleeve);
     R(tx + w - 1, ty0, 1, 1, d.sleeve);

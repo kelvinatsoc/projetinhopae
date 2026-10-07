@@ -16,7 +16,7 @@ export interface CineKit {
   sleeve: string;
   shorts: string;
   socks: string;
-  pattern: "solid" | "stripes" | "hoops";
+  pattern: "solid" | "stripes" | "hoops" | "sash" | "halves";
   stripe: string;
 }
 export interface CineActor {
@@ -632,6 +632,8 @@ export function drawBig(g: CanvasRenderingContext2D, x: number, y: number, s: nu
   R(bx, torsoTop, bw, torsoH, K.shirt);
   if (K.pattern === "stripes") for (let i = 1; i < bw; i += 2) R(bx + i, torsoTop, 0.75, torsoH, K.stripe);
   else if (K.pattern === "hoops") for (let i = 1; i < torsoH; i += 2) R(bx, torsoTop + i, bw, 0.75, K.stripe);
+  else if (K.pattern === "halves") R(bx + bw / 2, torsoTop, bw / 2, torsoH, K.stripe);
+  else if (K.pattern === "sash") for (let i = 0; i < torsoH; i++) R(bx + (i * bw) / torsoH, torsoTop + i, 1.25, 1, K.stripe);
   R(bx, torsoTop, 1, 1.5, K.sleeve);
   R(bx + bw - 1, torsoTop, 1, 1.5, K.sleeve);
   // número (costas grande, frente pequeno)

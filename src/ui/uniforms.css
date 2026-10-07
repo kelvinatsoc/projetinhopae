@@ -1,0 +1,15 @@
+/* Tela "Uniformes" e camisas desenhadas (src/ui/Uniforms.tsx) */
+.kit-shirt { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.kit-shirt img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .35)); }
+.kit-card .kit-shirts { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 6px 0 10px;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255, 255, 255, .08), transparent 70%); border-radius: 12px; }
+.kit-meta { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.kit-meta-info { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.kit-sws { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.kit-sw { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; opacity: .9; }
+.kit-sw i { width: 12px; height: 12px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(127, 127, 127, .6); display: inline-block; }
+.kit-brands { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.kit-brands > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.kit-photo { margin: 0; width: 84px; text-align: center; flex: none; }
+.kit-photo img { width: 84px; height: 84px; object-fit: contain; }
+.player-kit { display: flex; align-items: center; gap: 8px; }

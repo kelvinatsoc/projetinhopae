@@ -27,6 +27,7 @@ import { LoanInSheet, LoanOutSheet } from "./Loans";
 import "../market.css";
 import { PlayerInsightCards, ScoutButton } from "./Scouting";
 import { AbilitiesCard } from "../Compare";
+import { KitShirt } from "../Uniforms";
 import { IndividualTrainingSheet } from "./Training";
 import { interact, interactionOptions, type InteractionId, type InteractionResult } from "../../engine/interactions";
 import "../narrative.css";
@@ -100,6 +101,7 @@ export function PlayerScreen({ id }: { id: number }) {
           {club ? (
             <div className="row small" style={{ cursor: "pointer" }} onClick={() => push({ name: "club", id: club.id })}>
               <Crest club={club} size={18} /> <b>{club.name}</b>{p.youth && <span className="tag">base</span>}{p.shirt && <span>· camisa {p.shirt}</span>}
+              {p.shirt ? <span onClick={(e) => { e.stopPropagation(); push({ name: "kits", id: club.id }); }} title="Uniformes"><KitShirt clubId={club.id} side="back" width={34} num={p.shirt} name={p.name.split(" ").slice(-1)[0]} colors={club.colors} /></span> : null}
             </div>
           ) : <div className="small">Sem clube (jogador livre)</div>}
           <span className="tiny muted"><Flag code={p.nat} /> {COUNTRY_NAME[p.nat] ?? p.nat}{mates.length > 1 ? " · deslize a carta para trocar" : ""}</span>

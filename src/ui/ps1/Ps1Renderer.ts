@@ -7,6 +7,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { StadiumStyle } from "../../data/stadiumStyles";
 import { PITCH_LEN, PITCH_WID } from "../pitchGeom";
 import { drawText, textWidth } from "./font";
+import { makeKitTexture, type KitWhich } from "../kitTexture";
 import { CrowdFx, type StandInfo } from "./crowdFx";
 import {
   behindGoalCam, broadcastCam, easeCam, facingAngle, internalRes, ReplayBuffer,
@@ -698,9 +699,16 @@ export class Ps1Renderer {
 
   // ------------------------------------------------ jogadores
   private shirtTexture(p: Ps1Player): THREE.Texture {
-    const key = `${p.shirt}|${p.pattern}|${p.stripe}|${p.num}`;
+    const key = `${p.shirt}|${p.pattern}|${p.stripe}|${p.num}|${p.kit ?? ""}|${p.kit ? p.name : ""}`;
     const hit = this.shirtTex.get(key);
     if (hit) return hit;
+    if (p.kit) {
+      // uniforme real: tecido, fornecedora, escudo, patrocinador, nome e número (kitTexture.ts)
+      const [club, which] = p.kit.split(":");
+      const kt = tex(makeKitTexture(club, (Number(which) || 0) as KitWhich, { num: p.num, name: p.name, layout: "sheet", size: 64, onReady: () => { kt.needsUpdate = true; } }));
+      this.shirtTex.set(key, kt);
+      return kt;
+    }
     // 32x16: metade esquerda = costas (número grande), direita = frente
     const [c, g] = canvas(32, 16);
     g.fillStyle = p.shirt;
@@ -793,7 +801,7 @@ export class Ps1Renderer {
   }
 
   private rigKey(p: Ps1Player) {
-    return `${p.shirt}|${p.shorts}|${p.socks}|${p.skin}|${p.hair}|${p.num}|${p.sleeve}|${p.pattern}`;
+    return `${p.shirt}|${p.shorts}|${p.socks}|${p.skin}|${p.hair}|${p.num}|${p.sleeve}|${p.pattern}|${p.kit ?? ""}`;
   }
 
   private disposeObj(o: THREE.Object3D) {

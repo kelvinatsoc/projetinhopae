@@ -1,0 +1,1689 @@
+{
+ "abc": {
+  "sdb": "134747",
+  "files": {
+   "1": "kits/photo/abc-1.png"
+  },
+  "season": null
+ },
+ "aberdeen": {
+  "sdb": "133638",
+  "files": {
+   "1": "kits/photo/aberdeen-1.png"
+  },
+  "season": 2022
+ },
+ "abha": {
+  "sdb": "137855",
+  "files": {
+   "1": "kits/photo/abha-1.png"
+  },
+  "season": 2024
+ },
+ "alanyaspor": {
+  "sdb": "135676",
+  "files": {
+   "1": "kits/photo/alanyaspor-1.png"
+  },
+  "season": 2022
+ },
+ "aldosivi": {
+  "sdb": "135150",
+  "files": {
+   "1": "kits/photo/aldosivi-1.png"
+  },
+  "season": 2021
+ },
+ "angers": {
+  "sdb": "134709",
+  "files": {
+   "1": "kits/photo/angers-1.png"
+  },
+  "season": 2021
+ },
+ "arouca": {
+  "sdb": "134387",
+  "files": {
+   "1": "kits/photo/arouca-1.png"
+  },
+  "season": 2025
+ },
+ "arsenal": {
+  "sdb": "133604",
+  "files": {
+   "1": "kits/photo/arsenal-1.png"
+  },
+  "season": 2020
+ },
+ "aston-villa": {
+  "sdb": "133601",
+  "files": {
+   "1": "kits/photo/aston-villa-1.png"
+  },
+  "season": 2020
+ },
+ "atalanta": {
+  "sdb": "134782",
+  "files": {
+   "1": "kits/photo/atalanta-1.png"
+  },
+  "season": 2020
+ },
+ "athletico-pr": {
+  "sdb": "134297",
+  "files": {
+   "1": "kits/photo/athletico-pr-1.png"
+  },
+  "season": 2026
+ },
+ "atletico-go": {
+  "sdb": "134737",
+  "files": {
+   "1": "kits/photo/atletico-go-1.png"
+  },
+  "season": 2018
+ },
+ "atletico-madrid": {
+  "sdb": "133729",
+  "files": {
+   "1": "kits/photo/atletico-madrid-1.png"
+  },
+  "season": 2020
+ },
+ "atletico-tucuman": {
+  "sdb": "135681",
+  "files": {
+   "1": "kits/photo/atletico-tucuman-1.png"
+  },
+  "season": 2021
+ },
+ "augsburg": {
+  "sdb": "133652",
+  "files": {
+   "1": "kits/photo/augsburg-1.png"
+  },
+  "season": 2021
+ },
+ "auxerre": {
+  "sdb": "134788",
+  "files": {
+   "1": "kits/photo/auxerre-1.png"
+  },
+  "season": 2022
+ },
+ "avai": {
+  "sdb": "134738",
+  "files": {
+   "1": "kits/photo/avai-1.png"
+  },
+  "season": 2018
+ },
+ "avispa-fukuoka": {
+  "sdb": "139882",
+  "files": {
+   "1": "kits/photo/avispa-fukuoka-1.png"
+  },
+  "season": 2021
+ },
+ "bahia": {
+  "sdb": "134293",
+  "files": {
+   "1": "kits/photo/bahia-1.png"
+  },
+  "season": 2024
+ },
+ "banfield": {
+  "sdb": "135154",
+  "files": {
+   "1": "kits/photo/banfield-1.png"
+  },
+  "season": 2021
+ },
+ "barcelona-esp": {
+  "sdb": "133739",
+  "files": {
+   "1": "kits/photo/barcelona-esp-1.png"
+  },
+  "season": 2021
+ },
+ "basaksehir": {
+  "sdb": "134589",
+  "files": {
+   "1": "kits/photo/basaksehir-1.png"
+  },
+  "season": 2022
+ },
+ "bayer-leverkusen": {
+  "sdb": "133666",
+  "files": {
+   "1": "kits/photo/bayer-leverkusen-1.png"
+  },
+  "season": 2021
+ },
+ "belgrano": {
+  "sdb": "135155",
+  "files": {
+   "1": "kits/photo/belgrano-1.png"
+  },
+  "season": 2022
+ },
+ "benfica": {
+  "sdb": "134108",
+  "files": {
+   "1": "kits/photo/benfica-1.png"
+  },
+  "season": 2022
+ },
+ "besiktas": {
+  "sdb": "133794",
+  "files": {
+   "1": "kits/photo/besiktas-1.png"
+  },
+  "season": 2022
+ },
+ "bologna": {
+  "sdb": "134781",
+  "files": {
+   "1": "kits/photo/bologna-1.png"
+  },
+  "season": 2020
+ },
+ "botafogo": {
+  "sdb": "134285",
+  "files": {
+   "1": "kits/photo/botafogo-1.png"
+  },
+  "season": 2024
+ },
+ "bournemouth": {
+  "sdb": "134301",
+  "files": {
+   "1": "kits/photo/bournemouth-1.png"
+  },
+  "season": 2020
+ },
+ "braga": {
+  "sdb": "134098",
+  "files": {
+   "1": "kits/photo/braga-1.png"
+  },
+  "season": null
+ },
+ "bragantino": {
+  "sdb": "134736",
+  "files": {
+   "1": "kits/photo/bragantino-1.png"
+  },
+  "season": 2020
+ },
+ "brentford": {
+  "sdb": "134355",
+  "files": {
+   "1": "kits/photo/brentford-1.png"
+  },
+  "season": 2021
+ },
+ "brest": {
+  "sdb": "133704",
+  "files": {
+   "1": "kits/photo/brest-1.png"
+  },
+  "season": 2021
+ },
+ "brighton": {
+  "sdb": "133619",
+  "files": {
+   "1": "kits/photo/brighton-1.png"
+  },
+  "season": 2020
+ },
+ "cagliari": {
+  "sdb": "134783",
+  "files": {
+   "1": "kits/photo/cagliari-1.png"
+  },
+  "season": 2021
+ },
+ "ceara": {
+  "sdb": "134744",
+  "files": {
+   "1": "kits/photo/ceara-1.png",
+   "2": "kits/photo/ceara-2.png"
+  },
+  "season": 2025
+ },
+ "celta-vigo": {
+  "sdb": "133937",
+  "files": {
+   "1": "kits/photo/celta-vigo-1.png"
+  },
+  "season": 2021
+ },
+ "celtic": {
+  "sdb": "133647",
+  "files": {
+   "1": "kits/photo/celtic-1.png"
+  },
+  "season": 2022
+ },
+ "cerezo-osaka": {
+  "sdb": "137703",
+  "files": {
+   "1": "kits/photo/cerezo-osaka-1.png"
+  },
+  "season": 2021
+ },
+ "chapecoense": {
+  "sdb": "134464",
+  "files": {
+   "1": "kits/photo/chapecoense-1.png"
+  },
+  "season": 2018
+ },
+ "chelsea": {
+  "sdb": "133610",
+  "files": {
+   "1": "kits/photo/chelsea-1.png"
+  },
+  "season": 2020
+ },
+ "como": {
+  "sdb": "134243",
+  "files": {
+   "1": "kits/photo/como-1.png"
+  },
+  "season": 2022
+ },
+ "corinthians": {
+  "sdb": "134284",
+  "files": {
+   "1": "kits/photo/corinthians-1.png"
+  },
+  "season": 2021
+ },
+ "coritiba": {
+  "sdb": "134298",
+  "files": {
+   "1": "kits/photo/coritiba-1.png"
+  },
+  "season": 2018
+ },
+ "coventry-city": {
+  "sdb": "133625",
+  "files": {
+   "1": "kits/photo/coventry-city-1.png"
+  },
+  "season": 2021
+ },
+ "criciuma": {
+  "sdb": "134292",
+  "files": {
+   "1": "kits/photo/criciuma-1.png"
+  },
+  "season": null
+ },
+ "cruzeiro": {
+  "sdb": "134294",
+  "files": {
+   "1": "kits/photo/cruzeiro-1.png"
+  },
+  "season": 2025
+ },
+ "crystal-palace": {
+  "sdb": "133632",
+  "files": {
+   "1": "kits/photo/crystal-palace-1.png"
+  },
+  "season": 2020
+ },
+ "defensa-y-justicia": {
+  "sdb": "135159",
+  "files": {
+   "1": "kits/photo/defensa-y-justicia-1.png"
+  },
+  "season": 2021
+ },
+ "dundee": {
+  "sdb": "133942",
+  "files": {
+   "1": "kits/photo/dundee-1.png"
+  },
+  "season": 2022
+ },
+ "dundee-united": {
+  "sdb": "133644",
+  "files": {
+   "1": "kits/photo/dundee-united-1.png"
+  },
+  "season": 2022
+ },
+ "eintracht-frankfurt": {
+  "sdb": "133814",
+  "files": {
+   "1": "kits/photo/eintracht-frankfurt-1.png"
+  },
+  "season": 2021
+ },
+ "elche": {
+  "sdb": "134384",
+  "files": {
+   "1": "kits/photo/elche-1.png"
+  },
+  "season": 2021
+ },
+ "elversberg": {
+  "sdb": "138411",
+  "files": {
+   "1": "kits/photo/elversberg-1.png"
+  },
+  "season": 2026
+ },
+ "erzurumspor": {
+  "sdb": "134272",
+  "files": {
+   "1": "kits/photo/erzurumspor-1.png",
+   "2": "kits/photo/erzurumspor-2.png"
+  },
+  "season": 2026
+ },
+ "espanyol": {
+  "sdb": "133734",
+  "files": {
+   "1": "kits/photo/espanyol-1.png"
+  },
+  "season": 2022
+ },
+ "estoril": {
+  "sdb": "134106",
+  "files": {
+   "1": "kits/photo/estoril-1.png"
+  },
+  "season": null
+ },
+ "everton": {
+  "sdb": "133615",
+  "files": {
+   "1": "kits/photo/everton-1.png"
+  },
+  "season": 2020
+ },
+ "falkirk": {
+  "sdb": "133838",
+  "files": {
+   "1": "kits/photo/falkirk-1.png"
+  },
+  "season": 2026
+ },
+ "fc-tokyo": {
+  "sdb": "137704",
+  "files": {
+   "1": "kits/photo/fc-tokyo-1.png"
+  },
+  "season": 2021
+ },
+ "fenerbahce": {
+  "sdb": "133807",
+  "files": {
+   "1": "kits/photo/fenerbahce-1.png"
+  },
+  "season": 2022
+ },
+ "figueirense": {
+  "sdb": "134462",
+  "files": {
+   "1": "kits/photo/figueirense-1.png"
+  },
+  "season": null
+ },
+ "fiorentina": {
+  "sdb": "133674",
+  "files": {
+   "1": "kits/photo/fiorentina-1.png"
+  },
+  "season": 2020
+ },
+ "flamengo": {
+  "sdb": "134287",
+  "files": {
+   "1": "kits/photo/flamengo-1.png"
+  },
+  "season": 2018
+ },
+ "fluminense": {
+  "sdb": "134296",
+  "files": {
+   "1": "kits/photo/fluminense-1.png"
+  },
+  "season": 2021
+ },
+ "fortaleza": {
+  "sdb": "136186",
+  "files": {
+   "1": "kits/photo/fortaleza-1.png",
+   "2": "kits/photo/fortaleza-2.png"
+  },
+  "season": 2025
+ },
+ "freiburg": {
+  "sdb": "133653",
+  "files": {
+   "1": "kits/photo/freiburg-1.png"
+  },
+  "season": 2021
+ },
+ "frosinone": {
+  "sdb": "133818",
+  "files": {
+   "1": "kits/photo/frosinone-1.png"
+  },
+  "season": 2021
+ },
+ "fulham": {
+  "sdb": "133600",
+  "files": {
+   "1": "kits/photo/fulham-1.png"
+  },
+  "season": 2020
+ },
+ "galatasaray": {
+  "sdb": "133804",
+  "files": {
+   "1": "kits/photo/galatasaray-1.png"
+  },
+  "season": 2022
+ },
+ "gamba-osaka": {
+  "sdb": "137705",
+  "files": {
+   "1": "kits/photo/gamba-osaka-1.png"
+  },
+  "season": 2021
+ },
+ "gaziantep": {
+  "sdb": "138092",
+  "files": {
+   "1": "kits/photo/gaziantep-1.png"
+  },
+  "season": 2022
+ },
+ "genclerbirligi": {
+  "sdb": "133798",
+  "files": {
+   "1": "kits/photo/genclerbirligi-1.png"
+  },
+  "season": null
+ },
+ "genoa": {
+  "sdb": "133675",
+  "files": {
+   "1": "kits/photo/genoa-1.png"
+  },
+  "season": 2020
+ },
+ "getafe": {
+  "sdb": "133731",
+  "files": {
+   "1": "kits/photo/getafe-1.png"
+  },
+  "season": 2021
+ },
+ "gil-vicente": {
+  "sdb": "134113",
+  "files": {
+   "1": "kits/photo/gil-vicente-1.png"
+  },
+  "season": null
+ },
+ "gimnasia-la-plata": {
+  "sdb": "135161",
+  "files": {
+   "1": "kits/photo/gimnasia-la-plata-1.png"
+  },
+  "season": 2021
+ },
+ "goias": {
+  "sdb": "134295",
+  "files": {
+   "1": "kits/photo/goias-1.png"
+  },
+  "season": null
+ },
+ "goztepe": {
+  "sdb": "135891",
+  "files": {
+   "1": "kits/photo/goztepe-1.png"
+  },
+  "season": 2022
+ },
+ "gremio": {
+  "sdb": "134288",
+  "files": {
+   "1": "kits/photo/gremio-1.png"
+  },
+  "season": 2026
+ },
+ "hearts": {
+  "sdb": "133643",
+  "files": {
+   "1": "kits/photo/hearts-1.png"
+  },
+  "season": 2022
+ },
+ "hibernian": {
+  "sdb": "133646",
+  "files": {
+   "1": "kits/photo/hibernian-1.png"
+  },
+  "season": 2022
+ },
+ "hoffenheim": {
+  "sdb": "133657",
+  "files": {
+   "1": "kits/photo/hoffenheim-1.png"
+  },
+  "season": 2021
+ },
+ "hull-city": {
+  "sdb": "133617",
+  "files": {
+   "1": "kits/photo/hull-city-1.png"
+  },
+  "season": 2022
+ },
+ "huracan": {
+  "sdb": "135163",
+  "files": {
+   "1": "kits/photo/huracan-1.png"
+  },
+  "season": 2021
+ },
+ "instituto": {
+  "sdb": "137786",
+  "files": {
+   "1": "kits/photo/instituto-1.png"
+  },
+  "season": 2023
+ },
+ "internacional": {
+  "sdb": "134281",
+  "files": {
+   "1": "kits/photo/internacional-1.png"
+  },
+  "season": 2025
+ },
+ "ipswich-town": {
+  "sdb": "133622",
+  "files": {
+   "1": "kits/photo/ipswich-town-1.png"
+  },
+  "season": 2022
+ },
+ "joinville": {
+  "sdb": "134743",
+  "files": {
+   "1": "kits/photo/joinville-1.png"
+  },
+  "season": null
+ },
+ "juventud-uru": {
+  "sdb": "135887",
+  "files": {
+   "1": "kits/photo/juventud-uru-1.png"
+  },
+  "season": 2025
+ },
+ "juventude": {
+  "sdb": "135887",
+  "files": {
+   "1": "kits/photo/juventude-1.png"
+  },
+  "season": 2025
+ },
+ "juventus": {
+  "sdb": "133676",
+  "files": {
+   "1": "kits/photo/juventus-1.png"
+  },
+  "season": 2020
+ },
+ "kashima-antlers": {
+  "sdb": "137707",
+  "files": {
+   "1": "kits/photo/kashima-antlers-1.png"
+  },
+  "season": 2021
+ },
+ "kashiwa-reysol": {
+  "sdb": "137708",
+  "files": {
+   "1": "kits/photo/kashiwa-reysol-1.png"
+  },
+  "season": 2021
+ },
+ "kasimpasa": {
+  "sdb": "133834",
+  "files": {
+   "1": "kits/photo/kasimpasa-1.png"
+  },
+  "season": 2022
+ },
+ "kawasaki-frontale": {
+  "sdb": "137709",
+  "files": {
+   "1": "kits/photo/kawasaki-frontale-1.png"
+  },
+  "season": 2021
+ },
+ "kilmarnock": {
+  "sdb": "133645",
+  "files": {
+   "1": "kits/photo/kilmarnock-1.png"
+  },
+  "season": 2022
+ },
+ "kocaelispor": {
+  "sdb": "133870",
+  "files": {
+   "1": "kits/photo/kocaelispor-1.png",
+   "2": "kits/photo/kocaelispor-2.png"
+  },
+  "season": 2026
+ },
+ "konyaspor": {
+  "sdb": "133835",
+  "files": {
+   "1": "kits/photo/konyaspor-1.png"
+  },
+  "season": 2022
+ },
+ "lazio": {
+  "sdb": "133668",
+  "files": {
+   "1": "kits/photo/lazio-1.png"
+  },
+  "season": 2020
+ },
+ "le-havre": {
+  "sdb": "133862",
+  "files": {
+   "1": "kits/photo/le-havre-1.png"
+  },
+  "season": 2023
+ },
+ "le-mans": {
+  "sdb": "133848",
+  "files": {
+   "1": "kits/photo/le-mans-1.png"
+  },
+  "season": 2026
+ },
+ "lecce": {
+  "sdb": "133678",
+  "files": {
+   "1": "kits/photo/lecce-1.png"
+  },
+  "season": 2021
+ },
+ "leeds-united": {
+  "sdb": "133635",
+  "files": {
+   "1": "kits/photo/leeds-united-1.png"
+  },
+  "season": 2020
+ },
+ "lens": {
+  "sdb": "133822",
+  "files": {
+   "1": "kits/photo/lens-1.png"
+  },
+  "season": 2021
+ },
+ "levante": {
+  "sdb": "133732",
+  "files": {
+   "1": "kits/photo/levante-1.png"
+  },
+  "season": 2021
+ },
+ "liverpool-eng": {
+  "sdb": "133602",
+  "files": {
+   "1": "kits/photo/liverpool-eng-1.png"
+  },
+  "season": 2020
+ },
+ "lorient": {
+  "sdb": "133715",
+  "files": {
+   "1": "kits/photo/lorient-1.png"
+  },
+  "season": 2021
+ },
+ "lyon": {
+  "sdb": "133713",
+  "files": {
+   "1": "kits/photo/lyon-1.png"
+  },
+  "season": 2021
+ },
+ "madureira": {
+  "sdb": "142266",
+  "files": {
+   "1": "kits/photo/madureira-1.png"
+  },
+  "season": null
+ },
+ "mainz": {
+  "sdb": "133665",
+  "files": {
+   "1": "kits/photo/mainz-1.png"
+  },
+  "season": 2021
+ },
+ "malaga": {
+  "sdb": "133736",
+  "files": {
+   "1": "kits/photo/malaga-1.png"
+  },
+  "season": 2023
+ },
+ "manchester-city": {
+  "sdb": "133613",
+  "files": {
+   "1": "kits/photo/manchester-city-1.png"
+  },
+  "season": 2020
+ },
+ "manchester-united": {
+  "sdb": "133612",
+  "files": {
+   "1": "kits/photo/manchester-united-1.png"
+  },
+  "season": 2020
+ },
+ "maritimo": {
+  "sdb": "134023",
+  "files": {
+   "1": "kits/photo/maritimo-1.png"
+  },
+  "season": null
+ },
+ "mirassol": {
+  "sdb": "141181",
+  "files": {
+   "1": "kits/photo/mirassol-1.png",
+   "2": "kits/photo/mirassol-2.png"
+  },
+  "season": 2025
+ },
+ "monza": {
+  "sdb": "134270",
+  "files": {
+   "1": "kits/photo/monza-1.png"
+  },
+  "season": 2021
+ },
+ "moreirense": {
+  "sdb": "134112",
+  "files": {
+   "1": "kits/photo/moreirense-1.png"
+  },
+  "season": null
+ },
+ "motherwell": {
+  "sdb": "133640",
+  "files": {
+   "1": "kits/photo/motherwell-1.png"
+  },
+  "season": 2022
+ },
+ "nacional-por": {
+  "sdb": "134109",
+  "files": {
+   "1": "kits/photo/nacional-por-1.png"
+  },
+  "season": null
+ },
+ "nagoya-grampus": {
+  "sdb": "137710",
+  "files": {
+   "1": "kits/photo/nagoya-grampus-1.png"
+  },
+  "season": 2021
+ },
+ "napoli": {
+  "sdb": "133670",
+  "files": {
+   "1": "kits/photo/napoli-1.png"
+  },
+  "season": 2020
+ },
+ "newcastle-united": {
+  "sdb": "134777",
+  "files": {
+   "1": "kits/photo/newcastle-united-1.png"
+  },
+  "season": 2020
+ },
+ "newells-old-boys": {
+  "sdb": "135166",
+  "files": {
+   "1": "kits/photo/newells-old-boys-1.png"
+  },
+  "season": 2023
+ },
+ "nice": {
+  "sdb": "133712",
+  "files": {
+   "1": "kits/photo/nice-1.png"
+  },
+  "season": 2021
+ },
+ "nt-ALG": {
+  "sdb": "134516",
+  "files": {
+   "1": "kits/photo/nt-ALG-1.png"
+  },
+  "season": 2026
+ },
+ "nt-ARG": {
+  "sdb": "134509",
+  "files": {
+   "1": "kits/photo/nt-ARG-1.png"
+  },
+  "season": 2020
+ },
+ "nt-AUS": {
+  "sdb": "134500",
+  "files": {
+   "1": "kits/photo/nt-AUS-1.png"
+  },
+  "season": 2022
+ },
+ "nt-AUT": {
+  "sdb": "135986",
+  "files": {
+   "1": "kits/photo/nt-AUT-1.png"
+  },
+  "season": 2021
+ },
+ "nt-BEL": {
+  "sdb": "134515",
+  "files": {
+   "1": "kits/photo/nt-BEL-1.png"
+  },
+  "season": 2021
+ },
+ "nt-BOL": {
+  "sdb": "136470",
+  "files": {
+   "1": "kits/photo/nt-BOL-1.png"
+  },
+  "season": 2021
+ },
+ "nt-BRA": {
+  "sdb": "134496",
+  "files": {
+   "1": "kits/photo/nt-BRA-1.png"
+  },
+  "season": 2021
+ },
+ "nt-CAN": {
+  "sdb": "140073",
+  "files": {
+   "1": "kits/photo/nt-CAN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-CHI": {
+  "sdb": "134499",
+  "files": {
+   "1": "kits/photo/nt-CHI-1.png"
+  },
+  "season": 2021
+ },
+ "nt-CIV": {
+  "sdb": "134502",
+  "files": {
+   "1": "kits/photo/nt-CIV-1.png"
+  },
+  "season": 2025
+ },
+ "nt-COD": {
+  "sdb": "136475",
+  "files": {
+   "1": "kits/photo/nt-COD-1.png"
+  },
+  "season": 2027
+ },
+ "nt-COL": {
+  "sdb": "134501",
+  "files": {
+   "1": "kits/photo/nt-COL-1.png"
+  },
+  "season": 2020
+ },
+ "nt-CPV": {
+  "sdb": "136477",
+  "files": {
+   "1": "kits/photo/nt-CPV-1.png"
+  },
+  "season": 2027
+ },
+ "nt-CRC": {
+  "sdb": "134505",
+  "files": {
+   "1": "kits/photo/nt-CRC-1.png"
+  },
+  "season": 2022
+ },
+ "nt-CRO": {
+  "sdb": "133912",
+  "files": {
+   "1": "kits/photo/nt-CRO-1.png"
+  },
+  "season": 2021
+ },
+ "nt-CUW": {
+  "sdb": "140271",
+  "files": {
+   "1": "kits/photo/nt-CUW-1.png"
+  },
+  "season": 2027
+ },
+ "nt-CZE": {
+  "sdb": "133904",
+  "files": {
+   "1": "kits/photo/nt-CZE-1.png"
+  },
+  "season": 2021
+ },
+ "nt-DEN": {
+  "sdb": "133906",
+  "files": {
+   "1": "kits/photo/nt-DEN-1.png"
+  },
+  "season": 2021
+ },
+ "nt-ECU": {
+  "sdb": "134507",
+  "files": {
+   "1": "kits/photo/nt-ECU-1.png"
+  },
+  "season": 2021
+ },
+ "nt-EGY": {
+  "sdb": "136138",
+  "files": {
+   "1": "kits/photo/nt-EGY-1.png"
+  },
+  "season": 2026
+ },
+ "nt-ENG": {
+  "sdb": "133914",
+  "files": {
+   "1": "kits/photo/nt-ENG-1.png"
+  },
+  "season": 2021
+ },
+ "nt-ESP": {
+  "sdb": "133909",
+  "files": {
+   "1": "kits/photo/nt-ESP-1.png"
+  },
+  "season": 2021
+ },
+ "nt-FRA": {
+  "sdb": "133913",
+  "files": {
+   "1": "kits/photo/nt-FRA-1.png"
+  },
+  "season": 2021
+ },
+ "nt-GER": {
+  "sdb": "133907",
+  "files": {
+   "1": "kits/photo/nt-GER-1.png"
+  },
+  "season": 2021
+ },
+ "nt-GHA": {
+  "sdb": "134513",
+  "files": {
+   "1": "kits/photo/nt-GHA-1.png"
+  },
+  "season": 2026
+ },
+ "nt-HAI": {
+  "sdb": "140175",
+  "files": {
+   "1": "kits/photo/nt-HAI-1.png"
+  },
+  "season": 2022
+ },
+ "nt-IRN": {
+  "sdb": "134511",
+  "files": {
+   "1": "kits/photo/nt-IRN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-IRQ": {
+  "sdb": "140148",
+  "files": {
+   "1": "kits/photo/nt-IRQ-1.png"
+  },
+  "season": 2022
+ },
+ "nt-ITA": {
+  "sdb": "133910",
+  "files": {
+   "1": "kits/photo/nt-ITA-1.png"
+  },
+  "season": 2021
+ },
+ "nt-JOR": {
+  "sdb": "140145",
+  "files": {
+   "1": "kits/photo/nt-JOR-1.png"
+  },
+  "season": 2026
+ },
+ "nt-JPN": {
+  "sdb": "134503",
+  "files": {
+   "1": "kits/photo/nt-JPN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-KOR": {
+  "sdb": "134517",
+  "files": {
+   "1": "kits/photo/nt-KOR-1.png"
+  },
+  "season": 2027
+ },
+ "nt-KSA": {
+  "sdb": "136137",
+  "files": {
+   "1": "kits/photo/nt-KSA-1.png"
+  },
+  "season": 2026
+ },
+ "nt-MAR": {
+  "sdb": "136139",
+  "files": {
+   "1": "kits/photo/nt-MAR-1.png"
+  },
+  "season": 2026
+ },
+ "nt-MEX": {
+  "sdb": "134497",
+  "files": {
+   "1": "kits/photo/nt-MEX-1.png"
+  },
+  "season": 2022
+ },
+ "nt-NED": {
+  "sdb": "133905",
+  "files": {
+   "1": "kits/photo/nt-NED-1.png"
+  },
+  "season": 2021
+ },
+ "nt-NGA": {
+  "sdb": "134512",
+  "files": {
+   "1": "kits/photo/nt-NGA-1.png"
+  },
+  "season": 2019
+ },
+ "nt-NOR": {
+  "sdb": "136516",
+  "files": {
+   "1": "kits/photo/nt-NOR-1.png"
+  },
+  "season": 2024
+ },
+ "nt-NZL": {
+  "sdb": "137449",
+  "files": {
+   "1": "kits/photo/nt-NZL-1.png",
+   "2": "kits/photo/nt-NZL-2.png"
+  },
+  "season": 2026
+ },
+ "nt-PAN": {
+  "sdb": "136141",
+  "files": {
+   "1": "kits/photo/nt-PAN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-PAR": {
+  "sdb": "136471",
+  "files": {
+   "1": "kits/photo/nt-PAR-1.png"
+  },
+  "season": 2021
+ },
+ "nt-PER": {
+  "sdb": "136162",
+  "files": {
+   "1": "kits/photo/nt-PER-1.png"
+  },
+  "season": 2021
+ },
+ "nt-POL": {
+  "sdb": "133901",
+  "files": {
+   "1": "kits/photo/nt-POL-1.png"
+  },
+  "season": 2021
+ },
+ "nt-POR": {
+  "sdb": "133908",
+  "files": {
+   "1": "kits/photo/nt-POR-1.png"
+  },
+  "season": 2021
+ },
+ "nt-QAT": {
+  "sdb": "136472",
+  "files": {
+   "1": "kits/photo/nt-QAT-1.png"
+  },
+  "season": 2022
+ },
+ "nt-SCO": {
+  "sdb": "136450",
+  "files": {
+   "1": "kits/photo/nt-SCO-1.png"
+  },
+  "season": 2021
+ },
+ "nt-SEN": {
+  "sdb": "136143",
+  "files": {
+   "1": "kits/photo/nt-SEN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-SRB": {
+  "sdb": "136140",
+  "files": {
+   "1": "kits/photo/nt-SRB-1.png"
+  },
+  "season": 2019
+ },
+ "nt-SUI": {
+  "sdb": "134506",
+  "files": {
+   "1": "kits/photo/nt-SUI-1.png"
+  },
+  "season": 2021
+ },
+ "nt-SWE": {
+  "sdb": "133916",
+  "files": {
+   "1": "kits/photo/nt-SWE-1.png"
+  },
+  "season": 2021
+ },
+ "nt-TUN": {
+  "sdb": "136142",
+  "files": {
+   "1": "kits/photo/nt-TUN-1.png"
+  },
+  "season": 2022
+ },
+ "nt-TUR": {
+  "sdb": "135985",
+  "files": {
+   "1": "kits/photo/nt-TUR-1.png"
+  },
+  "season": 2021
+ },
+ "nt-UKR": {
+  "sdb": "133915",
+  "files": {
+   "1": "kits/photo/nt-UKR-1.png"
+  },
+  "season": 2021
+ },
+ "nt-URU": {
+  "sdb": "134504",
+  "files": {
+   "1": "kits/photo/nt-URU-1.png"
+  },
+  "season": 2021
+ },
+ "nt-USA": {
+  "sdb": "134514",
+  "files": {
+   "1": "kits/photo/nt-USA-1.png"
+  },
+  "season": 2022
+ },
+ "nt-UZB": {
+  "sdb": "140151",
+  "files": {
+   "1": "kits/photo/nt-UZB-1.png"
+  },
+  "season": 2026
+ },
+ "nt-VEN": {
+  "sdb": "136473",
+  "files": {
+   "1": "kits/photo/nt-VEN-1.png"
+  },
+  "season": 2021
+ },
+ "osasuna": {
+  "sdb": "133730",
+  "files": {
+   "1": "kits/photo/osasuna-1.png"
+  },
+  "season": 2021
+ },
+ "paderborn": {
+  "sdb": "134551",
+  "files": {
+   "1": "kits/photo/paderborn-1.png"
+  },
+  "season": 2026
+ },
+ "palmeiras": {
+  "sdb": "134465",
+  "files": {
+   "1": "kits/photo/palmeiras-1.png"
+  },
+  "season": 2021
+ },
+ "parana": {
+  "sdb": "134741",
+  "files": {
+   "1": "kits/photo/parana-1.png"
+  },
+  "season": null
+ },
+ "paris-fc": {
+  "sdb": "135465",
+  "files": {
+   "1": "kits/photo/paris-fc-1.png"
+  },
+  "season": 2026
+ },
+ "parma": {
+  "sdb": "135728",
+  "files": {
+   "1": "kits/photo/parma-1.png"
+  },
+  "season": 2020
+ },
+ "ponte-preta": {
+  "sdb": "134290",
+  "files": {
+   "1": "kits/photo/ponte-preta-1.png"
+  },
+  "season": 2018
+ },
+ "porto": {
+  "sdb": "134114",
+  "files": {
+   "1": "kits/photo/porto-1.png"
+  },
+  "season": 2022
+ },
+ "racing-santander": {
+  "sdb": "133726",
+  "files": {
+   "1": "kits/photo/racing-santander-1.png"
+  },
+  "season": 2023
+ },
+ "rangers": {
+  "sdb": "133642",
+  "files": {
+   "1": "kits/photo/rangers-1.png"
+  },
+  "season": 2022
+ },
+ "rayo-vallecano": {
+  "sdb": "133728",
+  "files": {
+   "1": "kits/photo/rayo-vallecano-1.png"
+  },
+  "season": 2022
+ },
+ "rb-leipzig": {
+  "sdb": "134695",
+  "files": {
+   "1": "kits/photo/rb-leipzig-1.png"
+  },
+  "season": 2021
+ },
+ "real-madrid": {
+  "sdb": "133738",
+  "files": {
+   "1": "kits/photo/real-madrid-1.png"
+  },
+  "season": 2020
+ },
+ "real-sociedad": {
+  "sdb": "133724",
+  "files": {
+   "1": "kits/photo/real-sociedad-1.png"
+  },
+  "season": 2021
+ },
+ "remo": {
+  "sdb": "137818",
+  "files": {
+   "1": "kits/photo/remo-1.png"
+  },
+  "season": 2026
+ },
+ "rennes": {
+  "sdb": "133719",
+  "files": {
+   "1": "kits/photo/rennes-1.png"
+  },
+  "season": 2020
+ },
+ "rio-ave": {
+  "sdb": "134107",
+  "files": {
+   "1": "kits/photo/rio-ave-1.png"
+  },
+  "season": null
+ },
+ "rio-branco-es": {
+  "sdb": "142286",
+  "files": {
+   "1": "kits/photo/rio-branco-es-1.png"
+  },
+  "season": 2024
+ },
+ "rizespor": {
+  "sdb": "133885",
+  "files": {
+   "1": "kits/photo/rizespor-1.png"
+  },
+  "season": 2022
+ },
+ "roma": {
+  "sdb": "133682",
+  "files": {
+   "1": "kits/photo/roma-1.png"
+  },
+  "season": 2020
+ },
+ "sampaio-correa": {
+  "sdb": "134745",
+  "files": {
+   "1": "kits/photo/sampaio-correa-1.png"
+  },
+  "season": null
+ },
+ "samsunspor": {
+  "sdb": "133797",
+  "files": {
+   "1": "kits/photo/samsunspor-1.png",
+   "2": "kits/photo/samsunspor-2.png"
+  },
+  "season": 2026
+ },
+ "sanfrecce-hiroshima": {
+  "sdb": "137713",
+  "files": {
+   "1": "kits/photo/sanfrecce-hiroshima-1.png"
+  },
+  "season": 2021
+ },
+ "santa-cruz": {
+  "sdb": "134735",
+  "files": {
+   "1": "kits/photo/santa-cruz-1.png"
+  },
+  "season": null
+ },
+ "santos": {
+  "sdb": "134286",
+  "files": {
+   "1": "kits/photo/santos-1.png"
+  },
+  "season": 2021
+ },
+ "santos-ap": {
+  "sdb": "134286",
+  "files": {
+   "1": "kits/photo/santos-ap-1.png"
+  },
+  "season": 2021
+ },
+ "sao-jose-rs": {
+  "sdb": "138058",
+  "files": {
+   "1": "kits/photo/sao-jose-rs-1.png"
+  },
+  "season": 2024
+ },
+ "sao-paulo": {
+  "sdb": "134291",
+  "files": {
+   "1": "kits/photo/sao-paulo-1.png"
+  },
+  "season": 2021
+ },
+ "sarmiento": {
+  "sdb": "135175",
+  "files": {
+   "1": "kits/photo/sarmiento-1.png"
+  },
+  "season": 2023
+ },
+ "sassuolo": {
+  "sdb": "133701",
+  "files": {
+   "1": "kits/photo/sassuolo-1.png"
+  },
+  "season": 2020
+ },
+ "schalke": {
+  "sdb": "133661",
+  "files": {
+   "1": "kits/photo/schalke-1.png"
+  },
+  "season": 2021
+ },
+ "sevilla": {
+  "sdb": "133735",
+  "files": {
+   "1": "kits/photo/sevilla-1.png"
+  },
+  "season": 2021
+ },
+ "sport": {
+  "sdb": "136250",
+  "files": {
+   "1": "kits/photo/sport-1.png"
+  },
+  "season": 2021
+ },
+ "sporting-cp": {
+  "sdb": "135708",
+  "files": {
+   "1": "kits/photo/sporting-cp-1.png"
+  },
+  "season": 2021
+ },
+ "st-johnstone": {
+  "sdb": "133639",
+  "files": {
+   "1": "kits/photo/st-johnstone-1.png"
+  },
+  "season": 2022
+ },
+ "st-mirren": {
+  "sdb": "133649",
+  "files": {
+   "1": "kits/photo/st-mirren-1.png"
+  },
+  "season": 2022
+ },
+ "strasbourg": {
+  "sdb": "133882",
+  "files": {
+   "1": "kits/photo/strasbourg-1.png"
+  },
+  "season": 2020
+ },
+ "stuttgart": {
+  "sdb": "133660",
+  "files": {
+   "1": "kits/photo/stuttgart-1.png"
+  },
+  "season": 2021
+ },
+ "sunderland": {
+  "sdb": "133603",
+  "files": {
+   "1": "kits/photo/sunderland-1.png"
+  },
+  "season": 2024
+ },
+ "torino": {
+  "sdb": "133687",
+  "files": {
+   "1": "kits/photo/torino-1.png"
+  },
+  "season": 2020
+ },
+ "tottenham": {
+  "sdb": "133616",
+  "files": {
+   "1": "kits/photo/tottenham-1.png"
+  },
+  "season": 2020
+ },
+ "toulouse": {
+  "sdb": "133703",
+  "files": {
+   "1": "kits/photo/toulouse-1.png"
+  },
+  "season": 2021
+ },
+ "trabzonspor": {
+  "sdb": "133796",
+  "files": {
+   "1": "kits/photo/trabzonspor-1.png"
+  },
+  "season": 2022
+ },
+ "troyes": {
+  "sdb": "134789",
+  "files": {
+   "1": "kits/photo/troyes-1.png"
+  },
+  "season": 2022
+ },
+ "udinese": {
+  "sdb": "133679",
+  "files": {
+   "1": "kits/photo/udinese-1.png"
+  },
+  "season": 2020
+ },
+ "union-berlin": {
+  "sdb": "134690",
+  "files": {
+   "1": "kits/photo/union-berlin-1.png"
+  },
+  "season": 2021
+ },
+ "union-santa-fe": {
+  "sdb": "135178",
+  "files": {
+   "1": "kits/photo/union-santa-fe-1.png"
+  },
+  "season": 2021
+ },
+ "urawa-reds": {
+  "sdb": "137716",
+  "files": {
+   "1": "kits/photo/urawa-reds-1.png"
+  },
+  "season": 2021
+ },
+ "valencia": {
+  "sdb": "133725",
+  "files": {
+   "1": "kits/photo/valencia-1.png"
+  },
+  "season": 2021
+ },
+ "vasco": {
+  "sdb": "134282",
+  "files": {
+   "1": "kits/photo/vasco-1.png"
+  },
+  "season": 2025
+ },
+ "venezia": {
+  "sdb": "134234",
+  "files": {
+   "1": "kits/photo/venezia-1.png"
+  },
+  "season": 2021
+ },
+ "villarreal": {
+  "sdb": "133740",
+  "files": {
+   "1": "kits/photo/villarreal-1.png"
+  },
+  "season": 2021
+ },
+ "vissel-kobe": {
+  "sdb": "137717",
+  "files": {
+   "1": "kits/photo/vissel-kobe-1.png"
+  },
+  "season": 2021
+ },
+ "vitoria": {
+  "sdb": "134280",
+  "files": {
+   "1": "kits/photo/vitoria-1.png"
+  },
+  "season": 2025
+ },
+ "vitoria-guimaraes": {
+  "sdb": "134115",
+  "files": {
+   "1": "kits/photo/vitoria-guimaraes-1.png"
+  },
+  "season": null
+ },
+ "volta-redonda": {
+  "sdb": "138060",
+  "files": {
+   "1": "kits/photo/volta-redonda-1.png"
+  },
+  "season": 2024
+ },
+ "werder-bremen": {
+  "sdb": "133662",
+  "files": {
+   "1": "kits/photo/werder-bremen-1.png"
+  },
+  "season": 2021
+ },
+ "yokohama-f-marinos": {
+  "sdb": "137719",
+  "files": {
+   "1": "kits/photo/yokohama-f-marinos-1.png"
+  },
+  "season": 2021
+ }
+}
