@@ -1,7 +1,7 @@
 // Auxiliar técnico na interface: card do pré-jogo, card da tela de tática e dicas durante a partida.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  analyzeMatch, analyzeSquad, applyAdvice, applyFix, applyTip, currentPlan, dismissTip, estimateOdds, liveTips,
+  analyzeMatch, analyzeSquad, applyAdvice, applyFix, applyTip, auxStars, currentPlan, dismissTip, estimateOdds, liveTips, refineAnalysisAsync,
   type LineupFix, type MatchAnalysis, type Odds, type Outlook, type TacticPlan,
 } from "../engine/assistant";
 import { fixtureById, nextFixture } from "../engine/competitions";
@@ -12,7 +12,7 @@ import { TONES, userPreTalk } from "../engine/teamtalk";
 import type { Fixture, Lineup, World } from "../engine/types";
 import { toast, update, useVersion, useWorld } from "../store";
 import { autosave } from "./actions";
-import { Avatar, Crest, PosBadge } from "./components";
+import { Avatar, Crest, Ic, Icon, PosBadge } from "./components";
 import "./assistant.css";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -52,10 +52,12 @@ function WDL({ o, compact }: { o: Outlook | Odds; compact?: boolean }) {
   );
 }
 
+const REC_ICON: Record<string, string> = { "🧩": "board", "🎯": "target", "⚡": "bolt" };
+
 function RecRow({ icon, label, value, reason, changed }: { icon: string; label: string; value: string; reason: string; changed: boolean }) {
   return (
     <div className="as-rec">
-      <span className="as-rec-ico" aria-hidden="true">{icon}</span>
+      <span className="as-rec-ico" aria-hidden="true">{REC_ICON[icon] ? <Icon name={REC_ICON[icon]} size={18} /> : icon}</span>
       <div className="grow">
         <div className="row gap8 wrap"><span className="small muted">{label}</span><b>{value}</b>{changed && <span className="tag good">mudar</span>}</div>
         <div className="small as-reason">{reason}</div>
@@ -65,7 +67,7 @@ function RecRow({ icon, label, value, reason, changed }: { icon: string; label: 
 }
 
 function FixList({ w, fixes, compId }: { w: World; fixes: LineupFix[]; compId?: string }) {
-  if (!fixes.length) return <div className="small muted">✅ Escalação sem problemas: ninguém cansado ou fora de posição.</div>;
+  if (!fixes.length) return <div className="small muted"><Ic n="check" /> Escalação sem problemas: ninguém cansado ou fora de posição.</div>;
   const club = w.clubs[w.userClubId];
   return (
     <div className="as-fixes">
@@ -94,17 +96,57 @@ function applyAlternative(l: Lineup) {
   toast("Time alternativo escalado ✔");
 }
 
+/**
+ * Análise do modelo na hora e, em seguida, a conferência por simulação (em segundo plano).
+ * Enquanto confere, `checking` traz o progresso e o botão de aplicar espera.
+ */
+function useRefined(w: World, f: Fixture | undefined, a: MatchAnalysis | null, v: number): { a: MatchAnalysis | null; checking: number | null } {
+  const [st, setSt] = useState<{ key: string; a: MatchAnalysis | null; progress: number | null }>({ key: "", a: null, progress: null });
+  const key = `${v}|${f?.id ?? ""}`;
+  useEffect(() => {
+    if (!f || !a) return;
+    let alive = true;
+    setSt({ key, a: null, progress: 0 });
+    refineAnalysisAsync(w, f, a, auxStars(w), (d, t) => alive && setSt((s) => (s.key === key ? { ...s, progress: d / t } : s)))
+      .then((r) => { if (alive) setSt({ key, a: r, progress: null }); });
+    return () => { alive = false; };
+  }, [key]);
+  if (st.key === key && st.a) return { a: st.a, checking: null };
+  return { a, checking: a ? (st.key === key ? st.progress ?? 0 : 0) : null };
+}
+
+/** Confiança do auxiliar na sugestão (depois de conferir por simulação). */
+function Confidence({ a, checking }: { a: MatchAnalysis; checking: number | null }) {
+  if (checking != null) {
+    return (
+      <div className="as-sim">
+        <div className="tiny muted">🔎 Conferindo as opções em jogos simulados… {pct(checking)}</div>
+        <div className="as-progress"><i style={{ width: pct(checking) }} /></div>
+      </div>
+    );
+  }
+  const c = a.check;
+  if (!c) return null;
+  const cls = c.kept ? "" : c.level === "alta" ? "good" : c.level === "média" ? "warn" : "";
+  return (
+    <div className="small as-reason">
+      {!c.kept && <span className={`tag ${cls}`}>Confiança {c.level} · {pct(c.confidence)}</span>} {c.reason}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- pré-jogo
 export function PreMatchAdvice({ fixtureId }: { fixtureId: number }) {
   const w = useWorld();
   const v = useVersion();
   const f = fixtureById(w, fixtureId);
-  const a = useMemo(() => (f && !f.result ? analyzeMatch(w, f) : null), [v, fixtureId]);
+  const base = useMemo(() => (f && !f.result ? analyzeMatch(w, f) : null), [v, fixtureId]);
+  const { a, checking } = useRefined(w, f && !f.result ? f : undefined, base, v);
   if (!f || !a) return null;
-  return <PreMatchCard w={w} f={f} a={a} />;
+  return <PreMatchCard w={w} f={f} a={a} checking={checking} />;
 }
 
-function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
+function PreMatchCard({ w, f, a, checking }: { w: World; f: Fixture; a: MatchAnalysis; checking: number | null }) {
   const user = w.clubs[w.userClubId];
   const opp = w.clubs[a.opp.id];
   const verdict = VERDICT[a.verdict];
@@ -114,7 +156,7 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
   return (
     <div className="card as-card">
       <div className="as-head">
-        <span className="as-brain" aria-hidden="true">🧠</span>
+        <span className="as-brain" aria-hidden="true"><Icon name="bulb" size={24} /></span>
         <div className="grow">
           <b>Auxiliar técnico</b>
           <div className="tiny muted">Análise do {opp.name} e do seu time</div>
@@ -141,7 +183,7 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
         <div className="small">
           Deve vir no <b>{a.opp.formation}</b>, {MENTALITY_NAMES[a.opp.mentality].toLowerCase()}, {PRESSING_NAMES[a.opp.pressing].toLowerCase()}.
         </div>
-        <div className="small mt8">💪 Ponto forte: <b>{a.opp.strong}</b> · 🎯 Ponto fraco: <b>{a.opp.weak}</b></div>
+        <div className="small mt8"><Ic n="trend" /> Ponto forte: <b>{a.opp.strong}</b> · <Ic n="target" /> Ponto fraco: <b>{a.opp.weak}</b></div>
         <div className="as-stars">
           {a.opp.stars.map((s) => {
             const p = w.players[s.id];
@@ -163,6 +205,7 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
         <RecRow icon="🧩" label="Formação" value={a.rec.formation.value} reason={a.rec.formation.reason} changed={a.rec.formation.value !== t.formation} />
         <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[a.rec.mentality.value]} reason={a.rec.mentality.reason} changed={a.rec.mentality.value !== t.mentality} />
         <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[a.rec.pressing.value]} reason={a.rec.pressing.reason} changed={a.rec.pressing.value !== t.pressing} />
+        <Confidence a={a} checking={checking} />
         <div className="as-compare">
           <div><span className="tiny muted">Chances com a sua tática</span><WDL o={a.now} /></div>
           {a.changed && <div><span className="tiny muted">Com as sugestões</span><WDL o={a.suggested} /></div>}
@@ -177,17 +220,19 @@ function PreMatchCard({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
       {a.rotation && (
         <div className="as-section">
           <div className="as-title">Estadual</div>
-          <div className="small">💡 {a.rotation.text}</div>
-          <button className="btn sm block mt8" onClick={() => applyAlternative(a.rotation!.lineup)}>🔄 Escalar time alternativo</button>
+          <div className="small"><Ic n="bulb" /> {a.rotation.text}</div>
+          <button className="btn sm block mt8" onClick={() => applyAlternative(a.rotation!.lineup)}><Ic n="refresh" /> Escalar time alternativo</button>
         </div>
       )}
 
       <TalkTip w={w} f={f} />
 
       <div className="col gap8">
-        {a.changed
-          ? <button className="btn primary block" onClick={() => applyPlan(a.plan, f.comp)}>✅ Aplicar sugestões</button>
-          : <div className="as-ok small">✔ Seu time já está do jeito que eu sugiro.</div>}
+        {checking != null
+          ? <button className="btn block" disabled><Ic n="compass" size={18} /> Conferindo…</button>
+          : a.changed
+          ? <button className="btn block" onClick={() => applyPlan(a.plan, f.comp)}><Ic n="check" size={18} /> Aplicar sugestões</button>
+          : <div className="as-ok small"><Ic n="check" /> Seu time já está do jeito que eu sugiro.</div>}
         <OddsSim w={w} f={f} a={a} />
       </div>
     </div>
@@ -201,7 +246,7 @@ function TalkTip({ w, f }: { w: World; f: Fixture }) {
   return (
     <div className="as-section">
       <div className="as-title">Preleção</div>
-      <div className="as-talk small">💡 “{t.bubble}” <span className="muted">Eu diria:</span> <b>{t.emoji} {t.label}</b></div>
+      <div className="as-talk small"><Ic n="bulb" /> “{t.bubble}” <span className="muted">Eu diria:</span> <b>{t.emoji} {t.label}</b></div>
     </div>
   );
 }
@@ -226,7 +271,7 @@ function OddsSim({ w, f, a }: { w: World; f: Fixture; a: MatchAnalysis }) {
   }
 
   if (!state || stale) {
-    return <button className="btn block" onClick={run}>🎲 Simular {N} jogos</button>;
+    return <button className="btn block" onClick={run}><Ic n="sparkle" /> Simular {N} jogos</button>;
   }
   if (state.running) {
     return (
@@ -269,7 +314,8 @@ export function TacticsAdvice() {
     const pending = w.pendingMatch != null ? fixtureById(w, w.pendingMatch) : undefined;
     return pending && !pending.result ? pending : nextFixture(w, w.userClubId);
   }, [v]);
-  const match = useMemo(() => (f ? analyzeMatch(w, f) : null), [v, f?.id]);
+  const baseMatch = useMemo(() => (f ? analyzeMatch(w, f) : null), [v, f?.id]);
+  const { a: match, checking } = useRefined(w, f, baseMatch, v);
   const squad = useMemo(() => (f ? null : analyzeSquad(w)), [v, f?.id]);
   const user = w.clubs[w.userClubId];
   const t = user.tactic;
@@ -279,7 +325,7 @@ export function TacticsAdvice() {
     return (
       <div className="card flat as-card">
         <div className="as-head">
-          <span className="as-brain" aria-hidden="true">🧠</span>
+          <span className="as-brain" aria-hidden="true"><Icon name="bulb" size={24} /></span>
           <div className="grow">
             <b>Auxiliar técnico</b>
             <div className="tiny muted row gap4">Próximo jogo: <Crest club={opp} size={14} /> {opp.name} ({match.neutral ? "neutro" : match.home ? "casa" : "fora"})</div>
@@ -300,13 +346,16 @@ export function TacticsAdvice() {
             <RecRow icon="🧩" label="Formação" value={match.rec.formation.value} reason={match.rec.formation.reason} changed={match.rec.formation.value !== t.formation} />
             <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[match.rec.mentality.value]} reason={match.rec.mentality.reason} changed={match.rec.mentality.value !== t.mentality} />
             <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[match.rec.pressing.value]} reason={match.rec.pressing.reason} changed={match.rec.pressing.value !== t.pressing} />
+            <Confidence a={match} checking={checking} />
             <div className="small muted">Destaques do {opp.name}: {match.opp.stars.map((s) => `${shortName(s.name)} (${s.ovr})`).join(", ")}</div>
           </div>
         )}
         <FixList w={w} fixes={match.fixes} compId={f.comp} />
-        {match.changed
-          ? <button className="btn primary block" onClick={() => applyPlan(match.plan, f.comp)}>✅ Aplicar sugestões</button>
-          : <div className="as-ok small">✔ Tática e escalação já estão do jeito que eu sugiro.</div>}
+        {checking != null
+          ? <button className="btn block" disabled><Ic n="compass" size={18} /> Conferindo… {pct(checking)}</button>
+          : match.changed
+          ? <button className="btn block" onClick={() => applyPlan(match.plan, f.comp)}><Ic n="check" size={18} /> Aplicar sugestões</button>
+          : <div className="as-ok small"><Ic n="check" /> Tática e escalação já estão do jeito que eu sugiro.</div>}
       </div>
     );
   }
@@ -316,7 +365,7 @@ export function TacticsAdvice() {
   return (
     <div className="card flat as-card">
       <div className="as-head">
-        <span className="as-brain" aria-hidden="true">🧠</span>
+        <span className="as-brain" aria-hidden="true"><Icon name="bulb" size={24} /></span>
         <div className="grow"><b>Auxiliar técnico</b><div className="tiny muted">Formação que mais aproveita o elenco</div></div>
       </div>
       <div className="as-summary">
@@ -326,7 +375,7 @@ export function TacticsAdvice() {
       </div>
       <div className="small as-reason">{squad.reason}</div>
       <FixList w={w} fixes={squad.fixes} />
-      {changed && <button className="btn primary block" onClick={() => applyPlan(squad.plan)}>✅ Aplicar sugestão</button>}
+      {changed && <button className="btn primary block" onClick={() => applyPlan(squad.plan)}><Ic n="check" size={18} /> Aplicar sugestão</button>}
     </div>
   );
 }
@@ -351,9 +400,9 @@ export function LiveAdvice({ sim, side, onApplied }: { sim: MatchSim; side: 0 | 
   return (
     <div className={`as-live tone-${tip.tone}`} role="status">
       <div className="row gap8">
-        <span className="as-live-ico" aria-hidden="true">🧠</span>
+        <span className="as-live-ico" aria-hidden="true"><Icon name="bulb" size={18} /></span>
         <b className="grow as-live-title">{tip.title}</b>
-        <button className="as-x" aria-label="Dispensar dica" onClick={() => { dismissTip(sim, tip.id); setWhich(0); force((x) => x + 1); }}>✕</button>
+        <button className="as-x" aria-label="Dispensar dica" onClick={() => { dismissTip(sim, tip.id); setWhich(0); force((x) => x + 1); }}><Icon name="close" size={16} /></button>
       </div>
       <div className="small as-live-text">{tip.text}</div>
       {tip.actions.length > 0 && (
@@ -361,7 +410,7 @@ export function LiveAdvice({ sim, side, onApplied }: { sim: MatchSim; side: 0 | 
           {tip.actions.map((a, i) => (
             <button key={`${a.kind}-${i}`} className={`btn sm${tip.actions.length === 1 ? " primary" : ""}`} onClick={() => act(i)}>{a.label}</button>
           ))}
-          {tip.actions.length > 1 && <button className="btn sm primary" onClick={() => act()}>✅ Fazer tudo</button>}
+          {tip.actions.length > 1 && <button className="btn sm primary" onClick={() => act()}><Ic n="check" /> Fazer tudo</button>}
         </div>
       )}
       {other && <button className="as-next tiny" onClick={() => setWhich((x) => x + 1)}>Outra dica: {other.title} ›</button>}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import db from "../src/data/database.json";
 import {
-  analyzeMatch, analyzeSquad, applyAdvice, applyTip, cloneForMatch, dismissTip, estimateOdds, liveTips, predictAiTactic,
+  analyzeMatch, analyzeSquad, applyAdvice, applyTip, auxBudget, cloneForMatch, dismissTip, estimateOdds, liveTips, predictAiTactic, refineAnalysis,
   type LiveTip, type TacticPlan,
 } from "../src/engine/assistant";
 import { nextFixture } from "../src/engine/competitions";
@@ -66,6 +66,36 @@ describe("auxiliar técnico: não altera o jogo", () => {
     const again = await estimateOdds(w, f, a.plan, 120);
     expect(again).toEqual(odds);
     expect(snapshot(w)).toEqual(before);
+  });
+
+  it("a conferência por simulação não mexe no mundo nem no RNG e traz a confiança", () => {
+    const w = as(serieA[6].id);
+    const f = fixtureOf(w, serieA[6].id, serieA[9].id);
+    setRngState(4242);
+    const before = snapshot(w);
+    const a = analyzeMatch(w, f);
+    expect(a.candidates.length).toBeGreaterThan(1);
+    const r = refineAnalysis(w, f, a, 2);
+    expect(snapshot(w)).toEqual(before);
+    expect(r.check).toBeTruthy();
+    expect(r.check!.sims).toBe(auxBudget(2).sims);
+    expect(r.check!.reason.length).toBeGreaterThan(20);
+    expect(r.check!.confidence).toBeGreaterThanOrEqual(0);
+    expect(r.check!.confidence).toBeLessThanOrEqual(1);
+    if (r.check!.kept) expect(r.changed).toBe(false);
+    // determinístico
+    expect(refineAnalysis(w, f, a, 2).plan).toEqual(r.plan);
+  }, 60000);
+
+  it("aplicar a sugestão preserva as instruções do time", () => {
+    const w = structuredClone(as(strong[0])) as World;
+    const club = w.clubs[w.userClubId];
+    club.tactic.ti = { line: 2, width: 0, tempo: 1, direct: 0, cpress: true, waste: false };
+    club.tactic.shift = { lead: -1, leadMin: 80 };
+    applyAdvice(w, club, { formation: "4-4-2", mentality: 1, pressing: 1 }, "serieA");
+    expect(club.tactic.ti?.line).toBe(2);
+    expect(club.tactic.shift?.lead).toBe(-1);
+    expect(club.tactic.formation).toBe("4-4-2");
   });
 
   it("analyzeSquad e o modelo ao vivo também são puros", () => {

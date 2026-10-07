@@ -34,6 +34,8 @@ export interface WorldLeagueDef {
   /** ids dos clubes da liga em 2026/27 (podem ser ids do world.json ou do database.json, ex.: clubes argentinos) */
   clubs: string[];
   /** classificados reais à Champions/Europa League 2026/27 (ids de clube), em ordem de prioridade */
+  /** zona/conferência por clube (Argentina "A"/"B", MLS "E"/"W"), inclusive dos clubes reaproveitados do database.json */
+  zones?: Record<string, string>;
   ucl2026Seeds?: string[];
   uel2026Seeds?: string[];
 }

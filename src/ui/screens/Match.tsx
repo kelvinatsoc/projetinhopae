@@ -11,8 +11,9 @@ import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reac
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
 import { forceBack, getWorld, push, replace, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
-import { goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startCrowd, stopCrowd, whistle } from "../audio";
-import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor } from "../components";
+import { duckForMenu, goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
+import { crowdMood, crowdProfile } from "../torcida";
+import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
 import { Pitch } from "./Squad";
@@ -62,7 +63,7 @@ function TalkCard({ w, f }: { w: World; f: Fixture }) {
   }
   return (
     <div className="card tk-card">
-      <div className="row gap8"><b>🗣️ Preleção</b><span className="tiny muted grow">o que dizer no vestiário?</span></div>
+      <div className="row gap8"><b><Ic n="mic" /> Preleção</b><span className="tiny muted grow">o que dizer no vestiário?</span></div>
       <div className="tk-grid">
         {PRE_TONES.map((t) => (
           <button key={t} className={`btn tk-btn${tone === t ? " active" : ""}`} aria-pressed={tone === t} onClick={() => choose(t)}>
@@ -113,7 +114,7 @@ export function PreMatchScreen() {
             </div>
           ))}
         </div>
-        <div className="small">📅 {formatDate(w.season, f.day)} · 🏟️ {f.neutral ? "Campo neutro" : w.clubs[f.home].stadium}</div>
+        <div className="small"><Ic n="calendar" /> {formatDate(w.season, f.day)} · <Ic n="stadium" /> {f.neutral ? "Campo neutro" : w.clubs[f.home].stadium}</div>
         {agg && tie && <div className="small mt8">Jogo de ida: {w.clubs[tie.a].name} {agg.a} × {agg.b} {w.clubs[tie.b].name}{tie.advantage ? ` · ${w.clubs[tie.advantage].name} joga pelo empate no agregado` : " · empate no agregado vai para os pênaltis"}</div>}
       </div>
 
@@ -122,7 +123,7 @@ export function PreMatchScreen() {
 
       {out.length > 0 && (
         <div className="card flat small" style={{ borderColor: "var(--warn)" }}>
-          ⚠️ Desfalques: {out.map((p) => `${p.name} (${p.injury > 0 ? "lesionado" : "suspenso"})`).join(", ")}
+          <Ic n="alert" /> Desfalques: {out.map((p) => `${p.name} (${p.injury > 0 ? "lesionado" : "suspenso"})`).join(", ")}
         </div>
       )}
 
@@ -145,12 +146,12 @@ export function PreMatchScreen() {
       <TalkCard w={w} f={f} />
 
       {!pressDone(w, f.id, "pre") && (
-        <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}>🎤 Coletiva pré-jogo (opcional)</button>
+        <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}><GIcon slug="coletiva" size={20} /> Coletiva pré-jogo (opcional)</button>
       )}
 
       {createPortal(<div className="pm-dock" role="toolbar" aria-label="Começar a partida">
-        <button className="btn lg" onClick={() => { haptic("tap"); goToMatch(true); }}>⏩ Rápido</button>
-        <button className="btn primary lg" onClick={() => { haptic("success"); goToMatch(false); }}>▶ Jogar</button>
+        <button className="btn lg" onClick={() => { haptic("tap"); goToMatch(true); }}><GIcon slug="modo-rapido" size={22} /> Modo rápido</button>
+        <button className="btn primary lg" onClick={() => { haptic("success"); goToMatch(false); }}><GIcon slug="jogar" size={24} /> Jogar</button>
       </div>, document.body)}
     </div>
   );
@@ -248,6 +249,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     simRef.current = s;
   }
   const sim = simRef.current;
+  const profile = useMemo(() => (sim ? crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, userSide) : null), [sim]);
+  const streak = useRef(0);
+  // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
+  useEffect(() => {
+    duckForMenu(!quick && !result && (paused || subs || halfSheet));
+  }, [paused, subs, halfSheet, result]);
 
   function later(fn: () => void, ms: number) {
     timers.current.push(window.setTimeout(fn, ms));
@@ -265,6 +272,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     setFlash(null);
     setHold(false);
     stopCrowd();
+    stopAtmosphere();
     autosave(true);
   }
 
@@ -273,7 +281,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     if (!sim || celebrated.current.has(e)) return;
     celebrated.current.add(e);
     const homeCrowd = !sim.f.neutral && e.side === 0;
-    if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide);
+    if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide, e.side);
     const head = headRef.current?.getBoundingClientRect();
     setFlashTop(fieldRef.current && head ? Math.min(head.bottom + 10, window.innerHeight * 0.56) : null);
     setFlash(e);
@@ -307,9 +315,15 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (quick) return;
     loadMedia(`goal:${w.userClubId}`).then((d) => setCustomGoalAudio(d)).catch(() => undefined);
-    if (soundEnabled()) startCrowd();
+    if (soundEnabled()) {
+      // torcida brasileira (camadas, cantos, vaia, olé) ou o som genérico de antes
+      if (profile) startAtmosphere(profile);
+      else startCrowd();
+    }
     return () => {
       stopCrowd();
+      stopAtmosphere();
+      duckForMenu(false);
       for (const t of timers.current) window.clearTimeout(t);
       window.clearTimeout(flashTimer.current);
     };
@@ -359,6 +373,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         }
         else if (e.type === "end") whistle(3);
       }
+      if (profile) {
+        const atk = sim.phase.atk ?? null;
+        streak.current = atk === profile.side ? streak.current + 1 : 0;
+        updateAtmosphere(crowdMood({ minute: sim.minute, goals: [sim.sides[0].goals, sim.sides[1].goals], poss: [sim.stats.poss[0], sim.stats.poss[1]], shots: [sim.stats.shots[0], sim.stats.shots[1]], atk, streak: streak.current }, profile.side, profile.size));
+      }
       if (sim.finished) finish();
       setTick((x) => x + 1);
     }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
@@ -391,11 +410,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           <span className="small ellipsis"><CompLogo id={f.comp} size={14} /> {COMP_META[f.comp].short} · {stageLabel(w, f)}</span>
           {!quick && (
             <div className="mv-toggle" role="group" aria-label="Como acompanhar o jogo">
-              <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}>📺 Campo</button>
-              <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}>📜 Lances</button>
+              <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
+              <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
                 <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → Retrô PS1" onClick={cycleGfx}>
-                  {gfx === "ultra" ? "✨ Ultra" : gfx === "ps1" ? "📼 PS1" : "🪶 Leve"}
+                  {gfx === "ultra" ? <><Ic n="sparkle" /> Ultra</> : gfx === "ps1" ? <><Ic n="film" /> PS1</> : <><Ic n="feather" /> Leve</>}
                 </button>
               )}
             </div>
@@ -420,18 +439,18 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         <div className="mv-ctrl" role="toolbar" aria-label="Controles da partida">
           {over ? (
             <>
-              <button className="btn sm" onClick={() => replace({ name: "press", fid: f.id, phase: "post" })}>🎤 Coletiva</button>
-              <button className="btn primary grow mv-go" onClick={goOn}>Continuar ▶</button>
+              <button className="btn sm" onClick={() => replace({ name: "press", fid: f.id, phase: "post" })}><Ic n="mic" /> Coletiva</button>
+              <button className="btn primary grow mv-go" onClick={goOn}>Continuar <Icon name="play" fill size={16} /></button>
             </>
           ) : (
             <>
-              <button className="btn sm mv-pp" aria-label={paused ? "Retomar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? "▶" : "❚❚"}</button>
+              <button className="btn sm mv-pp" aria-label={paused ? "Retomar" : "Pausar"} onClick={() => setPaused((p) => !p)}>{paused ? <Icon name="play" fill size={16} /> : <Icon name="pause" fill size={16} />}</button>
               <div className="seg grow mv-speeds">
                 {SPEEDS.map((sp, i) => <button key={sp.l} className={!hl && speed === i ? "active" : ""} onClick={() => pickSpeed(i)}>{sp.l}</button>)}
-                <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={toggleHl}>⭐</button>
-                <button aria-label="Pular para o resultado" title="Resultado" onClick={skipToEnd}>⏭</button>
+                <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={toggleHl}><Icon name="star" size={18} /></button>
+                <button aria-label="Pular para o resultado" title="Resultado" onClick={skipToEnd}><Icon name="ff" fill size={16} /></button>
               </div>
-              <button className="btn sm" aria-label="Tática e substituições" onClick={() => { setPaused(true); setSubs(true); }}>🔄 Time</button>
+              <button className="btn sm" aria-label="Tática e substituições" onClick={() => { setPaused(true); setSubs(true); }}><Ic n="refresh" /> Time</button>
             </>
           )}
         </div>
@@ -496,7 +515,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
         {over && (
           <div className="sticky-cta mx-cta">
-            <button className="btn primary block lg" onClick={goOn}>Continuar ▶</button>
+            <button className="btn primary block lg" onClick={goOn}>Continuar <Icon name="play" fill size={16} /></button>
           </div>
         )}
       </div>
@@ -537,7 +556,7 @@ function HalftimeSheet({ sim, side, w, onClose, onSubs }: { sim: MatchSim; side:
         </>
       ) : (
         <>
-          <div className="as-talk small mt8">💡 Auxiliar sugere: <b>{TONES[tip].emoji} {TONES[tip].label}</b></div>
+          <div className="as-talk small mt8"><Ic n="bulb" /> Auxiliar sugere: <b>{TONES[tip].emoji} {TONES[tip].label}</b></div>
           <div className="tk-grid mt8">
             {tones.map((t) => (
               <button key={t} className="btn tk-btn" onClick={() => choose(t)}>
@@ -546,7 +565,7 @@ function HalftimeSheet({ sim, side, w, onClose, onSubs }: { sim: MatchSim; side:
             ))}
           </div>
           <div className="grid2 mt12">
-            <button className="btn" onClick={onSubs}>🔄 Mexer no time</button>
+            <button className="btn" onClick={onSubs}><Ic n="refresh" size={18} /> Mexer no time</button>
             <button className="btn" onClick={onClose}>Voltar ao jogo</button>
           </div>
         </>
@@ -697,7 +716,7 @@ export function FinalSummary({ w, f, r }: { w: World; f: Fixture; r: MatchResult
       <h2>{label}</h2>
       <div className="small mt8 col gap4">
         {goals.map((e, i) => (
-          <span key={i}>⚽ {e.min}' {e.pid ? w.players[e.pid]?.name : ""}{e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""} — {w.clubs[e.side === 0 ? f.home : f.away].abbr}</span>
+          <span key={i}><Ic n="ball" size={13} /> {e.min}' {e.pid ? w.players[e.pid]?.name : ""}{e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""} — {w.clubs[e.side === 0 ? f.home : f.away].abbr}</span>
         ))}
       </div>
       {motm && <div className="row mt12"><Avatar p={motm} club={motm.clubId ? w.clubs[motm.clubId] : null} season={w.season} size={36} /><span>Craque do jogo: <b>{motm.name}</b> ({r.ratings[motm.id]?.toFixed(1)})</span></div>}
@@ -754,7 +773,7 @@ function DerbyBanner({ home, away }: { home: string; away: string }) {
   if (!int) return null;
   return (
     <div className="derby-banner" role="status">
-      <span>{"🔥".repeat(int)}</span> CLÁSSICO <small>· {derbyName(home, away)}</small>
+      <span className="ico-txt">{Array.from({ length: int }, (_, k) => <Icon key={k} name="flame" fill size={16} />)}</span> CLÁSSICO <small>· {derbyName(home, away)}</small>
     </div>
   );
 }

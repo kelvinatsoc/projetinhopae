@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { CompareIconBtn } from "../Compare";
 import { teamLinkAvg } from "../../engine/chemistry";
 import { chemOf } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
@@ -99,7 +100,7 @@ function SquadList() {
         <div className="list">
           {list.map((p) => (
             <PlayerRow key={p.id} p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-              right={<span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span>} />
+              right={<><CompareIconBtn p={p} /><span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span></>} />
           ))}
         </div>
       </div>

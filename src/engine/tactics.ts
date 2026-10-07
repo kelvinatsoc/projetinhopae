@@ -99,18 +99,18 @@ export const ROLES: Record<RoleId, RoleDef> = {
   gk: R("gk", "Goleiro clássico", "GOL", ["GOL"], { gol: 3, fis: 1 }, {}, "Fica na área e foca em defender."),
   lib: R("lib", "Goleiro líbero", "LÍB", ["GOL"], { gol: 2, pas: 1, vel: 1 }, { m: 0.06 }, "Sai jogando com os pés e cobre a linha alta."),
   zag: R("zag", "Zagueiro de marcação", "ZAG", ["ZAG"], { def: 2, fis: 1.5 }, { d: 0.08, m: -0.03, header: 1.15 }, "Prioriza desarmes e bola aérea."),
-  cons: R("cons", "Zagueiro construtor", "CON", ["ZAG"], { def: 1.5, pas: 1.5 }, { d: -0.04, m: 0.1 }, "Inicia as jogadas com passes verticais."),
-  lat_ap: R("lat_ap", "Lateral apoiador", "APO", ["LD", "LE"], { vel: 1.5, pas: 1, dri: 1 }, { d: -0.15, a: 0.15, assist: 1.25, fatigue: 1.08 }, "Vai ao fundo e cruza; deixa espaço atrás."),
-  lat_def: R("lat_def", "Lateral defensivo", "LDF", ["LD", "LE"], { def: 2, fis: 1 }, { d: 0.12, a: -0.1, assist: 0.8 }, "Fecha o corredor e quase não sobe."),
-  destr: R("destr", "Volante destruidor", "DES", ["VOL", "MC"], { def: 2, fis: 1.5 }, { d: 0.15, m: -0.08, a: -0.03 }, "Morde, desarma e protege a zaga."),
-  reg: R("reg", "Volante regista", "REG", ["VOL"], { pas: 2, def: 1 }, { d: -0.06, m: 0.12, assist: 1.2 }, "Organiza de trás com passes longos."),
-  box: R("box", "Meia box-to-box", "BOX", ["MC", "VOL"], { fis: 1.5, pas: 1, def: 1 }, { d: 0.06, a: 0.06, shoot: 1.1, fatigue: 1.1 }, "Chega à área e volta para marcar."),
-  arm: R("arm", "Meia armador", "ARM", ["MC", "MEI"], { pas: 2, dri: 1 }, { m: 0.1, a: 0.02, assist: 1.35, shoot: 0.9 }, "O cérebro: dita o ritmo e dá o último passe."),
+  cons: R("cons", "Zagueiro que sai jogando", "CON", ["ZAG"], { def: 1.5, pas: 1.5 }, { d: -0.04, m: 0.1 }, "Inicia as jogadas com passes verticais."),
+  lat_ap: R("lat_ap", "Lateral que apoia", "APO", ["LD", "LE"], { vel: 1.5, pas: 1, dri: 1 }, { d: -0.15, a: 0.15, assist: 1.25, fatigue: 1.08 }, "Vai ao fundo e cruza; deixa espaço atrás."),
+  lat_def: R("lat_def", "Lateral marcador", "LDF", ["LD", "LE"], { def: 2, fis: 1 }, { d: 0.12, a: -0.1, assist: 0.8 }, "Fecha o corredor e quase não sobe."),
+  destr: R("destr", "Volante cão de guarda", "DES", ["VOL", "MC"], { def: 2, fis: 1.5 }, { d: 0.15, m: -0.08, a: -0.03 }, "Morde, desarma e protege a zaga."),
+  reg: R("reg", "Primeiro volante", "1VO", ["VOL"], { pas: 2, def: 1 }, { d: -0.06, m: 0.12, assist: 1.2 }, "Organiza de trás com passes longos."),
+  box: R("box", "Segundo volante", "2VO", ["MC", "VOL"], { fis: 1.5, pas: 1, def: 1 }, { d: 0.06, a: 0.06, shoot: 1.1, fatigue: 1.1 }, "Chega à área e volta para marcar."),
+  arm: R("arm", "Meia-armador (camisa 10)", "ARM", ["MC", "MEI"], { pas: 2, dri: 1 }, { m: 0.1, a: 0.02, assist: 1.35, shoot: 0.9 }, "O cérebro: dita o ritmo e dá o último passe."),
   mat: R("mat", "Meia atacante", "MAT", ["MEI"], { fin: 1.5, dri: 1.5 }, { m: -0.08, a: 0.15, shoot: 1.3, assist: 0.9 }, "Joga perto do centroavante e finaliza muito."),
   ponta: R("ponta", "Ponta aberto", "PNT", ["PD", "PE"], { vel: 2, dri: 1 }, { a: 0.04, assist: 1.25, shoot: 0.9 }, "Abre o campo e cruza da linha de fundo."),
   inv: R("inv", "Ponta invertido", "INV", ["PD", "PE"], { fin: 1.5, dri: 1.5 }, { m: 0.04, shoot: 1.3, assist: 0.85 }, "Corta para dentro e chuta com a perna boa."),
   piv: R("piv", "Centroavante pivô", "PIV", ["ATA"], { fis: 2, pas: 1 }, { m: 0.06, shoot: 0.85, assist: 1.35, header: 1.3 }, "Segura a bola de costas e prepara para os meias."),
-  fin: R("fin", "Finalizador", "FIN", ["ATA"], { fin: 2, vel: 1 }, { m: -0.04, shoot: 1.25, assist: 0.8 }, "Vive na área: só pensa em fazer o gol."),
+  fin: R("fin", "Centroavante matador", "CA9", ["ATA"], { fin: 2, vel: 1 }, { m: -0.04, shoot: 1.25, assist: 0.8 }, "Vive na área: só pensa em fazer o gol."),
 };
 export const ROLE_IDS = Object.keys(ROLES) as RoleId[];
 export const rolesFor = (pos: Pos): RoleDef[] => ROLE_IDS.map((r) => ROLES[r]).filter((r) => r.pos.includes(pos));
@@ -176,13 +176,13 @@ export function onFormationChange(club: Club, formation: string) {
 // ---------------------------------------------------------------- modelos prontos
 export interface Preset { id: string; label: string; emoji: string; desc: string; formation: string; mentality: number; pressing: number; ti: TeamInstr; roles: Partial<Record<Pos, RoleId>> }
 export const PRESETS: Preset[] = [
-  { id: "tiki", label: "Tiki-taka", emoji: "🎼", desc: "Posse, toque curto e paciência.", formation: "4-3-3", mentality: 1, pressing: 2,
+  { id: "tiki", label: "Toque de bola", emoji: "🎼", desc: "Posse, toque curto e paciência.", formation: "4-3-3", mentality: 1, pressing: 2,
     ti: { line: 2, width: 1, tempo: 0, direct: 0, cpress: true, waste: false }, roles: { GOL: "lib", ZAG: "cons", VOL: "reg", MC: "arm", PD: "inv", PE: "inv", ATA: "fin", LD: "lat_ap", LE: "lat_ap" } },
-  { id: "gegen", label: "Gegenpress", emoji: "⚡", desc: "Pressão sufocante e ataque vertical.", formation: "4-2-3-1", mentality: 1, pressing: 2,
+  { id: "gegen", label: "Pressão alta", emoji: "⚡", desc: "Pressão sufocante e ataque vertical.", formation: "4-2-3-1", mentality: 1, pressing: 2,
     ti: { line: 2, width: 1, tempo: 2, direct: 1, cpress: true, waste: false }, roles: { VOL: "box", MEI: "mat", PD: "inv", PE: "inv", ATA: "fin", LD: "lat_ap", LE: "lat_ap" } },
   { id: "retranca", label: "Retranca e contra-ataque", emoji: "🛡️", desc: "Bloco baixo e saída rápida.", formation: "5-3-2", mentality: -1, pressing: 0,
     ti: { line: 0, width: 0, tempo: 2, direct: 2, cpress: false, waste: true }, roles: { ZAG: "zag", VOL: "destr", MC: "box", LD: "lat_def", LE: "lat_def", ATA: "fin" } },
-  { id: "direto", label: "Jogo direto", emoji: "🎯", desc: "Bola longa no pivô e segunda bola.", formation: "4-4-2", mentality: 0, pressing: 1,
+  { id: "direto", label: "Ligação direta", emoji: "🎯", desc: "Bola longa no pivô e segunda bola.", formation: "4-4-2", mentality: 0, pressing: 1,
     ti: { line: 1, width: 2, tempo: 2, direct: 2, cpress: false, waste: false }, roles: { ZAG: "zag", MC: "box", PD: "ponta", PE: "ponta", ATA: "piv" } },
 ];
 

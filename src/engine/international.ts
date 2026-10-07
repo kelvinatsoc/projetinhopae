@@ -235,7 +235,11 @@ export function worldCupEntrants(w: World, y: number): string[] {
   const all = Object.values(intl.nts);
   if (y === 2026) {
     const official = all.filter((n) => n.wc2026?.length).map((n) => n.id);
-    if (official.length >= 32) return official.slice(0, 48);
+    if (official.length >= 32) {
+      // completa até 48 com as mais fortes (repescagens que os dados não trazem)
+      for (const n of all.slice().sort(byLevel)) if (official.length < 48 && !official.includes(n.id)) official.push(n.id);
+      return official.slice(0, 48);
+    }
   }
   const quota: Record<string, number> = { UEFA: 16, CAF: 9, AFC: 8, CONMEBOL: 6, CONCACAF: 6, OFC: 1 };
   const out: string[] = [];

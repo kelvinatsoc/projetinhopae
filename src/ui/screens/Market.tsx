@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { CompareIconBtn } from "../Compare";
 import { userWindowOpen } from "../../engine/admin";
 import { windowLabel } from "../../engine/calendar";
 import { formatMoney } from "../../engine/finance";
@@ -9,7 +10,7 @@ import { acceptOffer, feeWithSellOn, searchMarket, type MarketFilter } from "../
 import type { Pos, TraitId } from "../../engine/types";
 import { push, toast, update, useVersion, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Crest, PlayerRow } from "../components";
+import { Crest, PlayerRow, Ic } from "../components";
 import { ScoutingTab } from "./Scouting";
 import "../market.css";
 
@@ -48,7 +49,7 @@ function Search() {
   const set = (patch: Partial<MarketFilter>) => setF((x) => ({ ...x, ...patch }));
   return (
     <>
-      <input className="text" placeholder="🔎 Buscar por nome" value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
+      <input className="text" placeholder="Buscar por nome" value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
       <div className="chips">
         <button className={`chip${!f.pos ? " active" : ""}`} onClick={() => set({ pos: "" })}>Todas</button>
         {POSITIONS.map((p) => <button key={p} className={`chip${f.pos === p ? " active" : ""}`} onClick={() => set({ pos: p as Pos })}>{p}</button>)}
@@ -86,7 +87,7 @@ function Search() {
         <div className="list">
           {results.map((p) => (
             <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-              right={<span className="small muted" style={{ whiteSpace: "nowrap" }}>{formatMoney(playerValue(p, w.season))}</span>} />
+              right={<><CompareIconBtn p={p} withStarter /><span className="small muted" style={{ whiteSpace: "nowrap" }}>{formatMoney(playerValue(p, w.season))}</span></>} />
           ))}
         </div>
         {!results.length && <div className="empty">Nenhum jogador encontrado com esses filtros.</div>}
@@ -131,7 +132,7 @@ function Offers() {
                 </div>
               </>
             ) : (
-              <div className="small muted mt8">{o.status === "done" ? "✅ Vendido" : o.status === "rejected" ? "❌ Recusada" : "⌛ Expirada"}</div>
+              <div className="small muted mt8">{o.status === "done" ? <><Ic n="check" /> Vendido</> : o.status === "rejected" ? <><Ic n="close" /> Recusada</> : "Expirada"}</div>
             )}
           </div>
         );
@@ -149,7 +150,7 @@ function Shortlist() {
       <div className="list">
         {list.map((p) => (
           <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-            right={<span className="small muted">{formatMoney(playerValue(p, w.season))}</span>} />
+            right={<><CompareIconBtn p={p} withStarter /><span className="small muted">{formatMoney(playerValue(p, w.season))}</span></>} />
         ))}
       </div>
       {!list.length && <div className="empty">Toque em “Observar” no perfil de um jogador para acompanhá-lo aqui.</div>}
@@ -165,7 +166,7 @@ function LegendsMarket() {
       <div className="list">
         {list.map((p) => (
           <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-            right={<span className="small muted">{formatMoney(playerValue(p, w.season))}</span>} />
+            right={<><CompareIconBtn p={p} withStarter /><span className="small muted">{formatMoney(playerValue(p, w.season))}</span></>} />
         ))}
       </div>
       {!list.length && <div className="empty">Nenhuma lenda renascida em outros clubes ainda. Elas aparecem nas bases a partir do fim de janeiro.</div>}

@@ -19,6 +19,7 @@ import { assignRegenFace, legendImage, sportsdbPath } from "./media";
 import { generatePlayer, makeAttrs, newPlayerBase, randomPos, wageFor } from "./player";
 import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } from "./rng";
 import { initialEntrants, startSeason } from "./season";
+import { generateRealSquad, migrateRealEstaduais } from "./estaduais";
 import { freeShirt } from "./transfers";
 import type { Club, CrestPattern, Div, Pos, Settings, World } from "./types";
 import type { WorldData } from "../data/worldTypes";
@@ -31,6 +32,8 @@ export interface DbClub {
   founded?: string; nickname?: string;
   logo?: 1; // escudo oficial em public/media/crests/<id>.webp
   stadiumImg?: string; // foto do estádio em public/media/stadiums/<stadiumImg>.webp
+  minor?: string; // UF: clube real que só disputa o estadual (fora da pirâmide nacional)
+  gs?: 1; // sem elenco publicado: o jogo gera o elenco (semente fixa pelo id do clube)
 }
 
 export interface DbPlayer {
@@ -110,7 +113,12 @@ export function loadWorldData(w: World, data: WorldData, migrating: boolean) {
     w.clubs[c.id] = club;
     fresh.push(club);
   }
-  for (const l of data.leagues) for (const id of l.clubs) if (w.clubs[id]) w.clubs[id].league = l.id;
+  for (const l of data.leagues) for (const id of l.clubs) {
+    const c = w.clubs[id];
+    if (!c) continue;
+    c.league = l.id;
+    if (l.zones?.[id]) c.zone = l.zones[id];
+  }
   for (const club of Object.values(w.clubs)) if (club.league) club.balance = worldBalance(club);
   for (const dp of data.players) {
     if (known.has(`${dp.n}|${dp.b}`)) continue;
@@ -132,7 +140,7 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
     rng: seed,
     season: db.season,
     day: 0,
-    managerName: opts.managerName || "Treinador",
+    managerName: opts.managerName || "Técnico",
     userClubId: opts.clubId,
     clubs: {},
     players: {},
@@ -159,6 +167,8 @@ export function createWorld(db: Database, opts: { managerName: string; clubId: s
     if (sup?.has(`${dp.n}|${dp.b}`)) continue;
     addDbPlayer(w, dp);
   }
+  // clubes reais dos estaduais sem elenco publicado: elenco gerado com semente fixa (id do clube)
+  for (const club of Object.values(w.clubs)) if (club.genSquad) generateRealSquad(w, club);
   if (opts.world) loadWorldData(w, opts.world, false);
 
   // completa elencos e categorias de base
@@ -208,6 +218,8 @@ function makeClub(c: DbClub): Club {
     stadiumImg: c.stadiumImg,
     founded: c.founded, nickname: c.nickname,
     jersey: JERSEYS[hashString(c.id) % JERSEYS.length],
+    ...(c.minor ? { minor: c.minor } : {}),
+    ...(c.gs ? { genSquad: true } : {}),
   };
 }
 
@@ -258,6 +270,7 @@ export function migrateWorld(w: World, db: Database, world?: WorldData): { repai
     }
   }
   if (from < 3) migrateTo3(w);
+  migrateRealEstaduais(w, db, { makeClub, addDbPlayer, fillSquad });
   fillExtras(w); // quem não tem atributos ocultos/jogadas ganha (gerador próprio, determinístico)
   narrativeOf(w); // trilha A: torcida, coletivas e interações
   inboxOf(w);
@@ -317,13 +330,14 @@ function fillSquad(w: World, club: Club) {
     generatePlayer(w, club, club.level - 6, randInt(19, 32), pos);
   }
   // base
-  const youthTarget = club.league ? 0 : club.country === "BRA" ? 4 + club.youthLevel : 3;
+  // quem só joga o estadual não tem categoria de base; clubes do exterior também não (save menor)
+  const youthTarget = club.minor || club.league ? 0 : club.country === "BRA" ? 4 + club.youthLevel : 3;
   const youth = club.players.map((id) => w.players[id]).filter((p) => p?.youth).length;
   for (let i = youth; i < youthTarget; i++) {
     const ageY = randInt(15, 18);
     const ovr = clamp(Math.round(40 + club.youthLevel * 2.5 + (ageY - 15) * 3 + gauss(0, 4)), 32, 70);
     const p = generatePlayer(w, club, ovr, ageY, undefined, true);
-    p.pot = clamp(Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7)), ovr + 5, 90);
+    p.pot = clamp(Math.round(ovr + 14 + club.youthLevel * 3 + gauss(0, 7)), Math.max(ovr + 5, p.ovr), 90);
     p.fame = 1;
   }
   // camisas

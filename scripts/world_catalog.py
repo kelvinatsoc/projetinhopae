@@ -1,0 +1,271 @@
+# -*- coding: utf-8 -*-
+"""Catálogo do mundo (temporada 2026/27): ligas, clubes e seleções.
+
+Composições conferidas nos artigos "2026–27 <liga>" da Wikipedia (scripts/world_seasons.py).
+`level` é a força média do clube na MESMA escala do database.json (Flamengo = 80, River = 77):
+calibrada por liga (estilo Elo/coeficiente UEFA) para que Real Madrid/City > gigantes do
+Brasileirão > Série B etc. Clubes argentinos que já existem no database.json são reaproveitados
+pelo id (campo `db`): só os que faltam entram no world.json.
+"""
+
+# liga: (nome, short, país FIFA, confed, calendário, rebaixados, cor, artigo da temporada)
+LEAGUES = {
+    "eng1": ("Premier League", "Premier", "ENG", "UEFA", "aug-may", 3, "#3d195b"),
+    "esp1": ("LaLiga", "LaLiga", "ESP", "UEFA", "aug-may", 3, "#ee2523"),
+    "ita1": ("Serie A", "Serie A", "ITA", "UEFA", "aug-may", 3, "#008fd7"),
+    "ger1": ("Bundesliga", "Bundesliga", "GER", "UEFA", "aug-may", 2, "#d20515"),
+    "fra1": ("Ligue 1", "Ligue 1", "FRA", "UEFA", "aug-may", 2, "#dae025"),
+    "por1": ("Liga Portugal", "Liga PT", "POR", "UEFA", "aug-may", 2, "#0b2d5b"),
+    "ned1": ("Eredivisie", "Eredivisie", "NED", "UEFA", "aug-may", 2, "#e4002b"),
+    "tur1": ("Süper Lig", "Süper Lig", "TUR", "UEFA", "aug-may", 3, "#c8102e"),
+    "sco1": ("Scottish Premiership", "Premiership", "SCO", "UEFA", "aug-may", 1, "#4b0f8a"),
+    "arg1": ("Liga Profesional", "Liga Arg.", "ARG", "CONMEBOL", "feb-dec", 2, "#75aadb"),
+    "ksa1": ("Saudi Pro League", "Saudi PL", "KSA", "AFC", "aug-may", 3, "#00a651"),
+    "jpn1": ("J1 League", "J1", "JPN", "AFC", "aug-may", 3, "#e60012"),
+    "usa1": ("Major League Soccer", "MLS", "USA", "CONCACAF", "feb-dec", 0, "#001f5b"),
+}
+
+# (id, artigo en.wikipedia, nome curto, sigla, level)  — `db:<id>` = já existe no database.json
+C = {
+    "eng1": [
+        ("arsenal", "Arsenal F.C.", "Arsenal", "ARS", 86), ("aston-villa", "Aston Villa F.C.", "Aston Villa", "AVL", 81),
+        ("bournemouth", "AFC Bournemouth", "Bournemouth", "BOU", 78), ("brentford", "Brentford F.C.", "Brentford", "BRE", 78),
+        ("brighton", "Brighton & Hove Albion F.C.", "Brighton", "BHA", 79), ("chelsea", "Chelsea F.C.", "Chelsea", "CHE", 84),
+        ("coventry-city", "Coventry City F.C.", "Coventry City", "COV", 74), ("crystal-palace", "Crystal Palace F.C.", "Crystal Palace", "CRY", 78),
+        ("everton", "Everton F.C.", "Everton", "EVE", 77), ("fulham", "Fulham F.C.", "Fulham", "FUL", 77),
+        ("hull-city", "Hull City A.F.C.", "Hull City", "HUL", 73), ("ipswich-town", "Ipswich Town F.C.", "Ipswich Town", "IPS", 74),
+        ("leeds-united", "Leeds United F.C.", "Leeds United", "LEE", 76), ("liverpool-eng", "Liverpool F.C.", "Liverpool", "LIV", 86),
+        ("manchester-city", "Manchester City F.C.", "Manchester City", "MCI", 87), ("manchester-united", "Manchester United F.C.", "Manchester United", "MUN", 82),
+        ("newcastle-united", "Newcastle United F.C.", "Newcastle", "NEW", 82), ("nottingham-forest", "Nottingham Forest F.C.", "Nottingham Forest", "NFO", 78),
+        ("sunderland", "Sunderland A.F.C.", "Sunderland", "SUN", 75), ("tottenham", "Tottenham Hotspur F.C.", "Tottenham", "TOT", 81),
+    ],
+    "esp1": [
+        ("athletic-bilbao", "Athletic Bilbao", "Athletic", "ATH", 79), ("alaves", "Deportivo Alavés", "Alavés", "ALA", 74),
+        ("barcelona-esp", "FC Barcelona", "Barcelona", "BAR", 87), ("celta-vigo", "RC Celta de Vigo", "Celta", "CEL", 76),
+        ("deportivo-la-coruna", "Deportivo de La Coruña", "Deportivo", "DEP", 73), ("elche", "Elche CF", "Elche", "ELC", 73),
+        ("espanyol", "RCD Espanyol", "Espanyol", "ESP", 74), ("levante", "Levante UD", "Levante", "LEV", 72),
+        ("malaga", "Málaga CF", "Málaga", "MAL", 72), ("osasuna", "CA Osasuna", "Osasuna", "OSA", 75),
+        ("racing-santander", "Racing de Santander", "Racing Santander", "RAC", 72), ("real-betis", "Real Betis", "Betis", "BET", 79),
+        ("real-sociedad", "Real Sociedad", "Real Sociedad", "RSO", 78), ("sevilla", "Sevilla FC", "Sevilla", "SEV", 76),
+        ("valencia", "Valencia CF", "Valencia", "VAL", 75), ("villarreal", "Villarreal CF", "Villarreal", "VIL", 80),
+        ("atletico-madrid", "Atlético Madrid", "Atlético de Madrid", "ATM", 84), ("getafe", "Getafe CF", "Getafe", "GET", 74),
+        ("rayo-vallecano", "Rayo Vallecano", "Rayo Vallecano", "RAY", 74), ("real-madrid", "Real Madrid CF", "Real Madrid", "RMA", 88),
+    ],
+    "ita1": [
+        ("atalanta", "Atalanta BC", "Atalanta", "ATA", 80), ("bologna", "Bologna FC 1909", "Bologna", "BOL", 78),
+        ("cagliari", "Cagliari Calcio", "Cagliari", "CAG", 73), ("como", "Como 1907", "Como", "COM", 78),
+        ("fiorentina", "ACF Fiorentina", "Fiorentina", "FIO", 77), ("frosinone", "Frosinone Calcio", "Frosinone", "FRO", 71),
+        ("genoa", "Genoa CFC", "Genoa", "GEN", 74), ("inter-milan", "Inter Milan", "Inter", "INT", 85),
+        ("juventus", "Juventus FC", "Juventus", "JUV", 83), ("lazio", "SS Lazio", "Lazio", "LAZ", 78),
+        ("lecce", "US Lecce", "Lecce", "LEC", 72), ("ac-milan", "AC Milan", "Milan", "MIL", 82),
+        ("monza", "AC Monza", "Monza", "MON", 72), ("roma", "AS Roma", "Roma", "ROM", 81),
+        ("napoli", "SSC Napoli", "Napoli", "NAP", 83), ("parma", "Parma Calcio 1913", "Parma", "PAR", 73),
+        ("sassuolo", "US Sassuolo Calcio", "Sassuolo", "SAS", 74), ("torino", "Torino FC", "Torino", "TOR", 75),
+        ("udinese", "Udinese Calcio", "Udinese", "UDI", 74), ("venezia", "Venezia FC", "Venezia", "VEN", 71),
+    ],
+    "ger1": [
+        ("augsburg", "FC Augsburg", "Augsburg", "FCA", 74), ("union-berlin", "1. FC Union Berlin", "Union Berlin", "FCU", 75),
+        ("werder-bremen", "SV Werder Bremen", "Werder Bremen", "SVW", 75), ("borussia-dortmund", "Borussia Dortmund", "Dortmund", "BVB", 83),
+        ("elversberg", "SV Elversberg", "Elversberg", "SVE", 70), ("eintracht-frankfurt", "Eintracht Frankfurt", "Eintracht Frankfurt", "SGE", 79),
+        ("freiburg", "SC Freiburg", "Freiburg", "SCF", 77), ("gladbach", "Borussia Mönchengladbach", "M'gladbach", "BMG", 75),
+        ("hamburger-sv", "Hamburger SV", "Hamburgo", "HSV", 73), ("hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim", "TSG", 77),
+        ("koln", "1. FC Köln", "Colônia", "KOE", 73), ("rb-leipzig", "RB Leipzig", "RB Leipzig", "RBL", 80),
+        ("bayer-leverkusen", "Bayer 04 Leverkusen", "Leverkusen", "B04", 82), ("mainz", "1. FSV Mainz 05", "Mainz", "M05", 74),
+        ("bayern-munich", "FC Bayern Munich", "Bayern de Munique", "FCB", 87), ("paderborn", "SC Paderborn 07", "Paderborn", "SCP", 70),
+        ("schalke", "FC Schalke 04", "Schalke 04", "S04", 72), ("stuttgart", "VfB Stuttgart", "Stuttgart", "VFB", 79),
+    ],
+    "fra1": [
+        ("angers", "Angers SCO", "Angers", "ANG", 71), ("auxerre", "AJ Auxerre", "Auxerre", "AUX", 71),
+        ("brest", "Stade Brestois 29", "Brest", "BRE", 73), ("le-havre", "Le Havre AC", "Le Havre", "HAC", 71),
+        ("le-mans", "Le Mans FC", "Le Mans", "LMS", 69), ("lens", "RC Lens", "Lens", "RCL", 77),
+        ("lille", "Lille OSC", "Lille", "LIL", 78), ("lorient", "FC Lorient", "Lorient", "FCL", 71),
+        ("lyon", "Olympique Lyonnais", "Lyon", "OL", 78), ("marseille", "Olympique de Marseille", "Olympique de Marseille", "OM", 80),
+        ("monaco", "AS Monaco FC", "Monaco", "ASM", 79), ("nice", "OGC Nice", "Nice", "NIC", 75),
+        ("paris-fc", "Paris FC", "Paris FC", "PFC", 73), ("psg", "Paris Saint-Germain FC", "Paris Saint-Germain", "PSG", 87),
+        ("rennes", "Stade Rennais FC", "Rennes", "REN", 76), ("strasbourg", "RC Strasbourg Alsace", "Strasbourg", "RCS", 76),
+        ("toulouse", "Toulouse FC", "Toulouse", "TFC", 73), ("troyes", "ES Troyes AC", "Troyes", "EST", 69),
+    ],
+    "por1": [
+        ("academico-viseu", "Académico de Viseu F.C.", "Académico de Viseu", "ACV", 66), ("alverca", "F.C. Alverca", "Alverca", "ALV", 67),
+        ("arouca", "F.C. Arouca", "Arouca", "ARO", 68), ("benfica", "S.L. Benfica", "Benfica", "SLB", 81),
+        ("braga", "S.C. Braga", "Braga", "SCB", 76), ("casa-pia", "Casa Pia A.C.", "Casa Pia", "CPA", 68),
+        ("estoril", "G.D. Estoril Praia", "Estoril", "EST", 69), ("estrela-amadora", "C.F. Estrela da Amadora", "Estrela da Amadora", "EAM", 67),
+        ("famalicao", "F.C. Famalicão", "Famalicão", "FAM", 70), ("gil-vicente", "Gil Vicente F.C.", "Gil Vicente", "GIL", 69),
+        ("maritimo", "C.S. Marítimo", "Marítimo", "MAR", 67), ("moreirense", "Moreirense F.C.", "Moreirense", "MOR", 68),
+        ("nacional-por", "C.D. Nacional", "Nacional", "NAC", 67), ("porto", "FC Porto", "Porto", "FCP", 82),
+        ("rio-ave", "Rio Ave F.C.", "Rio Ave", "RAV", 68), ("santa-clara", "C.D. Santa Clara", "Santa Clara", "SCL", 68),
+        ("sporting-cp", "Sporting CP", "Sporting", "SCP", 81), ("vitoria-guimaraes", "Vitória S.C.", "Vitória de Guimarães", "VSC", 71),
+    ],
+    "ned1": [
+        ("ado-den-haag", "ADO Den Haag", "ADO Den Haag", "ADO", 66), ("ajax", "AFC Ajax", "Ajax", "AJA", 78),
+        ("az-alkmaar", "AZ Alkmaar", "AZ", "AZ", 75), ("cambuur", "SC Cambuur", "Cambuur", "CAM", 65),
+        ("excelsior", "Excelsior Rotterdam", "Excelsior", "EXC", 66), ("feyenoord", "Feyenoord", "Feyenoord", "FEY", 78),
+        ("fortuna-sittard", "Fortuna Sittard", "Fortuna Sittard", "FOR", 67), ("go-ahead-eagles", "Go Ahead Eagles", "Go Ahead Eagles", "GAE", 69),
+        ("groningen", "FC Groningen", "Groningen", "GRO", 68), ("heerenveen", "SC Heerenveen", "Heerenveen", "HEE", 68),
+        ("nec-nijmegen", "NEC Nijmegen", "NEC", "NEC", 70), ("pec-zwolle", "PEC Zwolle", "PEC Zwolle", "PEC", 67),
+        ("psv", "PSV Eindhoven", "PSV", "PSV", 79), ("sparta-rotterdam", "Sparta Rotterdam", "Sparta Rotterdam", "SPA", 67),
+        ("telstar", "SC Telstar", "Telstar", "TEL", 65), ("twente", "FC Twente", "Twente", "TWE", 72),
+        ("utrecht", "FC Utrecht", "Utrecht", "UTR", 71), ("willem-ii", "Willem II (football club)", "Willem II", "WII", 65),
+    ],
+    "tur1": [
+        ("alanyaspor", "Alanyaspor", "Alanyaspor", "ALN", 69), ("amedspor", "Amed S.F.K.", "Amedspor", "AMD", 66),
+        ("corum", "Çorum FK", "Çorum", "COR", 66), ("erzurumspor", "Erzurumspor F.K.", "Erzurumspor", "ERZ", 66),
+        ("gaziantep", "Gaziantep F.K.", "Gaziantep", "GFK", 68), ("genclerbirligi", "Gençlerbirliği S.K.", "Gençlerbirliği", "GEN", 67),
+        ("goztepe", "Göztepe S.K.", "Göztepe", "GOZ", 70), ("kocaelispor", "Kocaelispor", "Kocaelispor", "KOC", 67),
+        ("konyaspor", "Konyaspor", "Konyaspor", "KON", 68), ("rizespor", "Çaykur Rizespor", "Rizespor", "RIZ", 68),
+        ("samsunspor", "Samsunspor", "Samsunspor", "SAM", 70), ("trabzonspor", "Trabzonspor", "Trabzonspor", "TS", 75),
+        ("basaksehir", "İstanbul Başakşehir F.K.", "Başakşehir", "IBB", 72), ("besiktas", "Beşiktaş J.K.", "Beşiktaş", "BJK", 77),
+        ("fenerbahce", "Fenerbahçe S.K. (football)", "Fenerbahçe", "FB", 79), ("galatasaray", "Galatasaray S.K. (football)", "Galatasaray", "GS", 80),
+        ("kasimpasa", "Kasımpaşa S.K.", "Kasımpaşa", "KAS", 68), ("eyupspor", "Eyüpspor", "Eyüpspor", "EYP", 67),
+    ],
+    "sco1": [
+        ("aberdeen", "Aberdeen F.C.", "Aberdeen", "ABE", 68), ("celtic", "Celtic F.C.", "Celtic", "CEL", 76),
+        ("dundee", "Dundee F.C.", "Dundee", "DUN", 64), ("dundee-united", "Dundee United F.C.", "Dundee United", "DDU", 65),
+        ("falkirk", "Falkirk F.C.", "Falkirk", "FAL", 63), ("hearts", "Heart of Midlothian F.C.", "Hearts", "HEA", 69),
+        ("hibernian", "Hibernian F.C.", "Hibernian", "HIB", 67), ("kilmarnock", "Kilmarnock F.C.", "Kilmarnock", "KIL", 64),
+        ("motherwell", "Motherwell F.C.", "Motherwell", "MOT", 65), ("rangers", "Rangers F.C.", "Rangers", "RAN", 74),
+        ("st-johnstone", "St Johnstone F.C.", "St Johnstone", "STJ", 62), ("st-mirren", "St Mirren F.C.", "St Mirren", "STM", 64),
+    ],
+    "arg1": [
+        ("aldosivi", "Club Atlético Aldosivi", "Aldosivi", "ALD", 67), ("db:argentinos-juniors", "", "", "", 0),
+        ("atletico-tucuman", "Atlético Tucumán", "Atlético Tucumán", "ATU", 68), ("banfield", "Club Atlético Banfield", "Banfield", "BAN", 68),
+        ("db:barracas-central", "", "", "", 0), ("belgrano", "Club Atlético Belgrano", "Belgrano", "BEL", 70),
+        ("db:boca-juniors", "", "", "", 0), ("central-cordoba", "Central Córdoba de Santiago del Estero", "Central Córdoba", "CCO", 67),
+        ("defensa-y-justicia", "Defensa y Justicia", "Defensa y Justicia", "DYJ", 69), ("db:riestra", "", "", "", 0),
+        ("db:estudiantes", "", "", "", 0), ("estudiantes-rio-cuarto", "Estudiantes de Río Cuarto", "Estudiantes (RC)", "ERC", 65),
+        ("gimnasia-la-plata", "Club de Gimnasia y Esgrima La Plata", "Gimnasia La Plata", "GLP", 68),
+        ("gimnasia-mendoza", "Gimnasia y Esgrima de Mendoza", "Gimnasia Mendoza", "GME", 66),
+        ("huracan", "Club Atlético Huracán", "Huracán", "HUR", 70), ("db:independiente", "", "", "", 0),
+        ("db:independiente-rivadavia", "", "", "", 0), ("instituto", "Instituto Atlético Central Córdoba", "Instituto", "INS", 67),
+        ("db:lanus", "", "", "", 0), ("newells-old-boys", "Newell's Old Boys", "Newell's Old Boys", "NOB", 69),
+        ("db:platense", "", "", "", 0), ("db:racing", "", "", "", 0), ("db:river-plate", "", "", "", 0),
+        ("db:rosario-central", "", "", "", 0), ("db:san-lorenzo", "", "", "", 0),
+        ("sarmiento", "Club Atlético Sarmiento", "Sarmiento", "SAR", 66), ("db:talleres", "", "", "", 0),
+        ("db:tigre", "", "", "", 0), ("union-santa-fe", "Unión de Santa Fe", "Unión", "UNI", 68), ("db:velez", "", "", "", 0),
+    ],
+    "ksa1": [
+        ("abha", "Abha Club", "Abha", "ABH", 66), ("al-ahli", "Al-Ahli Saudi FC", "Al-Ahli", "AHL", 77),
+        ("al-diriyah", "Al-Diriyah Club", "Al-Diriyah", "DIR", 64), ("al-ettifaq", "Al-Ettifaq Club", "Al-Ettifaq", "ETT", 71),
+        ("al-faisaly", "Al-Faisaly FC", "Al-Faisaly", "FAI", 65), ("al-fateh", "Al-Fateh SC", "Al-Fateh", "FAT", 68),
+        ("al-fayha", "Al-Fayha FC", "Al-Fayha", "FAY", 67), ("al-hazem", "Al-Hazem FC", "Al-Hazem", "HAZ", 65),
+        ("al-hilal", "Al Hilal SFC", "Al-Hilal", "HIL", 79), ("al-ittihad", "Al-Ittihad Club (Jeddah)", "Al-Ittihad", "ITT", 77),
+        ("al-khaleej", "Al-Khaleej FC", "Al-Khaleej", "KHA", 67), ("al-kholood", "Al-Kholood Club", "Al-Kholood", "KHO", 66),
+        ("al-nassr", "Al-Nassr FC", "Al-Nassr", "NAS", 78), ("al-qadsiah", "Al Qadsiah FC", "Al-Qadsiah", "QAD", 74),
+        ("al-riyadh", "Al-Riyadh SC", "Al-Riyadh", "RIY", 65), ("al-shabab", "Al Shabab Club", "Al-Shabab", "SHA", 70),
+        ("al-taawoun", "Al Taawoun FC", "Al-Taawoun", "TAA", 70), ("neom", "Neom SC", "NEOM", "NEO", 69),
+    ],
+    "jpn1": [
+        ("kashima-antlers", "Kashima Antlers", "Kashima Antlers", "KAS", 70), ("mito-hollyhock", "Mito HollyHock", "Mito HollyHock", "MIT", 64),
+        ("urawa-reds", "Urawa Red Diamonds", "Urawa Reds", "URA", 69), ("jef-united", "JEF United Chiba", "JEF United", "JEF", 65),
+        ("kashiwa-reysol", "Kashiwa Reysol", "Kashiwa Reysol", "KSW", 69), ("fc-tokyo", "FC Tokyo", "FC Tokyo", "TOK", 68),
+        ("tokyo-verdy", "Tokyo Verdy", "Tokyo Verdy", "VER", 66), ("machida-zelvia", "FC Machida Zelvia", "Machida Zelvia", "MAC", 69),
+        ("kawasaki-frontale", "Kawasaki Frontale", "Kawasaki Frontale", "KAW", 69), ("yokohama-f-marinos", "Yokohama F. Marinos", "Yokohama F. Marinos", "YFM", 68),
+        ("shimizu-s-pulse", "Shimizu S-Pulse", "Shimizu S-Pulse", "SHI", 66), ("nagoya-grampus", "Nagoya Grampus", "Nagoya Grampus", "NAG", 67),
+        ("kyoto-sanga", "Kyoto Sanga FC", "Kyoto Sanga", "KYO", 68), ("gamba-osaka", "Gamba Osaka", "Gamba Osaka", "GAM", 68),
+        ("cerezo-osaka", "Cerezo Osaka", "Cerezo Osaka", "CER", 67), ("vissel-kobe", "Vissel Kobe", "Vissel Kobe", "VIS", 70),
+        ("fagiano-okayama", "Fagiano Okayama", "Fagiano Okayama", "OKA", 65), ("sanfrecce-hiroshima", "Sanfrecce Hiroshima", "Sanfrecce Hiroshima", "HIR", 70),
+        ("avispa-fukuoka", "Avispa Fukuoka", "Avispa Fukuoka", "FUK", 66), ("v-varen-nagasaki", "V-Varen Nagasaki", "V-Varen Nagasaki", "NGS", 65),
+    ],
+    "usa1": [
+        ("atlanta-united", "Atlanta United FC", "Atlanta United", "ATL", 69), ("austin-fc", "Austin FC", "Austin FC", "ATX", 67),
+        ("cf-montreal", "CF Montréal", "CF Montréal", "MTL", 65), ("charlotte-fc", "Charlotte FC", "Charlotte FC", "CLT", 68),
+        ("chicago-fire", "Chicago Fire FC", "Chicago Fire", "CHI", 67), ("colorado-rapids", "Colorado Rapids", "Colorado Rapids", "COL", 66),
+        ("columbus-crew", "Columbus Crew", "Columbus Crew", "CLB", 69), ("dc-united", "D.C. United", "D.C. United", "DC", 65),
+        ("fc-cincinnati", "FC Cincinnati", "FC Cincinnati", "CIN", 69), ("fc-dallas", "FC Dallas", "FC Dallas", "DAL", 66),
+        ("houston-dynamo", "Houston Dynamo FC", "Houston Dynamo", "HOU", 66), ("inter-miami", "Inter Miami CF", "Inter Miami", "MIA", 72),
+        ("la-galaxy", "LA Galaxy", "LA Galaxy", "LA", 68), ("lafc", "Los Angeles FC", "Los Angeles FC", "LAFC", 71),
+        ("minnesota-united", "Minnesota United FC", "Minnesota United", "MIN", 67), ("nashville-sc", "Nashville SC", "Nashville SC", "NSH", 68),
+        ("new-england", "New England Revolution", "New England", "NE", 66), ("nycfc", "New York City FC", "New York City FC", "NYC", 68),
+        ("ny-red-bulls", "New York Red Bulls", "New York Red Bulls", "RBNY", 67), ("orlando-city", "Orlando City SC", "Orlando City", "ORL", 68),
+        ("philadelphia-union", "Philadelphia Union", "Philadelphia Union", "PHI", 69), ("portland-timbers", "Portland Timbers", "Portland Timbers", "POR", 67),
+        ("real-salt-lake", "Real Salt Lake", "Real Salt Lake", "RSL", 66), ("san-diego-fc", "San Diego FC", "San Diego FC", "SD", 69),
+        ("san-jose", "San Jose Earthquakes", "San Jose", "SJ", 66), ("seattle-sounders", "Seattle Sounders FC", "Seattle Sounders", "SEA", 69),
+        ("sporting-kc", "Sporting Kansas City", "Sporting KC", "SKC", 65), ("st-louis-city", "St. Louis City SC", "St. Louis City", "STL", 66),
+        ("toronto-fc", "Toronto FC", "Toronto FC", "TOR", 66), ("vancouver-whitecaps", "Vancouver Whitecaps FC", "Vancouver Whitecaps", "VAN", 69),
+    ],
+}
+
+# Seleções: (FIFA, nome PT, confed, tier 1..5, level, artigo en.wikipedia)
+NATIONS = [
+    ("BRA", "Brasil", "CONMEBOL", 1, 85, "Brazil national football team"),
+    ("ARG", "Argentina", "CONMEBOL", 1, 87, "Argentina national football team"),
+    ("URU", "Uruguai", "CONMEBOL", 2, 80, "Uruguay national football team"),
+    ("COL", "Colômbia", "CONMEBOL", 2, 80, "Colombia national football team"),
+    ("ECU", "Equador", "CONMEBOL", 2, 78, "Ecuador national football team"),
+    ("PAR", "Paraguai", "CONMEBOL", 3, 76, "Paraguay national football team"),
+    ("CHI", "Chile", "CONMEBOL", 4, 73, "Chile national football team"),
+    ("PER", "Peru", "CONMEBOL", 4, 72, "Peru national football team"),
+    ("BOL", "Bolívia", "CONMEBOL", 5, 68, "Bolivia national football team"),
+    ("VEN", "Venezuela", "CONMEBOL", 4, 72, "Venezuela national football team"),
+    ("FRA", "França", "UEFA", 1, 87, "France national football team"),
+    ("ESP", "Espanha", "UEFA", 1, 87, "Spain national football team"),
+    ("ENG", "Inglaterra", "UEFA", 1, 86, "England national football team"),
+    ("POR", "Portugal", "UEFA", 1, 85, "Portugal national football team"),
+    ("GER", "Alemanha", "UEFA", 1, 84, "Germany national football team"),
+    ("NED", "Holanda", "UEFA", 1, 84, "Netherlands national football team"),
+    ("BEL", "Bélgica", "UEFA", 1, 82, "Belgium national football team"),
+    ("ITA", "Itália", "UEFA", 2, 82, "Italy national football team"),
+    ("CRO", "Croácia", "UEFA", 2, 81, "Croatia national football team"),
+    ("SUI", "Suíça", "UEFA", 2, 79, "Switzerland national football team"),
+    ("DEN", "Dinamarca", "UEFA", 2, 79, "Denmark national football team"),
+    ("AUT", "Áustria", "UEFA", 2, 78, "Austria national football team"),
+    ("NOR", "Noruega", "UEFA", 2, 79, "Norway national football team"),
+    ("TUR", "Turquia", "UEFA", 2, 78, "Turkey national football team"),
+    ("SCO", "Escócia", "UEFA", 3, 75, "Scotland national football team"),
+    ("POL", "Polônia", "UEFA", 3, 76, "Poland national football team"),
+    ("SRB", "Sérvia", "UEFA", 3, 76, "Serbia national football team"),
+    ("UKR", "Ucrânia", "UEFA", 3, 76, "Ukraine national football team"),
+    ("USA", "Estados Unidos", "CONCACAF", 2, 77, "United States men's national soccer team"),
+    ("MEX", "México", "CONCACAF", 2, 77, "Mexico national football team"),
+    ("CAN", "Canadá", "CONCACAF", 3, 75, "Canada men's national soccer team"),
+    ("CRC", "Costa Rica", "CONCACAF", 4, 70, "Costa Rica national football team"),
+    ("PAN", "Panamá", "CONCACAF", 4, 71, "Panama national football team"),
+    ("JAM", "Jamaica", "CONCACAF", 4, 69, "Jamaica national football team"),
+    ("JPN", "Japão", "AFC", 2, 78, "Japan national football team"),
+    ("KOR", "Coreia do Sul", "AFC", 3, 76, "South Korea national football team"),
+    ("IRN", "Irã", "AFC", 3, 74, "Iran national football team"),
+    ("AUS", "Austrália", "AFC", 3, 74, "Australia men's national soccer team"),
+    ("KSA", "Arábia Saudita", "AFC", 4, 71, "Saudi Arabia national football team"),
+    ("QAT", "Catar", "AFC", 4, 70, "Qatar national football team"),
+    ("UZB", "Uzbequistão", "AFC", 4, 71, "Uzbekistan national football team"),
+    ("MAR", "Marrocos", "CAF", 1, 82, "Morocco national football team"),
+    ("SEN", "Senegal", "CAF", 2, 79, "Senegal national football team"),
+    ("EGY", "Egito", "CAF", 3, 75, "Egypt national football team"),
+    ("NGA", "Nigéria", "CAF", 3, 76, "Nigeria national football team"),
+    ("CIV", "Costa do Marfim", "CAF", 3, 77, "Ivory Coast national football team"),
+    ("ALG", "Argélia", "CAF", 3, 76, "Algeria national football team"),
+    ("TUN", "Tunísia", "CAF", 4, 72, "Tunisia national football team"),
+    # demais classificados à Copa 2026 (48 seleções no total na Copa)
+    ("CZE", "Tchéquia", "UEFA", 3, 75, "Czech Republic national football team"),
+    ("BIH", "Bósnia e Herzegovina", "UEFA", 4, 73, "Bosnia and Herzegovina national football team"),
+    ("SWE", "Suécia", "UEFA", 3, 76, "Sweden men's national football team"),
+    ("RSA", "África do Sul", "CAF", 4, 71, "South Africa national soccer team"),
+    ("GHA", "Gana", "CAF", 4, 73, "Ghana national football team"),
+    ("CPV", "Cabo Verde", "CAF", 5, 69, "Cape Verde national football team"),
+    ("COD", "RD Congo", "CAF", 4, 72, "DR Congo national football team"),
+    ("HAI", "Haiti", "CONCACAF", 5, 66, "Haiti national football team"),
+    ("CUW", "Curaçao", "CONCACAF", 5, 67, "Curaçao national football team"),
+    ("IRQ", "Iraque", "AFC", 4, 69, "Iraq national football team"),
+    ("JOR", "Jordânia", "AFC", 5, 68, "Jordan national football team"),
+    ("NZL", "Nova Zelândia", "OFC", 5, 67, "New Zealand men's national football team"),
+]
+# nome usado nos títulos do artigo das convocações da Copa -> código FIFA
+WC_NAMES = {"Czech Republic": "CZE", "Bosnia and Herzegovina": "BIH", "South Africa": "RSA", "South Korea": "KOR",
+            "United States": "USA", "Ivory Coast": "CIV", "Curaçao": "CUW", "New Zealand": "NZL", "Cape Verde": "CPV",
+            "DR Congo": "COD", "Turkey": "TUR", "Saudi Arabia": "KSA", "Netherlands": "NED"}
+WC_SQUADS_ARTICLE = "2026 FIFA World Cup squads"
+
+
+def clubs():
+    """Lista achatada dos clubes NOVOS (não db:) com a liga."""
+    out = []
+    for lg, rows in C.items():
+        for cid, wiki, name, abbr, lvl in rows:
+            if cid.startswith("db:"):
+                continue
+            out.append({"id": cid, "wiki": wiki, "name": name, "abbr": abbr, "level": lvl, "league": lg})
+    return out
+
+
+def league_ids(lg):
+    return [r[0][3:] if r[0].startswith("db:") else r[0] for r in C[lg]]

@@ -26,6 +26,18 @@
 //    comparam as opções pelo modelo em vez de seguir uma tabela.
 //  • Tudo junto (pré-jogo + seguir as dicas ao vivo) vs. Equilibrada com trocas normais: 1,34 → 1,58 ponto/jogo
 //    (+0,24, ≈ 9 pontos num Brasileirão de 38 rodadas). Só o pré-jogo: +0,18; as dicas ao vivo somam +0,07.
+//
+//  Revisão (tests/assistantQuality.test.ts: 12 cenários × 300 jogos, save "em andamento" com
+//  entrosamento e familiaridade no sistema de sempre). O auxiliar antigo errava em três pontos:
+//   1. o modelo dava a familiaridade e o entrosamento da formação SALVA a qualquer formação candidata,
+//      então trocar de sistema parecia de graça (e "Aplicar" apagava instruções e funções do time);
+//   2. as sugestões do modelo nunca eram conferidas no motor de verdade;
+//   3. ao vivo, as trocas vinham uma por vez (cada uma gastando uma parada) e só com ganho grande,
+//      então quem seguia as dicas fazia menos trocas que o técnico automático e perdia mais.
+//  Agora: o modelo usa a formação avaliada e as instruções do time; os finalistas são conferidos por
+//  simulação pareada (refineAnalysis — RNG próprio, mundo intocado) e só se troca a tática atual com
+//  vantagem acima da margem de erro (quanto melhor o auxiliar, mais jogos e menos margem); ao vivo,
+//  as trocas saem em pacotes nas janelas de ~60', ~70' e ~80'.
 //  RED_CARD_FINDING
 import { isAvailable, squadOf, validLineup, autoLineup } from "./lineup";
 import { aiMatchLineup, alternativeLineup, rotationIntensity, rotationTier } from "./rotation";
@@ -35,6 +47,7 @@ import { FORMATIONS, MENTALITY_NAMES, ovrAt, POS_GROUP, POS_NAME, PRESSING_NAMES
 import { shortName } from "./player";
 import { getRngState, hashString, setRngState } from "./rng";
 import { aiTalk, suggest, talkCtx, talkEffect } from "./teamtalk";
+import { instructionFx, NEUTRAL_FX } from "./tactics";
 import { hasTrait } from "./traits";
 import type { Club, Fixture, Lineup, Player, Pos, Tactic, World } from "./types";
 
@@ -82,6 +95,11 @@ export interface SideState {
   penAward: number; // dribladores cavam mais pênaltis
   setPiece: number; // bola parada (cabeçadas e faltas)
   fatMul: number; // ritmo de cansaço (Raçudo, foco físico)
+  // instruções do time (tactics.ts): volume e qualidade das chances
+  open: number;
+  openAgainst: number;
+  xg: number;
+  xgAgainst: number;
 }
 
 /** Partida, clube e adversário: liga os efeitos de gestão (forma, jogadas, entrosamento, preleção). */
@@ -91,6 +109,7 @@ export interface SideCtx {
   oppM: number; // mentalidade do adversário
   captain?: number;
   talk?: number; // efeito médio da conversa no período analisado
+  formation?: string; // formação avaliada (familiaridade e pares vizinhos dependem dela); padrão: a salva
 }
 
 /** Ritmo de perda de condição por minuto (match.ts: a cada 5 minutos). */
@@ -105,7 +124,12 @@ export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: num
   let d = 0, dw = 0, mm = 0, mw = 0, a = 0, aw = 0, gk = 30, count = 0, qs = 0, qw = 0, fis = 0, cond = 0, fat = 0;
   let pen = 50, penPen = false, penAdj = 0, penSave = 0;
   const isUser = !!ctx && ctx.club.id === w.userClubId;
-  const sm = ctx ? sideMult(w, ctx.f, ctx.club, slots, ids, ctx.oppM, m, ctx.captain) : NEUTRAL_SIDE;
+  // a familiaridade e os vizinhos de campo são os da formação avaliada, não os da salva
+  const club = ctx && ctx.formation && ctx.formation !== ctx.club.tactic.formation
+    ? { ...ctx.club, tactic: { ...ctx.club.tactic, formation: ctx.formation, roles: undefined } }
+    : ctx?.club;
+  const sm = ctx && club ? sideMult(w, ctx.f, club, slots, ids, ctx.oppM, m, ctx.captain) : NEUTRAL_SIDE;
+  const fx = club?.tactic.ti ? instructionFx(w, club.tactic, slots, ids) : NEUTRAL_FX;
   ids.forEach((id, k) => {
     if (id == null) return;
     const pl = w.players[id];
@@ -113,7 +137,7 @@ export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: num
     if (!pl || !pos) return;
     count++;
     const md = ctx ? playerMods(w, ctx.f, pl, isUser) : null;
-    const fm = (md?.fatigue ?? 1) * sm.fatigue;
+    const fm = (md?.fatigue ?? 1) * sm.fatigue * fx.fatigue;
     const c = horizon ? Math.max(5, pl.cond - fatigueRate(pl.attrs.fis, p) * fm * horizon * 0.5) : pl.cond;
     const eff = ovrAt(pl, pos) * (0.7 + 0.3 * (c / 100)) * (0.97 + 0.06 * (pl.morale / 100)) * (md ? md.eff * md.conf : 1);
     if (pos === "GOL") { gk = eff; penSave = md?.penSave ?? 0; }
@@ -136,13 +160,14 @@ export function sideState(w: World, slots: Pos[], ids: (number | null)[], m: num
   const k = commonFactor(sm, ctx?.talk ?? 0);
   return {
     s: {
-      att: line(a, aw, BASE.att) * short * sm.att * k,
-      mid: line(mm, mw, BASE.mid) * short * sm.mid * k,
-      def: line(d, dw, BASE.def) * short * sm.def * k,
+      att: line(a, aw, BASE.att) * short * sm.att * k * fx.att,
+      mid: line(mm, mw, BASE.mid) * short * sm.mid * k * fx.mid,
+      def: line(d, dw, BASE.def) * short * sm.def * k * fx.def,
       gk: gk * sm.gk + sm.gkPlus,
     },
     m, p, home, shotQ: qw > 0 ? qs / qw : 1, penFin: pen, fis: count ? fis / count : 70, cond: count ? cond / count : 100, horizon,
     penAdj: penAdj + sm.penPlus, penSave, penAward: sm.penAward, setPiece: sm.setPiece, fatMul: count ? fat / count : 1,
+    open: fx.open, openAgainst: fx.openAgainst, xg: fx.xg, xgAgainst: fx.xgAgainst,
   };
 }
 
@@ -170,8 +195,8 @@ export function expectedGoals(a: SideState, b: SideState, mins: number): [number
   const shareA = pmA / (pmA + pmB);
   const lam = (S: Sectors, O: Sectors, x: SideState, y: SideState, share: number) => {
     const ratio = S.att / Math.max(20, O.def);
-    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp) * (1 + 0.06 * x.m + 0.03 * y.m);
-    const xg = clampN(TUNING.xgBase * 1.163 * x.shotQ * Math.exp((S.att - O.def) / TUNING.xgAttDiv), 0.02, 0.6);
+    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp) * (1 + 0.06 * x.m + 0.03 * y.m) * x.open * y.openAgainst;
+    const xg = clampN(TUNING.xgBase * 1.163 * x.shotQ * Math.exp((S.att - O.def) / TUNING.xgAttDiv) * x.xg * y.xgAgainst, 0.02, 0.6);
     const pGoal = clampN(xg * (1 + (70 - O.gk) / 50), 0.01, 0.75) * 0.97;
     const conv = clampN(0.74 + (x.penFin - 70) / 200 + x.penAdj - y.penSave - (O.gk - 70) / 250, 0.45, 0.95);
     // bola parada (cabeçadas de escanteio e faltas diretas): uns poucos gols a mais por jogo
@@ -379,6 +404,8 @@ export interface MatchAnalysis {
   verdict: "favorito" | "equilibrado" | "azarão";
   rec: { formation: Reasoned<string>; mentality: Reasoned<number>; pressing: Reasoned<number> };
   plan: TacticPlan; // tática + escalação sugeridas (o botão "Aplicar sugestões")
+  candidates: TacticPlan[]; // finalistas (o 1º é a tática atual) para a conferência por simulação
+  check?: AdviceCheck; // resultado da conferência por simulação (refineAnalysis)
   fixes: LineupFix[];
   now: Outlook; // estimativa do modelo com a tática atual
   suggested: Outlook; // com a sugestão
@@ -450,11 +477,11 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
   const oppCtx = talkCtx(w, f, opp, oppLineup, user, curLineup, "pre");
   const userTalk = talkEffect(preCtx, suggest(w, f, preCtx, userIdx)) * 0.5;
   const oppTalk = talkEffect(oppCtx, aiTalk(w, f, oppCtx, (1 - userIdx) as 0 | 1)) * 0.5;
-  const usCtx = (lineup: Lineup, oppM: number): SideCtx => ({ f, club: user, oppM, captain: lineup.captain, talk: userTalk });
+  const usCtx = (lineup: Lineup, oppM: number, formation = curForm): SideCtx => ({ f, club: user, oppM, captain: lineup.captain, talk: userTalk, formation });
   const themCtx = (m: number): SideCtx => ({ f, club: opp, oppM: m, captain: oppLineup.captain, talk: oppTalk });
   const evalPlan = (form: string, lineup: Lineup, m: number, p: number): Outlook => {
     const ai = aiFor(form);
-    const us = sideState(w, slotsOf(form), lineup.starters, m, p, home, MATCH_MINUTES, usCtx(lineup, ai.mentality));
+    const us = sideState(w, slotsOf(form), lineup.starters, m, p, home, MATCH_MINUTES, usCtx(lineup, ai.mentality, form));
     const them = sideState(w, oppSlots, oppLineup.starters, ai.mentality, ai.pressing, oppHome, MATCH_MINUTES, themCtx(m));
     const [lu, lt] = expectedGoals(us, them, MATCH_MINUTES);
     return resultProbs(lu, lt);
@@ -466,8 +493,11 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
   type Cand = { form: string; lineup: Lineup; m: number; p: number; o: Outlook; score: number };
   const bestBy = new Map<string, Cand>();
   const tableBy = new Map<string, Outlook[][]>(); // [m+2][p]
+  const all: Cand[] = [];
   for (const form of Object.keys(FORMATIONS)) {
-    const lineup = bestLineup(w, user, f.comp, form);
+    let lineup = bestLineup(w, user, f.comp, form);
+    // no sistema atual, manter o time que já joga junto pode render mais (entrosamento dos pares)
+    if (form === curForm && evalPlan(form, curLineup, 0, 1).pts >= evalPlan(form, lineup, 0, 1).pts) lineup = curLineup;
     const st = sideState(w, slotsOf(form), lineup.starters, 0, 1, home);
     const table: Outlook[][] = [];
     for (let m = -2; m <= 2; m++) {
@@ -476,6 +506,7 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
         const o = evalPlan(form, lineup, m, p);
         row.push(o);
         const score = o.pts - pressCost(p, daysToNext, st.cond);
+        all.push({ form, lineup, m, p, o, score });
         const cur = bestBy.get(form);
         if (!cur || score > cur.score + 1e-9) bestBy.set(form, { form, lineup, m, p, o, score });
       }
@@ -547,6 +578,20 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
   })();
 
   const plan: TacticPlan = { formation: pick.form, mentality: pick.m, pressing: pick.p, lineup: pick.lineup };
+  // finalistas para a conferência por simulação: o melhor do modelo, os vice-líderes e a tática atual
+  const candidates: TacticPlan[] = [];
+  const seen = new Set<string>();
+  const push = (c: { form: string; m: number; p: number; lineup: Lineup }) => {
+    const k = `${c.form}|${c.m}|${c.p}`;
+    if (seen.has(k) || candidates.length >= 5) return;
+    seen.add(k);
+    candidates.push({ formation: c.form, mentality: c.m, pressing: c.p, lineup: c.lineup });
+  };
+  push({ form: curForm, m: user.tactic.mentality, p: user.tactic.pressing, lineup: curLineup });
+  push(pick);
+  push(stay);
+  push({ ...pick, m: Math.sign(pick.m) }); // a versão moderada da mesma ideia
+  for (const c of all.slice().sort((x, y) => y.score - x.score)) push(c);
   const sameLineup = pick.form === curForm && pick.lineup.starters.every((id, i) => id === curLineup.starters[i]);
   const changed = pick.form !== curForm || pick.m !== user.tactic.mentality || pick.p !== user.tactic.pressing || !sameLineup;
 
@@ -561,6 +606,7 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
       pressing: { value: pick.p, reason: pressReason },
     },
     plan,
+    candidates,
     fixes: lineupFixes(w, user, f.comp),
     now,
     suggested: pick.o,
@@ -603,7 +649,14 @@ export function analyzeSquad(w: World): SquadAnalysis {
 /** Aplica formação, mentalidade, pressão e a escalação recalculada ao clube do usuário. */
 export function applyAdvice(w: World, club: Club, advice: TacticPlan, compId?: string) {
   const formation = FORMATIONS[advice.formation] ? advice.formation : club.tactic.formation;
-  club.tactic = { formation, mentality: clampN(Math.round(advice.mentality), -2, 2), pressing: clampN(Math.round(advice.pressing), 0, 2) };
+  // mantém as instruções do time e as mudanças programadas; funções só valem na mesma formação
+  const keepRoles = formation === club.tactic.formation;
+  club.tactic = {
+    ...club.tactic,
+    formation, mentality: clampN(Math.round(advice.mentality), -2, 2), pressing: clampN(Math.round(advice.pressing), 0, 2),
+    roles: keepRoles ? club.tactic.roles : undefined,
+    preset: keepRoles ? club.tactic.preset : undefined,
+  };
   const l = advice.lineup && advice.lineup.starters.length === FORMATIONS[formation].length ? advice.lineup : bestLineup(w, club, compId, formation);
   club.lineup = { starters: l.starters.slice(), bench: l.bench.slice(), captain: l.captain };
 }
@@ -655,7 +708,8 @@ export function cloneForMatch(w: World, f: Fixture): TestBench {
 /** Coloca a tática do usuário no mini-mundo. */
 function applyPlan(b: TestBench, plan: TacticPlan) {
   const club = b.mini.clubs[b.mini.userClubId];
-  club.tactic = { formation: plan.formation, mentality: plan.mentality, pressing: plan.pressing };
+  const same = plan.formation === club.tactic.formation;
+  club.tactic = { ...club.tactic, formation: plan.formation, mentality: plan.mentality, pressing: plan.pressing, roles: same ? club.tactic.roles : undefined };
   club.lineup = plan.lineup
     ? { starters: plan.lineup.starters.slice(), bench: plan.lineup.bench.slice(), captain: plan.lineup.captain }
     : bestLineup(b.mini, club, b.fx.comp, plan.formation);
@@ -736,6 +790,140 @@ export async function estimateOdds(
     if (t.n < n) await new Promise<void>((r) => setTimeout(r, 0));
   }
   return tallyToOdds(t);
+}
+
+// ---------------------------------------------------------------- conferência por simulação
+// O modelo analítico escolhe os finalistas; o auxiliar confere jogando cada um várias vezes no
+// próprio motor (mini-mundo clonado, RNG próprio com semente fixa: o mundo real não muda nada).
+// Só troca a tática atual quando a vantagem simulada passa da margem de erro, então mesmo um
+// auxiliar fraco não piora o time — ele só acerta menos vezes. Quanto melhor o auxiliar, mais jogos
+// ele simula e menos margem exige.
+
+export interface AdviceCheck {
+  sims: number; // jogos simulados por opção
+  tested: number; // opções conferidas
+  gain: number; // pontos/jogo a mais que a tática atual (simulado)
+  gdGain: number; // saldo de gols/jogo a mais
+  confidence: number; // 0–1: chance de a sugestão ser mesmo melhor que a atual
+  level: "alta" | "média" | "baixa";
+  kept: boolean; // a tática atual venceu (nada a mudar)
+  reason: string;
+}
+
+/** Orçamento do auxiliar pela qualidade (estrelas): jogos simulados por opção e margem exigida (desvios-padrão). */
+export function auxBudget(stars: number): { sims: number; z: number } {
+  const s = clampN(Math.round(stars), 1, 5);
+  return { sims: [0, 50, 80, 120, 170, 240][s], z: [0, 1.7, 1.45, 1.2, 1, 0.8][s] };
+}
+
+export function auxStars(w: World): number {
+  return w.staff?.aux?.stars ?? 3;
+}
+
+/** Normal acumulada (aproximação de Abramowitz–Stegun). */
+function phi(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp((-x * x) / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+
+interface McState { b: TestBench; plans: TacticPlan[]; pts: number[][]; gd: number[][]; seed: number; done: number }
+
+function mcStart(w: World, f: Fixture, plans: TacticPlan[]): McState {
+  return { b: cloneForMatch(w, f), plans, pts: plans.map(() => []), gd: plans.map(() => []), seed: fixtureSeed(f) ^ 0x5bd1e995, done: 0 };
+}
+
+/** Joga `n` rodadas: em cada uma, todas as opções com a MESMA semente (comparação pareada). */
+function mcRun(st: McState, n: number) {
+  const outer = getRngState();
+  try {
+    for (let r = 0; r < n; r++, st.done++) {
+      st.plans.forEach((plan, k) => {
+        st.b.reset();
+        applyPlan(st.b, plan);
+        setRngState((st.seed + st.done * 0x9e3779b1) >>> 0 || 1);
+        // as trocas e conversas ficam com o "técnico automático" (o mesmo para todas as opções)
+        const sim = new MatchSim(st.b.mini, st.b.fx, { live: false, userSide: null });
+        sim.runToEnd();
+        const us = sim.sides[st.b.userSide].goals, them = sim.sides[1 - st.b.userSide].goals;
+        st.pts[k].push(us > them ? 3 : us === them ? 1 : 0);
+        st.gd[k].push(us - them);
+      });
+    }
+  } finally {
+    st.b.reset();
+    setRngState(outer);
+  }
+}
+
+/** Escolhe entre os finalistas: a tática atual (índice 0) só perde se a vantagem passar da margem. */
+function mcDecide(a: MatchAnalysis, st: McState, z: number): MatchAnalysis {
+  const n = st.done;
+  const util = (k: number, i: number) => st.pts[k][i] + 0.15 * st.gd[k][i];
+  let best = 0, bestLow = 0, bestMean = 0, bestSe = 1;
+  for (let k = 1; k < st.plans.length; k++) {
+    let sum = 0, sq = 0;
+    for (let i = 0; i < n; i++) { const d = util(k, i) - util(0, i); sum += d; sq += d * d; }
+    const mean = sum / n;
+    const se = Math.sqrt(Math.max(1e-9, sq / n - mean * mean) / Math.max(1, n - 1));
+    const low = mean - z * se;
+    if (low > bestLow) { best = k; bestLow = low; bestMean = mean; bestSe = se; }
+  }
+  const avg = (xs: number[]) => xs.reduce((x, y) => x + y, 0) / Math.max(1, xs.length);
+  const gain = avg(st.pts[best]) - avg(st.pts[0]);
+  const gdGain = avg(st.gd[best]) - avg(st.gd[0]);
+  const confidence = best === 0 ? 0 : phi(bestMean / bestSe);
+  const level = confidence >= 0.95 ? "alta" : confidence >= 0.8 ? "média" : "baixa";
+  const kept = best === 0;
+  const plan = st.plans[best];
+  const reason = kept
+    ? `Conferi ${st.plans.length - 1} alternativa${st.plans.length > 2 ? "s" : ""} em ${n} jogos simulados cada: nenhuma foi melhor que a sua tática além da margem de erro. Melhor não mexer.`
+    : `Conferi em ${n} jogos simulados: ${plan.formation}, ${MENTALITY_NAMES[plan.mentality].toLowerCase()}, ${PRESSING_NAMES[plan.pressing].toLowerCase()} rendeu ${gain >= 0 ? "+" : ""}${num(gain)} ponto e ${gdGain >= 0 ? "+" : ""}${num(gdGain)} gol de saldo por jogo a mais que a sua tática.`;
+  const check: AdviceCheck = { sims: n, tested: st.plans.length - 1, gain, gdGain, confidence, level, kept, reason };
+  const user = { formation: st.plans[0].formation, mentality: st.plans[0].mentality, pressing: st.plans[0].pressing };
+  const same = (x: TacticPlan) => x.formation === plan.formation && x.mentality === plan.mentality && x.pressing === plan.pressing;
+  const rec = same(a.plan) ? a.rec : {
+    formation: { value: plan.formation, reason: plan.formation === user.formation ? `Fico no ${plan.formation}: o time já está entrosado nele.` : `${plan.formation}: foi o sistema que mais rendeu nas simulações.` },
+    mentality: { value: plan.mentality, reason: kept ? "Mantenha a postura atual: as outras não renderam mais nas simulações." : `${MENTALITY_NAMES[plan.mentality]}: a postura que mais pontuou nas simulações.` },
+    pressing: { value: plan.pressing, reason: kept ? "Mantenha a marcação atual." : `${PRESSING_NAMES[plan.pressing]}: a que mais rendeu nas simulações.` },
+  };
+  const curLineup = st.plans[0].lineup;
+  const changed = !kept && !(same(st.plans[0]) && plan.lineup?.starters.every((id, i) => id === curLineup?.starters[i]));
+  const suggested: Outlook = { win: 0, draw: 0, loss: 0, pts: 0 };
+  const pk = st.pts[best];
+  suggested.win = pk.filter((x) => x === 3).length / n;
+  suggested.draw = pk.filter((x) => x === 1).length / n;
+  suggested.loss = 1 - suggested.win - suggested.draw;
+  suggested.pts = 3 * suggested.win + suggested.draw;
+  const p0 = st.pts[0];
+  const nowW = p0.filter((x) => x === 3).length / n, nowD = p0.filter((x) => x === 1).length / n;
+  const now: Outlook = { win: nowW, draw: nowD, loss: 1 - nowW - nowD, pts: 3 * nowW + nowD };
+  return { ...a, plan, rec, changed, check, now, suggested: kept ? now : suggested };
+}
+
+/** Confere a análise por simulação (síncrono). `stars` = qualidade do auxiliar. */
+export function refineAnalysis(w: World, f: Fixture, a: MatchAnalysis, stars = auxStars(w)): MatchAnalysis {
+  const { sims, z } = auxBudget(stars);
+  if (a.candidates.length < 2 || sims <= 0) return a;
+  const st = mcStart(w, f, a.candidates);
+  mcRun(st, sims);
+  return mcDecide(a, st, z);
+}
+
+/** Mesma conferência, em blocos, devolvendo o controle ao navegador entre eles. */
+export async function refineAnalysisAsync(
+  w: World, f: Fixture, a: MatchAnalysis, stars = auxStars(w), onProgress?: (done: number, total: number) => void,
+): Promise<MatchAnalysis> {
+  const { sims, z } = auxBudget(stars);
+  if (a.candidates.length < 2 || sims <= 0) return a;
+  const st = mcStart(w, f, a.candidates);
+  while (st.done < sims) {
+    mcRun(st, Math.min(10, sims - st.done));
+    onProgress?.(st.done, sims);
+    if (st.done < sims) await new Promise<void>((r) => setTimeout(r, 0));
+  }
+  return mcDecide(a, st, z);
 }
 
 // ---------------------------------------------------------------- modelo ao vivo
@@ -871,20 +1059,62 @@ function withSub(ids: (number | null)[], outId: number, inId: number): (number |
 }
 
 /** Melhor troca segundo o modelo (com uma mentalidade fixa), dentre quem está em campo e no banco. */
-function bestSubByModel(sim: MatchSim, side: 0 | 1, m: number, filterOut?: (k: number, id: number) => boolean): { outId: number; inId: number; pts: number } | null {
+function bestSubByModel(
+  sim: MatchSim, side: 0 | 1, m: number, filterOut?: (k: number, id: number) => boolean,
+  ids: (number | null)[] = sim.sides[side].onPitch, used: Set<number> = new Set(),
+): { outId: number; inId: number; pts: number } | null {
   const S = sim.sides[side];
   let best: { outId: number; inId: number; pts: number } | null = null;
-  S.onPitch.forEach((id, k) => {
-    if (id == null || S.slots[k] === "GOL") return;
+  ids.forEach((id, k) => {
+    if (id == null || S.slots[k] === "GOL" || used.has(id)) return;
     if (filterOut && !filterOut(k, id)) return;
     for (const b of S.bench) {
+      if (used.has(b)) continue;
       const p = sim.player(b);
       if (!p || p.pos === "GOL" || p.injury > 0) continue;
-      const pts = liveOutlook(sim, side, { m, ids: withSub(S.onPitch, id, b) }).pts;
+      const pts = liveOutlook(sim, side, { m, ids: withSub(ids, id, b) }).pts;
       if (!best || pts > best.pts) best = { outId: id, inId: b, pts };
     }
   });
   return best;
+}
+
+/**
+ * Pacote de trocas para UMA parada (várias trocas no mesmo minuto gastam uma parada só):
+ * escolhe uma a uma pelo modelo enquanto cada troca ainda ajuda.
+ */
+function subPackage(sim: MatchSim, side: 0 | 1, m: number, max: number, minGain = 0.002): { outId: number; inId: number }[] {
+  const S = sim.sides[side];
+  const out: { outId: number; inId: number }[] = [];
+  let ids = S.onPitch.slice();
+  const used = new Set<number>();
+  let ref = liveOutlook(sim, side, { m, ids }).pts;
+  while (out.length < Math.min(max, S.subsLeft)) {
+    const b = bestSubByModel(sim, side, m, undefined, ids, used);
+    if (!b || b.pts <= ref + minGain) break;
+    out.push({ outId: b.outId, inId: b.inId });
+    used.add(b.outId); used.add(b.inId);
+    ids = withSub(ids, b.outId, b.inId);
+    ref = b.pts;
+  }
+  return out;
+}
+
+const subsToIds = (ids: (number | null)[], subs: { outId: number; inId: number }[]) => subs.reduce((acc, x) => withSub(acc, x.outId, x.inId), ids.slice());
+
+/** Janelas de troca do 2º tempo (como um técnico experiente: ~60', ~70' e ~80'). */
+function inSubWindow(sim: MatchSim, side: 0 | 1): boolean {
+  const S = sim.sides[side];
+  const t = sim.minute;
+  return sim.half === 2 && S.windowsLeft > 0 && ((t >= 60 && t <= 62) || (t >= 70 && t <= 72) || (t >= 79 && t <= 81));
+}
+
+/** Quantas trocas usar nesta parada para não sobrar troca nem faltar parada. */
+function windowQuota(sim: MatchSim, side: 0 | 1): number {
+  const S = sim.sides[side];
+  if (S.windowsLeft <= 1 || sim.minute >= 79) return S.subsLeft;
+  if (S.windowsLeft === 2) return Math.ceil(S.subsLeft / 2);
+  return Math.min(2, S.subsLeft);
 }
 
 function lastEventMinute(sim: MatchSim, type: string, side: 0 | 1): number | null {
@@ -965,9 +1195,7 @@ function buildTips(sim: MatchSim, side: 0 | 1): LiveTip[] {
     let m = S.mentality;
     if (bm.m !== S.mentality && bm.pts > bm.cur + 0.02) { actions.push({ label: mentLabel(bm.m), kind: "mentality", value: bm.m }); m = bm.m; }
     if (subOk) {
-      const bs = bestSubByModel(sim, side, m);
-      const ref = liveOutlook(sim, side, { m }).pts;
-      if (bs && bs.pts > ref + 0.01) actions.push({ label: subLabel(sim, bs.outId, bs.inId), kind: "sub", outId: bs.outId, inId: bs.inId });
+      for (const x of subPackage(sim, side, m, 2, 0.01)) actions.push({ label: subLabel(sim, x.outId, x.inId), kind: "sub", outId: x.outId, inId: x.inId });
     }
     const after = actions.length ? liveOutlook(sim, side, { m, ids: actions.reduce((ids, a) => (a.kind === "sub" ? withSub(ids, a.outId!, a.inId!) : ids), S.onPitch.slice()) }) : base;
     tips.push({
@@ -984,15 +1212,13 @@ function buildTips(sim: MatchSim, side: 0 | 1): LiveTip[] {
     const actions: TipAction[] = [];
     let m = S.mentality;
     if (bm.m !== S.mentality && bm.pts > bm.cur + (diff === 0 ? 0.03 : 0.015)) { actions.push({ label: mentLabel(bm.m), kind: "mentality", value: bm.m }); m = bm.m; }
-    let sub: { outId: number; inId: number; pts: number } | null = null;
+    let subs: { outId: number; inId: number }[] = [];
     if (subOk) {
-      const ref = liveOutlook(sim, side, { m }).pts;
-      sub = bestSubByModel(sim, side, m);
-      if (sub && sub.pts > ref + 0.01) actions.push({ label: subLabel(sim, sub.outId, sub.inId), kind: "sub", outId: sub.outId, inId: sub.inId });
-      else sub = null;
+      subs = subPackage(sim, side, m, inSubWindow(sim, side) ? windowQuota(sim, side) : 1, inSubWindow(sim, side) ? 0.002 : 0.01);
+      for (const x of subs) actions.push({ label: subLabel(sim, x.outId, x.inId), kind: "sub", outId: x.outId, inId: x.inId });
     }
     if (actions.length) {
-      const after = liveOutlook(sim, side, { m, ids: sub ? withSub(S.onPitch, sub.outId, sub.inId) : undefined });
+      const after = liveOutlook(sim, side, { m, ids: subs.length ? subsToIds(S.onPitch, subs) : undefined });
       if (diff < 0) {
         tips.push({
           id: `chase:${score}`, tone: "warn", priority: 80, title: `Perdendo por ${-diff}: hora de arriscar`,
@@ -1013,6 +1239,20 @@ function buildTips(sim: MatchSim, side: 0 | 1): LiveTip[] {
           actions,
         });
       }
+    }
+  }
+
+  // 3b) janela de trocas: renova o time com as trocas que o modelo aprova (uma parada, várias trocas)
+  if (subOk && !ht && inSubWindow(sim, side) && !tips.some((x) => x.actions.some((a) => a.kind === "sub"))) {
+    const subs = subPackage(sim, side, S.mentality, windowQuota(sim, side));
+    if (subs.length) {
+      const after = liveOutlook(sim, side, { ids: subsToIds(S.onPitch, subs) });
+      const tired = subs.map((x) => sim.player(x.outId)).filter((p) => p.cond < 75).map((p) => shortName(p.name));
+      tips.push({
+        id: `window:${S.windowsLeft}`, tone: "info", priority: 76, title: subs.length > 1 ? `Hora de mexer: ${subs.length} trocas` : "Hora de mexer no time",
+        text: `${tired.length ? `${tired.join(", ")} já ${tired.length > 1 ? "estão" : "está"} cansado${tired.length > 1 ? "s" : ""}. ` : ""}Trocando agora (numa parada só), a chance de pontuar vai de ${pct(base.win + base.draw)} para ${pct(after.win + after.draw)}.`,
+        actions: subs.map((x) => ({ label: subLabel(sim, x.outId, x.inId), kind: "sub" as const, outId: x.outId, inId: x.inId })),
+      });
     }
   }
 

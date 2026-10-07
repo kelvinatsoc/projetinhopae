@@ -26,6 +26,7 @@ import { TalkSheet } from "./Dressing";
 import { LoanInSheet, LoanOutSheet } from "./Loans";
 import "../market.css";
 import { PlayerInsightCards, ScoutButton } from "./Scouting";
+import { AbilitiesCard } from "../Compare";
 import { IndividualTrainingSheet } from "./Training";
 import { interact, interactionOptions, type InteractionId, type InteractionResult } from "../../engine/interactions";
 import "../narrative.css";
@@ -152,18 +153,9 @@ export function PlayerScreen({ id }: { id: number }) {
         </div>
       )}
 
+      <AbilitiesCard p={p} />
       <div className="card">
-        <h3>Atributos</h3>
-        <div className="col gap8 mt8">
-          {attrKeys.map((k) => (
-            <div key={k} className="attr">
-              <span className="muted">{ATTR_NAMES[k]}</span>
-              <Bar v={p.attrs[k]} color={p.attrs[k] >= 80 ? "var(--accent)" : p.attrs[k] >= 65 ? "#b9e66d" : p.attrs[k] >= 50 ? "var(--warn)" : "var(--danger)"} />
-              <b className="kbd" style={{ textAlign: "right" }}>{p.attrs[k]}</b>
-            </div>
-          ))}
-        </div>
-        <div className="row gap8 wrap mt12 small">
+        <div className="row gap8 wrap small">
           <span className="muted">Rende melhor como:</span>
           {best.map((b) => <span key={b.pos} className="tag">{b.pos} {b.v}</span>)}
         </div>

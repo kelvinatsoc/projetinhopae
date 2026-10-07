@@ -429,9 +429,18 @@ def resolve(db):
             t = redir.get(t, t)
             p = pages.get(t, {})
             qid = p.get("pageprops", {}).get("wikibase_item")
-            clubs.setdefault(c["id"], {}).update({"enTitle": t, "qid": qid})
-            if not qid:
+            clubs.setdefault(c["id"], {}).update({"enTitle": t if qid else None, "qid": qid})
+            if not qid and not c.get("pt"):
                 print(f"  sem QID: {c['id']} ({c['wiki']})")
+    # clubes dos estaduais sem artigo em inglês: QID pelo artigo em português
+    pt_todo = [c for c in todo if c.get("pt") and not clubs.get(c["id"], {}).get("qid")]
+    if pt_todo:
+        qids = page_qids(PT_API, [c["pt"] for c in pt_todo])
+        for c in pt_todo:
+            qid = qids.get(c["pt"])
+            clubs[c["id"]]["qid"] = qid
+            if not qid:
+                print(f"  sem QID: {c['id']} (en {c['wiki']} / pt {c['pt']})")
     save(DATA, db)
 
 

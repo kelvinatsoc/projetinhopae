@@ -12,3 +12,8 @@ export function chaseStep(dist: number, dt: number, vmax: number, tau: number): 
   const ease = 1 - Math.exp(-dt / tau);
   return Math.min(dist, (vmax * dt) / 1000, dist * ease + (7.2 * dt) / 1000);
 }
+
+/** Intervalo entre quadros em ms, limitado (aba em segundo plano / travadas não dão saltos). */
+export function frameDt(prev: number, now: number, max = 50): number {
+  return Math.max(0, Math.min(max, now - prev));
+}

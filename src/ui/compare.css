@@ -1,0 +1,42 @@
+/* Habilidades e comparação de jogadores */
+.cmp-radar-wrap { max-width: 260px; margin: 0 auto; }
+.cmp-radar { display: block; overflow: visible; }
+.cmp-radar-grid { fill: none; stroke: var(--line); stroke-width: 1; }
+.cmp-radar-label { fill: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.cmp-radar-val { font-size: 13px; font-weight: 800; }
+
+.cmp-group { margin-top: 12px; }
+.cmp-group-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.cmp-attr { grid-template-columns: 112px 1fr 74px; column-gap: 10px; margin-bottom: 6px; }
+.cmp-attr b { text-align: right; white-space: nowrap; }
+.cmp-attr > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-word { font-size: 12px; }
+
+.cmp-icon-btn { width: 34px; height: 34px; min-width: 34px; display: inline-grid; place-items: center; margin-right: 6px; color: var(--muted); }
+
+.cmp-page { overflow-x: hidden; }
+.cmp-heads { display: grid; gap: 8px; }
+.cmp-head { position: relative; min-width: 0; background: var(--card); border: 1px solid var(--line); border-top: 3px solid; border-radius: var(--radius); padding: 10px 6px 8px; text-align: center; }
+.cmp-head-tap { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; min-width: 0; }
+.cmp-name { font-size: 13px; line-height: 1.15; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.cmp-club { max-width: 100%; display: block; }
+.cmp-ovr { font-size: 18px; }
+.cmp-x { position: absolute; top: 2px; right: 4px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; width: 28px; height: 28px; cursor: pointer; }
+.cmp-add { border-style: dashed; border-top-width: 1px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font: inherit; }
+.cmp-plus { width: 44px; height: 44px; border-radius: 50%; border: 2px dashed var(--line); display: grid; place-items: center; font-size: 24px; color: #2ecc71; }
+
+.cmp-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; font-size: 12px; margin-top: 6px; }
+.cmp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+.cmp-table { display: flex; flex-direction: column; }
+.cmp-row { display: grid; gap: 6px; align-items: center; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.cmp-row:last-child { border-bottom: 0; }
+.cmp-row > b, .cmp-row > .cmp-cell, .cmp-row > .cmp-form { text-align: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; border-radius: 8px; padding: 2px 4px; }
+.cmp-mini { display: block; width: 100%; max-width: 64px; height: 4px; border-radius: 2px; background: var(--card2); overflow: hidden; }
+.cmp-mini i { display: block; height: 100%; }
+.cmp-best { color: #2ecc71; background: rgba(46, 204, 113, 0.14); border-radius: 8px; }
+.cmp-row > b.cmp-best { padding: 2px 0; }
+.cmp-form .form-dots { display: inline-flex; gap: 2px; }
+.cmp-form .fd { font-size: 0 !important; }
+.cmp-pick { max-height: 55vh; overflow-y: auto; }
