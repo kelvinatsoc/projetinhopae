@@ -1,5 +1,6 @@
-// Mapa 3D da sede do clube (estilo PS2, com detalhe que cresce com a Estrutura).
-// Estádio, CT e sede ficam nas posições reais quando há dados (src/data/clubSites.json).
+// Mapa 3D da sede do clube (detalhe que cresce com a Estrutura).
+// Estádio, CT e sede ficam nas posições reais quando há dados (src/data/clubSites.json);
+// os estádios marcantes seguem o formato real (src/data/stadiumModels.json).
 // Toque num prédio: a câmera voa até ele e abre o menu do local.
 // O renderizador three.js e os dados geográficos só são baixados aqui; sem WebGL, mostra a grade.
 import "@fontsource/press-start-2p/latin-400.css";
@@ -88,7 +89,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         if (dead || !host.current) return;
         setGeo(g);
         r = new m.HqRenderer({
-          host: host.current, colors: [c1, c2], stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
+          host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium, stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
           matchDay: matchToday, night, reduced, geo: g, labels: labels.current,
           onPick: (b) => { haptic("tap"); setSel(b); },
         });

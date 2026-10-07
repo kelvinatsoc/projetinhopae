@@ -1,36 +1,35 @@
-// Sede do clube em 3D, estilo PS2 que "evolui": um clube pequeno começa modesto (poucos
-// polígonos, sombreamento chapado, sem sombras) e um clube estruturado ganha modelos mais
-// detalhados, texturas melhores, sombras, iluminação, torcida, objetos e mais prédios.
+// Sede do clube em 3D. Estádio, CT e sede ficam nas posições relativas reais (Wikidata +
+// OpenStreetMap, src/data/clubSites.json, gerado por scripts/fetch_club_sites.py), com o
+// entorno real do OSM: ruas com largura e faixas, quadras, prédios vizinhos com a altura real,
+// árvores, água e um relevo leve em volta. Os estádios marcantes saem de uma descrição
+// paramétrica (src/data/stadiumModels.json, gerador em ./stadium.ts) ajustada ao contorno real
+// do prédio; os prédios do CT e da sede usam o contorno real do OSM.
 //
-// Geografia real: quando há dados em src/data/clubSites.json (Wikidata + OpenStreetMap,
-// gerado por scripts/fetch_club_sites.py), estádio, CT e sede ficam nas posições relativas
-// reais (distâncias longas comprimidas), com as ruas, áreas verdes, água e prédios vizinhos
-// do OSM simplificados. Sem dados, usa um layout compacto de reserva.
+// A qualidade cresce com a Estrutura do clube (resolução, sombras, texturas, árvores, detalhes),
+// mas o nível 1 já tem iluminação, sombras e texturas. LOD e instancing seguram os 60 fps.
 //
 // Só é baixado quando a tela do Clube abre (import dinâmico). Animação por tempo (frameDt):
 // igual a 60 ou 120 Hz.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { frameDt } from "../animTime";
+import { rng, pts, area, centroid, minRect, noise2, superEllipse, type P2 } from "./geo";
+import { buildStadium, findModel, fitToBowl, genericModel, type StadiumModel, type TexFactory } from "./stadium";
+import { buildCity, type GeoOsm } from "./city";
 
-THREE.ColorManagement.enabled = false;
-
+export type { GeoOsm } from "./city";
 export type HqBuilding = "stadium" | "office" | "training" | "locker" | "academy" | "medical" | "press" | "scouting";
 export type HqSiteKind = "stadium" | "ct" | "sede";
 
 export interface GeoSite { lat: number; lon: number; name?: string; src?: string }
-export interface GeoOsm {
-  roads?: [number, number[]][];
-  green?: number[][];
-  water?: number[][];
-  pitches?: number[][];
-  buildings?: [number, number[]][];
-}
 export interface ClubGeo { sites: Partial<Record<HqSiteKind, GeoSite>>; osm?: Partial<Record<HqSiteKind, GeoOsm>> }
 
 export interface HqOptions {
   host: HTMLElement;
   colors: [string, string];
+  clubId?: string;
+  stadiumName?: string;
   /** níveis 1-5 vindos da Estrutura */
   stadiumLv: number;
   trainLv: number;
@@ -43,31 +42,13 @@ export interface HqOptions {
   geo: ClubGeo | null;
   labels: Partial<Record<HqBuilding, HTMLElement>>;
   onPick: (b: HqBuilding) => void;
+  /** força a qualidade (1-5); por padrão vem da média da Estrutura */
+  quality?: number;
 }
 
 const U = 10; // metros por unidade da cena
-const SKY_DAY = 0x9fd0ff, SKY_NIGHT = 0x0a1030;
-
-/** Gerador pseudoaleatório determinístico (mesma sede sempre igual). */
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, smooth = false): THREE.Texture {
-  const c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  draw(c.getContext("2d")!);
-  const t = new THREE.CanvasTexture(c);
-  if (!smooth) { t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; }
-  t.anisotropy = 4;
-  return t;
-}
+const ISLAND_M = 600; // raio do entorno real (m)
+const SKY_DAY = 0xa9d4f5, SKY_NIGHT = 0x0a1030;
 
 /** Projeção local (m): x = leste, z = sul. */
 function projectM(lat0: number, lon0: number, lat: number, lon: number): [number, number] {
@@ -79,17 +60,17 @@ function projectM(lat0: number, lon0: number, lat: number, lon: number): [number
 /** Distâncias longas comprimidas (CT a 10 km não pode sumir do mapa). */
 function compress(x: number, z: number): [number, number] {
   const d = Math.hypot(x, z);
-  const lim = 900;
+  const lim = 1300;
   if (d <= lim) return [x, z];
-  // satura em ~1,5 km: a ordem e a direção reais continuam, mas tudo cabe na tela
-  const d2 = lim + 600 * (1 - Math.exp(-(d - lim) / 4000));
+  // satura em ~2,1 km: a ordem e a direção reais continuam, mas tudo cabe na tela
+  const d2 = lim + 800 * (1 - Math.exp(-(d - lim) / 4000));
   return [(x / d) * d2, (z / d) * d2];
 }
 
 export class HqRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(40, 1, 0.5, 4000);
+  private camera = new THREE.PerspectiveCamera(40, 1, 1, 9000);
   private ray = new THREE.Raycaster();
   private pickables: THREE.Object3D[] = [];
   private anchors: Partial<Record<HqBuilding, THREE.Vector3>> = {};
@@ -97,7 +78,9 @@ export class HqRenderer {
   private movers: ((t: number, dt: number) => void)[] = [];
   private q: number;
   private rnd: () => number;
-  private std: boolean;
+  private std = true;
+  private sun!: THREE.DirectionalLight;
+  private texCache: THREE.Texture[] = [];
   // câmera
   private yaw = -0.5;
   private pitch = 0.78;
@@ -119,14 +102,13 @@ export class HqRenderer {
 
   constructor(private o: HqOptions) {
     const lv = [o.stadiumLv, o.trainLv, o.youthLv, o.medicalLv];
-    this.q = Math.max(1, Math.min(5, Math.round(lv.reduce((s, v) => s + v, 0) / lv.length)));
-    this.std = this.q >= 3;
+    this.q = Math.max(1, Math.min(5, Math.round(o.quality ?? lv.reduce((s, v) => s + v, 0) / lv.length)));
     this.rnd = rng(Math.round((o.geo?.sites.stadium?.lat ?? 7) * 1e4) ^ o.colors[0].length);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    if (this.q >= 2) {
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = this.q >= 4 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-    }
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = o.night ? 1.05 : 1.0;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     const cv = this.renderer.domElement;
     cv.className = "hq-canvas";
     cv.style.touchAction = "none";
@@ -145,15 +127,35 @@ export class HqRenderer {
   /** Locais disponíveis (para os botões de atalho da interface). */
   sites(): HqSiteKind[] { return Object.keys(this.siteCenter) as HqSiteKind[]; }
 
-  // ------------------------------------------------------------ materiais
+  // ------------------------------------------------------------ materiais e texturas
+  private tex: TexFactory = (w, h, draw, repeat = false) => {
+    const c = document.createElement("canvas");
+    // clubes modestos usam texturas menores (mesmo desenho, menos memória)
+    const k = this.q <= 1 ? 0.5 : this.q === 2 ? 0.75 : 1;
+    const W = Math.max(8, Math.round(w * k)), H = Math.max(8, Math.round(h * k));
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    if (!g) return null;
+    g.scale(W / w, H / h);
+    draw(g);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = Math.min(this.renderer.capabilities.getMaxAnisotropy(), this.q >= 3 ? 8 : 4);
+    if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    this.texCache.push(t);
+    return t;
+  };
+  private smat = (p: THREE.MeshStandardMaterialParameters): THREE.Material => {
+    const clean = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) as THREE.MeshStandardMaterialParameters;
+    return new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.02, ...clean });
+  };
   private mat(color: THREE.ColorRepresentation, extra: Record<string, unknown> = {}): THREE.Material {
-    if (this.std) return new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05, flatShading: this.q < 5, ...extra });
-    return new THREE.MeshLambertMaterial({ color, flatShading: true, ...extra });
+    return new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05, ...extra });
   }
   private mesh(geo: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], cast = true, receive = true) {
     const me = new THREE.Mesh(geo, m);
-    me.castShadow = cast && this.q >= 2;
-    me.receiveShadow = receive && this.q >= 2;
+    me.castShadow = cast;
+    me.receiveShadow = receive;
     return me;
   }
   private box(w: number, h: number, d: number, m: THREE.Material | THREE.Material[], x = 0, y = 0, z = 0) {
@@ -167,47 +169,80 @@ export class HqRenderer {
     const { o, scene } = this;
     const night = o.night;
     scene.background = new THREE.Color(night ? SKY_NIGHT : SKY_DAY);
-    scene.fog = new THREE.Fog(night ? SKY_NIGHT : SKY_DAY, 160, 700);
-    scene.add(new THREE.HemisphereLight(night ? 0x4a5a9a : 0xe4f2ff, night ? 0x101820 : 0x5d7a45, night ? 0.5 : this.std ? 0.75 : 0.95));
-    const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xfff0d8, night ? 0.45 : this.std ? 2.1 : 1.15);
-    sun.position.set(120, 180, 80);
-    if (this.q >= 2) {
-      sun.castShadow = true;
-      const sz = this.q >= 4 ? 4096 : 2048;
-      sun.shadow.mapSize.set(sz, sz);
-      const cam = sun.shadow.camera as THREE.OrthographicCamera;
-      cam.left = -140; cam.right = 140; cam.top = 140; cam.bottom = -140; cam.near = 10; cam.far = 500;
-      sun.shadow.bias = -0.0006;
-      sun.shadow.normalBias = 0.4;
+    scene.fog = new THREE.Fog(night ? SKY_NIGHT : SKY_DAY, 300, 1400);
+    // céu em degradê
+    const sky = new THREE.SphereGeometry(4000, 24, 12);
+    const sc: number[] = [];
+    const top = new THREE.Color(night ? 0x050818 : 0x3f86d6), hor = new THREE.Color(night ? SKY_NIGHT : SKY_DAY);
+    const sp = sky.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < sp.count; i++) { const k = Math.max(0, sp.getY(i) / 4000); const c = hor.clone().lerp(top, Math.pow(k, 0.6)); sc.push(c.r, c.g, c.b); }
+    sky.setAttribute("color", new THREE.Float32BufferAttribute(sc, 3));
+    scene.add(new THREE.Mesh(sky, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+    // luz ambiente de "estúdio" para os materiais PBR (reflexo em vidro, metal e água)
+    const pm = new THREE.PMREMGenerator(this.renderer);
+    scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = night ? 0.12 : 0.45;
+    pm.dispose();
+    scene.add(new THREE.HemisphereLight(night ? 0x4a5a9a : 0xdcecff, night ? 0x101820 : 0x6b7a55, night ? 0.35 : 0.6));
+    const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xfff1dc, night ? 0.5 : 2.1);
+    sun.castShadow = true;
+    const sz = [1024, 2048, 2048, 4096, 4096][this.q - 1];
+    sun.shadow.mapSize.set(sz, sz);
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.05;
+    sun.shadow.radius = 3;
+    this.sun = sun;
+    scene.add(sun, sun.target);
+    if (night) {
+      // luz dos refletores sobre o estádio
+      const fl = new THREE.PointLight(0xfff2d0, 2.2, 0, 0);
+      this.movers.push(() => { const s = this.siteCenter.stadium; if (s) fl.position.set(s.x, 9, s.z); });
+      scene.add(fl);
     }
-    scene.add(sun);
-    scene.add(sun.target);
-    this.movers.push(() => { sun.position.set(this.target.x + 120, 180, this.target.z + 80); sun.target.position.copy(this.target); });
-
-    // chão base (cidade ao longe)
-    const groundTex = canvasTex(128, 128, (g) => {
-      const r = rng(3);
-      g.fillStyle = "#6f8a5a"; g.fillRect(0, 0, 128, 128);
-      for (let i = 0; i < 900; i++) { g.fillStyle = r() > 0.5 ? "#6a8556" : "#77925f"; g.fillRect(r() * 128, r() * 128, 2, 2); }
-    }, true);
-    groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping; groundTex.repeat.set(60, 60);
-    const ground = this.mesh(new THREE.PlaneGeometry(4000, 4000), this.mat(0xffffff, { map: groundTex }), false, true);
-    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05;
-    scene.add(ground);
 
     const geo = o.geo && o.geo.sites.stadium ? o.geo : null;
     if (geo) this.buildGeo(geo); else this.buildCompact();
+    this.terrain();
 
     // visão geral: enquadra todos os locais
-    const pts = Object.values(this.siteCenter) as THREE.Vector3[];
-    const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, pts.length));
-    const spread = pts.reduce((m, p) => Math.max(m, p.distanceTo(c)), 0);
-    this.overview = { target: c, dist: Math.max(70, spread * 2.3 + 50) };
+    const pts3 = Object.values(this.siteCenter) as THREE.Vector3[];
+    const c = pts3.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, pts3.length));
+    const spread = pts3.reduce((m, p) => Math.max(m, p.distanceTo(c)), 0);
+    this.overview = { target: c, dist: Math.max(110, spread * 3.4 + 90) };
     this.target.copy(c);
     this.dist = this.overview.dist;
     const fog = this.scene.fog as THREE.Fog;
-    fog.near = this.overview.dist * 1.2;
-    fog.far = this.overview.dist * 4 + 300;
+    fog.near = this.overview.dist * 1.4;
+    fog.far = this.overview.dist * 4.5 + 500;
+  }
+
+  /** Relevo leve em volta (achatado sob os locais), com a mancha urbana perto deles. */
+  private terrain() {
+    const S = 3000, seg = this.q >= 3 ? 220 : 140;
+    const g = new THREE.PlaneGeometry(S, S, seg, seg);
+    g.rotateX(-Math.PI / 2);
+    const nz = noise2(Math.round((this.o.geo?.sites.stadium?.lon ?? 3) * 100));
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    const centers = Object.values(this.siteCenter) as THREE.Vector3[];
+    const R = ISLAND_M / U;
+    const col: number[] = [];
+    const city = new THREE.Color(0xa9a395), grass = new THREE.Color(0x6f8f55), dry = new THREE.Color(0x8d9a62), wood = new THREE.Color(0x4f7a40);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      let d = Infinity;
+      for (const p of centers) d = Math.min(d, Math.hypot(x - p.x, z - p.z));
+      const n = nz(x / 90, z / 90) * 0.7 + nz(x / 30 + 7, z / 30) * 0.3;
+      const k = Math.min(1, Math.max(0, (d - R - 4) / 60));
+      pos.setY(i, (n - 0.35) * 26 * k * k - 0.3);
+      const u = Math.min(1, Math.max(0, (d - R + 10) / 70));
+      c.copy(city).lerp(n > 0.6 ? wood : n < 0.35 ? dry : grass, u);
+      col.push(c.r, c.g, c.b);
+    }
+    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    const m = this.mesh(g, this.smat({ vertexColors: true, roughness: 1 }), false, true);
+    this.scene.add(m);
   }
 
   /** Layout com geografia real. */
@@ -222,30 +257,45 @@ export class HqRenderer {
     const st = pos("stadium")!;
     let ct = pos("ct");
     let sede = pos("sede");
-    // locais muito colados ao estádio dividem a mesma "ilha"
-    if (ct && ct.distanceTo(st) < 26) ct = null;
-    if (sede && sede.distanceTo(st) < 18) sede = null;
+    // locais colados ao estádio dividem a mesma "ilha" (o entorno real já mostra tudo)
+    if (ct && ct.distanceTo(st) < 2 * ISLAND_M / U - 8) ct = ct.distanceTo(st) < 30 ? null : ct;
+    if (sede && sede.distanceTo(st) < 30) sede = null;
+    if (ct && sede && ct.distanceTo(sede) < 30) sede = null;
 
     const islands: [HqSiteKind, THREE.Vector3][] = [["stadium", st]];
     if (ct) islands.push(["ct", ct]);
     if (sede) islands.push(["sede", sede]);
+    // ilhas que se sobrepõem: afasta a menor (mantendo a direção real)
+    for (let i = 1; i < islands.length; i++) {
+      for (let j = 0; j < i; j++) {
+        const a = islands[j][1], b = islands[i][1];
+        const d = a.distanceTo(b), min = (2 * ISLAND_M) / U + 6;
+        if (d < min) { const dir = b.clone().sub(a).normalize(); if (!isFinite(dir.x)) dir.set(1, 0, 0); b.copy(a).addScaledVector(dir, min); }
+      }
+    }
+    const stadiumGeo = this.placeStadium(st, geo.osm?.stadium);
     for (const [k, p] of islands) {
       this.siteCenter[k] = p.clone();
-      this.island(p, geo.osm?.[k], k);
+      const osm = geo.osm?.[k];
+      const skip = new Set<number>(k === "stadium" ? [] : osm?.club ?? []);
+      this.island(p, osm, k, skip, k === "stadium" ? stadiumGeo.avoid : undefined);
     }
-    // estrada entre os locais (linha tracejada amarela)
     for (const [k, p] of islands) if (k !== "stadium") this.route(st, p);
 
-    // prédios do clube em cada local
-    this.stadium(st.x, st.z);
-    this.locker(st.x + 0, st.z + 24);
+    const free = (dx: number, dz: number) => {
+      // ponto livre ao lado do estádio (fora da esplanada)
+      const s = stadiumGeo;
+      const c = Math.cos(s.rotY), si = Math.sin(s.rotY);
+      return new THREE.Vector3(st.x + (s.x + dx * c + dz * si) / U, 0, st.z + (s.z - dx * si + dz * c) / U);
+    };
+    const lockerAt = free(0, stadiumGeo.outer[1] + 40);
+    this.locker(lockerAt.x, lockerAt.z);
     if (ct) {
-      this.training(ct.x, ct.z);
-      this.academy(ct.x - 26, ct.z + 4);
-      this.medical(ct.x + 26, ct.z + 4);
+      this.ctSite(ct, geo.osm?.ct);
     } else {
       // sem CT conhecido: área de treino num terreno ao lado
-      const c2 = new THREE.Vector3(st.x + 70, 0, st.z + 34);
+      const c2 = new THREE.Vector3(st.x + 140, 0, st.z + 40);
+      for (const [, p] of islands) if (p.distanceTo(c2) < (2 * ISLAND_M) / U) c2.x += 60;
       this.siteCenter.ct = c2;
       this.island(c2, undefined, "ct");
       this.route(st, c2);
@@ -254,26 +304,27 @@ export class HqRenderer {
       this.medical(c2.x + 26, c2.z + 4);
     }
     if (sede) {
-      this.office(sede.x, sede.z);
-      this.press(sede.x - 14, sede.z + 12);
-      this.scouting(sede.x + 14, sede.z + 12);
+      this.sedeSite(sede, geo.osm?.sede);
     } else {
-      this.office(st.x - 30, st.z + 22);
-      this.press(st.x - 16, st.z + 36);
-      this.scouting(st.x + 16, st.z + 36);
+      const p = free(-(stadiumGeo.outer[0] + 60), 0);
+      const p2 = free(-(stadiumGeo.outer[0] + 50), stadiumGeo.outer[1] * 0.75);
+      const p3 = free(-(stadiumGeo.outer[0] + 50), -stadiumGeo.outer[1] * 0.75);
+      this.office(p.x, p.z);
+      this.press(p2.x, p2.z);
+      this.scouting(p3.x, p3.z);
     }
   }
 
   /** Layout de reserva (sem dados geográficos). */
   private buildCompact() {
-    const st = new THREE.Vector3(0, 0, 0), ct = new THREE.Vector3(70, 0, 36), sede = new THREE.Vector3(-56, 0, 40);
+    const st = new THREE.Vector3(0, 0, 0), ct = new THREE.Vector3(140, 0, 50), sede = new THREE.Vector3(-125, 0, 60);
     this.siteCenter = { stadium: st, ct, sede };
-    this.island(st, undefined, "stadium");
+    const sg = this.placeStadium(st, undefined);
+    this.island(st, undefined, "stadium", undefined, sg.avoid);
     this.island(ct, undefined, "ct");
     this.island(sede, undefined, "sede");
     this.route(st, ct); this.route(st, sede);
-    this.stadium(st.x, st.z);
-    this.locker(st.x, st.z + 24);
+    this.locker(st.x, st.z + (sg.outer[1] + 40) / U);
     this.training(ct.x, ct.z);
     this.academy(ct.x - 26, ct.z + 4);
     this.medical(ct.x + 26, ct.z + 4);
@@ -282,124 +333,108 @@ export class HqRenderer {
     this.scouting(sede.x + 14, sede.z + 12);
   }
 
-  // ------------------------------------------------------------ contexto urbano (OSM)
-  private island(c: THREE.Vector3, osm: GeoOsm | undefined, kind: HqSiteKind) {
-    const R = 56;
-    const base = this.mesh(new THREE.CircleGeometry(R, 48), this.mat(0xa59f92), false, true);
-    base.rotation.x = -Math.PI / 2; base.position.set(c.x, 0.01, c.z);
-    this.scene.add(base);
-    const keepOut = kind === "stadium" ? 19 : kind === "ct" ? 24 : 12;
-    if (!osm) { this.procedural(c, R, keepOut); return; }
-
-    const inR = (x: number, z: number) => Math.hypot(x, z) < R - 1;
-    const poly = (flat: number[]) => {
-      const pts: THREE.Vector2[] = [];
-      for (let i = 0; i + 1 < flat.length; i += 2) pts.push(new THREE.Vector2(flat[i] / U, -flat[i + 1] / U));
-      return pts;
-    };
-    const fill = (list: number[][] | undefined, color: number, y: number) => {
-      if (!list?.length) return;
-      const geos: THREE.BufferGeometry[] = [];
-      for (const flat of list) {
-        const pts = poly(flat);
-        if (pts.length < 3) continue;
-        const g = new THREE.ShapeGeometry(new THREE.Shape(pts));
-        g.rotateX(-Math.PI / 2);
-        geos.push(g);
+  // ------------------------------------------------------------ estádio
+  private placeStadium(c: THREE.Vector3, osm: GeoOsm | undefined) {
+    const o = this.o;
+    const bowl = osm?.bowl ?? null;
+    const model: StadiumModel = findModel(o.clubId ?? "", o.stadiumName) ?? genericModel(o.colors, Math.max(1, Math.min(5, o.stadiumLv)), bowl);
+    const built = buildStadium(model, {
+      q: this.q, night: o.night, matchDay: o.matchDay, colors: o.colors, stadiumLv: o.stadiumLv, tex: this.tex, mat: this.smat,
+    });
+    const fit = fitToBowl(built.outer, bowl);
+    const g = built.group;
+    g.scale.set(fit.sx / U, 1 / U, fit.sz / U);
+    g.rotation.y = fit.rotY;
+    g.position.set(c.x + fit.x / U, 0, c.z + fit.z / U);
+    g.traverse((m) => { if ((m as THREE.Mesh).isMesh && m.castShadow === false && m.receiveShadow === false) m.receiveShadow = true; });
+    // extras que crescem com o nível do estádio: estacionamento com carros e loja do clube
+    const lv = Math.max(1, Math.min(5, o.stadiumLv));
+    const [A, B] = built.outer;
+    const pr = (model.plazaR ?? 20) + 8;
+    if (lv >= 2 && this.q >= 2) {
+      const lot = new THREE.Group();
+      const asphalt = this.mesh(new THREE.PlaneGeometry(90, 40), this.smat({ color: 0x4a4d55, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 }), false, true);
+      asphalt.rotation.x = -Math.PI / 2; asphalt.position.y = 0.05;
+      lot.add(asphalt);
+      const r = rng(77 + lv);
+      const cols = [o.colors[0], "#e8e8e8", "#3a6aa8", "#d9a400", "#222222", "#b03030", "#9aa0a6"];
+      const n = 10 + lv * 8;
+      const car = new THREE.BoxGeometry(4.3, 1.5, 1.9); car.translate(0, 0.75, 0);
+      const im = new THREE.InstancedMesh(car, this.smat({ color: 0xffffff, roughness: 0.35, metalness: 0.5 }), n);
+      const mm = new THREE.Matrix4(), cc = new THREE.Color();
+      for (let i = 0; i < n; i++) {
+        mm.makeTranslation(-40 + (i % 16) * 5.2, 0, -15 + Math.floor(i / 16) * 9 + r() * 0.3);
+        im.setMatrixAt(i, mm); cc.set(cols[Math.floor(r() * cols.length)]); im.setColorAt(i, cc);
       }
-      if (!geos.length) return;
-      const m = this.mesh(mergeGeometries(geos), this.mat(color), false, true);
-      m.position.set(c.x, y, c.z);
-      this.scene.add(m);
-    };
-    fill(osm.green, 0x5f9446, 0.03);
-    fill(osm.water, 0x3f7fc0, 0.035);
-    // ruas como fitas (largura pela categoria)
-    if (osm.roads?.length) {
-      const pos: number[] = [];
-      for (const [w, flat] of osm.roads) {
-        const half = (0.45 + w * 0.32) / 2;
-        for (let i = 0; i + 3 < flat.length; i += 2) {
-          const x1 = flat[i] / U, z1 = flat[i + 1] / U, x2 = flat[i + 2] / U, z2 = flat[i + 3] / U;
-          if (!inR(x1, z1) && !inR(x2, z2)) continue;
-          const dx = x2 - x1, dz = z2 - z1, n = Math.hypot(dx, dz) || 1;
-          const px = (-dz / n) * half, pz = (dx / n) * half;
-          pos.push(x1 + px, 0, z1 + pz, x1 - px, 0, z1 - pz, x2 + px, 0, z2 + pz, x2 + px, 0, z2 + pz, x1 - px, 0, z1 - pz, x2 - px, 0, z2 - pz);
-        }
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-      g.computeVertexNormals();
-      const m = this.mesh(g, this.mat(0x3b3e46, { side: THREE.DoubleSide }), false, true);
-      m.position.set(c.x, 0.05, c.z);
-      this.scene.add(m);
+      im.castShadow = true;
+      lot.add(im);
+      lot.position.set(-(A + pr + 20), 0, 0);
+      lot.rotation.y = Math.PI / 2;
+      g.add(lot);
     }
-    // prédios vizinhos extrudados (altura pelos andares do OSM)
-    if (osm.buildings?.length) {
-      const geos: THREE.BufferGeometry[] = [];
-      const r = rng(osm.buildings.length * 31 + Math.round(c.x));
-      for (const [lv, flat] of osm.buildings) {
-        const pts = poly(flat);
-        if (pts.length < 3) continue;
-        let cx = 0, cz = 0;
-        for (const p of pts) { cx += p.x; cz -= p.y; }
-        cx /= pts.length; cz /= pts.length;
-        if (!inR(cx, cz) || Math.hypot(cx, cz) < keepOut) continue;
-        const h = lv ? Math.min(9, 0.3 + lv * 0.32) : 0.6 + r() * (this.q >= 3 ? 1.6 : 0.9);
-        const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: h, bevelEnabled: false });
-        g.rotateX(-Math.PI / 2);
-        geos.push(g);
-      }
-      if (geos.length) {
-        const m = this.mesh(mergeGeometries(geos), this.mat(this.o.night ? 0x8a8478 : 0xd9d2c3), true, true);
-        m.position.set(c.x, 0, c.z);
-        this.scene.add(m);
-      }
+    if (lv >= 4) {
+      const shop = new THREE.Group();
+      shop.add(this.box(30, 9, 16, this.mat(0xf2f2f2)));
+      shop.add(this.box(31, 2, 17, this.mat(o.colors[0]), 0, 9, 0));
+      shop.position.set(A * 0.5, 0, B + pr + 12);
+      g.add(shop);
     }
-    // campos de futebol de verdade que estão por perto (fora do estádio)
-    if (osm.pitches?.length && kind !== "stadium") fill(osm.pitches, 0x3f9a3a, 0.06);
-    this.trees(c, R, keepOut, this.q >= 3 ? 40 : 18);
+    this.tag(g, "stadium", built.topY / U + 3, 1);
+    this.anchors.stadium!.set(g.position.x, built.topY / U + 3, g.position.z);
+    const n = model.n, ra = A + pr, rb = B + pr;
+    const cos = Math.cos(fit.rotY), sin = Math.sin(fit.rotY);
+    // ponto (m, relativo à ilha) dentro da esplanada do estádio? (sem prédios nem árvores ali)
+    const avoid = (x: number, z: number) => {
+      const dx = x - fit.x, dz = z - fit.z;
+      const lx = (dx * cos - dz * sin) / fit.sx, lz = (dx * sin + dz * cos) / fit.sz;
+      return Math.abs(lx / ra) ** n + Math.abs(lz / rb) ** n < 1;
+    };
+    void superEllipse;
+    return { avoid, outer: [A * fit.sx, B * fit.sz] as [number, number], rotY: fit.rotY, x: fit.x, z: fit.z };
   }
 
-  /** Bairro procedural quando não há dados do OSM. */
-  private procedural(c: THREE.Vector3, R: number, keepOut: number) {
+  // ------------------------------------------------------------ entorno
+  private island(c: THREE.Vector3, osm: GeoOsm | undefined, kind: HqSiteKind, skip?: Set<number>, avoid?: (x: number, z: number) => boolean) {
+    const data = osm ?? this.fakeOsm(kind);
+    const lod = buildCity(data, {
+      q: this.q, night: this.o.night, tex: this.tex, mat: this.smat, radius: ISLAND_M, avoid, skip,
+      seed: Math.round(c.x * 31 + c.z * 17) + 5, farAt: 480,
+    });
+    lod.scale.setScalar(1 / U);
+    lod.position.set(c.x, 0, c.z);
+    this.scene.add(lod);
+  }
+
+  /** Bairro procedural (sem dados do OSM): grade de ruas, quadras com casas e prédios. */
+  private fakeOsm(kind: HqSiteKind): GeoOsm {
     const r = this.rnd;
-    const pos: number[] = [];
-    // grade de ruas
-    for (let k = -2; k <= 2; k++) {
-      const off = k * 18;
-      for (const horiz of [true, false]) {
-        const x1 = horiz ? -R : off, z1 = horiz ? off : -R, x2 = horiz ? R : off, z2 = horiz ? off : R;
-        const half = k === 0 ? 1.2 : 0.7;
-        const px = horiz ? 0 : half, pz = horiz ? half : 0;
-        pos.push(x1 + px, 0, z1 + pz, x1 - px, 0, z1 - pz, x2 + px, 0, z2 + pz, x2 + px, 0, z2 + pz, x1 - px, 0, z1 - pz, x2 - px, 0, z2 - pz);
+    const roads: [number, number[]][] = [];
+    const step = 110;
+    for (let k = -5; k <= 5; k++) {
+      const cls = k === 0 ? 3 : Math.abs(k) === 3 ? 2 : 1;
+      roads.push([cls, [-620, k * step, 620, k * step]]);
+      roads.push([cls, [k * step, -620, k * step, 620]]);
+    }
+    const keep = kind === "stadium" ? 200 : kind === "ct" ? 180 : 60;
+    const buildings: [number, number[]][] = [];
+    for (let bx = -5; bx < 5; bx++) for (let bz = -5; bz < 5; bz++) {
+      const x0 = bx * step + 12, z0 = bz * step + 12;
+      for (let i = 0; i < 6; i++) {
+        const w = 14 + r() * 26, d = 14 + r() * 26;
+        const x = x0 + r() * (step - 24 - w), z = z0 + r() * (step - 24 - d);
+        if (Math.hypot(x + w / 2, z + d / 2) < keep) continue;
+        buildings.push([r() < 0.15 ? 20 + r() * 40 : 0, [x, z, x + w, z, x + w, z + d, x, z + d]]);
       }
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.computeVertexNormals();
-    const roads = this.mesh(g, this.mat(0x3b3e46, { side: THREE.DoubleSide }), false, true);
-    roads.position.set(c.x, 0.05, c.z);
-    this.scene.add(roads);
-    const geos: THREE.BufferGeometry[] = [];
-    for (let i = 0; i < 70; i++) {
-      const x = (r() - 0.5) * 2 * R, z = (r() - 0.5) * 2 * R;
-      if (Math.hypot(x, z) > R - 4 || Math.hypot(x, z) < keepOut + 4) continue;
-      if (Math.abs(((x + 900) % 18) - 9) > 6.5 || Math.abs(((z + 900) % 18) - 9) > 6.5) continue;
-      const w = 3 + r() * 4, d = 3 + r() * 4, h = 0.8 + r() * 2.4;
-      const b = new THREE.BoxGeometry(w, h, d);
-      b.translate(x, h / 2, z);
-      geos.push(b);
-    }
-    if (geos.length) {
-      const m = this.mesh(mergeGeometries(geos), this.mat(0xd9d2c3));
-      m.position.set(c.x, 0, c.z);
-      this.scene.add(m);
-    }
-    this.trees(c, R, keepOut, 24);
+    const green: [number, number[]][] = [[0, [step * 1.1, step * 1.1, step * 1.9, step * 1.1, step * 1.9, step * 1.9, step * 1.1, step * 1.9]]];
+    return { roads, buildings, green };
   }
 
-  private route(a: THREE.Vector3, b: THREE.Vector3) {
+  private route(a0: THREE.Vector3, b0: THREE.Vector3) {
+    // só o trecho entre as ilhas (dentro delas valem as ruas reais)
+    const dir = b0.clone().sub(a0).normalize(), Rr = ISLAND_M / U;
+    if (a0.distanceTo(b0) < 2 * Rr + 2) return;
+    const a = a0.clone().addScaledVector(dir, Rr), b = b0.clone().addScaledVector(dir, -Rr);
     const d = a.distanceTo(b);
     const n = Math.max(2, Math.floor(d / 4));
     const geos: THREE.BufferGeometry[] = [];
@@ -410,31 +445,95 @@ export class HqRenderer {
       const g = new THREE.PlaneGeometry(len, 0.8);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-Math.atan2(p1.z - p0.z, p1.x - p0.x));
-      g.translate((p0.x + p1.x) / 2, 0.07, (p0.z + p1.z) / 2);
+      g.translate((p0.x + p1.x) / 2, 0.08, (p0.z + p1.z) / 2);
       geos.push(g);
     }
-    this.scene.add(this.mesh(mergeGeometries(geos), new THREE.MeshBasicMaterial({ color: 0xffd23f }), false, false));
+    this.scene.add(this.mesh(mergeGeometries(geos), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.85 }), false, false));
   }
 
-  private trees(c: THREE.Vector3, R: number, keepOut: number, n: number) {
-    const r = rng(Math.round(c.x * 13 + c.z * 7) + 5);
-    const leafG: THREE.BufferGeometry[] = [], trunkG: THREE.BufferGeometry[] = [];
-    const seg = this.q >= 4 ? 7 : 5;
-    for (let i = 0; i < n; i++) {
-      const a = r() * Math.PI * 2, d = keepOut + 6 + r() * (R - keepOut - 8);
-      const x = Math.cos(a) * d, z = Math.sin(a) * d, s = 0.7 + r() * 0.7;
-      const t = new THREE.CylinderGeometry(0.15 * s, 0.2 * s, 1.1 * s, 5); t.translate(x, 0.55 * s, z); trunkG.push(t);
-      const l = this.q >= 4 ? new THREE.IcosahedronGeometry(1.1 * s, 0) : new THREE.ConeGeometry(1.1 * s, 2.4 * s, seg);
-      l.translate(x, (this.q >= 4 ? 1.9 : 2.1) * s, z); leafG.push(l);
+  // ------------------------------------------------------------ prédios reais do clube (contorno do OSM)
+  /** Extruda contornos reais (m, relativos ao centro c) como um prédio do clube clicável. */
+  private realBuilding(c: THREE.Vector3, list: [number, number[]][], id: HqBuilding, roofColor: string, minH = 7) {
+    const geos: THREE.BufferGeometry[] = [];
+    let topH = 0;
+    const cen: P2[] = [];
+    for (const [h0, f] of list) {
+      const p = pts(f);
+      if (p.length < 3) continue;
+      const h = Math.max(minH, h0 || 0) * (id === "office" ? 1 + (this.q - 1) * 0.08 : 1);
+      topH = Math.max(topH, h);
+      const shape = new THREE.Shape((area(p) > 0 ? p : [...p].reverse()).map(([x, z]) => new THREE.Vector2(x, -z)));
+      const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 1 });
+      g.rotateX(-Math.PI / 2);
+      geos.push(g);
+      cen.push(centroid(p));
     }
-    if (!n) return;
-    const m1 = this.mesh(mergeGeometries(leafG), this.mat(0x2f6b2a)); m1.position.set(c.x, 0, c.z);
-    const m2 = this.mesh(mergeGeometries(trunkG), this.mat(0x6b4a2b)); m2.position.set(c.x, 0, c.z);
-    this.scene.add(m1, m2);
+    if (!geos.length) return null;
+    const ctr = centroid(cen);
+    const win = this.tex(128, 128, (x) => {
+      x.fillStyle = "#f4f4f2"; x.fillRect(0, 0, 128, 128);
+      for (let fy = 0; fy < 2; fy++) for (let fx = 0; fx < 3; fx++) {
+        x.fillStyle = this.o.night ? "#ffd98c" : "#3f5d7a"; x.fillRect(fx * 42 + 6, fy * 64 + 16, 30, 32);
+        x.fillStyle = "rgba(255,255,255,0.25)"; x.fillRect(fx * 42 + 6, fy * 64 + 16, 9, 32);
+      }
+      x.fillStyle = this.o.colors[0]; x.fillRect(0, 0, 128, 6);
+    }, true);
+    if (win) win.repeat.set(1 / 6, 1 / 6);
+    const m = this.mesh(mergeGeometries(geos, true), [
+      this.smat({ color: roofColor, roughness: 0.7 }),
+      this.smat({ color: 0xffffff, map: win ?? undefined, roughness: 0.6, emissive: this.o.night ? 0xffffff : 0x000000, emissiveMap: this.o.night ? win ?? undefined : undefined, emissiveIntensity: this.o.night ? 0.35 : 0 }),
+    ]);
+    m.scale.setScalar(1 / U);
+    const g = new THREE.Group();
+    g.position.set(c.x + ctr[0] / U, 0, c.z + ctr[1] / U);
+    m.position.set(-ctr[0] / U, 0, -ctr[1] / U);
+    g.add(m);
+    this.tag(g, id, topH / U + 2, 1);
+    return { g, top: topH / U, x: g.position.x, z: g.position.z };
+  }
+
+  /** CT: prédios e campos reais quando o OSM tem; senão, o CT procedural. */
+  private ctSite(c: THREE.Vector3, osm: GeoOsm | undefined) {
+    const blds = osm?.buildings ?? [];
+    const club = (osm?.club ?? []).map((i) => blds[i]).filter(Boolean).sort((a, b) => Math.abs(area(pts(b[1]))) - Math.abs(area(pts(a[1]))));
+    // campo real mais próximo do centro do CT para o treino
+    const fields = (osm?.pitches ?? []).map((e) => (Array.isArray(e[1]) ? (e as [number, number[]]) : [0, e as number[]] as [number, number[]]))
+      .filter(([s, f]) => s && Math.abs(area(pts(f))) > 2500)
+      .map(([, f]) => minRect(pts(f)))
+      .sort((a, b) => Math.hypot(a.cx, a.cz) - Math.hypot(b.cx, b.cz));
+    if (fields.length) {
+      const f = fields[0];
+      this.training(c.x + f.cx / U, c.z + f.cz / U, -f.ang, true);
+    } else this.training(c.x, c.z);
+    const roof = this.o.colors[0];
+    const a = club[0] ? this.realBuilding(c, [club[0]], "academy", roof) : null;
+    if (!a) this.academy(c.x - 26, c.z + 4);
+    const m = club[1] ? this.realBuilding(c, [club[1]], "medical", "#e9ecef") : null;
+    if (!m) this.medical(c.x + 26, c.z + 4);
+    // demais prédios do clube (sem menu próprio): fazem parte do CT
+    if (club.length > 2) this.realBuilding(c, club.slice(2), "training", roof, 5);
+  }
+
+  /** Sede: o prédio real (contorno do OSM) com as cores do clube, imprensa e observação ao lado. */
+  private sedeSite(c: THREE.Vector3, osm: GeoOsm | undefined) {
+    const blds = osm?.buildings ?? [];
+    const club = (osm?.club ?? []).map((i) => blds[i]).filter(Boolean).sort((a, b) => Math.abs(area(pts(b[1]))) - Math.abs(area(pts(a[1]))));
+    const main = club.length ? this.realBuilding(c, club.slice(0, 4), "office", this.o.colors[0], 9) : null;
+    if (!main) { this.office(c.x, c.z); this.press(c.x - 14, c.z + 12); this.scouting(c.x + 14, c.z + 12); return; }
+    const [c1, c2] = this.o.colors;
+    const flags = new THREE.Group();
+    flags.position.set(main.x, 0, main.z + 3);
+    this.flag(c1, -2, 2, 4.5, flags); this.flag(c2, 0, 2, 4.5, flags); this.flag("#2fa84f", 2, 2, 4.5, flags);
+    this.scene.add(flags);
+    this.press(main.x - 9, main.z + 9);
+    this.scouting(main.x + 9, main.z + 9);
   }
 
   // ------------------------------------------------------------ prédios do clube
-  private tag(obj: THREE.Object3D, id: HqBuilding, anchorY: number) {
+  /** Registra um prédio clicável. Os prédios procedurais (sem contorno real) saem em escala 0,6. */
+  private tag(obj: THREE.Object3D, id: HqBuilding, anchorY: number, scale = 0.6) {
+    obj.scale.multiplyScalar(scale);
+    anchorY *= scale;
     obj.traverse((m) => { m.userData.hq = id; });
     this.pickables.push(obj);
     this.anchors[id] = new THREE.Vector3(obj.position.x, anchorY, obj.position.z);
@@ -444,7 +543,7 @@ export class HqRenderer {
   private windows(cols: number, rows: number, base: string, glass = false) {
     const lit = this.o.night;
     const k = this.q >= 4 ? 16 : 8; // texturas mais nítidas em clubes estruturados
-    return canvasTex(cols * k, rows * k, (g) => {
+    const t = this.tex(cols * k, rows * k, (g) => {
       g.fillStyle = base; g.fillRect(0, 0, cols * k, rows * k);
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
         const on = lit ? (x * 7 + y * 3) % 5 !== 0 : false;
@@ -453,7 +552,9 @@ export class HqRenderer {
         g.fillRect(x * k + p, y * k + p, k - 2 * p, k - 2 * p);
         if (this.q >= 4 && !on) { g.fillStyle = "rgba(255,255,255,0.25)"; g.fillRect(x * k + p, y * k + p, (k - 2 * p) / 3, k - 2 * p); }
       }
-    }, this.q >= 4);
+    });
+    if (t && this.q <= 2) { t.magFilter = THREE.NearestFilter; }
+    return t ?? undefined;
   }
 
   private flag(color: string, x: number, z: number, h: number, parent: THREE.Object3D) {
@@ -473,163 +574,6 @@ export class HqRenderer {
       }
       pos.needsUpdate = true;
     });
-  }
-
-  private stadium(cx: number, cz: number) {
-    const g = new THREE.Group();
-    g.position.set(cx, 0, cz);
-    const lv = Math.max(1, Math.min(5, this.o.stadiumLv));
-    const [c1, c2] = this.o.colors;
-    const k = lv >= 4 ? 4 : 2;
-    const pitchTex = canvasTex(64 * k, 40 * k, (x) => {
-      x.scale(k, k);
-      for (let i = 0; i < 12; i++) { x.fillStyle = i % 2 ? "#3c8a2c" : "#46992f"; x.fillRect(i * 64 / 12, 0, 64 / 12, 40); }
-      x.strokeStyle = "#f0fff0"; x.lineWidth = 0.6;
-      x.strokeRect(2.5, 2.5, 59, 35); x.beginPath(); x.moveTo(32, 2.5); x.lineTo(32, 37.5); x.stroke();
-      x.beginPath(); x.arc(32, 20, 5, 0, Math.PI * 2); x.stroke();
-      x.strokeRect(2.5, 12, 8, 16); x.strokeRect(53.5, 12, 8, 16);
-      x.strokeRect(2.5, 16, 3, 8); x.strokeRect(58.5, 16, 3, 8);
-    }, lv >= 4);
-    const pitch = this.mesh(new THREE.PlaneGeometry(10.5, 6.8), this.mat(0xffffff, { map: pitchTex }), false, true);
-    pitch.rotation.x = -Math.PI / 2; pitch.position.y = 0.08;
-    g.add(pitch);
-    // pista/entorno
-    const apron = this.mesh(new THREE.PlaneGeometry(13, 9.5), this.mat(lv >= 3 ? 0x3d7a33 : 0x7a6a55), false, true);
-    apron.rotation.x = -Math.PI / 2; apron.position.y = 0.06;
-    g.add(apron);
-
-    // arquibancadas: anéis por nível (mais segmentos, mais anéis, cobertura)
-    const segs = 14 + lv * 8;
-    const tiers = 1 + Math.floor((lv - 1) / 2); // 1..3
-    const seatMats = [this.mat(c1), this.mat(c2), this.mat(0x8a8f99)];
-    const concrete = this.mat(0xb9bcc4);
-    let rx = 8.2, rz = 6.2, h0 = 0;
-    const crowdSpots: [number, number, number, number][] = [];
-    for (let tr = 0; tr < tiers; tr++) {
-      const depth = 2.4 + (lv >= 3 ? 0.6 : 0);
-      const th = 1.5 + lv * 0.35;
-      for (let i = 0; i < segs; i++) {
-        const a = (i / segs) * Math.PI * 2;
-        const w = (2 * Math.PI * Math.max(rx, rz)) / segs + 0.25;
-        const seg = this.mesh(new THREE.BoxGeometry(w, th, depth), seatMats[(i + tr) % 3 === 2 ? 2 : (i % 2)]);
-        seg.position.set(Math.cos(a) * (rx + depth / 2), h0 + th / 2, Math.sin(a) * (rz + depth / 2));
-        seg.rotation.y = -a + Math.PI / 2;
-        seg.rotation.x = 0;
-        g.add(seg);
-        if (h0 > 0) {
-          const col = this.mesh(new THREE.BoxGeometry(w, h0, 0.6), concrete);
-          col.position.set(Math.cos(a) * (rx + depth - 0.3), h0 / 2, Math.sin(a) * (rz + depth - 0.3));
-          col.rotation.y = -a + Math.PI / 2;
-          g.add(col);
-        }
-        crowdSpots.push([a, rx + depth * 0.5, rz + depth * 0.5, h0 + th]);
-      }
-      rx += depth; rz += depth; h0 += th + 0.2;
-    }
-    // cobertura
-    if (lv >= 3) {
-      const roofM = this.mat(lv >= 5 ? 0xf2f4f7 : 0xdfe3ea, lv >= 5 ? { transparent: true, opacity: 0.88 } : {});
-      const ring = this.mesh(new THREE.RingGeometry(Math.max(rx, rz) - 3.8 - (lv >= 5 ? 1.5 : 0), Math.max(rx, rz) + 0.3, segs, 1), roofM);
-      ring.rotation.x = -Math.PI / 2;
-      ring.scale.set(1, rz / rx, 1);
-      ring.position.y = h0 + 1.4;
-      g.add(ring);
-      // treliça
-      for (let i = 0; i < segs; i += 2) {
-        const a = (i / segs) * Math.PI * 2;
-        const p = this.box(0.25, 1.4, 0.25, this.mat(0x9aa0aa), Math.cos(a) * rx, h0, Math.sin(a) * rz);
-        g.add(p);
-      }
-    }
-    // torcida: cubinhos instanciados (mais gente com estádio maior / dia de jogo)
-    if (lv >= 2 && crowdSpots.length) {
-      const per = (this.o.matchDay ? 4 : 2) + (lv >= 4 ? 2 : 0);
-      const n = crowdSpots.length * per;
-      const im = new THREE.InstancedMesh(new THREE.BoxGeometry(0.28, 0.42, 0.28), new THREE.MeshLambertMaterial({ color: 0xffffff }), n);
-      const r = rng(lv * 101);
-      const m4 = new THREE.Matrix4(), col = new THREE.Color();
-      const bases: [number, number, number][] = [];
-      let k2 = 0;
-      for (const [a0, ax, az, y] of crowdSpots) {
-        for (let j = 0; j < per; j++) {
-          const a = a0 + (r() - 0.5) * (Math.PI * 2 / segs) * 0.9;
-          const off = (r() - 0.5) * 1.6;
-          const x = Math.cos(a) * (ax + off), z = Math.sin(a) * (az + off);
-          bases.push([x, y + 0.2, z]);
-          m4.makeTranslation(x, y + 0.2, z);
-          im.setMatrixAt(k2, m4);
-          col.set(r() < 0.6 ? c1 : r() < 0.7 ? c2 : "#e8d7c4");
-          im.setColorAt(k2, col);
-          k2++;
-        }
-      }
-      im.instanceMatrix.needsUpdate = true;
-      g.add(im);
-      if (this.o.matchDay && !this.o.reduced) {
-        this.movers.push((t) => {
-          for (let i = 0; i < bases.length; i += 1) {
-            const [x, y, z] = bases[i];
-            const wave = Math.max(0, Math.sin(t * 2.2 - Math.atan2(z, x) * 2));
-            m4.makeTranslation(x, y + wave * 0.35, z);
-            im.setMatrixAt(i, m4);
-          }
-          im.instanceMatrix.needsUpdate = true;
-        });
-      }
-    }
-    // placas de LED em volta do campo
-    if (lv >= 3) {
-      const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(c1).multiplyScalar(this.o.night ? 1.2 : 0.9) });
-      for (const [w, x, z, ry] of [[10, 0, -3.8, 0], [10, 0, 3.8, 0], [6.5, -5.6, 0, Math.PI / 2], [6.5, 5.6, 0, Math.PI / 2]] as const) {
-        const b = this.box(w, 0.35, 0.12, led, x, 0.08, z); b.rotation.y = ry; g.add(b);
-      }
-    }
-    // telão
-    if (lv >= 4) {
-      const scr = this.box(4, 2, 0.3, new THREE.MeshBasicMaterial({ color: 0x1a2a4a }), 0, h0 + 0.5, -(rz + 0.6));
-      g.add(scr);
-      const face = this.mesh(new THREE.PlaneGeometry(3.6, 1.6), new THREE.MeshBasicMaterial({ color: this.o.night ? 0x7fb8ff : 0x3a6aa8 }), false, false);
-      face.position.set(0, h0 + 1.5, -(rz + 0.43)); face.rotation.y = 0;
-      g.add(face);
-    }
-    // refletores: 4 torres simples → mastros altos → 8 torres (nível 5)
-    const nTow = lv >= 5 ? 8 : 4;
-    const glowMat = new THREE.MeshBasicMaterial({ color: this.o.night ? 0xfff6c8 : 0xd5d8de });
-    const towerH = h0 + 3 + lv * 1.2;
-    for (let i = 0; i < nTow; i++) {
-      const a = (i / nTow) * Math.PI * 2 + Math.PI / nTow;
-      const x = Math.cos(a) * (rx + 1.5), z = Math.sin(a) * (rz + 1.5);
-      const pole = this.mesh(new THREE.CylinderGeometry(0.18, 0.3, towerH, lv >= 3 ? 8 : 4), this.mat(0x6b6f78));
-      pole.position.set(x, towerH / 2, z);
-      const lamp = this.box(lv >= 3 ? 2.6 : 1.6, 1.1, 0.4, glowMat, x, towerH, z);
-      lamp.lookAt(0, towerH, 0);
-      g.add(pole, lamp);
-      if (this.o.night && i % 2 === 0) {
-        const l = new THREE.PointLight(0xfff2c0, 60 + lv * 20, 60, 1.6);
-        l.position.set(x * 0.7, towerH - 1, z * 0.7);
-        g.add(l);
-      }
-    }
-    // estacionamento com carros
-    if (lv >= 2) {
-      const lot = this.mesh(new THREE.PlaneGeometry(14, 6), this.mat(0x4a4d55), false, true);
-      lot.rotation.x = -Math.PI / 2; lot.position.set(-(rx + 9), 0.06, 0);
-      lot.rotation.z = Math.PI / 2;
-      g.add(lot);
-      const r = rng(77 + lv);
-      const cols = [c1, "#e8e8e8", "#3a6aa8", "#d9a400", "#222222", "#b03030"];
-      for (let i = 0; i < 4 + lv * 3; i++) {
-        const car = this.box(0.9, 0.45, 1.8, this.mat(cols[i % cols.length]), -(rx + 7.5) - (i % 3) * 1.6, 0.05, -6 + Math.floor(i / 3) * 2.2 + r() * 0.2);
-        g.add(car);
-      }
-    }
-    // loja / museu do clube (estádio nível 4+)
-    if (lv >= 4) {
-      const mus = this.box(5, 2.2, 3, this.mat(0xeeeeee), rx + 6, 0, 3);
-      const band = this.box(5.2, 0.5, 3.2, this.mat(c1), rx + 6, 2.2, 3);
-      g.add(mus, band);
-    }
-    this.tag(g, "stadium", h0 + 4);
   }
 
   private office(x: number, z: number) {
@@ -655,32 +599,38 @@ export class HqRenderer {
     this.tag(g, "office", floors * 1.4 + 2.5);
   }
 
-  private training(x: number, z: number) {
+  /** CT: campos (procedurais, ou o campo real do OSM quando `real`), prédio, jogadores e cones. */
+  private training(x: number, z: number, rot = 0, real = false) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
+    g.rotation.y = rot;
     const lv = Math.max(1, Math.min(5, this.o.trainLv));
     const n = 1 + Math.floor(lv * 0.8); // 1 a 5 campos
     const k = lv >= 4 ? 4 : 2;
-    const tex = canvasTex(32 * k, 20 * k, (x2) => {
+    const tex = this.tex(32 * k, 20 * k, (x2) => {
       x2.scale(k, k);
       for (let i = 0; i < 6; i++) { x2.fillStyle = i % 2 ? "#3c8a2c" : "#479a35"; x2.fillRect(i * 32 / 6, 0, 32 / 6, 20); }
       x2.strokeStyle = "#e8ffe8"; x2.lineWidth = 0.6; x2.strokeRect(1.5, 1.5, 29, 17); x2.beginPath(); x2.moveTo(16, 1.5); x2.lineTo(16, 18.5); x2.stroke();
       x2.beginPath(); x2.arc(16, 10, 3, 0, Math.PI * 2); x2.stroke();
-    }, lv >= 4);
-    const pm = this.mat(0xffffff, { map: tex });
+    });
+    const pm = this.mat(0xffffff, { map: tex ?? undefined });
     const spots: [number, number][] = [[0, 0], [12, 0], [-12, 0], [0, -9], [12, -9]];
     for (let i = 0; i < n; i++) {
       const [px, pz] = spots[i];
-      const p = this.mesh(new THREE.PlaneGeometry(10.5, 6.8), pm, false, true);
-      p.rotation.x = -Math.PI / 2; p.position.set(px, 0.05, pz);
-      g.add(p);
+      if (real && i > 0) break; // o campo real já está desenhado pelo entorno
+      if (!real) {
+        const p = this.mesh(new THREE.PlaneGeometry(10.5, 6.8), pm, false, true);
+        p.rotation.x = -Math.PI / 2; p.position.set(px, 0.05, pz);
+        g.add(p);
+      }
       if (lv >= 2) for (const s of [-1, 1]) { // traves
         const gm = this.mat(0xffffff);
         g.add(this.box(0.08, 0.6, 1.6, gm, px + s * 5.05, 0, pz));
       }
     }
-    // prédio do CT
+    // prédio do CT (ao lado do campo)
     const ctW = 6 + lv;
+    const nReal = real ? 1 : n;
     const win = this.windows(5 + lv, 1 + Math.ceil(lv / 2), "#e3e6ea", lv >= 4);
     const fm = this.mat(0xffffff, { map: win });
     g.add(this.box(ctW, (1 + Math.ceil(lv / 2)) * 1.3, 4, fm, 0, 0, 7.5));
@@ -703,7 +653,7 @@ export class HqRenderer {
       pl.add(this.box(0.18, 0.3, 0.18, this.mat(0x222222), -0.12, 0, 0));
       pl.add(this.box(0.18, 0.3, 0.18, this.mat(0x222222), 0.12, 0, 0));
       g.add(pl);
-      const [px, pz] = spots[i % n];
+      const [px, pz] = spots[i % nReal];
       const r = 1.2 + (i % 3) * 0.7, ph = (i / count) * Math.PI * 2;
       this.movers.push((t) => {
         const a = ph + t * (0.7 + (i % 2) * 0.3);
@@ -795,11 +745,11 @@ export class HqRenderer {
   focus(id: HqBuilding | "overview", then?: () => void) {
     const to = id === "overview" ? this.overview.target.clone() : this.anchors[id]?.clone().setY(0);
     if (!to) return;
-    this.flyTo(to, id === "overview" ? this.overview.dist : id === "stadium" ? 64 : 40, then);
+    this.flyTo(to, id === "overview" ? this.overview.dist : id === "stadium" ? 58 : 36, then);
   }
   focusSite(k: HqSiteKind) {
     const p = this.siteCenter[k];
-    if (p) this.flyTo(p.clone(), 70);
+    if (p) this.flyTo(p.clone(), k === "stadium" ? 62 : 70);
   }
   private flyTo(to: THREE.Vector3, d1: number, then?: () => void) {
     this.idleSince = this.t + 4;
@@ -820,7 +770,7 @@ export class HqRenderer {
       if (!this.ptrs.has(e.pointerId) || !this.drag) return;
       this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.drag.pinch && this.ptrs.size === 2) {
-        this.dist = Math.min(420, Math.max(18, this.drag.dist * (this.drag.pinch / Math.max(1, this.pinchDist()))));
+        this.dist = Math.min(900, Math.max(14, this.drag.dist * (this.drag.pinch / Math.max(1, this.pinchDist()))));
       } else {
         const dx = e.clientX - this.drag.x, dy = e.clientY - this.drag.y;
         this.drag.moved = Math.max(this.drag.moved, Math.hypot(dx, dy));
@@ -845,7 +795,7 @@ export class HqRenderer {
     };
     cv.addEventListener("pointerup", end);
     cv.addEventListener("pointercancel", (e) => { this.ptrs.delete(e.pointerId); this.drag = null; });
-    cv.addEventListener("wheel", (e) => { e.preventDefault(); this.dist = Math.min(420, Math.max(18, this.dist * (1 + Math.sign(e.deltaY) * 0.1))); if (!this.raf) this.loop(); }, { passive: false });
+    cv.addEventListener("wheel", (e) => { e.preventDefault(); this.dist = Math.min(900, Math.max(14, this.dist * (1 + Math.sign(e.deltaY) * 0.1))); if (!this.raf) this.loop(); }, { passive: false });
   }
   private pinchDist() {
     const [a, b] = [...this.ptrs.values()];
@@ -856,11 +806,10 @@ export class HqRenderer {
     const w = this.o.host.clientWidth || 360, h = this.o.host.clientHeight || 300;
     // resolução cresce com a estrutura do clube (nível 1: cara de PS2; nível 5: nítido)
     const dpr = window.devicePixelRatio || 1;
-    this.renderer.setPixelRatio(Math.min(dpr, [0.75, 1, 1.5, 2, 3][this.q - 1]));
+    this.renderer.setPixelRatio(Math.min(dpr, [1.25, 1.5, 2, 2.5, 3][this.q - 1]));
     this.renderer.setSize(w, h, false);
     const cv = this.renderer.domElement;
     cv.style.width = `${w}px`; cv.style.height = `${h}px`;
-    cv.style.imageRendering = this.q <= 2 ? "pixelated" : "auto";
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.labelSize.clear();
@@ -896,6 +845,12 @@ export class HqRenderer {
       this.target.z + Math.cos(this.yaw) * cp * this.dist,
     );
     this.camera.lookAt(this.target);
+    // sombra acompanha o que está na tela (mais nítida de perto)
+    const half = Math.min(170, Math.max(28, this.dist * 0.8));
+    const sc = this.sun.shadow.camera as THREE.OrthographicCamera;
+    if (sc.right !== half) { sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.near = 1; sc.far = 900; sc.updateProjectionMatrix(); }
+    this.sun.position.set(this.target.x + 160, 260, this.target.z + 110);
+    this.sun.target.position.copy(this.target);
     this.renderer.render(this.scene, this.camera);
     this.placeLabels();
   }
@@ -933,8 +888,10 @@ export class HqRenderer {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
       const mm = m.material as THREE.Material | THREE.Material[] | undefined;
-      (Array.isArray(mm) ? mm : mm ? [mm] : []).forEach((x) => { (x as THREE.MeshLambertMaterial).map?.dispose(); x.dispose(); });
+      (Array.isArray(mm) ? mm : mm ? [mm] : []).forEach((x) => x.dispose());
     });
+    for (const t of this.texCache) t.dispose();
+    this.scene.environment?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
