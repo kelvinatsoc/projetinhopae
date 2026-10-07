@@ -1,28 +1,33 @@
-# Direção visual — "Era PS1"
+# Direção visual — "Arquibancada"
 
-Alvo: Galaxy S24 Ultra (412×915 CSS px, DPR 3, 120 Hz). A primeira passada ("Vidro de Gala", vidro fosco estilo iOS) foi substituída a pedido do usuário por uma identidade de **jogo de futebol de PlayStation 1** (Winning Eleven / ISS Pro), coerente com a partida em 3D "Retrô PS1". A camada premium continua por baixo (`src/ui/premium.css`) e o tema `src/ui/ps1.css` vence por cima.
+Alvo: Galaxy S24 Ultra (412×915 CSS px, DPR 3, 120 Hz). Histórico: "Vidro de Gala" (vidro estilo iOS) → "Era PS1" (rejeitado: o usuário só queria o mapa 3D com cara de PS2) → **"Arquibancada"**, identidade moderna refeita do zero. O visual PS2 ficou **só** no mapa 3D da sede.
 
 ## Referências
 
-1. **Pinterest: quadros de UI de futebol** — https://www.pinterest.com/dhanashreekedar98/football-app/ · https://uk.pinterest.com/owenhughes/football-ui/ — números grandes como protagonistas, foto do estádio ao fundo.
-2. **Pinterest: Sporty Snap – Football App UI Kit** — https://ph.pinterest.com/pin/sporty-snap-football-app-ui-kit-ui-kits-in-2024--1044272232340003272/ — cartão do próximo jogo com escudos grandes e "VS" central.
-3. **Figma Community: Glassmorphism Football App UI** — https://www.figma.com/community/file/971013685440937649/glassmorphism-football-app-ui — usado na 1ª passada (vidro); descartado na direção atual.
-4. **Dribbble: Football Manager** — https://dribbble.com/tags/football-manager — grade de atalhos com ícones em pastilhas.
-5. **Dribbble: Player Card UI (Antonio Di Nardo)** — https://dribbble.com/shots/2570132-Player-Card-UI — hierarquia da carta: overall + posição no canto, rosto ao centro.
-6. **Behance: EA SPORTS FC / FIFA Mobile UI** — https://www.behance.net/search/projects/EA%20SPORTS%20FOOTBALL%20CLUB%20ui/ux · https://www.behance.net/search/projects/fifa%20mobile%20ui — cartas por nível (bronze/prata/ouro/lenda) com brilho.
-7. **Menus de Winning Eleven 3/4 e ISS Pro Evolution (PS1, 1998-2000)** — painéis azuis chanfrados (borda clara em cima/esquerda, escura embaixo/direita), sombra dura preta, cursor amarelo, títulos em itálico pesado, rótulos em fonte bitmap.
-8. **Gran Turismo 2 / FIFA 2001 (PS1/PS2)** — mapa/menu 3D navegável como hub; inspiração da sede 3D do clube.
+1. **O Brasileirinho FC** — https://brasileirinhofc.com (só páginas públicas, sem conta). Fundo escuro quase preto, Barlow / Barlow Condensed, um destaque de cor forte para a ação, linguagem direta em português. Peguei o tom e a tipografia; a paleta e os componentes são próprios.
+2. **Apple Sports (iOS)** — placar como protagonista, números tabulares, superfícies sólidas e calmas.
+3. **OneFootball** — cartão do próximo jogo com foto, escudos sobrepostos e dados em linha; barra de navegação inferior fixa.
+4. **Pinterest: quadros de UI de futebol** — https://www.pinterest.com/dhanashreekedar98/football-app/ · https://uk.pinterest.com/owenhughes/football-ui/ — foto do estádio, escudos grandes.
+5. **Dribbble: Player Card UI (Antonio Di Nardo)** — https://dribbble.com/shots/2570132-Player-Card-UI — hierarquia da carta do jogador.
+6. **Behance: EA SPORTS FC / FIFA Mobile UI** — https://www.behance.net/search/projects/fifa%20mobile%20ui — cartas por nível (bronze/prata/ouro/lenda).
+7. **Material 3 / Android** — barra inferior com indicador em pílula, alvos de 48 dp, foco visível.
+8. **Gran Turismo 2 / menus de PS2** — hub 3D navegável; inspiração do mapa da sede.
 
-## Direção escolhida
+## Sistema ("Arquibancada", `src/ui/theme.css`)
 
-- **Painéis chanfrados** em degradê azul (#1f3f98 → #0c1d55), cantos retos (3 px), sombra dura 4 px preta, sem desfoque nenhum (mais leve a 120 Hz).
-- **Tipografia embutida** (sem rede): Chakra Petch 600/700/itálico para títulos e números (itálico pesado tipo placar de PS1) e Press Start 2P para rótulos curtos (cabeçalhos de seção, data, minuto, tags).
-- **Cor do clube** no botão principal, nos ícones (preenchimento sólido) e no destaque do fundo; **amarelo** como cursor de seleção (aba/chip ativo, item da doca).
-- **Botões**: blocos chanfrados; ao tocar, o chanfro inverte e o bloco desce 2 px (como apertar um botão de menu de PS1). Um único primário por tela (pré-jogo: "Jogar"; "Aplicar sugestões" passou a secundário). Alvos ≥ 44–58 px. Comparativo de sistemas de botões em `docs/design-shots/botoes-opcoes.png` (a opção A, pílula sólida, venceu antes da mudança para PS1; a hierarquia sólido > tonal > texto foi mantida no tema PS1).
-- **Ícones próprios** (`src/ui/icons.tsx`): duotom com detalhes de futebol (chuteira = treino, cachecol = torcida, taça com alças, silhueta de estádio, prancheta tática, apito…), no tema PS1 com traço quadrado, `crispEdges`, preenchimento sólido e sombra dura.
-  - **Troca por imagens**: coloque `public/media/icons/<nome>.png` (512 px, fundo transparente) e o jogo usa a imagem no lugar do SVG. Nomes: inicio, elenco, tatica, treino, mercado, olheiros, base, financas, estrutura, patrocinios, noticias, caixa-entrada, calendario, competicoes, clube, carreira, conquistas, configuracoes, salvar, jogar, modo-rapido, continuar, selecao, estadio, torcida, coletiva, diretoria, comparar (extras: vestiario, lendas).
-- **Início assimétrico**: foto do estádio do clube ao fundo, cartão do jogo com "VS" vazado gigante, Tática como bloco 2×2 com linhas de campo, Lendas como faixa dourada, os três anéis num painel único. Os atalhos ficam acima do botão "Continuar".
-- **Sede do clube em 3D** (`src/ui/hq/`, three.js baixado sob demanda): complexo low-poly estilo PS2 — estádio (arquibancadas/cobertura conforme o nível do estádio), diretoria (diretoria/finanças/patrocínios), CT (treino/tática/bola parada, nº de campos pelo nível de treino, jogadores correndo), vestiário (elenco/clima/comissão), base (andares pelo nível da base), departamento médico (ala extra no nível 3+), imprensa (notícias/caixa de entrada) e observação (mercado). Bandeiras tremulando, carros na rua, antena girando, noite em dia de jogo (refletores acesos). Arrastar gira a câmera; parado, ela orbita devagar. Animação por tempo (`frameDt` em `animTime.ts`), resolução interna reduzida, para quando sai da tela. Sem WebGL, volta para a grade de botões.
-- `prefers-reduced-motion` congela brilhos, órbita e entradas.
+- **Tokens**: fundo `#0b0e14`, superfícies sólidas em três níveis, bordas de 1 px, cantos de 16 px (cartões) e 12 px (botões). Texto em três níveis, todos com contraste AA sobre as superfícies (15:1, 9:1 e 5,3:1). Há tema claro equivalente.
+- **Marca**: verde-limão `#c8f43c` com texto quase preto (contraste ~15:1), reservado para a ação principal (Continuar/Jogar, primário de cada tela). A **cor do clube** marca identidade: escudo, faixa do herói, ícones dos atalhos.
+- **Tipografia** embutida (sem rede): Barlow 400–700 no texto (16 px base, nada abaixo de 12,5 px) e Barlow Condensed 600–800 em títulos e números tabulares.
+- **Componentes**: barra superior com Voltar sempre no mesmo lugar (44 px) em qualquer tela empilhada; barra inferior fixa com rótulos sempre visíveis e indicador em pílula; **barra do próximo passo** fixa acima da navegação (substitui o botão flutuante que cobria conteúdo), com adversário, data e o botão Continuar/Jogar; botões de 48 px (44 px no tamanho pequeno); chips de 44 px; abas segmentadas que rolam quando têm 5+ itens; foco visível em tudo (anel de 3 px na cor da marca); `aria-label` nos botões só de ícone e `aria-current` na navegação.
+- **Início refeito**: cartão do próximo jogo com foto do estádio, escudos sobrepostos e ações; "Momento do clube" com três medidores numéricos (Diretoria, Torcida, Entrosamento) e a meta; grade de 8 atalhos; tabela, notícias e Álbum de Lendas.
+- **Ícones** (`src/ui/icons.tsx`): duotom com detalhes de futebol. Troca por imagens: `public/media/icons/<nome>.png` (512 px, fundo transparente), com o SVG como reserva. Nomes: inicio, elenco, tatica, treino, mercado, olheiros, base, financas, estrutura, patrocinios, noticias, caixa-entrada, calendario, competicoes, clube, carreira, conquistas, configuracoes, salvar, jogar, modo-rapido, continuar, selecao, estadio, torcida, coletiva, diretoria, comparar.
 
-Capturas finais: `docs/design-shots/` (412×915, DPR 3).
+## Sede do clube em 3D (`src/ui/hq/`)
+
+- **Geografia real**: `src/data/clubSites.json` traz estádio, CT e sede de cada clube (Wikidata P625 e OpenStreetMap via Nominatim/Overpass; nada de Google Maps), gerado por `scripts/fetch_club_sites.py` (retomável, 1 req/s, User-Agent identificado; Série A e B primeiro). O mapa projeta as posições relativas reais (distâncias longas comprimidas em escala logarítmica, ex.: Morumbis ↔ CT da Barra Funda), com ruas, áreas verdes, água, campos e prédios vizinhos do OSM simplificados e extrudados. Sem dados, usa um layout de reserva com bairro procedural.
+- **Detalhe que cresce com a Estrutura**: resolução de renderização, sombras (desligadas no nível 1, suaves no 4–5), materiais (chapado → PBR), mais segmentos e anéis de arquibancada, cobertura, telão, placas de LED, torcida instanciada (com "ola" em dia de jogo), refletores, estacionamento, museu; o CT ganha campos, academia, piscina e concentração; a base ganha andares e alojamento; o médico ganha ala e heliponto.
+- **Navegação**: arrastar gira, pinça aproxima, tocar num prédio faz a câmera **voar** até ele e abrir o menu do local; atalhos "Visão geral / Estádio / CT / Sede" com a distância real. Créditos "© OpenStreetMap · Wikidata" no mapa.
+- Animação por tempo (`frameDt`), para quando sai da tela; sem WebGL, volta para a grade de botões.
+- **Partida**: estádios procedurais (sem modelo feito à mão) ganham cobertura, refletores no teto e placar duplo conforme o nível do estádio (`upgradeByLevel` em `src/data/stadiumStyles.ts`).
+
+Capturas: `docs/design-shots/` (412×915, DPR 3). Comparativo antigo de botões: `docs/design-shots/botoes-opcoes.png`.
