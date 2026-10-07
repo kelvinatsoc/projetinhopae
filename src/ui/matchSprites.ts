@@ -116,7 +116,7 @@ export function celebrationFor(p: Player | undefined, seed: number): Celebration
 }
 
 // ---------------------------------------------------------------- sprite do campinho
-export type Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle";
+export type Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle" | "pass" | "save" | "special";
 
 /** O que o desenho precisa de um jogador (o Dude do MatchView tem tudo isso). */
 export interface SpriteDude {

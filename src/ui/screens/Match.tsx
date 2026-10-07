@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { formatDate } from "../../engine/calendar";
 import { COMP_META, fixtureById, STAGE_NAMES, tieAggregate } from "../../engine/competitions";
@@ -20,6 +20,7 @@ import { Pitch } from "./Squad";
 import { CompBumper, CompHeader } from "../CompTheme";
 import { compTheme, themeClass, themeVars } from "../compThemes";
 import { haptic } from "../haptics";
+import { REAL_MS_PER_MIN } from "../animTime";
 import "../talk.css";
 import "../narrative.css";
 import "../matchday.css";
@@ -162,7 +163,8 @@ function scoreName(c: { name: string; abbr: string }) {
   return c.name.length <= 11 ? c.name : c.abbr;
 }
 
-const SPEEDS = [{ l: "1x", ms: 650 }, { l: "2x", ms: 320 }, { l: "4x", ms: 120 }, { l: "8x", ms: 45 }];
+// 1x = ritmo de transmissão (REAL_MS_PER_MIN por minuto de jogo); as outras aceleram na proporção
+const SPEEDS = [1, 2, 4, 8].map((k) => ({ l: `${k}x`, ms: REAL_MS_PER_MIN / k }));
 const FIELD_KEY = "ldb.matchField";
 const SPEED_KEY = "ldb.matchSpeed";
 const FEED_KEY = "ldb.matchFeed";
@@ -184,7 +186,7 @@ function saveSpeed(v: number | "hl") {
 function readFeedOpen(): boolean {
   try { return localStorage.getItem(FEED_KEY) !== "0"; } catch { return true; }
 }
-const HIGHLIGHT_MS = 650; // nos melhores momentos cada lance roda na velocidade 1x
+const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda na velocidade 1x
 const INTRO_MS = 2600;
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 
@@ -214,6 +216,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
   const [subs, setSubs] = useState(false);
+  const [tacticSheet, setTacticSheet] = useState(false);
+  const [history, setHistory] = useState(false);
+  const [toast, setToast] = useState<MatchEvent | null>(null);
+  const toastTimer = useRef(0);
   const [halfSheet, setHalfSheet] = useState(false);
   const [flash, setFlash] = useState<MatchEvent | null>(null);
   const [flashTop, setFlashTop] = useState<number | null>(null);
@@ -236,7 +242,13 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   fieldRef.current = field;
   const speedRef = useRef(speed);
   speedRef.current = speed;
-  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+  useEffect(() => () => { window.clearTimeout(flashTimer.current); window.clearTimeout(toastTimer.current); }, []);
+  /** Lance a lance: só o último lance relevante, num aviso pequeno que some sozinho. */
+  function showToast(e: MatchEvent) {
+    setToast(e);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), isGoal(e) ? 5000 : 3500);
+  }
   const userSide: 0 | 1 = f && f.away === w.userClubId ? 1 : 0;
 
   if (!simRef.current && f) {
@@ -253,8 +265,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const streak = useRef(0);
   // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
   useEffect(() => {
-    duckForMenu(!quick && !result && (paused || subs || halfSheet));
-  }, [paused, subs, halfSheet, result]);
+    duckForMenu(!quick && !result && (paused || subs || halfSheet || tacticSheet || history));
+  }, [paused, subs, halfSheet, result, tacticSheet, history]);
 
   function later(fn: () => void, ms: number) {
     timers.current.push(window.setTimeout(fn, ms));
@@ -344,7 +356,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs || intro || bumper || hold || halfSheet || cine) return;
+    if (!sim || quick || paused || result || subs || tacticSheet || history || intro || bumper || hold || halfSheet || cine) return;
     const t = window.setInterval(() => {
       let evs = sim.step();
       if (hl) {
@@ -355,13 +367,15 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       const slow = hl || speedRef.current <= 1;
       // com o campo ligado, gol e "uhhh" saem quando a bola chega (o campo avisa)
       const viewLive = fieldRef.current && slow && !document.hidden;
+      const notable = evs.filter((e) => TOAST_TYPES.has(e.type) && (e.type !== "save" || !!e.key)).pop();
+      if (notable) showToast(notable);
       for (const e of evs) {
         if (isGoal(e)) {
           if (slow) setHold(true);
           if (viewLive) {
             // garantia, se o campo não avisar (espera a cena de lance decisivo acabar)
             const fallback = () => (cineRef.current ? later(fallback, 700) : celebrate(e));
-            later(fallback, 2600);
+            later(fallback, (hl ? HIGHLIGHT_MS : SPEEDS[speedRef.current].ms) * 1.6 + 2600);
           }
           else celebrate(e);
         } else if (e.type === "post" || e.type === "save" || e.type === "pen-miss") {
@@ -382,7 +396,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       setTick((x) => x + 1);
     }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, intro, bumper, hold, halfSheet, hl, cine]);
+  }, [sim, speed, paused, result, subs, tacticSheet, history, intro, bumper, hold, halfSheet, hl, cine]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -398,7 +412,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const skipToEnd = () => { haptic("tap"); setIntro(false); setBumper(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); };
   const pickSpeed = (i: number) => { setHl(false); setSpeed(i); saveSpeed(i); };
   const toggleHl = () => { setHl((x) => { saveSpeed(x ? speed : "hl"); return !x; }); };
-  const cycleGfx = () => { const m = gfx === "leve" ? "ultra" : gfx === "ultra" ? "ps1" : "leve"; setGfx(m); saveGraphics(m); };
+  const cycleGfx = () => { const m: GraphicsMode = gfx === "leve" ? "ultra" : gfx === "ultra" ? "ps2" : gfx === "ps2" ? "ps1" : "leve"; setGfx(m); saveGraphics(m); };
   const goOn = () => { haptic("success"); forceBack(); };
   const toggleFeed = () => setFeedOpen((o) => { try { localStorage.setItem(FEED_KEY, o ? "0" : "1"); } catch { /* */ } return !o; });
 
@@ -413,8 +427,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
-                <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → Retrô PS1" onClick={cycleGfx}>
-                  {gfx === "ultra" ? <><Ic n="sparkle" /> Ultra</> : gfx === "ps1" ? <><Ic n="film" /> PS1</> : <><Ic n="feather" /> Leve</>}
+                <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → 3D PS2 → Retrô PS1" aria-label="Trocar gráficos" onClick={cycleGfx}>
+                  {gfx === "ultra" ? <><Ic n="sparkle" /> Ultra</> : gfx === "ps2" ? <><Ic n="film" /> PS2</> : gfx === "ps1" ? <><Ic n="film" /> PS1</> : <><Ic n="feather" /> Leve</>}
                 </button>
               )}
             </div>
@@ -450,7 +464,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
                 <button className={hl ? "active" : ""} aria-pressed={hl} aria-label="Só os melhores momentos" title="Só os melhores momentos" onClick={toggleHl}><Icon name="star" size={18} /></button>
                 <button aria-label="Pular para o resultado" title="Resultado" onClick={skipToEnd}><Icon name="ff" fill size={16} /></button>
               </div>
-              <button className="btn sm" aria-label="Tática e substituições" onClick={() => { setPaused(true); setSubs(true); }}><Ic n="refresh" /> Time</button>
+              <button className="btn sm" aria-label="Substituições" onClick={() => { setPaused(true); setSubs(true); }}><Ic n="refresh" /> Time</button>
             </>
           )}
         </div>
@@ -460,8 +474,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             tick={tick}
             msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
             ultra={gfx === "ultra"}
-            ps1={gfx === "ps1"}
-            paused={(paused || subs) && !result}
+            ps1={gfx === "ps1" || gfx === "ps2"}
+            hd={gfx === "ps2"}
+            paused={(paused || subs || tacticSheet || history) && !result}
             intro={intro && !bumper}
             goalHold={hl || speed <= 1}
             onGoal={celebrate}
@@ -477,7 +492,14 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         <DerbyBanner home={f.home} away={f.away} />
 
         {/* No PS1 o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
-        {flash && !over && !(showField && gfx === "ps1") && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+        {flash && !over && !(showField && (gfx === "ps1" || gfx === "ps2")) && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+
+        {!quick && !over && (
+          <LiveStrip sim={sim} w={w}
+            onTactic={() => { haptic("tap"); setTacticSheet(true); }}
+            onSubs={() => { haptic("tap"); setSubs(true); }}
+            onHistory={() => { haptic("tap"); setHistory(true); }} />
+        )}
 
         {!quick && !over && (
           <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>
@@ -485,7 +507,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           </div>
         )}
 
-        <div className="page">
+        {(over || quick) && <div className="page">
           {result && <PostMatchCard w={w} f={f} r={result} label={resultLabel(w, f, result)} />}
 
           <div className="row gap8">
@@ -497,21 +519,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             <button className="btn sm" aria-expanded={feedOpen} aria-label={feedOpen ? "Recolher" : "Expandir"} onClick={toggleFeed}>{feedOpen ? "▴" : "▾"}</button>
           </div>
 
-          {feedOpen && view === "feed" && (
-            <div className="feed">
-              {events.map((e, i) => (
-                <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
-                  <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
-                  {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
-                  <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
-                </div>
-              ))}
-              {!events.length && <div className="empty">A bola vai rolar…</div>}
-            </div>
-          )}
+          {feedOpen && view === "feed" && <Feed events={events} />}
           {feedOpen && view === "stats" && <StatsTable sim={sim} />}
           {feedOpen && view === "teams" && <TeamsView sim={sim} w={w} />}
-        </div>
+        </div>}
 
         {over && (
           <div className="sticky-cta mx-cta">
@@ -520,6 +531,23 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         )}
       </div>
 
+      {toast && !over && !history && !flash && <EventToast key={sim.events.indexOf(toast)} e={toast} sim={sim} onOpen={() => { setToast(null); setHistory(true); }} />}
+      {history && !result && (
+        <Sheet title="Lance a lance" onClose={() => setHistory(false)}>
+          <div className="seg">
+            <button className={view === "feed" ? "active" : ""} onClick={() => setView("feed")}>Lances</button>
+            <button className={view === "stats" ? "active" : ""} onClick={() => setView("stats")}>Estatísticas</button>
+            <button className={view === "teams" ? "active" : ""} onClick={() => setView("teams")}>Times</button>
+          </div>
+          <div className="mt12">
+            {view === "feed" && <Feed events={events} />}
+            {view === "stats" && <StatsTable sim={sim} />}
+            {view === "teams" && <TeamsView sim={sim} w={w} />}
+          </div>
+          <button className="btn primary block mt12" onClick={() => setHistory(false)}>Voltar ao jogo</button>
+        </Sheet>
+      )}
+      {tacticSheet && !result && <TacticSheet sim={sim} side={userSide} onClose={() => { setTacticSheet(false); setTick((x) => x + 1); }} onSubs={() => { setTacticSheet(false); setSubs(true); }} />}
       {halfSheet && !result && !subs && (
         <HalftimeSheet sim={sim} side={userSide} w={w}
           onSubs={() => { setHalfSheet(false); setSubs(true); }}
@@ -527,6 +555,97 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       )}
       {subs && !result && <SubsSheet sim={sim} side={userSide} w={w} onClose={() => { setSubs(false); setPaused(false); setTick((x) => x + 1); }} />}
     </div>
+  );
+}
+
+const TOAST_TYPES = new Set<MatchEvent["type"]>(["goal", "pen-goal", "owngoal", "yellow", "red", "sub", "injury", "var", "post", "save", "pen-miss", "chance", "miss", "half"]);
+
+/** Histórico completo (mais recente primeiro). */
+function Feed({ events }: { events: MatchEvent[] }) {
+  return (
+    <div className="feed">
+      {events.map((e, i) => (
+        <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
+          <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
+          {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
+          <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
+        </div>
+      ))}
+      {!events.length && <div className="empty">A bola vai rolar…</div>}
+    </div>
+  );
+}
+
+/** Aviso pequeno e passageiro com o último lance; um toque abre o histórico completo. */
+function EventToast({ e, sim, onOpen }: { e: MatchEvent; sim: MatchSim; onOpen: () => void }) {
+  const club = e.side != null ? sim.sides[e.side].club : null;
+  const icon = isGoal(e) ? "⚽" : e.type === "yellow" ? "🟨" : e.type === "red" ? "🟥" : e.type === "sub" ? "🔄" : e.type === "injury" ? "🚑" : e.type === "var" ? "📺" : e.type === "half" ? "⏱" : e.type === "save" ? "🧤" : e.type === "post" ? "🥅" : "👀";
+  return (
+    <button className={`mx-toast${isGoal(e) ? " goal" : ""}`} role="status" aria-live="polite" aria-label={`${e.min}' ${e.text}. Toque para ver todos os lances`} onClick={onOpen} style={{ "--tc": club ? visibleColor(club.colors) : "#9aa5a0" } as CSSProperties}>
+      <span className="mx-toast-ic" aria-hidden="true">{icon}</span>
+      <span className="mx-toast-m">{e.min}'</span>
+      <span className="mx-toast-t">{e.text}</span>
+    </button>
+  );
+}
+
+/** Faixa fixa da partida: gols com autor, cartões, posse, finalizações e os botões de tática/substituição. */
+function LiveStrip({ sim, w, onTactic, onSubs, onHistory }: { sim: MatchSim; w: World; onTactic: () => void; onSubs: () => void; onHistory: () => void }) {
+  const st = sim.stats;
+  const tot = st.poss[0] + st.poss[1];
+  const p0 = tot ? Math.round((st.poss[0] / tot) * 100) : 50;
+  const goals = sim.events.filter(isGoal);
+  const reds = sim.events.filter((e) => e.type === "red");
+  const surname = (pid?: number | null) => (pid != null && w.players[pid] ? shortName(w.players[pid].name) : "");
+  const side = (k: 0 | 1) => goals.filter((e) => e.side === k).map((e) => `${surname(e.pid)} ${e.min}'${e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""}`);
+  const cards = (k: 0 | 1) => (st.yellows[k] || st.reds[k] ? `${st.yellows[k] ? `🟨${st.yellows[k]}` : ""}${st.reds[k] ? `🟥${st.reds[k]}` : ""}` : "–");
+  return (
+    <div className="mx-strip" role="region" aria-label="Resumo ao vivo">
+      {goals.length > 0 && (
+        <div className="mx-goals">
+          <div className="l">{side(0).map((t, i) => <span key={i}>⚽ {t}</span>)}</div>
+          <div className="r">{side(1).map((t, i) => <span key={i}>{t} ⚽</span>)}</div>
+        </div>
+      )}
+      <div className="mx-stats">
+        <span title="Posse de bola"><b>{p0}%</b><i>posse</i><b>{100 - p0}%</b></span>
+        <span title="Finalizações (no gol)"><b>{st.shots[0]}<small> ({st.onTarget[0]})</small></b><i>chutes</i><b>{st.shots[1]}<small> ({st.onTarget[1]})</small></b></span>
+        <span title="Cartões"><b>{cards(0)}</b><i>cartões</i><b>{cards(1)}</b></span>
+      </div>
+      {reds.length > 0 && <div className="tiny muted center">Expulso{reds.length > 1 ? "s" : ""}: {reds.map((e) => `${surname(e.pid)} ${e.min}'`).join(", ")}</div>}
+      <div className="mx-acts">
+        <button className="btn sm" onClick={onTactic}><Ic n="target" /> Tática</button>
+        <button className="btn sm" onClick={onSubs}><Ic n="refresh" /> Substituir</button>
+        <button className="btn sm" onClick={onHistory}><Ic n="list" /> Histórico</button>
+      </div>
+    </div>
+  );
+}
+
+/** Tática ao vivo: mentalidade e pressão. */
+function TacticSheet({ sim, side, onClose, onSubs }: { sim: MatchSim; side: 0 | 1; onClose: () => void; onSubs: () => void }) {
+  const S = sim.sides[side];
+  const [, force] = useState(0);
+  return (
+    <Sheet title="Tática" onClose={onClose}>
+      <b className="small">Mentalidade</b>
+      <div className="seg mt8">
+        {[-2, -1, 0, 1, 2].map((m) => (
+          <button key={m} className={S.mentality === m ? "active" : ""} onClick={() => { sim.setMentality(side, m); force((x) => x + 1); }}>{MENTALITY_NAMES[m].split(" ")[0]}</button>
+        ))}
+      </div>
+      <b className="small" style={{ display: "block", marginTop: 12 }}>Pressão</b>
+      <div className="seg mt8">
+        {(["Baixa", "Média", "Alta"] as const).map((l, i) => (
+          <button key={l} className={S.pressing === i ? "active" : ""} onClick={() => { S.pressing = i; sim.recompute(); force((x) => x + 1); }}>{l}</button>
+        ))}
+      </div>
+      <div className="small muted mt8">Pressão alta rouba mais bolas, mas cansa o time mais rápido.</div>
+      <div className="grid2 mt12">
+        <button className="btn" onClick={onSubs}><Ic n="refresh" size={18} /> Substituições</button>
+        <button className="btn primary" onClick={onClose}>Voltar ao jogo</button>
+      </div>
+    </Sheet>
   );
 }
 

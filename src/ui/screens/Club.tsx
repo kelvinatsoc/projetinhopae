@@ -17,7 +17,8 @@ import type { Club, World } from "../../engine/types";
 import { exportWorld, saveWorld } from "../../save";
 import { forceBack, push, resetNav, setTab, setWorld, toast, update, useWorld } from "../../store";
 import { autosave, saveNow } from "../actions";
-import { crowdVolume, loadMedia, saveMedia, setCrowdVolume, setSoundEnabled, soundEnabled } from "../audio";
+import { setSpecialsEnabled, specialsEnabled } from "../specials";
+import { crowdVolume,loadMedia, saveMedia, setCrowdVolume, setSoundEnabled, soundEnabled } from "../audio";
 import { Avatar, clubStars, CompLogo, Crest, Icon, PlayerRow, StadiumPhoto, stadiumSrc, Stars, Ic, GIcon } from "../components";
 import { loadCredits, type Credit } from "../credits";
 import { flag } from "../flags";
@@ -293,6 +294,7 @@ export function SettingsScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
   const [sound, setSound] = useState(soundEnabled());
+  const [specials, setSpecials] = useState(specialsEnabled());
   const [vol, setVol] = useState(() => Math.round(crowdVolume() * 100));
   const [hasGoal, setHasGoal] = useState(false);
   useEffect(() => { loadMedia(`goal:${c.id}`).then((d) => setHasGoal(!!d)).catch(() => undefined); }, [c.id]);
@@ -314,6 +316,8 @@ export function SettingsScreen() {
             <input type="range" min={0} max={100} step={5} value={vol} aria-label="Volume da torcida" onChange={(e) => { const v = Number(e.target.value); setVol(v); setCrowdVolume(v / 100); }} />
           </label>
         )}
+        <div className="switch"><div><b>Golpes especiais</b><div className="small muted">Chute Trovão, Folha Seca, Bicicleta, Voo do Gato… câmera lenta e o nome do golpe na tela nos lances decisivos (só visual, não muda o resultado).</div></div>
+          <input type="checkbox" checked={specials} onChange={(e) => { setSpecials(e.target.checked); setSpecialsEnabled(e.target.checked); }} /></div>
         <div className="switch"><div><b>Rostos ilustrados</b><div className="small muted">Para jogadores reais sem foto livre (em vez da silhueta).</div></div>
           <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
         <div className="switch"><div><b>Tema claro</b></div>

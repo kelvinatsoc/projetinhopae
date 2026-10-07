@@ -3,7 +3,7 @@
 // interna e a quantização de 15 bits com pontilhado ordenado (a mesma conta roda no shader).
 import { pitchToWorld, PITCH_LEN } from "../pitchGeom";
 
-export type Ps1Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle";
+export type Ps1Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle" | "pass" | "save" | "special";
 
 export interface Ps1Player {
   /** índice estável do jogador na animação */
@@ -35,6 +35,24 @@ export interface Ps1Player {
   hair: string;
   num: number;
   name: string;
+  /** visual individual (modo PS2): estilo de cabelo, altura -1/0/1, porte forte, barba */
+  hairStyle?: string;
+  tall?: number;
+  broad?: boolean;
+  beard?: boolean;
+}
+
+/** Golpe especial em andamento (para câmera lenta, close, brilho e rastro da bola). */
+export interface Ps1Special {
+  /** id do jogador que executa */
+  who: number;
+  name: string;
+  colors: [string, string];
+  /** ms desde o começo do golpe */
+  t: number;
+  /** a bola já chegou (impacto)? ms desde o impacto, -1 = ainda não */
+  impact: number;
+  save: boolean;
 }
 
 export interface Ps1Snapshot {
@@ -48,6 +66,7 @@ export interface Ps1Snapshot {
   goalSide: 0 | 1 | null;
   netShake: 0 | 1 | null;
   cheer: boolean;
+  special?: Ps1Special | null;
 }
 
 /** Converte a posição do campinho (pixels do modo 2D) para metros do 3D. */
@@ -194,4 +213,26 @@ export function hudAbbr(abbr: string | undefined, name: string): string {
 export function facingAngle(vx: number, vz: number, prev: number): number {
   if (Math.hypot(vx, vz) < 1e-4) return prev;
   return Math.atan2(vx, vz);
+}
+
+/** Close de TV no jogador do golpe especial: baixa, do lado da câmera principal, olhando o jogador. */
+export function closeUpCam(x: number, z: number, attackDir: 1 | -1, t: number): CamPose {
+  // gira devagar em volta do jogador, do lado da câmera principal (z positivo), meio de frente
+  const orbit = Math.min(1, t / 1600) * 0.45;
+  const ang = attackDir * (0.75 - orbit);
+  const r = 11 - orbit * 2.5;
+  return {
+    pos: [x + Math.sin(ang) * r, 3.0 - orbit * 0.6, z + Math.cos(ang) * r],
+    look: [x + attackDir * 0.8, 1.1, z],
+    fov: 34,
+  };
+}
+
+/** Resolução interna do modo PS2: alta (até 1,5× a tela em CSS, teto de 1600 px de largura). */
+export function hdRes(cssW: number, cssH: number, dpr: number, q = 1): { w: number; h: number; aspect: number } {
+  const aspect = Math.max(1, Math.min(2.2, cssW / Math.max(1, cssH)));
+  const k = Math.min(dpr, 2) * q;
+  const w = Math.min(1600, Math.round((cssW * k) / 2) * 2);
+  const h = Math.round(w / aspect / 2) * 2;
+  return { w, h, aspect: w / h };
 }

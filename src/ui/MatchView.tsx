@@ -4,9 +4,9 @@
 // inteira com image-rendering: pixelated, então fica nítido em qualquer tela.
 // A animação roda fora do React (requestAnimationFrame + refs) e usa Math.random: nunca mexe no
 // gerador do mundo, então o resultado da partida é exatamente o mesmo com ou sem o campo.
-import { chaseStep, RUN_PX_S } from "./animTime";
+import { ballTime, BALL_MPS, chaseStep, RUN_PX_S, sprintPx, timeScale } from "./animTime";
 import { kitsOf, type Kit } from "./Kit";
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
@@ -24,6 +24,7 @@ import { StadiumBanner } from "./StadiumBanner";
 import { stadiumStyleFor } from "../data/stadiumStyles";
 import { ballHeight, hudAbbr, hudName, toWorld, type Ps1Snapshot } from "./ps1/model";
 import type { Ps1Renderer } from "./ps1/Ps1Renderer";
+import { pickSpecial, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
 import { Festa2D } from "./torcida2d";
 
@@ -179,6 +180,11 @@ interface Dude extends SpriteDude {
   down: number; // até quando está caído (lesão)
   dive: number; // até quando o goleiro está voando
   diveDir: number;
+  diveLen?: number;
+  /** velocidade de disparada (px/s na 1x), pelo atributo de velocidade */
+  sprint?: number;
+  /** papel tático visível (ponta, volante, lateral…) */
+  role?: Role;
   arms: number; // até quando comemora com os braços para cima
   sad: boolean;
   shirt: string;
@@ -206,6 +212,8 @@ interface Flight {
   curve?: number;
   /** chute forte: rastro de velocidade */
   power?: boolean;
+  /** golpe especial: brilho e rastro colorido; ao chegar, o impacto */
+  glow?: [string, string];
 }
 
 interface Icon {
@@ -230,7 +238,17 @@ interface Callbacks {
   beat: (e: MatchEvent) => void;
   /** lance decisivo: cena de cinema (só no modo Ultra) */
   cine?: (spec: CineSpec) => void;
+  /** golpe especial começou (nome na tela) ou acabou (null); o relógio segura enquanto dura */
+  special?: (s: { name: string; colors: [string, string]; who: string; save: boolean } | null) => void;
 }
+
+/** Relógio da 1x (e da 2x) — limites para o roteiro mais detalhado. */
+const X1_MS = 3500;
+const SLOW_MS = 1800;
+const DIVE_MS = 750;
+/** Papel visível em campo (vem da posição na formação). */
+type Role = "gk" | "cb" | "fb" | "dm" | "cm" | "am" | "wing" | "st";
+const ROLE_OF: Record<string, Role> = { GOL: "gk", ZAG: "cb", LD: "fb", LE: "fb", VOL: "dm", MC: "cm", MEI: "am", PD: "wing", PE: "wing", ATA: "st" };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -599,7 +617,10 @@ class PitchAnim {
     const lk = looksOf(pid != null ? this.sim.w.players[pid] : undefined);
     d.skin = lk.skin;
     d.hair = lk.hair;
-    d.look = lookOf(pid != null ? this.sim.w.players[pid] : undefined);
+    const pl = pid != null ? this.sim.w.players[pid] : undefined;
+    d.look = lookOf(pl);
+    d.sprint = sprintPx(pl?.attrs.vel ?? 65);
+    d.role = ROLE_OF[this.sim.sides[d.side].slots[d.k]] ?? "cm";
     if (pid == null) d.hidden = true;
   }
 
@@ -679,14 +700,57 @@ class PitchAnim {
       return toPx(side, clamp(1.5 + bu * 0.07, 1.5, 9), 50 + (bv - 50) * 0.18);
     }
     let u: number, v: number;
+    const style = d.look?.style ?? "normal";
     if (attacking) {
       const line = clamp(bu * 0.5 + 6 + S.mentality * 3, 18, 52);
       u = Math.min(93, line + (d.bx - 17) * 0.78);
       v = 50 + (d.bv - 50) * 1.06 + (bv - 50) * 0.14;
+      // cada papel se mexe do seu jeito com a bola
+      switch (d.role) {
+        case "wing": // ponta abre o campo colado na lateral e ataca o espaço
+          v = 50 + Math.sign(d.bv - 50 || 1) * Math.max(Math.abs(v - 50), 42);
+          u += style === "speedster" ? 7 : 4;
+          break;
+        case "fb": // lateral apoia por fora (o velocista passa do ponta)
+          v = 50 + Math.sign(d.bv - 50 || 1) * Math.max(Math.abs(v - 50), 38);
+          u += style === "speedster" || S.mentality > 0 ? 9 : 3;
+          break;
+        case "dm": // volante fica plantado na frente da zaga
+          u -= 8;
+          v = 50 + (v - 50) * 0.45;
+          break;
+        case "am": // meia flutua entre as linhas, atrás da bola
+          v = v + (bv - v) * 0.35;
+          u += 2;
+          break;
+        case "st": // centroavante de área segura o zagueiro; o rápido ameaça a profundidade
+          u += style === "target" ? 2 : style === "speedster" ? 5 : 3;
+          v = 50 + (v - 50) * 0.6 + (bv - 50) * 0.1;
+          break;
+        case "cb":
+          u -= 2;
+          break;
+      }
+      if (style === "engine" && d.role !== "dm") u += Math.sin(this.now / 2600 + d.seed) * 6; // carrapato: sobe e desce
     } else {
       const line = clamp(bu * 0.45 - 2 + S.pressing * 3 + S.mentality * 1.5, 6, 38);
       u = line + (d.bx - 17) * 0.56;
       v = 50 + (d.bv - 50) * 0.78 + (bv - 50) * 0.3;
+      switch (d.role) {
+        case "dm": // volante cola no setor da bola e protege a entrada da área
+          v = v + (bv - v) * 0.55;
+          u = Math.min(u, Math.max(8, bu - 10));
+          break;
+        case "wing": // ponta recompõe pouco: fica no contra-ataque
+          u += style === "speedster" ? 10 : 5;
+          break;
+        case "st":
+          u += 4;
+          break;
+        case "cb":
+          v = 50 + (v - 50) * 0.85;
+          break;
+      }
     }
     return toPx(side, u, clamp(v, 3, 97));
   }
@@ -742,8 +806,14 @@ class PitchAnim {
           [tx, ty] = this.shapeTarget(d, this.poss === side);
           if (this.ball.holder === d && d.grp !== 0) {
             // conduzindo a bola: avança devagar
-            const push = Math.min(14, ((this.now - this.carryStart) / 1000) * 9 * this.spd());
+            // condução: o driblador leva a bola longe e gingando, o velocista arranca, o pivô segura
+            const style = d.look?.style ?? "normal";
+            const carry = style === "dribbler" ? 26 : style === "speedster" ? 22 : style === "target" ? 6 : d.role === "cb" || d.role === "dm" ? 8 : 13;
+            const rate = style === "speedster" ? 9 : style === "dribbler" ? 6.5 : 5.5; // px/s na 1x (~4–6 m/s)
+            const t = (this.now - this.carryStart) / 1000;
+            const push = Math.min(carry, t * rate * this.spd());
             tx += fwd(side) * push;
+            if (style === "dribbler") ty += Math.sin(t * this.spd() * 3.1 + d.seed) * 3.2;
           }
       }
       if (this.mode === "play" && this.poss != null && side !== this.poss && d.grp !== 0 && this.pressers(side).includes(d)) {
@@ -817,7 +887,7 @@ class PitchAnim {
   }
 
   spd(): number {
-    return clamp(Math.pow(650 / this.ms, 0.8), 1, 6);
+    return timeScale(this.ms);
   }
 
   snapToTargets() {
@@ -860,14 +930,15 @@ class PitchAnim {
       this.nextFx = null;
     }
   }
-  nextFx: { curve?: number; power?: boolean } | null = null;
+  nextFx: { curve?: number; power?: boolean; glow?: [string, string] } | null = null;
 
   /** Passe: o recebedor corre para o ponto onde a bola vai chegar. */
   pass(to: Dude, lob = false) {
     if (to.hidden || to.leaving) return;
     const b = this.ball;
     const dist0 = Math.hypot(to.tx - b.x, to.ty - b.y);
-    const dur = clamp(dist0 * 6.5, 110, 360) / this.spd();
+    const dur = Math.min(2400, ballTime(dist0, lob || dist0 > 48 ? BALL_MPS.long : BALL_MPS.pass, 380)) / this.spd();
+    if (!this.reduced && this.rich && b.holder && b.holder.side !== 2) setPose(b.holder, "pass", this.now, Math.max(140, 380 / this.spd()));
     const reach = (RUN_PX_S * this.spd() * to.speed * dur) / 1000;
     const dx = to.tx - to.x, dy = to.ty - to.y;
     const dd = Math.hypot(dx, dy) || 1;
@@ -983,7 +1054,7 @@ class PitchAnim {
       this.at(t, () => this.say(`${this.name(holderGk)} dá o chutão`, holderGk.side as 0 | 1));
     } else {
       this.at(t, () => {
-        const dur = 120 / this.spd();
+        const dur = 450 / this.spd();
         g.ox = this.ball.x;
         g.oy = this.ball.y;
         g.oUntil = this.now + dur;
@@ -999,7 +1070,7 @@ class PitchAnim {
     const atk = ph.atk!;
     const [start, t1] = this.ensurePossession(atk, t0, B);
     if (!start) return;
-    const n = this.ms >= 600 ? 2 + (Math.random() < 0.5 ? 1 : 0) : this.ms >= 300 ? 1 + (Math.random() < 0.6 ? 1 : 0) : 1;
+    const n = this.ms >= X1_MS ? 2 + (Math.random() < 0.5 ? 1 : 0) : this.ms >= SLOW_MS ? 1 + (Math.random() < 0.6 ? 1 : 0) : 1;
     const tackler = ph.tackle?.pid != null ? this.byPid(ph.tackle.pid) : null;
     const end = tackler ? 0.72 * B : 0.9 * B;
     const gap = Math.max(0, end - t1) / n;
@@ -1021,11 +1092,12 @@ class PitchAnim {
       this.at(0.74 * B, () => {
         td.ox = this.ball.x;
         td.oy = this.ball.y;
-        td.oUntil = this.now + 260 / this.spd();
+        td.oUntil = this.now + 900 / this.spd();
       });
       this.at(0.86 * B, () => {
         if (td.hidden || td.leaving) return;
-        const dur = 70 / this.spd();
+        const dur = 260 / this.spd();
+        if (this.rich) setPose(td, "slide", this.now, 520 / this.spd());
         this.poss = td.side as 0 | 1;
         this.fly(td.x + fwd(td.side as 0 | 1) * 2, td.y, dur, 0, td);
         if (Math.random() < 0.45) this.say(`${this.name(td)} desarma ${this.name(victim)}`, td.side as 0 | 1);
@@ -1049,9 +1121,9 @@ class PitchAnim {
     if (!shooter) return this.possessionScript(ph, t0, B);
     const goalE = evs.find((e) => (e.type === "goal" || e.type === "owngoal") && e.side === atk);
     const outE = evs.find((e) => (e.type === "save" || e.type === "miss" || e.type === "post" || e.type === "var") && e.side === atk);
-    const slow = this.ms >= 300;
+    const slow = this.ms >= SLOW_MS;
     const hold = !!goalE && this.goalHold && slow;
-    const Bs = hold ? (this.ms >= 600 ? 1250 : 900) : B;
+    const Bs = hold ? B * 1.2 : B;
     const [start, t1] = this.ensurePossession(atk, t0, Bs);
     let t = t1;
     let cur = start;
@@ -1088,8 +1160,63 @@ class PitchAnim {
     });
   }
 
-  /** A finalização em si: bola para o gol, para fora, no goleiro ou na trave. */
+  /** Golpe especial em andamento (câmera lenta + nome na tela). */
+  special: { def: SpecialDef; who: Dude; t0: number; until: number; impact: number } | null = null;
+  specialsOn = true;
+  specCount = 0;
+  specLast: number | null = null;
+  /** fator de tempo da animação (câmera lenta do golpe especial) */
+  warp = 1;
+
+  /** Finalização: às vezes vira golpe especial (câmera lenta antes do chute). */
   doShot(shooter: Dude, sh: NonNullable<MinutePhase["shot"]>, e: MatchEvent | null, hold: boolean) {
+    const pick = this.specialsOn && !this.reduced && this.ms >= SLOW_MS && !document.hidden ? pickSpecial({
+      shooter: this.sim.w.players[sh.shooter],
+      keeper: (() => { const k = this.gk((1 - sh.side) as 0 | 1); return k?.pid != null ? this.sim.w.players[k.pid] : undefined; })(),
+      kind: sh.kind, result: sh.result, xg: sh.xg, min: this.sim.minute, lastMin: this.specLast, count: this.specCount,
+    }) : null;
+    if (!pick) return this.doShotNow(shooter, sh, e, hold);
+    const who = pick.who === "keeper" ? this.gk((1 - sh.side) as 0 | 1) : shooter;
+    if (!who) return this.doShotNow(shooter, sh, e, hold);
+    this.specCount++;
+    this.specLast = this.sim.minute;
+    this.special = { def: pick.def, who, t0: this.now, until: this.now + 6000, impact: -1 };
+    this.warp = 0.35;
+    this.cb.special?.({ name: pick.def.name, colors: pick.def.colors, who: this.name(who), save: pick.who === "keeper" });
+    setPose(shooter, "special", this.now, 650);
+    this.pfx.burst(shooter.x, shooter.y - 4, pick.def.colors, 16, 0.8);
+    this.at(650, () => {
+      const f = pick.def.flight;
+      this.nextFx = { glow: pick.def.colors, power: f === "power" || f === "header" || undefined, curve: f === "curve" ? (shooter.y < CY ? 1 : -1) * 7 : undefined };
+      const keepFx = this.nextFx;
+      this.doShotNow(shooter, sh, e, hold);
+      if (this.ball.fl && keepFx) Object.assign(this.ball.fl, keepFx, f === "lob" ? { peak: 7 } : {});
+      if (f === "lob") setPose(shooter, "kick", this.now, 300);
+      else if (pick.def.id === "bicicleta") setPose(shooter, "bicycle", this.now, 700);
+      else if (f === "header") setPose(shooter, "header", this.now, 500);
+    });
+  }
+
+  /** Bola chegou (rede, goleiro ou trave): explosão de impacto e fim da câmera lenta. */
+  specialImpact() {
+    const sp = this.special;
+    if (!sp || sp.impact > 0) return;
+    sp.impact = this.now;
+    this.pfx.burst(this.ball.x, this.ball.y - this.ball.h, [...sp.def.colors, "#ffffff"], 40, 1.6);
+    this.flashUntil = this.now + 600;
+    this.warp = 0.5;
+    this.at(260, () => this.endSpecial());
+  }
+
+  endSpecial() {
+    if (!this.special) return;
+    this.special = null;
+    this.warp = 1;
+    this.cb.special?.(null);
+  }
+
+  /** A finalização em si: bola para o gol, para fora, no goleiro ou na trave. */
+  doShotNow(shooter: Dude, sh: NonNullable<MinutePhase["shot"]>, e: MatchEvent | null, hold: boolean) {
     const atk = sh.side;
     const def = (1 - atk) as 0 | 1;
     const gx = goalX(atk);
@@ -1098,7 +1225,7 @@ class PitchAnim {
     const sp = this.spd();
     const fromX = this.ball.x, fromY = this.ball.y;
     const dist = Math.abs(gx - fromX);
-    const dur = clamp(dist * 3.2, 110, 240) / sp * (hold ? 1.25 : 1);
+    const dur = ballTime(dist, this.nextFx?.power ? BALL_MPS.power : BALL_MPS.shot, 380) / sp * (hold ? 1.25 : 1);
     this.flashUntil = this.now + dur + 300;
     const kY = keeper ? keeper.y : CY;
     if (this.rich) this.shotFx(shooter, sh, keeper);
@@ -1108,7 +1235,8 @@ class PitchAnim {
       keeper.oy = reach ? ty : kY + clamp(ty - kY, -3, 3);
       keeper.oUntil = this.now + dur + 500;
       this.at(dur * 0.45, () => {
-        keeper.dive = this.now + 450;
+        keeper.dive = this.now + DIVE_MS / sp;
+        keeper.diveLen = DIVE_MS / sp;
         keeper.diveDir = ty >= keeper.y ? 1 : -1;
       });
     };
@@ -1142,7 +1270,7 @@ class PitchAnim {
           if (!keeper || Math.random() < 0.45) {
             // espalma
             const py = CY + (Math.random() < 0.5 ? -1 : 1) * rnd(12, 24);
-            this.fly(gx - f * rnd(8, 16), py, 200 / sp, 3, null);
+            this.fly(gx - f * rnd(8, 16), py, 750 / sp, 3, null);
           } else this.setHolder(keeper);
         });
         break;
@@ -1154,7 +1282,7 @@ class PitchAnim {
           if (e) this.cb.beat(e);
           if (e) this.say(e.text, atk, 1);
           if (this.rich) this.pfx.burst(gx, py - 2, ["#fff6b0", "#ffd83a", "#ffffff"], 18, 1.2);
-          this.fly(gx - f * rnd(10, 18), py + rnd(-10, 10), 180 / sp, 2, null);
+          this.fly(gx - f * rnd(10, 18), py + rnd(-10, 10), 650 / sp, 2, null);
         });
         break;
       }
@@ -1167,7 +1295,7 @@ class PitchAnim {
           if (e) this.say(e.text, atk, 1);
           if (e) this.cb.beat(e);
           // tiro de meta
-          this.at(320 / sp, () => {
+          this.at(1600 / sp, () => {
             if (!keeper) return;
             this.ball.x = gx - f * 7;
             this.ball.y = CY + rnd(-6, 6);
@@ -1188,12 +1316,12 @@ class PitchAnim {
     if (style === "power" || style === "volley" || style === "bicycle") this.nextFx = { power: true };
     else if (style === "curl" || style === "freekick") this.nextFx = { curve: (Math.random() < 0.5 ? -1 : 1) * rnd(3, 6) };
     const outcome: CineOutcome = sh.result === "goal" ? "goal" : sh.result === "save" ? "save" : sh.result === "post" ? "post" : "miss";
-    if (sh.result !== "var" && sh.result !== "owngoal") this.maybeCine(shooter, keeper, sh.side, outcome, style, sh.xg, false);
+    if (sh.result !== "var" && sh.result !== "owngoal" && !this.special) this.maybeCine(shooter, keeper, sh.side, outcome, style, sh.xg, false);
   }
 
   /** Dispara a cena de lance decisivo (só Ultra, velocidades lentas, sem "menos movimento"). */
   maybeCine(shooter: Dude, keeper: Dude | null, atk: 0 | 1, outcome: CineOutcome, style: CineSpec["style"], xg: number, penalty: boolean) {
-    if (!this.cb.cine || this.reduced || !this.goalHold || this.ms < 300) return;
+    if (!this.cb.cine || this.reduced || !this.goalHold || this.ms < SLOW_MS) return;
     const min = this.sim.minute;
     const seed = (shooter.pid ?? 0) * 131 + min;
     if (!wantsCinematic({ outcome, penalty, xg, min, lastMin: this.lastCine, seed })) return;
@@ -1239,7 +1367,7 @@ class PitchAnim {
     if (sh.result === "var") {
       if (e) this.say(e.text, atk, 1);
       this.icons.push({ kind: "var", d: null, x: CX, y: CY - 16, until: this.now + 1800 });
-      this.at(700 / this.spd(), () => {
+      this.at(2200 / this.spd(), () => {
         const keeper = this.gk((1 - atk) as 0 | 1);
         this.ball.x = goalX(atk) - fwd(atk) * 7;
         this.ball.y = CY;
@@ -1294,7 +1422,7 @@ class PitchAnim {
       this.ball.y = CY;
       this.ball.h = 0;
     };
-    if (hold) this.at(1500, back);
+    if (hold) this.at(2600, back);
     else this.at(Math.max(60, this.ms * 0.35), back);
   }
 
@@ -1305,8 +1433,8 @@ class PitchAnim {
     if (!taker) return;
     const goalE = evs.find((e) => e.type === "pen-goal" && e.side === atk);
     const missE = evs.find((e) => e.type === "pen-miss" && e.side === atk);
-    const hold = !!goalE && this.goalHold && this.ms >= 300;
-    const P = hold ? (this.ms >= 600 ? 1500 : 1000) : this.ms * 0.92;
+    const hold = !!goalE && this.goalHold && this.ms >= SLOW_MS;
+    const P = this.ms * 0.92 * (hold ? 1.15 : 1);
     const gx = goalX(atk);
     const f = fwd(atk);
     const spotX = gx - f * SPOT;
@@ -1314,7 +1442,7 @@ class PitchAnim {
       this.mode = "penalty";
       this.setPiece = { side: atk, taker };
       this.poss = atk;
-      this.fly(spotX, CY, 160 / this.spd(), 2, null);
+      this.fly(spotX, CY, 900 / this.spd(), 2, null);
       taker.ox = spotX - f * 4;
       taker.oy = CY + 1;
       taker.oUntil = this.now + P;
@@ -1338,12 +1466,13 @@ class PitchAnim {
         this.maybeCine(taker, keeper, atk, goalE ? "goal" : saved0 ? "save" : "miss", "penalty", 0.8, true);
       }
       const sp = this.spd();
-      const dur = 150 / sp;
+      const dur = 480 / sp;
       const side = Math.random() < 0.5 ? -1 : 1;
       const saved = !!missE && missE.text.startsWith("Defendeu");
       const ty = CY + side * (saved ? rnd(1, 3) : missE ? rnd(POST + 2, POST + 6) : rnd(2, 4));
       if (keeper) {
-        keeper.dive = this.now + dur * 0.5 + 450;
+        keeper.dive = this.now + dur * 0.5 + DIVE_MS / sp;
+        keeper.diveLen = dur * 0.5 + DIVE_MS / sp;
         keeper.diveDir = saved ? side : -side;
         keeper.ox = gx - f;
         keeper.oy = saved ? ty : CY - side * 3;
@@ -1373,12 +1502,12 @@ class PitchAnim {
     const cy = top ? PY0 + 1 : PY1 - 1;
     const taker = this.byPid(ph.corner!.taker) ?? this.team(atk).filter((d) => d.grp >= 2).sort((a, b) => Math.abs(a.y - cy) - Math.abs(b.y - cy))[0] ?? null;
     if (!taker) return this.possessionScript(ph, t0, B);
-    const C = Math.max(B, this.ms >= 300 ? 600 : B);
+    const C = B;
     this.at(t0, () => {
       this.mode = "corner";
       this.setPiece = { side: atk, taker };
       this.poss = atk;
-      this.fly(gx - f, cy, 160 / this.spd(), 3, null);
+      this.fly(gx - f, cy, 900 / this.spd(), 3, null);
       taker.ox = gx - f * 2;
       taker.oy = cy + (top ? -1 : 1);
       taker.oUntil = this.now + C;
@@ -1392,14 +1521,14 @@ class PitchAnim {
         header.oy = ty;
         header.oUntil = this.now + 600;
       }
-      this.fly(tx, ty, 260 / this.spd(), 10, null, () => {
+      this.fly(tx, ty, 1300 / this.spd(), 10, null, () => {
         // a defesa afasta
         const clr = this.nearest((1 - atk) as 0 | 1, tx, ty);
         this.mode = "play";
         this.setPiece = null;
         if (clr) {
           const [cx, cyy] = toPx(clr.side as 0 | 1, rnd(32, 48), rnd(15, 85));
-          this.fly(cx, cyy, 260 / this.spd(), 7, null);
+          this.fly(cx, cyy, 1200 / this.spd(), 7, null);
         }
       });
     });
@@ -1474,7 +1603,7 @@ class PitchAnim {
     this.ball.x = CX;
     this.ball.y = CY;
     this.ball.h = 0;
-    const tk = (this.ms >= 300 ? 0.4 : 0.15) * B;
+    const tk = (this.ms >= SLOW_MS ? 0.3 : 0.15) * B;
     this.at(tk, () => {
       const mate = this.team(kt).filter((d) => d.grp === 2).sort((a, b) => Math.abs(a.y - CY) - Math.abs(b.y - CY))[0] ?? this.team(kt).find((d) => d.grp !== 0) ?? null;
       this.mode = "play";
@@ -1541,6 +1670,8 @@ class PitchAnim {
 
   // ------------------------------------------------ física
   update(dt: number) {
+    dt *= this.warp;
+    if (this.special && this.now > this.special.until) this.endSpecial();
     this.now += dt;
     this.festa?.update(dt, this.now);
     while (this.acts.length && this.acts[0].t <= this.now) this.acts.shift()!.f();
@@ -1563,6 +1694,7 @@ class PitchAnim {
           fl.to.ox = NaN;
           this.setHolder(fl.to);
         }
+        if (fl.glow) this.specialImpact();
         fl.done?.();
       }
     } else if (b.holder) {
@@ -1594,7 +1726,10 @@ class PitchAnim {
       const dist = Math.hypot(dx, dy);
       let step = 0;
       if (dist > 0.01) {
-        const vmax = RUN_PX_S * sp * d.speed * (d.sad ? 0.55 : 1) * (d.leaving ? 0.8 : 1);
+        // trote ~65% da disparada; pedidos de corrida (speed > 1) chegam até a disparada do jogador
+        const top = d.sprint ?? RUN_PX_S / 0.66;
+        const base = Math.min(top * 0.66 * d.speed, top) * (this.ball.holder === d ? 0.88 : 1);
+        const vmax = base * sp * (d.sad ? 0.55 : 1) * (d.leaving ? 0.8 : 1);
         step = this.reduced ? dist : chaseStep(dist, dt, vmax, 150 / sp);
         d.x += (dx / dist) * step;
         d.y += (dy / dist) * step;
@@ -1608,8 +1743,9 @@ class PitchAnim {
     };
     for (const d of this.dudes) move(d);
     for (const g of this.ghosts) move(g);
-    if (this.rich) {
-      this.pfx.streakOn = !!b.fl?.power;
+    if (this.rich || this.special || this.pfx.sparks.length) {
+      this.pfx.streakOn = !!b.fl?.power || !!b.fl?.glow;
+      this.pfx.streakColor = b.fl?.glow?.[1] ?? "#ffffff";
       this.pfx.update(dt, b);
     }
     this.ghosts = this.ghosts.filter((g) => !g.hidden);
@@ -1657,7 +1793,7 @@ class PitchAnim {
       if (this.rich && d.side !== 2 || this.rich && d.pose) drawPitchDude(g, d, now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
       else this.drawDude(g, d);
     }
-    if (this.rich) this.pfx.draw(g);
+    if (this.rich || this.special || this.pfx.sparks.length) this.pfx.draw(g);
     this.drawBall(g);
     for (const ic of this.icons) this.drawIcon(g, ic);
   }
@@ -1847,8 +1983,8 @@ class PitchAnim {
 // sombra e rastro da bola, torcida animada com bandeiras nas cores de cada clube, sinalizadores e
 // fogos nos gols, refletores em jogos à noite, chuva e câmera que acompanha a bola.
 // Só usa Math.random e um gerador próprio por partida: nunca mexe no gerador do mundo.
-export type GraphicsMode = "ultra" | "leve" | "ps1";
-const GFX_KEY = "ldb.graphics.v2"; // v2: o padrão passou a ser o Retrô PS1
+export type GraphicsMode = "ultra" | "leve" | "ps1" | "ps2";
+const GFX_KEY = "ldb.graphics.v3"; // v3: o padrão passou a ser o PS2 (3D detalhado)
 
 /** Aparelho aguenta o modo Ultra? (tela densa, vários núcleos e sem pedido de menos movimento) */
 export function capableDevice(): boolean {
@@ -1863,11 +1999,11 @@ export function capableDevice(): boolean {
 export function readGraphics(): GraphicsMode {
   try {
     const v = localStorage.getItem(GFX_KEY);
-    if (v === "ultra" || v === "leve" || v === "ps1") return v;
+    if (v === "ultra" || v === "leve" || v === "ps1" || v === "ps2") return v;
   } catch {
     /* sem armazenamento local */
   }
-  return "ps1"; // sem WebGL o renderizador volta sozinho para o campinho 2D
+  return "ps2"; // sem WebGL o renderizador volta sozinho para o campinho 2D
 }
 
 export function saveGraphics(m: GraphicsMode) {
@@ -2073,11 +2209,12 @@ function ps1Snapshot(a: PitchAnim): Ps1Snapshot {
     const span = Math.max(1, (d.poseUntil ?? now) - (d.poseT0 ?? now));
     players.push({
       id, side: d.side, grp: d.grp, x, z, vx: d.vx * M_PER_PX, vz: d.vy * M_PER_PX, walk: d.walk,
-      dive: now < d.dive ? clamp(1 - (d.dive - now) / 450, 0, 1) : -1,
+      dive: now < d.dive ? clamp(1 - (d.dive - now) / (d.diveLen || DIVE_MS), 0, 1) : -1,
       diveDir: d.diveDir, down: now < d.down, arms: now < d.arms, sad: d.sad,
       pose, poseS: pose ? clamp((now - (d.poseT0 ?? now)) / span, 0, 1) : 0,
       shirt: d.shirt, sleeve: d.sleeve, pattern: d.pattern, stripe: d.stripe, shorts: d.shorts, socks: d.socks,
       skin: d.skin, hair: d.hair, num: d.look?.num ?? 0, name: d.side === 2 ? "" : hudName(a.name(d)),
+      hairStyle: d.look?.hairStyle ?? (d.side === 2 ? ["short", "buzz", "bald"][d.k % 3] : "short"), tall: d.look?.tall ?? 0, broad: d.look?.broad ?? false, beard: d.look?.beard ?? false,
     });
   });
   const [bx, bz] = toWorld(a.ball.x, a.ball.y);
@@ -2089,6 +2226,10 @@ function ps1Snapshot(a: PitchAnim): Ps1Snapshot {
     goalSide: a.celebr ? a.celebr.side : null,
     netShake: now < a.netShake.until ? a.netShake.side : null,
     cheer: now < a.cheer.until,
+    special: a.special ? {
+      who: a.dudes.indexOf(a.special.who), name: a.special.def.name, colors: a.special.def.colors,
+      t: now - a.special.t0, impact: a.special.impact > 0 ? now - a.special.impact : -1, save: a.special.def.role === "save",
+    } : null,
   };
 }
 
@@ -2112,6 +2253,8 @@ export interface MatchViewProps {
   ultra?: boolean;
   /** gráficos 📼 Retrô PS1 (3D estilo Winning Eleven, carregado só quando escolhido) */
   ps1?: boolean;
+  /** 3D no modo PS2 (alta resolução, bonecos detalhados, sombras); exige ps1 */
+  hd?: boolean;
   /** cena de lance decisivo na tela (true) ou acabou (false): o relógio deve segurar */
   onCinema?: (on: boolean) => void;
   /** cores da competição para o placar do modo PS1: [fundo, borda] */
@@ -2134,6 +2277,8 @@ export function MatchView(props: MatchViewProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const ps1HostRef = useRef<HTMLDivElement>(null);
   const tickRef = useRef<() => void>(() => undefined);
+  const resizeRef = useRef<() => void>(() => undefined);
+  const [special, setSpecial] = useState<{ name: string; colors: [string, string]; who: string; save: boolean } | null>(null);
 
   // cria a animação, o laço de desenho e o ajuste de tamanho
   useEffect(() => {
@@ -2149,6 +2294,10 @@ export function MatchView(props: MatchViewProps) {
       },
       goal: (e) => propsRef.current.onGoal?.(e),
       beat: (e) => propsRef.current.onBeat?.(e),
+      special: (sp) => {
+        setSpecial(sp);
+        propsRef.current.onCinema?.(!!sp);
+      },
       cine: (spec) => {
         if (!propsRef.current.ultra) return;
         const host = stageRef.current;
@@ -2175,6 +2324,7 @@ export function MatchView(props: MatchViewProps) {
     if (anim.festa) anim.festa.reduced = anim.reduced;
     anim.ms = propsRef.current.msPerMin;
     anim.goalHold = propsRef.current.goalHold;
+    anim.specialsOn = specialsEnabled();
     animRef.current = anim;
     if (propsRef.current.intro) anim.startIntro();
     else if (sim.minute === 0 && sim.half === 1) anim.say("A bola vai rolar…");
@@ -2233,7 +2383,7 @@ export function MatchView(props: MatchViewProps) {
     anim.draw(g);
     start();
 
-    const ps1H = (w: number) => Math.min(w * 0.75, Math.max(190, landscape() ? window.innerHeight - 118 : window.innerHeight * 0.58));
+    const ps1H = (w: number) => landscape() ? Math.max(190, window.innerHeight - 118) : propsRef.current.hd ? Math.min(w * (sim.finished ? 0.62 : 0.98), Math.max(190, window.innerHeight * 0.48)) : Math.min(w * 0.75, Math.max(190, window.innerHeight * 0.58));
     const resize = () => {
       if (ps1) {
         const w = wrap.clientWidth;
@@ -2275,6 +2425,7 @@ export function MatchView(props: MatchViewProps) {
             style: stadiumStyleFor(sim.sides[0].club, !!sim.f.neutral),
             clubColors: [anim.colors.home.shirt, anim.colors.away.shirt],
             reduced: anim.reduced,
+            hd: !!propsRef.current.hd,
             festa: anim.crowd && anim.festa ? {
               level: anim.festa.level,
               selecao: anim.crowd.selecao,
@@ -2295,6 +2446,7 @@ export function MatchView(props: MatchViewProps) {
           anim.draw(g);
         });
     }
+    resizeRef.current = resize;
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
     window.addEventListener("resize", resize);
@@ -2314,12 +2466,17 @@ export function MatchView(props: MatchViewProps) {
       ps1 = null;
       canvas.style.display = "";
       canvas.style.visibility = "";
+      if (anim.special) {
+        anim.special = null;
+        setSpecial(null);
+        propsRef.current.onCinema?.(false);
+      }
       if (cine) {
         cine.destroy();
         if (anim.frozen) propsRef.current.onCinema?.(false);
       }
     };
-  }, [sim, props.ultra, props.ps1]);
+  }, [sim, props.ultra, props.ps1, props.hd]);
 
   // velocidade e segura-no-gol vêm sempre da última renderização
   useEffect(() => {
@@ -2333,6 +2490,7 @@ export function MatchView(props: MatchViewProps) {
   useEffect(() => {
     animRef.current?.onTick();
     tickRef.current();
+    if (sim.finished) resizeRef.current(); // fim de jogo: campo menor, o resumo sobe
     kick.current();
   }, [tick]);
 
@@ -2352,6 +2510,12 @@ export function MatchView(props: MatchViewProps) {
           {props.ultra && <canvas ref={fxRef} className="mv-fx" aria-hidden="true" />}
           {props.ps1 && <div ref={ps1HostRef} className="ps1-host" aria-hidden="true" />}
         </div>
+        {special && (
+          <div className={`mv-special${special.save ? " save" : ""}`} role="status" style={{ "--sp0": special.colors[0], "--sp1": special.colors[1] } as CSSProperties}>
+            <span className="mv-special-who">{special.who}</span>
+            <b className="mv-special-name">{special.name}!</b>
+          </div>
+        )}
         {intro && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
         {intro && (
           <div className="mv-intro" onClick={props.onSkipIntro}>
