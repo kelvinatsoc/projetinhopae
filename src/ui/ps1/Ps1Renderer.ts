@@ -10,7 +10,7 @@ import { drawText, textWidth } from "./font";
 import { makeKitTexture, type KitWhich } from "../kitTexture";
 import { CrowdFx, type StandInfo } from "./crowdFx";
 import {
-  behindGoalCam, broadcastCam, easeCam, facingAngle, internalRes, ReplayBuffer,
+  behindGoalCam, broadcastCam, closeUpCam, easeCam, facingAngle, hdRes, internalRes, ReplayBuffer,
   type CamPose, type Ps1Player, type Ps1Snapshot,
 } from "./model";
 
@@ -33,6 +33,8 @@ export interface Ps1Options {
   reduced: boolean;
   /** torcida brasileira: festa nas arquibancadas (omitido = clube estrangeiro, sem festa) */
   festa?: { level: number; selecao: boolean; colors: [string, string, string]; abbr: string; side: 0 | 1 };
+  /** modo PS2: alta resolução, sem tremedeira de vértice, bonecos detalhados, sombras e luz de estádio */
+  hd?: boolean;
 }
 
 const HALF_L = PITCH_LEN / 2;
@@ -88,7 +90,7 @@ void main() {
   vCol = vec3(light);
   #endif
   // textura afim: interpola uv*w e w e divide no fragmento (anula a correção de perspectiva)
-  vUvq = vec3(uv * p.w, p.w);
+  vUvq = uSnap > 0.5 ? vec3(uv * p.w, p.w) : vec3(uv, 1.0); // PS2: textura com perspectiva correta
   vFog = smoothstep(uFogNear, uFogFar, -mv.z);
 }
 `;
@@ -130,6 +132,23 @@ void main() {
   c = clamp(c * 255.0 + bayer4(gl_FragCoord.xy) * 8.0, 0.0, 255.0);
   c = floor(c / 255.0 * 31.0 + 0.5) / 31.0;
   gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+// PS2: imagem limpa, um pouco mais de contraste/saturação (luz de estádio) e vinheta de TV
+const POST_HD_FRAG = /* glsl */ `
+uniform sampler2D tScene;
+uniform float uFlash;
+varying vec2 vUv;
+void main() {
+  vec3 c = texture2D(tScene, vUv).rgb;
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  c = mix(vec3(l), c, 1.12);
+  c = (c - 0.5) * 1.06 + 0.5;
+  vec2 d = vUv - 0.5;
+  c *= 1.0 - dot(d, d) * 0.55;
+  c = mix(c, vec3(1.0), uFlash);
+  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }
 `;
 
@@ -201,7 +220,14 @@ interface Rig {
   armR: THREE.Group;
   legL: THREE.Group;
   legR: THREE.Group;
+  /** PS2: joelhos e cotovelos */
+  shinL?: THREE.Group;
+  shinR?: THREE.Group;
+  foreL?: THREE.Group;
+  foreR?: THREE.Group;
   shadow: THREE.Mesh;
+  /** PS2: sombra projetada no gramado (fora do root, não gira com o boneco) */
+  ground?: THREE.Mesh;
   facing: number;
   key: string;
 }
@@ -250,9 +276,30 @@ export class Ps1Renderer {
   private v3 = new THREE.Vector3();
   private stands: StandInfo[] = [];
   private festa: CrowdFx | null = null;
+  private hd: boolean;
+  /** PS2: escala da resolução interna (cai sozinha se o aparelho não segurar 60 quadros) */
+  private quality = 1;
+  private css = { w: 0, h: 0 };
+  private perf = { n: 0, sum: 0 };
+  private pscale = PLAYER_SCALE;
+  private postFlash = { value: 0 };
+  private glow!: THREE.Mesh;
+  private trail: THREE.Mesh[] = [];
+  private trailPts: THREE.Vector3[] = [];
+  private ring!: THREE.Mesh;
+  private aura!: THREE.Mesh;
+  private glowTex!: THREE.Texture;
 
   constructor(opts: Ps1Options) {
     this.opts = opts;
+    this.hd = !!opts.hd;
+    if (this.hd) {
+      this.pscale = 1.18;
+      this.uniforms.uSnap.value = 0;
+      this.uniforms.uFogNear.value = 160;
+      this.uniforms.uFogFar.value = 420;
+      this.uniforms.uLightDir.value.set(-0.45, 0.8, 0.4).normalize();
+    }
     const box = document.createElement("div");
     box.className = "ps1-box";
     this.box = box;
@@ -263,11 +310,13 @@ export class Ps1Renderer {
     box.append(this.glCanvas, this.hud);
     opts.host.append(box);
     this.hg = this.hud.getContext("2d")!;
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.glCanvas, antialias: false, powerPreference: "low-power", alpha: false, preserveDrawingBuffer: false });
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.glCanvas, antialias: false, powerPreference: this.hd ? "high-performance" : "low-power", alpha: false, preserveDrawingBuffer: false });
     this.renderer.setPixelRatio(1);
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    this.rt = new THREE.WebGLRenderTarget(320, 240, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, generateMipmaps: false });
-    this.postMat = new THREE.ShaderMaterial({ vertexShader: POST_VERT, fragmentShader: POST_FRAG, uniforms: { tScene: { value: this.rt.texture } }, depthTest: false, depthWrite: false });
+    const filt = this.hd ? THREE.LinearFilter : THREE.NearestFilter;
+    this.rt = new THREE.WebGLRenderTarget(320, 240, { minFilter: filt, magFilter: filt, depthBuffer: true, generateMipmaps: false, samples: this.hd ? 4 : 0 });
+    this.postMat = new THREE.ShaderMaterial({ vertexShader: POST_VERT, fragmentShader: this.hd ? POST_HD_FRAG : POST_FRAG, uniforms: { tScene: { value: this.rt.texture }, uFlash: this.postFlash }, depthTest: false, depthWrite: false });
+    if (this.hd) this.glCanvas.classList.add("ps2");
     this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.postMat));
     this.glCanvas.addEventListener("webglcontextlost", this.onLost, false);
     this.glCanvas.addEventListener("webglcontextrestored", this.onRestored, false);
@@ -301,7 +350,7 @@ export class Ps1Renderer {
         uFogNear: o.fog === false ? { value: 1e5 } : this.uniforms.uFogNear,
         uFogFar: o.fog === false ? { value: 2e5 } : this.uniforms.uFogFar,
         uSnap: o.snap === false ? { value: 0 } : this.uniforms.uSnap,
-        uAmbient: { value: 0.52 },
+        uAmbient: { value: this.hd ? 0.5 : 0.52 },
         uLit: { value: o.lit === false ? 0 : 1 },
         uMap: { value: o.map ?? null },
         uUseMap: { value: o.map ? 1 : 0 },
@@ -343,6 +392,7 @@ export class Ps1Renderer {
       this.scene.add(this.festa.group);
     }
     this.buildBall();
+    this.buildSpecialFx();
   }
 
   private skyColors(): [string, string] {
@@ -358,7 +408,7 @@ export class Ps1Renderer {
   }
 
   private pitchTexture(st: StadiumStyle): THREE.Texture {
-    const S = 4; // pixels por metro
+    const S = this.hd ? 8 : 4; // pixels por metro
     const pw = 128 * S, ph = 84 * S; // 128 x 84 m (campo + gramado em volta)
     const [c, g] = canvas(pw, ph);
     const ox = (pw - PITCH_LEN * S) / 2, oy = (ph - PITCH_WID * S) / 2;
@@ -379,14 +429,14 @@ export class Ps1Renderer {
     }
     // ruído de grama (textura "suja" do PS1)
     const r = prng(77);
-    for (let i = 0; i < pw * ph * 0.05; i++) {
+    for (let i = 0; i < pw * ph * (this.hd ? 0.03 : 0.05); i++) {
       g.fillStyle = r() < 0.5 ? "rgba(20,50,18,0.35)" : "rgba(120,170,90,0.25)";
       g.fillRect(Math.floor(r() * pw), Math.floor(r() * ph), 1, 1);
     }
     // linhas
     g.strokeStyle = "#e9f2e6";
     g.fillStyle = "#e9f2e6";
-    g.lineWidth = 2;
+    g.lineWidth = this.hd ? 3 : 2;
     const X = (m: number) => Math.round(ox + (m + HALF_L) * S) + 0.5;
     const Y = (m: number) => Math.round(oy + (m + HALF_W) * S) + 0.5;
     g.strokeRect(X(-HALF_L), Y(-HALF_W), PITCH_LEN * S, PITCH_WID * S);
@@ -414,6 +464,13 @@ export class Ps1Renderer {
 
   private buildPitch(st: StadiumStyle) {
     const t = this.pitchTexture(st);
+    if (this.hd) {
+      // PS2: gramado com mipmaps e filtro anisotrópico (linhas lisas de longe)
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    }
     // malha subdividida: a textura afim "dobra" só um pouquinho, como no console
     const g = new THREE.PlaneGeometry(128, 84, 16, 10);
     g.rotateX(-Math.PI / 2);
@@ -534,15 +591,17 @@ export class Ps1Renderer {
   }
 
   private crowdTexture(seed: number, seats: string[], colors: string[], fill: number): THREE.Texture {
-    const [c, g] = canvas(64, 64);
+    // PS2: textura 2x maior (torcedores menores e mais numerosos)
+    const S = this.hd ? 128 : 64;
+    const [c, g] = canvas(S, S);
     const r = prng(seed);
-    for (let y = 0; y < 64; y++) {
+    for (let y = 0; y < S; y++) {
       g.fillStyle = shade(seats[Math.floor(y / 8) % seats.length], y % 2 ? 0.75 : 0.95);
-      g.fillRect(0, y, 64, 1);
+      g.fillRect(0, y, S, 1);
     }
     const skins = ["#f0c49a", "#c98d5b", "#7c4c2b", "#e3b585"];
-    for (let y = 0; y < 64; y += 4) {
-      for (let x = (y / 4) % 2 ? 1 : 0; x < 64; x += 3) {
+    for (let y = 0; y < S; y += 4) {
+      for (let x = (y / 4) % 2 ? 1 : 0; x < S; x += 3) {
         if (r() > fill) continue;
         const shirt = r() < 0.7 ? colors[Math.floor(r() * colors.length)] : ["#f2f2f2", "#222222", "#555b66"][Math.floor(r() * 3)];
         g.fillStyle = shirt;
@@ -659,29 +718,53 @@ export class Ps1Renderer {
     const lampM = this.mat({ lit: false, color: "#fffbe0", fog: false });
     const poles: THREE.BufferGeometry[] = [];
     const lamps: THREE.BufferGeometry[] = [];
+    const glares: [number, number, number, number][] = [];
     if (st.lights === "towers") {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         const x = sx * (HALF_L + 22), z = sz * (HALF_W + 26), h = 46;
         poles.push(box(1.4, h, 1.4, x, h / 2, z, "#6c7377"));
         poles.push(box(8, 4.5, 0.8, x, h + 2, z, "#3a3f42"));
         lamps.push(box(7, 3.5, 0.3, x, h + 2, z + (sz < 0 ? 0.5 : -0.5), "#ffffff"));
+        glares.push([x, h + 2, z + (sz < 0 ? 1 : -1), 26]);
       }
     } else if (st.lights === "masts") {
       for (const sz of [-1, 1]) for (const k of [-0.7, -0.23, 0.23, 0.7]) {
         const x = k * PITCH_LEN, z = sz * (HALF_W + 7), h = 16;
         poles.push(box(0.4, h, 0.4, x, h / 2, z, "#7b8285"));
         lamps.push(box(2.4, 1, 0.3, x, h + 0.4, z, "#ffffff"));
+        glares.push([x, h + 0.4, z, 9]);
       }
     } else {
       // luz no teto: uma faixa acesa na borda da cobertura do lado oposto
       lamps.push(box(PITCH_LEN * 0.9, 0.5, 0.3, 0, 30, -HALF_W - 10, "#ffffff"));
+      for (const k of [-0.4, -0.2, 0, 0.2, 0.4]) glares.push([k * PITCH_LEN, 30, -HALF_W - 9.5, 10]);
     }
     if (poles.length) this.addMesh(merge(poles), towerM);
     if (lamps.length) this.addMesh(merge(lamps), lampM);
+    if (this.hd && glares.length) {
+      // PS2: brilho dos refletores (halo aditivo que sempre olha para a câmera)
+      const [c, g] = canvas(64, 64);
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, "rgba(255,252,230,1)");
+      gr.addColorStop(0.18, "rgba(255,248,215,0.55)");
+      gr.addColorStop(1, "rgba(255,240,200,0)");
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 64, 64);
+      const t = tex(c);
+      t.magFilter = t.minFilter = THREE.LinearFilter;
+      this.textures.push(t);
+      const m = new THREE.SpriteMaterial({ map: t, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false });
+      for (const [x, y, z, size] of glares) {
+        const sp = new THREE.Sprite(m);
+        sp.position.set(x, y, z);
+        sp.scale.setScalar(size);
+        this.scene.add(sp);
+      }
+    }
   }
 
   private buildBall() {
-    const g = new THREE.IcosahedronGeometry(0.34, 0);
+    const g = new THREE.IcosahedronGeometry(this.hd ? 0.22 : 0.34, this.hd ? 1 : 0);
     const pos = g.getAttribute("position");
     const col = new Float32Array(pos.count * 3);
     for (let f = 0; f < pos.count / 3; f++) {
@@ -740,6 +823,7 @@ export class Ps1Renderer {
   }
 
   private makeRig(p: Ps1Player): Rig {
+    if (this.hd) return this.makeRigHD(p);
     const root = new THREE.Group();
     const body = new THREE.Group();
     root.add(body);
@@ -800,8 +884,249 @@ export class Ps1Renderer {
     return { root, body, torso, head, armL, armR, legL, legR, shadow, facing: p.side === 1 ? -Math.PI / 2 : Math.PI / 2, key: this.rigKey(p) };
   }
 
+  // ------------------------------------------------ PS2: bonecos detalhados
+  /** Camisa 128x64 enrolada no tronco: u=0 frente, u=0,5 costas (nome + número grande). */
+  private shirtTextureHD(p: Ps1Player): THREE.Texture {
+    const key = `hd|${p.shirt}|${p.pattern}|${p.stripe}|${p.num}|${p.name}|${p.sleeve}`;
+    const hit = this.shirtTex.get(key);
+    if (hit) return hit;
+    const [c, g] = canvas(128, 64);
+    g.imageSmoothingEnabled = true;
+    g.fillStyle = p.shirt;
+    g.fillRect(0, 0, 128, 64);
+    if (p.pattern === "stripes") {
+      g.fillStyle = p.stripe;
+      for (let x = 3; x < 128; x += 12) g.fillRect(x, 0, 6, 64);
+    } else if (p.pattern === "hoops") {
+      g.fillStyle = p.stripe;
+      for (let y = 6; y < 64; y += 16) g.fillRect(0, y, 128, 7);
+    } else if (p.pattern === "sash") {
+      g.fillStyle = p.stripe;
+      for (let i = 0; i < 64; i++) g.fillRect(-4 + i * 0.9, i, 12, 1);
+    }
+    // gola e barra
+    g.fillStyle = shade(p.sleeve, 0.7);
+    g.fillRect(0, 0, 128, 3);
+    g.fillStyle = shade(p.shirt, 0.75);
+    g.fillRect(0, 61, 128, 3);
+    const dark = lum(p.shirt) < 0.55;
+    const fg = dark ? "#ffffff" : "#141414";
+    const outline = dark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.6)";
+    const n = String(p.num || "").slice(0, 2);
+    const drawTxt = (txt: string, x: number, y: number, size: number, w?: number) => {
+      g.font = `900 ${size}px "Barlow Condensed", "Arial Narrow", Arial, sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.lineWidth = Math.max(2, size / 9);
+      g.strokeStyle = outline;
+      g.strokeText(txt, x, y, w);
+      g.fillStyle = fg;
+      g.fillText(txt, x, y, w);
+    };
+    if (p.name) drawTxt(p.name, 64, 13, 11, 40);
+    if (n) drawTxt(n, 64, 38, 30, 34);
+    if (n) drawTxt(n, 112, 22, 11); // número pequeno no peito
+    const t = tex(c);
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearFilter;
+    this.shirtTex.set(key, t);
+    return t;
+  }
+
+  private makeRigHD(p: Ps1Player): Rig {
+    const root = new THREE.Group();
+    const body = new THREE.Group();
+    root.add(body);
+    const tall = p.tall ?? 0;
+    root.scale.setScalar(this.pscale * (1 + tall * 0.055));
+    const wide = p.broad ? 1.12 : tall < 0 ? 0.95 : 1;
+    const litV = this.mat();
+    const gk = p.grp === 0 && p.side !== 2;
+    // cilindro afinado, com o topo na origem (cresce para baixo); cor por altura
+    const cyl = (rt: number, rb: number, len: number, col: (t: number) => string, seg = 8) => {
+      const g = new THREE.CylinderGeometry(rt, rb, len, seg, 3);
+      g.translate(0, -len / 2, 0);
+      return colorize(g, (y) => col(Math.min(1, Math.max(0, -y / len))));
+    };
+    // tronco: peito mais largo que a cintura, com a camisa (nome e número nas costas)
+    const tg = new THREE.CylinderGeometry(0.25 * wide, 0.2 * wide, 0.6, 12, 1);
+    tg.scale(1, 1, 0.56);
+    tg.translate(0, 1.32, 0);
+    const torso = this.addMesh(colorize(tg, "#ffffff"), this.mat({ map: this.shirtTextureHD(p) }), body);
+    const sh = [-1, 1].map((sx) => {
+      const g = new THREE.SphereGeometry(0.1, 8, 6);
+      g.scale(1.1 * wide, 0.9, 0.95);
+      g.translate(sx * 0.24 * wide, 1.56, 0);
+      return colorize(g, p.sleeve);
+    });
+    const hips = new THREE.CylinderGeometry(0.2 * wide, 0.21 * wide, 0.24, 10);
+    hips.scale(1, 1, 0.62);
+    hips.translate(0, 0.96, 0);
+    const neck = cyl(0.065, 0.075, 0.12, () => p.skin, 6);
+    neck.translate(0, 1.72, 0);
+    this.addMesh(merge([...sh, colorize(hips, p.shorts), neck]), litV, body);
+    // cabeça (esfera alongada), nariz, orelhas, cabelo pelo estilo, barba
+    const headParts: THREE.BufferGeometry[] = [];
+    const skull = new THREE.SphereGeometry(0.13, 10, 8);
+    skull.scale(0.92, 1.12, 1);
+    skull.translate(0, 1.84, 0);
+    headParts.push(colorize(skull, p.skin));
+    headParts.push(box(0.035, 0.05, 0.05, 0, 1.83, 0.13, shade(p.skin, 0.9)));
+    for (const sx of [-1, 1]) headParts.push(box(0.03, 0.06, 0.04, sx * 0.12, 1.84, -0.005, shade(p.skin, 0.92)));
+    const hs = p.hairStyle ?? "short";
+    const hairCap = (r: number, sy: number, y: number, cut = 0.55) => {
+      const g = new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cut);
+      g.scale(1, sy, 1);
+      g.translate(0, y, -0.01);
+      return colorize(g, p.hair);
+    };
+    if (hs === "afro") headParts.push(hairCap(0.175, 1.0, 1.86, 0.62));
+    else if (hs === "long") {
+      headParts.push(hairCap(0.142, 1.05, 1.86));
+      headParts.push(box(0.25, 0.22, 0.06, 0, 1.77, -0.12, p.hair));
+    } else if (hs === "buzz") headParts.push(hairCap(0.134, 1.08, 1.85, 0.45));
+    else if (hs === "mohawk") {
+      headParts.push(hairCap(0.133, 1.08, 1.85, 0.4));
+      headParts.push(box(0.05, 0.08, 0.26, 0, 1.99, -0.02, p.hair));
+    } else if (hs !== "bald") headParts.push(hairCap(0.14, 1.1, 1.855, 0.5));
+    if (p.beard) headParts.push(box(0.2, 0.07, 0.1, 0, 1.73, 0.08, shade(p.hair, 1.1)));
+    const head = this.addMesh(merge(headParts), litV, body);
+    // braço: ombro -> cotovelo -> mão (goleiro de manga longa e luvas)
+    const arm = (sx: number): [THREE.Group, THREE.Group] => {
+      const up = new THREE.Group();
+      up.position.set(sx * 0.27 * wide, 1.56, 0);
+      this.addMesh(cyl(0.062 * wide, 0.05, 0.3, (t) => (t < 0.55 || gk || p.side === 2 ? p.sleeve : p.skin)), litV, up);
+      const fore = new THREE.Group();
+      fore.position.set(0, -0.3, 0);
+      const hand = new THREE.SphereGeometry(0.048, 6, 5);
+      hand.translate(0, -0.29, 0);
+      this.addMesh(merge([cyl(0.048, 0.04, 0.26, () => (gk ? p.sleeve : p.skin)), colorize(hand, gk ? "#f4f4f4" : p.skin)]), litV, fore);
+      up.add(fore);
+      body.add(up);
+      return [up, fore];
+    };
+    // perna: quadril -> joelho -> chuteira
+    const leg = (sx: number): [THREE.Group, THREE.Group] => {
+      const thigh = new THREE.Group();
+      thigh.position.set(sx * 0.105 * wide, 0.9, 0);
+      this.addMesh(cyl(0.09 * wide, 0.068, 0.44, (t) => (t < 0.35 ? p.shorts : p.skin)), litV, thigh);
+      const shin = new THREE.Group();
+      shin.position.set(0, -0.44, 0);
+      const boot = box(0.1, 0.07, 0.2, 0, -0.43, 0.04, "#151515");
+      this.addMesh(merge([cyl(0.066, 0.05, 0.42, (t) => (t < 0.08 ? p.skin : p.socks)), boot]), litV, shin);
+      thigh.add(shin);
+      body.add(thigh);
+      return [thigh, shin];
+    };
+    const [armL, foreL] = arm(-1);
+    const [armR, foreR] = arm(1);
+    const [legL, shinL] = leg(-1);
+    const [legR, shinR] = leg(1);
+    // sombra de contato (sob os pés) + sombra projetada pelos refletores (no chão, fora do root)
+    const sg = new THREE.CircleGeometry(0.3, 12);
+    sg.rotateX(-Math.PI / 2);
+    sg.translate(0, 0.02, 0);
+    const shadow = this.addMesh(colorize(sg, "#000000"), this.mat({ lit: false, alpha: 0.45 }), root);
+    const gg = new THREE.CircleGeometry(0.5, 14);
+    gg.rotateX(-Math.PI / 2);
+    gg.scale(0.55, 1, 1.9);
+    gg.translate(0, 0.015, 0.8);
+    const ground = this.addMesh(colorize(gg, "#000000"), this.mat({ lit: false, alpha: 0.3 }));
+    ground.matrixAutoUpdate = true;
+    this.scene.add(root);
+    return { root, body, torso, head, armL, armR, legL, legR, shinL, shinR, foreL, foreR, shadow, ground, facing: p.side === 1 ? -Math.PI / 2 : Math.PI / 2, key: this.rigKey(p) };
+  }
+
+  // ------------------------------------------------ golpe especial: brilho, rastro e impacto
+  private buildSpecialFx() {
+    const [c, g] = canvas(64, 64);
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.25, "rgba(255,255,255,0.75)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 64, 64);
+    this.glowTex = tex(c);
+    this.glowTex.magFilter = THREE.LinearFilter;
+    this.glowTex.minFilter = THREE.LinearFilter;
+    this.textures.push(this.glowTex);
+    const add = (size: number) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: this.glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffffff }));
+      m.visible = false;
+      m.renderOrder = 5;
+      this.scene.add(m);
+      return m;
+    };
+    this.glow = add(2.4);
+    this.aura = add(4.2);
+    for (let i = 0; i < 18; i++) this.trail.push(add(1.4));
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.15, 28), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, color: 0xffffff }));
+    this.ring.visible = false;
+    this.ring.renderOrder = 6;
+    this.scene.add(this.ring);
+  }
+
+  private updateSpecialFx(s: Ps1Snapshot, ballPos: THREE.Vector3) {
+    const sp = s.special;
+    const setCol = (m: THREE.Mesh, hex: string, a: number) => {
+      const mm = m.material as THREE.MeshBasicMaterial;
+      mm.color.setRGB(...hexRgb(hex));
+      mm.opacity = a;
+    };
+    if (!sp || this.opts.reduced) {
+      this.glow.visible = this.aura.visible = this.ring.visible = false;
+      for (const t of this.trail) t.visible = false;
+      this.trailPts = [];
+      this.postFlash.value = 0;
+      return;
+    }
+    const q = this.camera.quaternion;
+    // brilho na bola (pulsando) e rastro de partículas atrás dela
+    this.glow.visible = true;
+    this.glow.position.copy(ballPos);
+    this.glow.quaternion.copy(q);
+    this.glow.scale.setScalar(1 + Math.sin(this.time / 60) * 0.18);
+    setCol(this.glow, sp.colors[1], 0.95);
+    this.trailPts.unshift(ballPos.clone());
+    if (this.trailPts.length > this.trail.length) this.trailPts.length = this.trail.length;
+    this.trail.forEach((m, i) => {
+      const pt = this.trailPts[i];
+      m.visible = !!pt && i > 0;
+      if (!pt) return;
+      const j = i / 4;
+      m.position.set(pt.x + Math.sin(i * 2.3 + this.time / 90) * 0.12 * j, pt.y + Math.cos(i * 1.7) * 0.08 * j, pt.z);
+      m.quaternion.copy(q);
+      m.scale.setScalar(1.3 * (1 - i / this.trail.length));
+      setCol(m, i % 3 === 0 ? sp.colors[0] : sp.colors[1], 0.8 * (1 - i / this.trail.length));
+    });
+    // aura no jogador do golpe (antes do chute)
+    const who = s.players.find((p) => p.id === sp.who);
+    this.aura.visible = !!who && sp.impact < 0;
+    if (who) {
+      this.aura.position.set(who.x, 1.3 * this.pscale, who.z);
+      this.aura.quaternion.copy(q);
+      this.aura.scale.setScalar(1 + Math.sin(this.time / 80) * 0.12 + Math.min(1, sp.t / 500) * 0.4);
+      setCol(this.aura, sp.colors[1], 0.55);
+    }
+    // impacto: anel que cresce + clarão
+    this.ring.visible = sp.impact >= 0;
+    if (sp.impact >= 0) {
+      const k = Math.min(1, sp.impact / 450);
+      this.ring.position.copy(ballPos);
+      this.ring.quaternion.copy(q);
+      this.ring.scale.setScalar(0.5 + k * 5);
+      setCol(this.ring, sp.colors[0], 1 - k);
+      this.postFlash.value = Math.max(0, 0.5 * (1 - sp.impact / 220));
+    } else this.postFlash.value = 0;
+  }
+
   private rigKey(p: Ps1Player) {
-    return `${p.shirt}|${p.shorts}|${p.socks}|${p.skin}|${p.hair}|${p.num}|${p.sleeve}|${p.pattern}|${p.kit ?? ""}`;
+    return `${p.shirt}|${p.shorts}|${p.socks}|${p.skin}|${p.hair}|${p.num}|${p.sleeve}|${p.pattern}|${p.kit ?? ""}|${p.name}|${p.hairStyle}|${p.tall}|${p.broad}`;
+  }
+
+  private disposeRig(r: Rig) {
+    if (r.ground) this.disposeObj(r.ground);
+    this.disposeObj(r.root);
   }
 
   private disposeObj(o: THREE.Object3D) {
@@ -819,11 +1144,33 @@ export class Ps1Renderer {
   }
 
   private pose(p: Ps1Player, r: Rig, now: number, ball: { x: number; z: number }) {
-    const { root, body, armL, armR, legL, legR, head } = r;
+    const { root, body, head } = r;
     root.position.set(p.x, 0, p.z);
     body.position.set(0, 0, 0);
     body.rotation.set(0, 0, 0);
     head.rotation.set(0, 0, 0);
+    for (const j of [r.shinL, r.shinR, r.foreL, r.foreR]) j?.rotation.set(0, 0, 0);
+    if (r.ground) {
+      // sombra dos refletores: alongada para o lado oposto à luz, encolhe quando o jogador pula
+      const L = this.uniforms.uLightDir.value;
+      r.ground.position.set(p.x, 0, p.z);
+      r.ground.rotation.y = Math.atan2(-L.x, -L.z);
+      r.ground.scale.setScalar(root.scale.x / this.pscale);
+      r.ground.visible = root.visible;
+    }
+    try {
+      this.poseBody(p, r, now, ball);
+    } finally {
+      if (r.ground) {
+        const lift = Math.max(0, body.position.y);
+        const lying = Math.abs(body.rotation.x) > 1 || Math.abs(body.rotation.z) > 1;
+        r.ground.scale.z = (r.ground.scale.x) * (lying ? 0.45 : 1) / (1 + lift);
+      }
+    }
+  }
+
+  private poseBody(p: Ps1Player, r: Rig, now: number, ball: { x: number; z: number }) {
+    const { root, body, armL, armR, legL, legR, head } = r;
     const sp = Math.hypot(p.vx, p.vz);
     const moving = sp > 0.02;
     if (moving) r.facing = facingAngle(p.vx, p.vz, r.facing);
@@ -840,6 +1187,15 @@ export class Ps1Renderer {
     armR.rotation.set(sw * 0.8, 0, -0.08);
     if (moving) body.position.y = Math.abs(Math.cos(phase)) * 0.06 * amp;
     if (moving) body.rotation.x = 0.12 * amp;
+    if (r.shinL && r.shinR && r.foreL && r.foreR) {
+      // joelho dobra na volta da passada; cotovelos dobrados na corrida
+      r.shinL.rotation.x = Math.max(0, -Math.sin(phase)) * 1.25 * amp + 0.08;
+      r.shinR.rotation.x = Math.max(0, Math.sin(phase)) * 1.25 * amp + 0.08;
+      r.foreL.rotation.x = -0.25 - 0.95 * amp;
+      r.foreR.rotation.x = -0.25 - 0.95 * amp;
+      // corrida rápida: tronco mais inclinado
+      if (moving) body.rotation.x = 0.1 + 0.16 * amp;
+    }
 
     if (p.dive >= 0) {
       // goleiro voando para o lado
@@ -864,10 +1220,41 @@ export class Ps1Renderer {
     }
     const s = p.poseS;
     switch (p.pose) {
+      case "pass": {
+        // passe de lado do pé: perna vem de trás para frente, braço oposto abre
+        const a = s < 0.4 ? -0.7 * (s / 0.4) : -0.7 + 1.5 * Math.min(1, (s - 0.4) / 0.35);
+        legR.rotation.set(a, 0, -0.25);
+        legL.rotation.set(0.05, 0, 0);
+        if (r.shinR) r.shinR.rotation.x = s < 0.4 ? 0.9 : 0.2;
+        armL.rotation.set(-0.3, 0, 0.55);
+        armR.rotation.set(0.2, 0, -0.3);
+        return;
+      }
+      case "special": {
+        // concentração do golpe: agacha, braços para trás, perna armada lá atrás
+        body.position.y = -0.12 * Math.min(1, s * 3);
+        body.rotation.x = 0.28;
+        legR.rotation.set(-1.0 * Math.min(1, s * 2), 0, 0);
+        if (r.shinR) r.shinR.rotation.x = 1.4;
+        armL.rotation.set(0.6, 0, 0.9);
+        armR.rotation.set(0.6, 0, -0.9);
+        return;
+      }
+      case "save": {
+        // defesa alta: braços esticados, pulo
+        body.position.y = Math.sin(Math.PI * s) * 0.6;
+        armL.rotation.set(Math.PI * 0.95, 0, 0.25);
+        armR.rotation.set(Math.PI * 0.95, 0, -0.25);
+        legL.rotation.set(0.3, 0, 0);
+        if (r.shinL) r.shinL.rotation.x = 0.9;
+        return;
+      }
       case "kick":
       case "volley": {
+        // armação lá atrás (joelho dobrado) e chicotada à frente
         const a = s < 0.35 ? 0.8 * (s / 0.35) : 0.8 - 2.4 * Math.min(1, (s - 0.35) / 0.4);
         legR.rotation.set(a, 0, 0);
+        if (r.shinR) r.shinR.rotation.x = s < 0.35 ? 1.6 * (s / 0.35) : Math.max(0, 1.6 - 4 * (s - 0.35));
         legL.rotation.set(0.1, 0, 0);
         armL.rotation.set(-0.5, 0, 0.7);
         armR.rotation.set(0.4, 0, -0.6);
@@ -891,9 +1278,12 @@ export class Ps1Renderer {
         legR.rotation.set(-1.6, 0, 0);
         return;
       case "slide":
+        // carrinho: desliza de lado com a perna esticada e a outra dobrada
         body.rotation.z = Math.PI / 2.4;
         body.position.y = 0.35;
         legR.rotation.set(-1.2, 0, 0);
+        if (r.shinL) r.shinL.rotation.x = 1.3;
+        armL.rotation.set(0, 0, 1.2);
         return;
       case "knee":
         body.position.y = -0.55;
@@ -928,7 +1318,7 @@ export class Ps1Renderer {
       live.add(p.id);
       let r = this.rigs.get(p.id);
       if (r && r.key !== this.rigKey(p)) {
-        this.disposeObj(r.root);
+        this.disposeRig(r);
         this.rigs.delete(p.id);
         r = undefined;
       }
@@ -939,12 +1329,16 @@ export class Ps1Renderer {
       r.root.visible = true;
       this.pose(p, r, s.now, s.ball);
     }
-    for (const [id, r] of this.rigs) if (!live.has(id)) r.root.visible = false;
+    for (const [id, r] of this.rigs) if (!live.has(id)) {
+      r.root.visible = false;
+      if (r.ground) r.ground.visible = false;
+    }
   }
 
   // ------------------------------------------------ quadro
   resize(cssW: number, cssH: number) {
-    const res = internalRes(cssW, cssH);
+    this.css = { w: cssW, h: cssH };
+    const res = this.hd ? hdRes(cssW, cssH, window.devicePixelRatio || 1, this.quality) : internalRes(cssW, cssH);
     this.res = res;
     // tarja preta quando a área é mais larga que 2:1 ou mais estreita que 4:3
     let w = cssW, h = cssW / res.aspect;
@@ -967,6 +1361,19 @@ export class Ps1Renderer {
   render(live: Ps1Snapshot, dt: number, hud: Ps1Hud) {
     if (this.disposed || this.lost) return;
     this.time += dt;
+    if (this.hd && dt > 0) {
+      // resolução dinâmica: média acima de ~18 ms por quadro baixa a resolução interna em 15%
+      this.perf.n++;
+      this.perf.sum += dt;
+      if (this.perf.n >= 90) {
+        const avg = this.perf.sum / this.perf.n;
+        this.perf = { n: 0, sum: 0 };
+        if (avg > 18.5 && this.quality > 0.5) {
+          this.quality = Math.max(0.5, this.quality - 0.15);
+          this.resize(this.css.w, this.css.h);
+        }
+      }
+    }
     // grava para o replay e detecta o gol
     if (!this.clip) this.replay.push(live);
     if (live.celebrating && !this.wasCelebrating && live.goalSide != null) {
@@ -1007,7 +1414,7 @@ export class Ps1Renderer {
 
     this.syncPlayers(snap);
     const b = snap.ball;
-    this.ball.position.set(b.x, 0.34 + b.h, b.z);
+    this.ball.position.set(b.x, (this.hd ? 0.22 : 0.34) + b.h, b.z);
     this.ball.rotation.set(snap.now / 120, snap.now / 170, 0);
     this.ballShadow.position.set(b.x, 0.03, b.z);
     for (const n of this.nets) {
@@ -1019,8 +1426,20 @@ export class Ps1Renderer {
     for (const t of this.crowdTex) t.offset.y = jump;
     this.festa?.update(this.time, dt, !!snap.cheer && this.clipSide === this.opts.festa?.side, this.opts.reduced);
 
-    const to = replaying ? behindGoalCam(this.clipSide, b.x, b.z) : broadcastCam(b.x, b.z, this.res.aspect);
-    this.cam = this.cam && !replaying ? easeCam(this.cam, to, dt, 380) : replaying && this.cam ? easeCam(this.cam, to, dt, 180) : to;
+    // golpe especial: close de TV no jogador até o chute sair, depois volta para a transmissão
+    const sp = !replaying && !this.opts.reduced ? snap.special : null;
+    const star = sp ? snap.players.find((p) => p.id === sp.who) : undefined;
+    const closeUp = !!sp && !!star && sp.impact < 0 && sp.t < 1700;
+    let to = replaying ? behindGoalCam(this.clipSide, b.x, b.z) : broadcastCam(b.x, b.z, this.res.aspect);
+    if (this.hd && !replaying && !closeUp) {
+      // câmera de TV: mais baixa e mais perto da bola (os bonecos aparecem de verdade)
+      const [lx, , lz] = to.look;
+      const dx = to.pos[0] - lx, dy = to.pos[1], dz = to.pos[2] - lz;
+      const k = 0.72;
+      to = { pos: [lx + dx * k, dy * k * 0.92, lz + dz * k], look: [lx, 0.4, lz - 1], fov: to.fov };
+    }
+    if (closeUp && star) to = closeUpCam(star.x, star.z, star.side === 1 ? -1 : 1, sp!.t);
+    this.cam = this.cam && !replaying ? easeCam(this.cam, to, dt, closeUp ? 140 : 380) : replaying && this.cam ? easeCam(this.cam, to, dt, 180) : to;
     if (replaying && this.clipT < 40) this.cam = to; // corte seco para a câmera do replay
     const c = this.cam;
     this.camera.position.set(...c.pos);
@@ -1030,6 +1449,8 @@ export class Ps1Renderer {
       this.camera.updateProjectionMatrix();
     }
 
+    this.ball.updateMatrixWorld();
+    this.updateSpecialFx(snap, this.ball.position);
     this.renderer.setRenderTarget(this.rt);
     this.renderer.render(this.scene, this.camera);
     this.renderer.setRenderTarget(null);
@@ -1045,8 +1466,12 @@ export class Ps1Renderer {
 
   private drawHud(s: Ps1Snapshot, hud: Ps1Hud, replaying: boolean) {
     const g = this.hg;
-    const { w, h } = this.res;
-    g.clearRect(0, 0, w, h);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, this.res.w, this.res.h);
+    // HUD desenhado numa grade de ~240 linhas (no PS2, ampliada em escala inteira)
+    const u = Math.max(1, Math.floor(this.res.h / 240));
+    g.setTransform(u, 0, 0, u, 0, 0);
+    const w = Math.floor(this.res.w / u), h = Math.floor(this.res.h / u);
     // placar no canto (caixa azul-marinho com borda, como no WE)
     const sc = `${hud.score[0]}-${hud.score[1]}`;
     const line = `${hud.abbr[0]} ${sc} ${hud.abbr[1]}`;
@@ -1068,7 +1493,8 @@ export class Ps1Renderer {
       // cursor sobre quem está com a bola + caixa com nome e número embaixo
       const p = s.holder != null ? s.players.find((q) => q.id === s.holder) : undefined;
       if (p && p.side !== 2) {
-        const pt = this.project(p.x, 2.95 * PLAYER_SCALE, p.z);
+        const pt0 = this.project(p.x, 2.0 * this.pscale + 0.45, p.z);
+        const pt = pt0 ? [Math.round(pt0[0] / u), Math.round(pt0[1] / u)] : null;
         const col = hud.color[p.side];
         if (pt) {
           const [x, y] = pt;
@@ -1094,7 +1520,7 @@ export class Ps1Renderer {
     if (this.goalTimer > 0 && !replaying) {
       const t = 2600 - this.goalTimer;
       const scale = t < 200 ? 2 : 3;
-      const txt = "GOAL!";
+      const txt = "GOL!";
       const tw = textWidth(txt, scale);
       const flash = Math.floor(t / 110) % 2;
       const y = Math.round(h * 0.36 - Math.max(0, 1 - t / 250) * 40);
@@ -1120,6 +1546,7 @@ export class Ps1Renderer {
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) m.geometry.dispose();
+      if (m.isMesh || (o as THREE.Sprite).isSprite) (m.material as THREE.Material).dispose();
     });
     this.postScene.traverse((o) => {
       const m = o as THREE.Mesh;
