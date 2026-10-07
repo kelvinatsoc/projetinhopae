@@ -202,7 +202,7 @@ export class HqRenderer {
     const pts = Object.values(this.siteCenter) as THREE.Vector3[];
     const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, pts.length));
     const spread = pts.reduce((m, p) => Math.max(m, p.distanceTo(c)), 0);
-    this.overview = { target: c, dist: Math.max(70, spread * 1.3 + 46) };
+    this.overview = { target: c, dist: Math.max(70, spread * 2.3 + 50) };
     this.target.copy(c);
     this.dist = this.overview.dist;
     const fog = this.scene.fog as THREE.Fog;
@@ -795,7 +795,7 @@ export class HqRenderer {
   focus(id: HqBuilding | "overview", then?: () => void) {
     const to = id === "overview" ? this.overview.target.clone() : this.anchors[id]?.clone().setY(0);
     if (!to) return;
-    this.flyTo(to, id === "overview" ? this.overview.dist : id === "stadium" ? 48 : 34, then);
+    this.flyTo(to, id === "overview" ? this.overview.dist : id === "stadium" ? 64 : 40, then);
   }
   focusSite(k: HqSiteKind) {
     const p = this.siteCenter[k];
@@ -803,7 +803,7 @@ export class HqRenderer {
   }
   private flyTo(to: THREE.Vector3, d1: number, then?: () => void) {
     this.idleSince = this.t + 4;
-    this.fly = { t0: this.t, dur: this.o.reduced ? 0.001 : 1.1, from: this.target.clone(), to, d0: this.dist, d1, then };
+    this.fly = { t0: performance.now() / 1000, dur: this.o.reduced ? 0.001 : 1.1, from: this.target.clone(), to, d0: this.dist, d1, then };
     if (!this.raf) this.loop();
   }
 
@@ -880,7 +880,7 @@ export class HqRenderer {
     const t = this.t;
     if (this.fly) {
       const f = this.fly;
-      const k = Math.min(1, (t - f.t0) / f.dur);
+      const k = Math.min(1, (now / 1000 - f.t0) / f.dur); // relógio de parede: chega no tempo certo mesmo com quadros lentos
       const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; // easeInOutCubic
       this.target.lerpVectors(f.from, f.to, e);
       this.dist = f.d0 + (f.d1 - f.d0) * e;

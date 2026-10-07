@@ -682,3 +682,5 @@ h3 { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spac
 .start-panel .center > .status-pill { margin: 16px auto 8px !important; }
 .logo { font-size: 58px; }
 .btn.gold { background: linear-gradient(180deg, color-mix(in srgb, var(--club) 92%, #fff), var(--club)); color: var(--club-ink); box-shadow: var(--glow); }
+.mv-ctrl .seg { grid-auto-columns: minmax(0, 1fr) !important; overflow: visible !important; }
+.mv-ctrl .seg button { padding: 0 !important; }

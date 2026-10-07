@@ -337,6 +337,8 @@ def main():
         near = (sites["stadium"]["lat"], sites["stadium"]["lon"]) if "stadium" in sites else None
         # sede
         hq = hq_coord.get(cid)
+        if cid in SEDE_NAMES:
+            hq = None  # nome conhecido da sede é mais preciso que o ponto genérico do Wikidata
         if hq and (not near or 120 < dist_m(hq, near) < 80000):
             sites["sede"] = {"lat": round(hq[0], 6), "lon": round(hq[1], 6), "name": "Sede", "src": "wikidata"}
         else:
