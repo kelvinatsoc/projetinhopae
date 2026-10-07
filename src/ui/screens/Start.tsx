@@ -64,6 +64,7 @@ export function StartScreen() {
       <div className="col gap12 start-panel" style={{ maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <div className="center" style={{ marginBottom: 18 }}>
           <div className="start-ball"><Icon name="ball" size={44} /></div>
+          <span className="status-pill" style={{ margin: "14px 0 10px" }}>Temporada 2026 · elencos reais</span>
           <div className="logo">Lendas <span>da Base</span></div>
           <p className="muted">Jogo de técnico de futebol brasileiro. Séries A, B e C, Copa do Brasil, Libertadores e Sul-Americana — e lendas renascendo nas categorias de base.</p>
         </div>

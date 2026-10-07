@@ -10,6 +10,7 @@ import { push, setTab, update, useWorld } from "../../store";
 import { broadcasters, newsSource } from "../../engine/outlets";
 import { stadiumName } from "../../engine/sponsors";
 import { CompLogo, Crest, Icon, stadiumSrc, visibleColor, Ic, GIcon } from "../components";
+import type { IconSlug } from "../icons";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
 import { SquadMoodHomeCard } from "./Dressing";
@@ -68,85 +69,85 @@ export function HomeScreen() {
   const unread = inboxUnread(w);
   const offers = w.career?.offers.length ?? 0;
 
-  const stadium = stadiumSrc(user);
+  const meters: { label: string; slug: "diretoria" | "torcida" | "vestiario"; v: number; go: () => void }[] = [
+    { label: "Diretoria", slug: "diretoria", v: w.board.confidence, go: () => push({ name: "board" }) },
+    { label: "Torcida", slug: "torcida", v: fanMood(w), go: () => push({ name: "inbox" }) },
+    { label: "Entrosamento", slug: "vestiario", v: chemOf(w, user), go: () => push({ name: "dressing" }) },
+  ];
+  const shortcuts: { label: string; slug: IconSlug; go: () => void; count?: number }[] = [
+    { label: "Tática", slug: "tatica", go: () => push({ name: "tactics" }) },
+    { label: "Treino", slug: "treino", go: () => push({ name: "training" }) },
+    { label: "Mensagens", slug: "caixa-entrada", go: () => push({ name: "inbox" }), count: unread },
+    { label: "Base", slug: "base", go: () => push({ name: "youth" }) },
+    { label: "Vestiário", slug: "vestiario", go: () => push({ name: "dressing" }) },
+    { label: "Finanças", slug: "financas", go: () => push({ name: "finances" }) },
+    { label: "Carreira", slug: "carreira", go: () => push({ name: "career" }), count: offers },
+    { label: "Lendas", slug: "lendas", go: () => push({ name: "legends" }) },
+  ];
 
   return (
-    <div className="page home-page">
-      {stadium && (
-        <div className="home-stadium" aria-hidden="true">
-          <img src={stadium} alt="" decoding="async" />
-        </div>
-      )}
+    <div className="page home">
       {next ? <NextMatchCard w={w} f={next} /> : (
-        <div className="match-hero center" style={{ "--h": visibleColor(user.colors), "--a": "#1f6fd1" } as CSSProperties}>
-          <div className="big-ic"><Icon name="calendar" size={40} /></div>
+        <section className="ui-card empty-hero">
+          <Icon name="calendar" size={36} />
           <h2>Sem jogos marcados</h2>
-          <div className="small" style={{ opacity: 0.85 }}>Toque em Continuar para encerrar a temporada.</div>
-        </div>
+          <p className="t-2">Toque em Continuar para encerrar a temporada.</p>
+        </section>
       )}
 
-      <div className="quick">
-        <button className="q-big" onClick={() => push({ name: "tactics" })}><span className="qi"><GIcon slug="tatica" size={30} /></span>Tática</button>
-        <button onClick={() => push({ name: "training" })}><span className="qi"><GIcon slug="treino" /></span>Treino</button>
-        <button onClick={() => push({ name: "inbox" })} data-count={unread > 0 ? Math.min(unread, 99) : undefined}><span className="qi"><GIcon slug="caixa-entrada" /></span>Mensagens</button>
-        <button onClick={() => push({ name: "youth" })}><span className="qi"><GIcon slug="base" /></span>Base</button>
-        <button onClick={() => push({ name: "dressing" })}><span className="qi"><GIcon slug="vestiario" /></span>Vestiário</button>
-        <button onClick={() => push({ name: "finances" })}><span className="qi"><GIcon slug="financas" /></span>Finanças</button>
-        <button onClick={() => push({ name: "career" })} data-count={offers > 0 ? offers : undefined}><span className="qi"><GIcon slug="carreira" /></span>Carreira</button>
-        <button className="q-wide" onClick={() => push({ name: "legends" })}><span className="qi"><GIcon slug="lendas" size={30} /></span>Lendas</button>
-      </div>
-      <div className="row">
-        <h3 className="grow">Forma</h3>
-        <FormPills w={w} clubId={user.id} />
-      </div>
+      <section className="ui-card status" aria-labelledby="st-h">
+        <div className="sec-head"><h3 id="st-h">Momento do clube</h3><FormPills w={w} clubId={user.id} /></div>
+        <ul className="meters">
+          {meters.map((m) => (
+            <li key={m.label}>
+              <button className="meter" onClick={m.go} aria-label={`${m.label}: ${Math.round(m.v)} de 100`}>
+                <span className="meter-ic"><GIcon slug={m.slug} size={20} /></span>
+                <span className="meter-txt"><span>{m.label}</span><b className="num">{Math.round(m.v)}</b></span>
+                <span className="meter-bar" aria-hidden="true"><i className={m.v >= 66 ? "ok" : m.v >= 40 ? "mid" : "low"} style={{ width: `${Math.max(3, Math.min(100, m.v))}%` }} /></span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="objective"><Ic n="target" /> <span><b>Meta:</b> {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</span></p>
+      </section>
 
-      <div className="rings">
-        <div className="ring-card" onClick={() => push({ name: "board" })}>
-          <Ring v={w.board.confidence} />
-          <span><GIcon slug="diretoria" size={15} /> Diretoria</span>
-        </div>
-        <div className="ring-card" onClick={() => push({ name: "inbox" })}>
-          <Ring v={fanMood(w)} />
-          <span><GIcon slug="torcida" size={15} /> Torcida</span>
-        </div>
-        <div className="ring-card" onClick={() => push({ name: "dressing" })}>
-          <Ring v={chemOf(w, user)} />
-          <span>Entrosamento</span>
-        </div>
-      </div>
-      <div className="small muted" style={{ marginTop: -6, padding: "0 4px" }}><Ic n="target" /> {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</div>
+      <nav className="shortcuts" aria-label="Atalhos">
+        {shortcuts.map((s) => (
+          <button key={s.label} className="shortcut" onClick={s.go} aria-label={s.count ? `${s.label} (${s.count})` : s.label}>
+            <span className="shortcut-ic"><GIcon slug={s.slug} size={26} /></span>
+            <span className="shortcut-lb">{s.label}</span>
+            {!!s.count && <span className="count" aria-hidden="true">{Math.min(s.count, 99)}</span>}
+          </button>
+        ))}
+      </nav>
 
       <PeneiraHomeCard />
       <SquadMoodHomeCard />
       <BoardHomeCard />
 
-
       {last && <LastResult w={w} f={last} />}
 
       {league && (
-        <div className="card tap" onClick={() => setTab("comps")}>
-          <div className="card-title"><h3>{league.name}</h3><span className="small muted">ver tabela ›</span></div>
+        <section className="ui-card">
+          <div className="sec-head"><h3>{league.name}</h3><button className="link" onClick={() => setTab("comps")}>Ver tabela</button></div>
           <MiniTable w={w} compId={league.id} />
-        </div>
+        </section>
       )}
 
-      <div className="section-head"><h3>Últimas notícias</h3><button onClick={() => push({ name: "news" })}>ver todas ›</button></div>
+      <div className="sec-head"><h3>Últimas notícias</h3><button className="link" onClick={() => push({ name: "news" })}>Ver todas</button></div>
       <div className="hscroll">
         {w.news.slice(0, 6).map((n) => <NewsCard key={n.id} n={n} w={w} />)}
         {!w.news.length && <div className="news-card"><span className="ic"><Icon name="news" /></span><b>Nenhuma notícia ainda</b><span className="tiny muted">A imprensa está de olho no seu trabalho.</span></div>}
       </div>
 
-      <div className="card tap" onClick={() => push({ name: "legends" })} style={{ background: "linear-gradient(135deg, rgba(120,90,10,0.55), var(--card))", borderColor: "rgba(255,207,63,0.35)" }}>
-        <div className="row">
-          <div className="big-ic"><Icon name="star" size={30} /></div>
-          <div className="grow">
-            <b className="display" style={{ fontSize: 19 }}>Álbum de Lendas</b>
-            <div className="small muted">{appeared} de {LEGENDS.length} lendas já renasceram · {myLegends} no seu clube</div>
-          </div>
-          <span className="muted">›</span>
-        </div>
-      </div>
-      <div style={{ height: 40 }} />
+      <button className="ui-card legends-card" onClick={() => push({ name: "legends" })}>
+        <span className="legends-ic"><GIcon slug="lendas" size={28} /></span>
+        <span className="grow">
+          <b>Álbum de Lendas</b>
+          <span className="t-2">{appeared} de {LEGENDS.length} lendas já renasceram · {myLegends} no seu clube</span>
+        </span>
+        <Icon name="chev" size={20} />
+      </button>
     </div>
   );
 }
@@ -158,28 +159,33 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
   const meta = COMP_META[f.comp];
   const days = f.day - w.day;
   const opp = f.home === w.userClubId ? away : home;
+  const photo = f.neutral ? null : stadiumSrc(home);
   const stage = f.stage === "league" ? `Rodada ${f.round}` : f.stage === "group" ? `${comp?.groups[f.group ?? 0]?.name ?? "Grupos"} · ${f.round}ª rodada` : `${STAGE_NAMES[f.stage]}${f.leg ? ` · jogo ${f.leg}` : ""}`;
+  const tv = broadcasters(f);
   return (
-    <div className="match-hero" style={{ "--h": `${visibleColor(home.colors)}cc`, "--a": `${visibleColor(away.colors)}cc` } as CSSProperties}>
-      <div className="mh-top">
-        <CompLogo id={f.comp} size={20} /><b>{meta.short}</b><span style={{ opacity: 0.8 }}>· {stage}</span>
-        <span className={`mh-when${days === 0 ? " today" : ""}`}>{days === 0 ? "Hoje" : days === 1 ? "Amanhã" : `em ${days} dias`}</span>
+    <section className="ui-card next-match" aria-label="Próximo jogo" style={{ "--h": visibleColor(home.colors), "--a": visibleColor(away.colors) } as CSSProperties}>
+      <div className="nm-media">
+        {photo && <img src={photo} alt="" decoding="async" />}
+        <div className="nm-badges">
+          <span className="pill"><CompLogo id={f.comp} size={16} /> {meta.short} · {stage}</span>
+          <span className={`pill dot when${days === 0 ? " today" : ""}`}>{days === 0 ? "Hoje" : days === 1 ? "Amanhã" : `Em ${days} dias`}</span>
+        </div>
       </div>
-      <div className="mh-teams">
-        <div className="mh-team"><Crest club={home} size={74} /><b>{home.name}</b></div>
-        <div className="mh-vs">VS</div>
-        <div className="mh-team"><Crest club={away} size={74} /><b>{away.name}</b></div>
+      <div className="nm-teams">
+        <div className="nm-team"><Crest club={home} size={60} /><b>{home.name}</b><span className="t-3">Mandante</span></div>
+        <div className="nm-vs" aria-hidden="true">×</div>
+        <div className="nm-team"><Crest club={away} size={60} /><b>{away.name}</b><span className="t-3">Visitante</span></div>
       </div>
-      <div className="mh-info">
-        <span className="ico-txt"><Icon name="calendar" size={15} />{formatDate(w.season, f.day)}</span>
-        <span className="ellipsis ico-txt" style={{ maxWidth: "60%" }}><Icon name="stadium" size={15} />{f.neutral ? "Campo neutro" : stadiumName(w, home)}</span>
+      <ul className="nm-info">
+        <li><Icon name="calendar" size={16} />{formatDate(w.season, f.day)}</li>
+        <li className="ellipsis"><Icon name="stadium" size={16} />{f.neutral ? "Campo neutro" : stadiumName(w, home)}</li>
+        {tv.length > 0 && <li className="ellipsis"><Icon name="tv" size={16} />{tv.join(" · ")}</li>}
+      </ul>
+      <div className="nm-actions">
+        <button className="btn" onClick={() => push({ name: "tactics" })}><GIcon slug="tatica" size={20} />Escalação</button>
+        <button className="btn" onClick={() => push({ name: "club", id: opp.id })}><Icon name="scout" size={20} />Ver {opp.name.length > 12 ? opp.abbr : opp.name}</button>
       </div>
-      {broadcasters(f).length > 0 && <div className="mh-info"><span className="ico-txt"><Icon name="tv" size={15} />{broadcasters(f).join(" · ")}</span></div>}
-      <div className="mh-actions">
-        <button onClick={() => push({ name: "tactics" })}><Icon name="board" size={18} />Escalação</button>
-        <button onClick={() => push({ name: "club", id: opp.id })}><Icon name="scout" size={18} />{opp.name.length > 12 ? opp.abbr : opp.name}</button>
-      </div>
-    </div>
+    </section>
   );
 }
 

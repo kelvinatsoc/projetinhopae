@@ -211,12 +211,10 @@ export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
   const banned = Object.values(p.bans).some((b) => b > 0);
   return (
     <div data-player className={`pcard ${cardTier(p)}`} onClick={onClick} style={{ animationDelay: `${Math.min(delay, 20) * 25}ms` }}>
-      <div className="pc-top">
-        <div><span className="pc-ovr">{p.ovr}</span><span className="pc-pos">{p.pos}</span></div>
-        {starter && <span className="pc-xi">XI</span>}
-      </div>
+      <div className="pc-photo"><Avatar p={p} club={club} season={season} size={96} /></div>
+      <div className="pc-rate"><span className="pc-ovr">{p.ovr}</span><span className="pc-pos">{p.pos}</span></div>
+      {starter && <span className="pc-xi">XI</span>}
       <div className="pc-flags">
-        <span>{flag(p.nat)}</span>
         {injured && <span title="Lesionado">🚑</span>}
         {banned && <span title="Suspenso">🟥</span>}
         {p.listed && <span title="À venda">💲</span>}
@@ -224,10 +222,11 @@ export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
         {streakOf(p) === "cold" && <span title="Em baixa">🧊</span>}
         {p.fav && <span title="Ídolo da torcida">❤️</span>}
       </div>
-      <Avatar p={p} club={club} season={season} size={64} />
-      <div className="pc-name">{p.name.split(" ").slice(-1)[0]}</div>
-      <div className="pc-meta"><span>{age(p, season)}a</span><span>{formatMoney(p.wage)}</span></div>
-      <div className="pc-cond"><i style={{ width: `${p.cond}%`, background: p.cond < 60 ? "#ff6b6b" : p.cond < 80 ? "#ffc145" : undefined }} /></div>
+      <div className="pc-foot">
+        <div className="pc-name">{p.name.split(" ").slice(-1)[0]}</div>
+        <div className="pc-meta"><span>{flag(p.nat)}</span><span>{age(p, season)}a</span><span>{formatMoney(p.wage)}</span></div>
+        <div className="pc-cond"><i style={{ width: `${p.cond}%`, background: p.cond < 60 ? "#ff6b6b" : p.cond < 80 ? "#ffc145" : undefined }} /></div>
+      </div>
     </div>
   );
 }
@@ -343,6 +342,7 @@ const PATHS: Record<string, string> = {
   market: "M3 7h18l-2 11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM8 7a4 4 0 0 1 8 0",
   club: "M4 21V9l8-5 8 5v12M9 21v-6h6v6M2 21h20",
   back: "M15 5l-7 7 7 7",
+  chev: "M9 6l6 6-6 6",
   play: "M8 5v14l11-7z",
   bell: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0",
   gear: "M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm9 4-2.1.8a7 7 0 0 1-.6 1.5l.9 2-1.4 1.4-2-.9a7 7 0 0 1-1.5.6L13.5 21h-3l-.8-2.1a7 7 0 0 1-1.5-.6l-2 .9-1.4-1.4.9-2a7 7 0 0 1-.6-1.5L3 13.5v-3l2.1-.8a7 7 0 0 1 .6-1.5l-.9-2 1.4-1.4 2 .9a7 7 0 0 1 1.5-.6L10.5 3h3l.8 2.1a7 7 0 0 1 1.5.6l2-.9 1.4 1.4-.9 2a7 7 0 0 1 .6 1.5L21 10.5z",

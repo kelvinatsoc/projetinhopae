@@ -206,9 +206,28 @@ export function proceduralStyle(club: Pick<Club, "id" | "stadium" | "capacity" |
 }
 
 /** Estilo do estádio do clube (neutro → estilo genérico de campo neutro). */
-export function stadiumStyleFor(club: Pick<Club, "id" | "stadium" | "capacity" | "colors">, neutral = false): StadiumStyle {
+export function stadiumStyleFor(club: Pick<Club, "id" | "stadium" | "capacity" | "colors"> & { fac?: { stadium: number } }, neutral = false): StadiumStyle {
   if (neutral) return { ...BASE, key: "neutral", name: "Campo neutro", tag: "Jogo em campo neutro", shape: "bowl", seats: ["#5d6a73", "#7a868e"], roof: "partial", lights: "roof", board: "both", mow: "stripes", fill: 0.75, landmarks: [], handmade: false };
-  return handStyle(club.stadium) ?? proceduralStyle(club);
+  const hand = handStyle(club.stadium);
+  if (hand) return hand;
+  return upgradeByLevel(proceduralStyle(club), club.fac?.stadium);
+}
+
+const ROOF_RANK: Roof[] = ["none", "main", "partial", "full"];
+/**
+ * Estádio procedural reflete as obras da Estrutura (nível 1-5): cobertura maior, refletores
+ * no teto e placar dos dois lados. Estádios reais feitos à mão mantêm a identidade.
+ */
+export function upgradeByLevel(st: StadiumStyle, lv?: number): StadiumStyle {
+  if (!lv || lv < 3) return st;
+  const roof = ROOF_RANK[Math.max(ROOF_RANK.indexOf(st.roof), lv >= 5 ? 3 : lv >= 4 ? 2 : 1)];
+  return {
+    ...st,
+    roof,
+    lights: lv >= 4 && roof !== "none" ? "roof" : st.lights,
+    board: lv >= 4 ? "both" : st.board,
+    fill: Math.min(0.95, st.fill + (lv - 2) * 0.04),
+  };
 }
 
 /** Jogo grande (mosaico na arquibancada): mata-mata decisivo, clássico ou dois gigantes. */

@@ -3,15 +3,16 @@ import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./ui/App";
 import "./styles.css";
-import "./ui/redesign.css";
-// tipografia embutida no pacote (sem rede em tempo de execução): títulos/números e rótulos em pixel
-import "@fontsource/chakra-petch/latin-600.css";
-import "@fontsource/chakra-petch/latin-700.css";
-import "@fontsource/chakra-petch/latin-700-italic.css";
-import "@fontsource/press-start-2p/latin-400.css";
-import "./ui/premium.css";
-// tema "Era PS1": vence a camada premium (painéis chanfrados, fonte de pixel, sem desfoque)
-import "./ui/ps1.css";
+// identidade visual "Arquibancada": tokens + componentes (src/ui/theme.css), fontes embutidas (sem rede)
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow/latin-700.css";
+import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow-condensed/latin-700.css";
+import "@fontsource/barlow-condensed/latin-800.css";
+import "@fontsource/barlow-condensed/latin-900.css";
+import "./ui/theme.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 

@@ -78,7 +78,7 @@ function routeTitle(r: Route): string {
 let navAt = 0;
 let lastRouteKey = "";
 const GHOST_MS = 380;
-const GHOST_SEL = ".bottomnav, .pm-dock, .fab, .mv-ctrl, .sticky-cta, .action-dock";
+const GHOST_SEL = ".bottomnav, .pm-dock, .nextbar, .mv-ctrl, .sticky-cta, .action-dock";
 if (typeof document !== "undefined") {
   const guard = (e: Event) => {
     if (performance.now() - navAt > GHOST_MS) return;
@@ -98,21 +98,6 @@ export function App() {
   }, [w?.settings.theme]);
 
   useEffect(() => installTapHaptics(), []);
-
-  // botão flutuante: some ao rolar para baixo, volta ao rolar para cima (não cobre tabelas)
-  const [fabHidden, setFabHidden] = useState(false);
-  useEffect(() => {
-    let lastY = window.scrollY;
-    const onScroll = () => {
-      const y = window.scrollY;
-      const nearEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 24;
-      if (y < 60 || nearEnd || y < lastY - 6) setFabHidden(false);
-      else if (y > lastY + 6) setFabHidden(true);
-      if (Math.abs(y - lastY) > 6) lastY = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // festa do título: uma vez por taça conquistada pelo clube do usuário
   const [, bumpSeen] = useState(0);
@@ -210,20 +195,20 @@ export function App() {
       {!fullScreen && (
         <header className="topbar">
           {top ? (
-            <button className="icon-btn" onClick={back} aria-label="Voltar"><Icon name="back" /></button>
+            <button className="icon-btn back-btn" onClick={back} aria-label="Voltar"><Icon name="back" size={24} /></button>
           ) : (
-            <Crest club={club} size={30} />
+            <span className="topbar-crest"><Crest club={club} size={34} /></span>
           )}
           <div className="title">
             <b>{top ? routeTitle(top) || club.name : club.name}</b>
             <small>{formatDate(w.season, w.day)} {w.season}</small>
           </div>
-          <button className="money-chip" onClick={() => push({ name: "finances" })} aria-label="Finanças">{formatMoney(club.balance)}</button>
+          <button className="money-chip" onClick={() => push({ name: "finances" })} aria-label={`Saldo ${formatMoney(club.balance)}. Abrir finanças`}>{formatMoney(club.balance)}</button>
           {w.admin?.on && (
-            <button className="icon-btn" style={{ color: "#f5c542", fontSize: 18 }} onClick={() => push({ name: "admin" })} aria-label="Painel do administrador">🛠️</button>
+            <button className="icon-btn" onClick={() => push({ name: "admin" })} aria-label="Painel do administrador"><Icon name="wrench" size={22} /></button>
           )}
-          <button className="icon-btn badge-dot" data-count={unread > 0 ? Math.min(unread, 99) : undefined} onClick={() => push({ name: "inbox" })} aria-label="Caixa de entrada">
-            <Icon name="bell" />
+          <button className="icon-btn badge-dot" data-count={unread > 0 ? Math.min(unread, 99) : undefined} onClick={() => push({ name: "inbox" })} aria-label={unread > 0 ? `Caixa de entrada, ${unread} não lidas` : "Caixa de entrada"}>
+            <Icon name="bell" size={24} />
           </button>
         </header>
       )}
@@ -233,16 +218,27 @@ export function App() {
           onClose={() => { markTitleSeen(`${w.userClubId}:${wonComp.season}:${wonComp.id}`); bumpSeen((x) => x + 1); }} />
       )}
       {showFab && (
-        <button className={`fab${fabHidden ? " fab-hide" : ""}`} onClick={continueGame}>
-          <GIcon slug={matchToday ? "jogar" : "continuar"} size={22} /> {matchToday ? "Jogar" : "Continuar"}
-        </button>
+        <div className="nextbar" role="region" aria-label="Próximo passo">
+          {nf ? (
+            <div className="nextbar-info">
+              <Crest club={w.clubs[nf.home === w.userClubId ? nf.away : nf.home]} size={30} />
+              <span>
+                <b className="ellipsis">{nf.home === w.userClubId ? "x " : "@ "}{w.clubs[nf.home === w.userClubId ? nf.away : nf.home].name}</b>
+                <small>{matchToday ? "Jogo hoje" : `${formatDate(w.season, nf.day)} · em ${nf.day - w.day} dia${nf.day - w.day > 1 ? "s" : ""}`}</small>
+              </span>
+            </div>
+          ) : <div className="nextbar-info"><span><b>Fim da temporada</b><small>Sem jogos marcados</small></span></div>}
+          <button className="btn primary nextbar-go" onClick={continueGame}>
+            <GIcon slug={matchToday ? "jogar" : "continuar"} size={22} /> {matchToday ? "Jogar" : "Continuar"}
+          </button>
+        </div>
       )}
       {!fullScreen && !hideNav && (
-        <nav className="bottomnav">
+        <nav className="bottomnav" aria-label="Navegação principal">
           {TABS.map((t) => (
-            <button key={t.id} className={!top && nav.tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-              <GIcon slug={t.icon} size={25} />
-              {t.label}
+            <button key={t.id} className={!top && nav.tab === t.id ? "active" : ""} aria-current={!top && nav.tab === t.id ? "page" : undefined} onClick={() => setTab(t.id)}>
+              <span className="nav-ic"><GIcon slug={t.icon} size={24} /></span>
+              <span className="nav-lb">{t.label}</span>
               {t.id === "club" && (w.career?.offers.length ?? 0) > 0 && <i className="nav-badge" />}
             </button>
           ))}
