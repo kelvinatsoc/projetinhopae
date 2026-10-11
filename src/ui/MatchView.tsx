@@ -15,15 +15,15 @@ import { Avatar, CompLogo, Crest, StadiumPhoto } from "./components";
 import { COMP_META } from "../engine/competitions";
 import { compTheme, themeClass, themeVars } from "./compThemes";
 import { celebrationFor, drawPitchDude, lookOf, PixelFX, setPose, shotStyle, type SpriteDude } from "./matchSprites";
-import { actorOf, playCinematic, wantsCinematic, type CineHandle, type CineOutcome, type CineSpec } from "./cinematics";
+import { actorOf, wantsCinematic, type CineOutcome, type CineSpec } from "./cinematics";
 import "./economy.css";
 import "./matchView.css";
 // [stadium-art] identidade de cada estádio (src/ui/stadiumArt.ts)
 import { paintPitch, paintStadium, stadiumArt } from "./stadiumArt";
 import { StadiumBanner } from "./StadiumBanner";
 import { stadiumStyleFor } from "../data/stadiumStyles";
-import { ballHeight, hudAbbr, hudName, toWorld, type Ps1Snapshot } from "./ps1/model";
-import type { Ps1Renderer } from "./ps1/Ps1Renderer";
+import { ballHeight, hudAbbr, hudName, toWorld, type MatchSnapshot, type Quality } from "./match3d/model";
+import type { MatchRenderer } from "./match3d/MatchRenderer";
 import { pickSpecial, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
 import { Festa2D } from "./torcida2d";
@@ -234,6 +234,9 @@ interface Fan {
   head: string;
   body: string;
   sec: 0 | 1; // 0 torcida da casa, 1 visitante
+  /** cor da cadeira (aparece quando o torcedor vai embora) e ordem de saída 0..1 */
+  seat?: string;
+  rank?: number;
 }
 
 interface Callbacks {
@@ -435,7 +438,7 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
       g.fillRect(x, y, 1, 1);
       g.fillStyle = body;
       g.fillRect(x, y + 1, 1, 1);
-      fans.push({ x, y, head, body, sec: awaySec ? 1 : 0 });
+      fans.push({ x, y, head, body, sec: awaySec ? 1 : 0, seat: art.seatAt(x, y), rank: Math.random() * 0.75 + (bottom ? 0 : 0.25) * Math.random() });
     }
   }
   // bandeirões
@@ -498,6 +501,9 @@ class PitchAnim {
   cb: Callbacks;
   colors: SideColors;
   stadium: Stadium;
+  /** goleada: fração da torcida que já foi embora (alvo e valor suavizado) */
+  leaveTarget = 0;
+  leave = 0;
   dudes: Dude[] = [];
   ghosts: Dude[] = [];
   ball = { x: CX, y: CY, h: 0, holder: null as Dude | null, fl: null as Flight | null, spin: 0 };
@@ -1757,6 +1763,19 @@ class PitchAnim {
     if (this.icons.length) this.icons = this.icons.filter((i) => i.until > this.now);
   }
 
+  /** Goleada: os torcedores da torcida dominante que já foram embora viram cadeira vazia. */
+  drawExodus(g: CanvasRenderingContext2D) {
+    if (this.leaveTarget <= 0 && this.leave <= 0) return;
+    this.leave += (this.leaveTarget - this.leave) * 0.004;
+    const side = this.crowd?.side ?? 0;
+    const sec = this.sim.f.neutral ? -1 : side;
+    for (const f of this.stadium.fans) {
+      if ((sec >= 0 && f.sec !== sec) || (f.rank ?? 1) >= this.leave || !f.seat) continue;
+      g.fillStyle = f.seat;
+      g.fillRect(f.x, f.y - 1, 1, 3);
+    }
+  }
+
   /** Terminou de vez (todos no vestiário): o laço pode parar. */
   idle(): boolean {
     return this.ended && this.now - this.endAt > 9000;
@@ -1771,6 +1790,7 @@ class PitchAnim {
     const fi = this.reduced ? -1 : cheering ? (this.cheer.side === 0 ? 3 : 5) + (Math.floor(now / 140) % 2) : Math.floor(now / 260) % 3;
     if (fi >= 0) g.drawImage(crowd[fi], 0, 0);
     this.festa?.draw(g);
+    this.drawExodus(g);
     this.drawBoards(g, cheering);
     if (!this.reduced && now < this.flashUntil) {
       g.fillStyle = "#ffffff";
@@ -1987,213 +2007,30 @@ class PitchAnim {
 
 // ---------------------------------------------------------------- componente
 
-// ---------------------------------------------------------------- gráficos Ultra
-// Camada extra desenhada por cima do campo em pixel art, na resolução real da tela (devicePixelRatio):
-// sombra e rastro da bola, torcida animada com bandeiras nas cores de cada clube, sinalizadores e
-// fogos nos gols, refletores em jogos à noite, chuva e câmera que acompanha a bola.
-// Só usa Math.random e um gerador próprio por partida: nunca mexe no gerador do mundo.
-export type GraphicsMode = "ultra" | "leve" | "ps1" | "ps2";
-const GFX_KEY = "ldb.graphics.v3"; // v3: o padrão passou a ser o PS2 (3D detalhado)
+// ---------------------------------------------------------------- qualidade gráfica
+// Um único seletor de desempenho (Alta/Média/Baixa); Alta é o padrão (aparelhos topo de linha).
+export type { Quality } from "./match3d/model";
+const GFX_KEY = "ldb.graphics.v4";
 
-/** Aparelho aguenta o modo Ultra? (tela densa, vários núcleos e sem pedido de menos movimento) */
-export function capableDevice(): boolean {
-  try {
-    const cores = navigator.hardwareConcurrency ?? 4;
-    return (window.devicePixelRatio || 1) >= 2 && cores >= 6 && !prefersReducedMotion();
-  } catch {
-    return false;
-  }
-}
-
-export function readGraphics(): GraphicsMode {
+export function readQuality(): Quality {
   try {
     const v = localStorage.getItem(GFX_KEY);
-    if (v === "ultra" || v === "leve" || v === "ps1" || v === "ps2") return v;
+    if (v === "alta" || v === "media" || v === "baixa") return v;
   } catch {
     /* sem armazenamento local */
   }
-  return "ps2"; // sem WebGL o renderizador volta sozinho para o campinho 2D
+  return "alta";
 }
 
-export function saveGraphics(m: GraphicsMode) {
+export function saveQuality(q: Quality) {
   try {
-    localStorage.setItem(GFX_KEY, m);
+    localStorage.setItem(GFX_KEY, q);
   } catch {
     /* vale só nesta sessão */
   }
 }
 
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; glow?: boolean }
-
-class UltraFX {
-  anim: PitchAnim;
-  night: boolean;
-  rain: boolean;
-  trail: { x: number; y: number; h: number }[] = [];
-  parts: Particle[] = [];
-  drops: { x: number; y: number; s: number }[] = [];
-  lastCelebr: unknown = null;
-  cam = { x: CX, y: CY, z: 1 };
-  t = 0;
-  colors: [string[], string[]];
-
-  constructor(anim: PitchAnim) {
-    this.anim = anim;
-    // clima e horário fixos por partida (gerador próprio)
-    const r = makeRng(anim.sim.f.id * 7919 + 13);
-    this.night = r() < 0.45;
-    this.rain = r() < 0.18;
-    const hc = anim.sim.sides[0].club.colors, ac = anim.sim.sides[1].club.colors;
-    this.colors = [[hc[0], hc[1], "#ffffff"], [ac[0], ac[1], "#ffffff"]];
-    for (let i = 0; i < 140; i++) this.drops.push({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 0.8 });
-  }
-
-  /** Avança partículas, rastro e câmera. dt em ms. */
-  update(dt: number) {
-    this.t += dt;
-    const a = this.anim;
-    const b = a.ball;
-    this.trail.push({ x: b.x, y: b.y, h: b.h });
-    if (this.trail.length > 10) this.trail.shift();
-    if (a.celebr && a.celebr !== this.lastCelebr) {
-      this.lastCelebr = a.celebr;
-      this.goalBurst(a.celebr.side);
-    }
-    if (!a.celebr) this.lastCelebr = null;
-    const k = dt / 16.7;
-    for (const p of this.parts) {
-      p.x += p.vx * k; p.y += p.vy * k; p.vy += 0.02 * k; p.life -= dt;
-    }
-    this.parts = this.parts.filter((p) => p.life > 0);
-    if (this.rain) for (const d of this.drops) {
-      d.y += 3.2 * d.s * k; d.x -= 0.8 * d.s * k;
-      if (d.y > H) { d.y = -4; d.x = Math.random() * (W + 30); }
-    }
-    // câmera: segue a bola; perto do gol (lance de perigo) aproxima suavemente
-    const danger = b.x < PX0 + BOX_D + 12 || b.x > PX1 - BOX_D - 12;
-    const tz = a.celebr ? 1.18 : danger && a.mode === "play" ? 1.32 : 1.12;
-    const e = 1 - Math.exp(-dt / 285);
-    this.cam.z += (tz - this.cam.z) * e;
-    this.cam.x += (b.x - this.cam.x) * Math.min(1, e * 1.6);
-    this.cam.y += (b.y - this.cam.y) * Math.min(1, e * 1.6);
-  }
-
-  /** Gol: sinalizadores na torcida de quem marcou e fogos de artifício. */
-  goalBurst(side: 0 | 1) {
-    const cols = this.colors[side];
-    for (let i = 0; i < 70; i++) {
-      const top = Math.random() < 0.5;
-      this.parts.push({
-        x: Math.random() * W, y: top ? rnd(2, PY0 - 6) : rnd(PY1 + 4, H - 2),
-        vx: rnd(-0.15, 0.15), vy: rnd(-0.35, -0.08), life: rnd(1400, 2600), max: 2600,
-        color: cols[i % 2], size: rnd(1.5, 3.5), glow: i % 5 === 0,
-      });
-    }
-    for (let f = 0; f < 4; f++) {
-      const cx = rnd(20, W - 20), cy = rnd(10, H / 2);
-      for (let i = 0; i < 26; i++) {
-        const ang = (i / 26) * Math.PI * 2, sp = rnd(0.6, 1.3);
-        this.parts.push({ x: cx, y: cy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: rnd(700, 1200), max: 1200, color: i % 3 ? cols[f % 3] : "#fff6b0", size: 1.2, glow: true });
-      }
-    }
-  }
-
-  /** Câmera como transform CSS no palco (o canvas em pixel art continua nítido). */
-  cameraCss(): string {
-    const z = this.cam.z;
-    const ox = clamp((CX - this.cam.x) / W, -0.5, 0.5) * 100 * (z - 1);
-    const oy = clamp((CY - this.cam.y) / H, -0.5, 0.5) * 100 * (z - 1);
-    return `translate(${ox.toFixed(2)}%, ${oy.toFixed(2)}%) scale(${z.toFixed(3)})`;
-  }
-
-  draw(g: CanvasRenderingContext2D, cw: number, ch: number) {
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, cw, ch);
-    g.setTransform(cw / W, 0, 0, ch / H, 0, 0);
-    const t = this.t / 1000;
-    // torcida animada: bandeiras nas cores dos dois clubes (pulam mais no gol)
-    const party = this.anim.celebr ? 2.2 : 1;
-    for (let i = 0; i < 46; i++) {
-      const top = i % 2 === 0;
-      const side = i % 4 < 2 ? 0 : 1;
-      const x = ((i * 37) % (W - 8)) + 4;
-      const y0 = top ? 6 + (i % 3) * 3 : PY1 + 6 + (i % 3) * 3;
-      const wave = Math.sin(t * 5 * party + i) * 1.6 * party;
-      g.fillStyle = this.colors[side][i % 2];
-      g.globalAlpha = 0.85;
-      g.fillRect(x, y0 + wave - 3, 0.4, 4);
-      const flutter = Math.sin(t * 9 + i * 1.7) * 0.8;
-      g.beginPath();
-      g.moveTo(x + 0.4, y0 + wave - 3);
-      g.lineTo(x + 4 + flutter, y0 + wave - 2.2);
-      g.lineTo(x + 0.4, y0 + wave - 1);
-      g.fill();
-    }
-    g.globalAlpha = 1;
-    // sombra e rastro da bola
-    const b = this.anim.ball;
-    if (b.h > 0.2) {
-      g.fillStyle = "rgba(0,0,0,0.35)";
-      g.beginPath();
-      g.ellipse(b.x + b.h * 0.25, b.y + 0.6 + b.h * 0.15, 1.4 + b.h * 0.05, 0.7, 0, 0, Math.PI * 2);
-      g.fill();
-    }
-    for (let i = 1; i < this.trail.length; i++) {
-      const p0 = this.trail[i - 1], p1 = this.trail[i];
-      const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-      if (d < 0.25 || d > 20) continue;
-      g.strokeStyle = `rgba(255,255,255,${((i / this.trail.length) * 0.45).toFixed(3)})`;
-      g.lineWidth = 0.4 + (i / this.trail.length) * 0.8;
-      g.beginPath();
-      g.moveTo(p0.x, p0.y - p0.h);
-      g.lineTo(p1.x, p1.y - p1.h);
-      g.stroke();
-    }
-    // partículas (sinalizadores, fogos)
-    for (const p of this.parts) {
-      g.globalAlpha = Math.max(0, Math.min(1, p.life / p.max));
-      if (p.glow) {
-        const r = p.size * 3;
-        const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-        gr.addColorStop(0, p.color);
-        gr.addColorStop(1, "rgba(0,0,0,0)");
-        g.fillStyle = gr;
-        g.fillRect(p.x - r, p.y - r, r * 2, r * 2);
-      }
-      g.fillStyle = p.color;
-      g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-    }
-    g.globalAlpha = 1;
-    // noite: bordas escuras e brilho dos quatro refletores
-    if (this.night) {
-      const v = g.createRadialGradient(CX, CY, 30, CX, CY, W * 0.7);
-      v.addColorStop(0, "rgba(0,0,20,0)");
-      v.addColorStop(1, "rgba(0,0,25,0.45)");
-      g.fillStyle = v;
-      g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = "lighter";
-      for (const [lx, ly] of [[4, 4], [W - 4, 4], [4, H - 4], [W - 4, H - 4]]) {
-        const fl = g.createRadialGradient(lx, ly, 0, lx, ly, 60);
-        fl.addColorStop(0, "rgba(255,250,215,0.35)");
-        fl.addColorStop(0.15, "rgba(255,250,215,0.12)");
-        fl.addColorStop(1, "rgba(255,250,215,0)");
-        g.fillStyle = fl;
-        g.fillRect(lx - 60, ly - 60, 120, 120);
-      }
-      g.globalCompositeOperation = "source-over";
-    }
-    // chuva
-    if (this.rain) {
-      g.strokeStyle = "rgba(200,220,255,0.35)";
-      g.lineWidth = 0.35;
-      g.beginPath();
-      for (const d of this.drops) { g.moveTo(d.x, d.y); g.lineTo(d.x - 1.2 * d.s, d.y + 3.5 * d.s); }
-      g.stroke();
-      g.fillStyle = "rgba(40,60,90,0.12)";
-      g.fillRect(0, 0, W, H);
-    }
-  }
-}
+export const QUALITY_LABEL: Record<Quality, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
 
 function prefersReducedMotion(): boolean {
   try {
@@ -2203,14 +2040,14 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-// ---------------------------------------------------------------- retrato para o modo Retrô PS1
+// ---------------------------------------------------------------- retrato para o 3D
 const M_PER_PX = 105 / PL;
 
 /** Retrato do quadro atual da animação (mesmas posições do campinho) para o renderizador 3D. */
-function ps1Snapshot(a: PitchAnim): Ps1Snapshot {
+function snapshot3d(a: PitchAnim): MatchSnapshot {
   const now = a.now;
   const holder = a.ball.fl ? a.ball.fl.to : a.ball.holder;
-  const players: Ps1Snapshot["players"] = [];
+  const players: MatchSnapshot["players"] = [];
   a.dudes.forEach((d, id) => {
     if (d.hidden) return;
     const [x, z] = toWorld(d.x, d.y);
@@ -2249,8 +2086,13 @@ export interface MatchViewProps {
   /** intervalo do relógio da partida (ms por minuto de jogo) */
   msPerMin: number;
   paused: boolean;
-  /** apresentação antes do apito inicial (foto do estádio + escudos) */
+  /** abertura (chegada do ônibus + entrada dos times no 3D; foto do estádio no 2D) */
   intro: boolean;
+  /** duração da chegada do ônibus e da entrada dos times (ms); 0 = sem ônibus */
+  introArrivalMs?: number;
+  introWalkMs?: number;
+  /** importância do jogo 0..1 (rituais da torcida) */
+  importance?: number;
   /** o relógio segura no gol (1x/2x): o lance do gol pode ser mostrado com calma */
   goalHold: boolean;
   /** a bola entrou: hora de comemorar */
@@ -2258,38 +2100,39 @@ export interface MatchViewProps {
   /** desfecho de um lance perigoso (defesa, trave, para fora) — para o "uhhh" da torcida */
   onBeat?: (e: MatchEvent) => void;
   onSkipIntro?: () => void;
-  /** gráficos Ultra (camada em alta resolução, câmera, efeitos) ou Leve (só o pixel art) */
-  ultra?: boolean;
-  /** gráficos 📼 Retrô PS1 (3D estilo Winning Eleven, carregado só quando escolhido) */
-  ps1?: boolean;
-  /** 3D no modo PS2 (alta resolução, bonecos detalhados, sombras); exige ps1 */
-  hd?: boolean;
-  /** cena de lance decisivo na tela (true) ou acabou (false): o relógio deve segurar */
+  /** qualidade gráfica (só desempenho) */
+  quality: Quality;
+  /** golpe especial na tela (true) ou acabou (false): o relógio deve segurar */
   onCinema?: (on: boolean) => void;
-  /** cores da competição para o placar do modo PS1: [fundo, borda] */
+  /** o 3D ficou pronto (true) ou não há WebGL (false) */
+  on3d?: (on: boolean) => void;
+  /** cores da competição para o placar do 3D: [fundo, borda] */
   hudFrame?: [string, string];
+  /** torcida: fração que já foi embora (goleada) e empolgação (humor) */
+  exodus?: number;
+  crowdIntensity?: number;
+  /** explosão da torcida (gol/virada); muda `n` a cada vez */
+  eruption?: { side: 0 | 1; virada: boolean; n: number } | null;
 }
 
-/** Campo em pixel art com os jogadores se movendo e a legenda do lance. */
+/** Campo da partida: 3D (estádio, jogadores e torcida) com o campinho 2D de reserva. */
 export function MatchView(props: MatchViewProps) {
   const { sim, tick, intro } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fxRef = useRef<HTMLCanvasElement>(null);
-  const camRef = useRef<HTMLDivElement>(null);
   const capRef = useRef<HTMLSpanElement>(null);
   const dotRef = useRef<HTMLElement>(null);
   const animRef = useRef<PitchAnim | null>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
   const kick = useRef<() => void>(() => undefined);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const ps1HostRef = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const tickRef = useRef<() => void>(() => undefined);
   const resizeRef = useRef<() => void>(() => undefined);
+  const r3dRef = useRef<MatchRenderer | null>(null);
+  const [gl, setGl] = useState(false);
   const [special, setSpecial] = useState<{ name: string; colors: [string, string]; who: string; save: boolean } | null>(null);
 
-  // cria a animação, o laço de desenho e o ajuste de tamanho
   useEffect(() => {
     const canvas = canvasRef.current!;
     const wrap = wrapRef.current!;
@@ -2307,46 +2150,26 @@ export function MatchView(props: MatchViewProps) {
         setSpecial(sp);
         propsRef.current.onCinema?.(!!sp);
       },
-      cine: (spec) => {
-        if (!propsRef.current.ultra) return;
-        const host = stageRef.current;
-        if (!host || document.hidden) return;
-        cine?.destroy();
-        anim.frozen = true;
-        propsRef.current.onCinema?.(true);
-        const resume = () => {
-          anim.frozen = false;
-          propsRef.current.onCinema?.(false);
-          kick.current();
-        };
-        cine = playCinematic(host, spec, {
-          onEnd: resume,
-          onReplay: () => propsRef.current.onCinema?.(true),
-          onReplayEnd: () => propsRef.current.onCinema?.(false),
-        });
-      },
     });
-    let cine: CineHandle | null = null;
-    const ps1On = !!propsRef.current.ps1;
-    anim.rich = !!propsRef.current.ultra || ps1On;
+    anim.rich = true;
     anim.reduced = prefersReducedMotion();
     if (anim.festa) anim.festa.reduced = anim.reduced;
     anim.ms = propsRef.current.msPerMin;
     anim.goalHold = propsRef.current.goalHold;
     anim.specialsOn = specialsEnabled();
+    anim.leaveTarget = propsRef.current.exodus ?? 0;
     animRef.current = anim;
     if (propsRef.current.intro) anim.startIntro();
     else if (sim.minute === 0 && sim.half === 1) anim.say("A bola vai rolar…");
     else if (sim.finished) anim.say("Fim de jogo!");
     else if (sim.phase.atk != null) anim.say(`Bola com o ${sim.sides[sim.phase.atk].club.name}`, sim.phase.atk);
 
-    const fx = propsRef.current.ultra ? new UltraFX(anim) : null;
-    // Retrô PS1: o módulo 3D (three.js) só é baixado agora
-    let ps1: Ps1Renderer | null = null;
-    let ps1Dead = false;
+    // 3D: o módulo (three.js) só é baixado agora
+    let r3d: MatchRenderer | null = null;
+    let dead = false;
     let tickAt = 0;
     tickRef.current = () => (tickAt = anim.now);
-    const ps1Hud = () => {
+    const hud = () => {
       const secs = sim.finished || sim.minute === 0 ? 0 : clamp(Math.floor(((anim.now - tickAt) / Math.max(1, anim.ms)) * 60), 0, 59);
       const mm = Math.max(0, sim.minute - (sim.finished || sim.minute === 0 ? 0 : 1));
       return {
@@ -2357,53 +2180,49 @@ export function MatchView(props: MatchViewProps) {
         frame: propsRef.current.hudFrame,
       };
     };
-    const fxCanvas = fxRef.current;
-    const fg = fx && fxCanvas ? fxCanvas.getContext("2d") : null;
-    if (camRef.current && !fx) camRef.current.style.transform = "";
     let raf = 0;
     let last = 0;
+    const running = () => {
+      if (document.hidden) return false;
+      if (r3d && (propsRef.current.intro || r3d.freeCam)) return true;
+      return !propsRef.current.paused && !anim.idle();
+    };
     const frame = (t: number) => {
       raf = 0;
       if (!last) last = t;
       const dt = t - last;
-      // Leve: ~30 quadros por segundo. Ultra/PS1: sem limite (acompanha a tela, até 120 Hz)
-      if (dt >= (fx || ps1On ? 1 : 31)) {
+      if (dt >= 1) {
         last = t;
-        if (!anim.frozen) anim.update(Math.min(dt, 50));
-        if (ps1) ps1.render(ps1Snapshot(anim), Math.min(dt, 50), ps1Hud());
-        else if (!ps1On || ps1Dead) anim.draw(g);
-        if (fx && fg && fxCanvas) {
-          fx.update(Math.min(dt, 50));
-          fx.draw(fg, fxCanvas.width, fxCanvas.height);
-          if (camRef.current) camRef.current.style.transform = fx.cameraCss();
-        }
+        if (!anim.frozen && !propsRef.current.paused) anim.update(Math.min(dt, 50));
+        if (r3d) r3d.render(snapshot3d(anim), Math.min(dt, 50), hud());
+        else if (dead) anim.draw(g);
       }
-      if (!propsRef.current.paused && !document.hidden && !anim.idle()) raf = requestAnimationFrame(frame);
+      if (running()) raf = requestAnimationFrame(frame);
     };
     const start = () => {
-      if (raf || propsRef.current.paused || document.hidden || anim.idle()) return;
+      if (raf || !running()) return;
       last = 0;
       raf = requestAnimationFrame(frame);
     };
     kick.current = () => {
-      anim.draw(g);
+      if (!r3d) anim.draw(g);
       start();
     };
     anim.draw(g);
     start();
 
-    const ps1H = (w: number) => landscape() ? Math.max(190, window.innerHeight - 118) : propsRef.current.hd ? Math.min(w * (sim.finished ? 0.62 : 0.98), Math.max(190, window.innerHeight * 0.48)) : Math.min(w * 0.75, Math.max(190, window.innerHeight * 0.58));
+    const h3d = (w: number) => landscape() ? Math.max(200, window.innerHeight - 118) : Math.min(w * (sim.finished ? 0.62 : 1.0), Math.max(200, window.innerHeight * 0.5));
     const resize = () => {
-      if (ps1) {
+      if (r3d) {
         const w = wrap.clientWidth;
-        ps1.resize(w, ps1H(w));
+        r3d.resize(w, h3d(w));
         return;
       }
-      if (ps1On && !ps1Dead) {
-        // PS1 ainda carregando: reserva o tamanho final e não mostra o pixel art (evita piscar 2D -> 3D)
+      if (!dead) {
+        // 3D carregando: reserva o tamanho final (evita piscar 2D -> 3D)
         canvas.style.visibility = "hidden";
         canvas.style.width = `${wrap.clientWidth}px`;
-        canvas.style.height = `${ps1H(wrap.clientWidth)}px`;
+        canvas.style.height = `${h3d(wrap.clientWidth)}px`;
         return;
       }
       canvas.style.visibility = "";
@@ -2414,45 +2233,55 @@ export function MatchView(props: MatchViewProps) {
       while (k > 1 && (H * k) / dpr > maxH) k--;
       canvas.style.width = `${(W * k) / dpr}px`;
       canvas.style.height = `${(H * k) / dpr}px`;
-      if (fxCanvas) {
-        // camada Ultra na resolução real da tela (devicePixelRatio inteiro)
-        fxCanvas.width = W * k;
-        fxCanvas.height = H * k;
-        fxCanvas.style.width = canvas.style.width;
-        fxCanvas.style.height = canvas.style.height;
-      }
     };
-    if (ps1On && !ps1HostRef.current) ps1Dead = true;
+    const fallback = () => {
+      if (dead) return;
+      dead = true;
+      setGl(false);
+      propsRef.current.on3d?.(false);
+      canvas.style.display = "";
+      resize();
+      anim.draw(g);
+      start();
+    };
     resize();
-    if (ps1On && ps1HostRef.current) {
-      const host = ps1HostRef.current;
-      import("./ps1/Ps1Renderer")
+    const host = hostRef.current;
+    if (!host) fallback();
+    else {
+      import("./match3d/MatchRenderer")
         .then((mod) => {
-          if (ps1Dead) return;
-          ps1 = new mod.Ps1Renderer({
+          if (dead) return;
+          const crowd = anim.crowd;
+          const cside: 0 | 1 = crowd ? crowd.side : 0;
+          const info = (c: Club) => ({ colors: c.colors, abbr: hudAbbr(c.abbr, c.name), name: c.name, stadium: c.stadium || "Estádio" });
+          r3d = new mod.MatchRenderer({
             host,
             style: stadiumStyleFor(sim.sides[0].club, !!sim.f.neutral),
-            clubColors: [anim.colors.home.shirt, anim.colors.away.shirt],
+            quality: propsRef.current.quality,
+            home: info(sim.sides[0].club),
+            away: info(sim.sides[1].club),
+            neutral: !!sim.f.neutral,
+            crowdSide: cside,
+            festa: crowd && anim.festa ? Math.max(anim.festa.level, crowd.selecao ? 1 : 0) : 0,
+            importance: propsRef.current.importance ?? 0.3,
             reduced: anim.reduced,
-            hd: !!propsRef.current.hd,
-            festa: anim.crowd && anim.festa ? {
-              level: anim.festa.level,
-              selecao: anim.crowd.selecao,
-              colors: sim.sides[anim.crowd.side].club.colors,
-              abbr: hudAbbr(sim.sides[anim.crowd.side].club.abbr, sim.sides[anim.crowd.side].club.name),
-              side: anim.crowd.side,
-            } : undefined,
+            onSkip: () => propsRef.current.onSkipIntro?.(),
           });
+          r3dRef.current = r3d;
+          if (propsRef.current.intro) r3d.startIntro(propsRef.current.introArrivalMs ?? 0, propsRef.current.introWalkMs ?? 6000);
+          r3d.setCrowd({ exodus: propsRef.current.exodus ?? 0, intensity: propsRef.current.crowdIntensity ?? 1 });
           canvas.style.display = "none";
+          setGl(true);
+          propsRef.current.on3d?.(true);
           resize();
-          ps1.render(ps1Snapshot(anim), 0, ps1Hud());
+          r3d.render(snapshot3d(anim), 0, hud());
           start();
         })
-        .catch(() => {
-          // sem WebGL (ou falhou o download): volta para o pixel art
-          ps1Dead = true;
-          resize();
-          anim.draw(g);
+        .catch((err) => {
+          console.warn("3D indisponível, usando o campo 2D", err);
+          r3d = null;
+          r3dRef.current = null;
+          fallback();
         });
     }
     resizeRef.current = resize;
@@ -2461,18 +2290,25 @@ export function MatchView(props: MatchViewProps) {
     window.addEventListener("resize", resize);
     const vis = () => start();
     document.addEventListener("visibilitychange", vis);
+    // câmera livre com o jogo pausado: o toque acorda o laço
+    const wake = () => window.setTimeout(start, 0);
+    wrap.addEventListener("pointerdown", wake);
+    wrap.addEventListener("wheel", wake, { passive: true });
     return () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       ro.disconnect();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", vis);
+      wrap.removeEventListener("pointerdown", wake);
+      wrap.removeEventListener("wheel", wake);
       kick.current = () => undefined;
       tickRef.current = () => undefined;
       animRef.current = null;
-      ps1Dead = true;
-      ps1?.dispose();
-      ps1 = null;
+      dead = true;
+      r3d?.dispose();
+      r3d = null;
+      r3dRef.current = null;
       canvas.style.display = "";
       canvas.style.visibility = "";
       if (anim.special) {
@@ -2480,12 +2316,8 @@ export function MatchView(props: MatchViewProps) {
         setSpecial(null);
         propsRef.current.onCinema?.(false);
       }
-      if (cine) {
-        cine.destroy();
-        if (anim.frozen) propsRef.current.onCinema?.(false);
-      }
     };
-  }, [sim, props.ultra, props.ps1, props.hd]);
+  }, [sim, props.quality]);
 
   // velocidade e segura-no-gol vêm sempre da última renderização
   useEffect(() => {
@@ -2494,6 +2326,25 @@ export function MatchView(props: MatchViewProps) {
     a.ms = props.msPerMin;
     a.goalHold = props.goalHold;
   });
+
+  // torcida: goleada (vai embora) e empolgação
+  useEffect(() => {
+    const a = animRef.current;
+    if (a) a.leaveTarget = Math.max(a.leaveTarget, props.exodus ?? 0);
+    r3dRef.current?.setCrowd({ exodus: props.exodus ?? 0, intensity: props.crowdIntensity ?? 1 });
+  }, [props.exodus, props.crowdIntensity]);
+
+  // explosão no gol / virada
+  useEffect(() => {
+    const e = props.eruption;
+    if (e) r3dRef.current?.erupt(e.side, e.virada);
+  }, [props.eruption?.n]);
+
+  // abertura acabou (ou foi pulada)
+  useEffect(() => {
+    if (!intro) r3dRef.current?.endIntro();
+    kick.current();
+  }, [intro]);
 
   // novo minuto: monta o roteiro do lance
   useEffect(() => {
@@ -2511,13 +2362,13 @@ export function MatchView(props: MatchViewProps) {
   const home = sim.sides[0].club;
   const away = sim.sides[1].club;
   const photo = !!home.stadiumImg && !sim.f.neutral;
+  const flat = intro && !gl;
   return (
     <div className="mv" ref={wrapRef}>
-      <div className={`mv-stage${props.ultra ? " mv-ultra" : ""}${intro ? " sa-fly" : ""}`} ref={stageRef}>
-        <div className="mv-cam" ref={camRef}>
+      <div className={`mv-stage${flat ? " sa-fly" : ""}`}>
+        <div className="mv-cam">
           <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
-          {props.ultra && <canvas ref={fxRef} className="mv-fx" aria-hidden="true" />}
-          {props.ps1 && <div ref={ps1HostRef} className="ps1-host" aria-hidden="true" />}
+          <div ref={hostRef} className="m3d-host" aria-label={`Partida em 3D: ${home.name} x ${away.name}`} />
         </div>
         {special && (
           <div className={`mv-special${special.save ? " save" : ""}`} role="status" style={{ "--sp0": special.colors[0], "--sp1": special.colors[1] } as CSSProperties}>
@@ -2525,8 +2376,8 @@ export function MatchView(props: MatchViewProps) {
             <b className="mv-special-name">{special.name}!</b>
           </div>
         )}
-        {intro && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
-        {intro && (
+        {flat && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
+        {flat && (
           <div className="mv-intro" onClick={props.onSkipIntro}>
             <div className="mv-intro-fallback">
               <b>🏟️ {sim.f.neutral ? "Campo neutro" : home.stadium}</b>

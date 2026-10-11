@@ -244,7 +244,6 @@ export class Stadium {
 
   constructor(private o: StadiumOpts, scene: THREE.Scene) {
     scene.add(this.group);
-    const st = o.style;
     const q = o.quality;
     // céu de fim de tarde (sol baixo) + refletores acesos
     this.sky = new Sky();
