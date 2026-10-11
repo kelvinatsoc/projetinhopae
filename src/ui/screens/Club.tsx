@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { deviceInfo, isWeakDevice, readPerfMode, savePerfMode, type PerfMode } from "../perf";
 import { LEGENDS, TIER_NAMES } from "../../data/legends";
 import { COMP_META } from "../../engine/competitions";
 import { kitSupplier, shirtSponsor, stadiumName } from "../../engine/sponsors";
@@ -66,6 +67,7 @@ export function ClubScreen() {
         <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
         <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
         <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
+        <Tile icon="⚡" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
         <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
@@ -298,6 +300,36 @@ export function LegendsScreen() {
   );
 }
 
+/** Desempenho: Automático (detecta celular fraco), Leve ou Completo. */
+function PerfCard() {
+  const [mode, setMode] = useState<PerfMode>(readPerfMode);
+  const info = useMemo(() => deviceInfo(), []);
+  const lite = mode === "leve" || (mode === "auto" && isWeakDevice(info));
+  const pick = (m: PerfMode) => {
+    setMode(m);
+    savePerfMode(m);
+    // a partida segue o modo: Leve = campo 2D; Completo = 3D em qualidade Alta
+    try { localStorage.setItem("ldb.graphics.v4", m === "leve" || (m === "auto" && isWeakDevice(info)) ? "leve" : "alta"); } catch { /* */ }
+  };
+  const bits = [info.memory ? `${info.memory} GB de RAM` : null, info.cores ? `${info.cores} núcleos` : null, info.fps ? `${info.fps} FPS medidos` : null, info.gpu ? info.gpu.replace(/\(.*?\)/g, "").slice(0, 40) : null].filter(Boolean).join(" · ");
+  return (
+    <div className="card">
+      <h3>Desempenho</h3>
+      <div className="seg" role="group" aria-label="Modo de desempenho">
+        {([["auto", "Automático"], ["leve", "Leve"], ["completo", "Completo"]] as const).map(([m, l]) => (
+          <button key={m} className={mode === m ? "active" : ""} aria-pressed={mode === m} onClick={() => pick(m)}>{l}</button>
+        ))}
+      </div>
+      <div className="small muted mt8">
+        {lite
+          ? "Modo leve ligado: sem desfoque e animações pesadas, sede em botões e partida no campo 2D. Ideal para celulares de entrada."
+          : "Visual completo: partida em 3D (qualidade escolhida na própria partida), sede em 3D e efeitos."}
+      </div>
+      {bits && <div className="tiny muted mt8">Este aparelho: {bits}</div>}
+    </div>
+  );
+}
+
 export function SettingsScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
@@ -310,6 +342,7 @@ export function SettingsScreen() {
   return (
     <div className="page">
       <AdminSettingsCard />
+      <PerfCard />
       <div className="card">
         <h3>Jogo</h3>
         <div className="switch"><div><b>Modo casual</b><div className="small muted">Sem demissão por maus resultados.</div></div>

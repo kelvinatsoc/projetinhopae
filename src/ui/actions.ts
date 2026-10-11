@@ -1,3 +1,4 @@
+import { whenIdle } from "./perf";
 import type { WorldData } from "../data/worldTypes";
 // Ações de alto nível disparadas pela interface.
 import { migrateWorld, type Database } from "../engine/world";
@@ -98,7 +99,7 @@ export function autosave(immediate = false) {
     }
   };
   if (immediate) void run();
-  else saveTimer = window.setTimeout(run, 400);
+  else saveTimer = window.setTimeout(() => whenIdle(() => void run()), 400); // salva quando a tela estiver ociosa
 }
 
 export async function saveNow() {

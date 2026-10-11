@@ -219,7 +219,7 @@ function PreMatchCard({ w, f, a, checking }: { w: World; f: Fixture; a: MatchAna
 
       {a.rotation && (
         <div className="as-section">
-          <div className="as-title">Estadual</div>
+          <div className="as-title">{a.rotation.title ?? "Estadual"}</div>
           <div className="small"><Ic n="bulb" /> {a.rotation.text}</div>
           <button className="btn sm block mt8" onClick={() => applyAlternative(a.rotation!.lineup)}><Ic n="refresh" /> Escalar time alternativo</button>
         </div>

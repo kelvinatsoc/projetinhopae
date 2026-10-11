@@ -415,7 +415,39 @@ export interface MatchAnalysis {
   rotation?: RotationTip;
 }
 
-export interface RotationTip { text: string; lineup: Lineup }
+export interface RotationTip { text: string; lineup: Lineup; title?: string }
+
+/**
+ * Rodízio por cansaço: com jogos em sequência (até 3 dias antes ou depois), sugere poupar os
+ * titulares mais cansados. Não muda nada sozinha.
+ */
+export function fatigueRotationTip(w: World, f: Fixture): RotationTip | undefined {
+  const user = w.clubs[w.userClubId];
+  if (!user) return undefined;
+  const mine = (g: Fixture) => g.home === user.id || g.away === user.id;
+  let gap = 99;
+  for (const g of w.fixtures) {
+    if (g.id === f.id || !mine(g)) continue;
+    const d = Math.abs(g.day - f.day);
+    if ((g.result && g.day <= f.day) || (!g.result && g.day >= f.day)) gap = Math.min(gap, d);
+  }
+  if (gap > 3) return undefined;
+  const base = validLineup(w, user, f.comp);
+  const tired = base.starters
+    .filter((id): id is number => id != null)
+    .map((id) => w.players[id])
+    .filter((p) => p && p.pos !== "GOL" && p.cond < 80)
+    .sort((a, b) => a.cond - b.cond)
+    .slice(0, 5);
+  if (!tired.length) return undefined;
+  const lineup = autoLineup(w, user, f.comp, user.tactic.formation, true, { exclude: new Set(tired.map((p) => p.id)) });
+  const names = tired.map((p) => `${p.name.split(" ").slice(-1)[0]} (${Math.round(p.cond)}%)`).join(", ");
+  return {
+    title: "Rodízio",
+    text: `Jogos em sequência (${gap} dia${gap === 1 ? "" : "s"} de intervalo). Sugiro poupar quem está cansado: ${names}. Eles voltam inteiros para o próximo jogo e o risco de lesão cai.`,
+    lineup,
+  };
+}
 
 /** Dica do estadual: os grandes poupam titulares no começo. Não muda nada sozinha. */
 export function rotationTip(w: World, f: Fixture): RotationTip | undefined {
@@ -612,7 +644,7 @@ export function analyzeMatch(w: World, f: Fixture): MatchAnalysis {
     suggested: pick.o,
     changed,
     daysToNext,
-    rotation: rotationTip(w, f),
+    rotation: rotationTip(w, f) ?? fatigueRotationTip(w, f),
   };
 }
 

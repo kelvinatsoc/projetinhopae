@@ -1,5 +1,6 @@
 import { SponsorsScreen } from "./Sponsors";
 import { UniformsScreen } from "./Uniforms";
+import { PowersScreen } from "./screens/Powers";
 import { syncCustomKits } from "./Kit";
 import { FacilitiesScreen } from "./Facilities";
 import { SetPiecesScreen } from "./SetPieces";
@@ -73,6 +74,7 @@ function routeTitle(r: Route): string {
     case "compare": return "Comparar jogadores";
     case "sponsors": return "Patrocínios";
     case "kits": return "Uniformes";
+    case "powers": return "Loja de Poderes";
     case "facilities": return "Estrutura";
     case "setpieces": return "Bola parada";
     case "nts": return "Seleções";
@@ -186,6 +188,7 @@ export function App() {
       case "compare": content = <CompareScreen ids={top.ids} />; break;
       case "sponsors": content = <SponsorsScreen />; break;
       case "kits": content = <UniformsScreen id={top.id} key={top.id} />; break;
+      case "powers": content = <PowersScreen />; break;
       case "facilities": content = <FacilitiesScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;
       case "nts": content = <NationalTeamsScreen />; break;

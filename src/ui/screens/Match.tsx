@@ -16,7 +16,7 @@ import { crowdExodus, crowdMood, crowdProfile, crowdSize, isComeback, matchImpor
 import { PhaseBanner, matchPhase } from "../MatchPhase";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
-import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type Quality } from "../MatchView";
+import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type MatchQuality } from "../MatchView";
 import { Pitch } from "./Squad";
 import { CompBumper, CompHeader } from "../CompTheme";
 import { compTheme, themeClass, themeVars } from "../compThemes";
@@ -168,6 +168,11 @@ const SPEEDS = [1, 2, 4, 8].map((k) => ({ l: `${k}x`, ms: REAL_MS_PER_MIN / k })
 const FIELD_KEY = "ldb.matchField";
 const SPEED_KEY = "ldb.matchSpeed";
 const FEED_KEY = "ldb.matchFeed";
+const ASSIST_KEY = "ldb.assistSubs";
+/** O auxiliar técnico faz as substituições do usuário? (padrão: desligado) */
+function readAssist(): boolean {
+  try { return localStorage.getItem(ASSIST_KEY) === "1"; } catch { return false; }
+}
 
 /** Última velocidade usada (índice em SPEEDS ou "hl" = melhores momentos). */
 function readSpeed(): { i: number; hl: boolean } {
@@ -236,7 +241,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [hl, setHl] = useState(() => readSpeed().hl);
   const [bumper, setBumper] = useState(!quick);
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
-  const [gfx, setGfx] = useState<Quality>(() => readQuality());
+  const [gfx, setGfx] = useState<MatchQuality>(() => readQuality());
+  const [assist, setAssist] = useState(readAssist);
+  const [, bumpPowers] = useState(0);
   const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
   const [exodus, setExodus] = useState(0);
   const [mood, setMood] = useState(1);
@@ -273,6 +280,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const sim = simRef.current;
   const profile = useMemo(() => (sim ? crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, userSide) : null), [sim]);
   const streak = useRef(0);
+  // auxiliar técnico nas substituições (o usuário liga/desliga)
+  useEffect(() => { sim?.setAssistant(userSide, assist); }, [sim, assist]);
+  const toggleAssist = () => setAssist((a) => { try { localStorage.setItem(ASSIST_KEY, a ? "0" : "1"); } catch { /* */ } haptic("tap"); return !a; });
   const importance = useMemo(() => (sim && f ? matchImportance({ stage: f.stage, comp: f.comp, derby: derbyIntensity(f.home, f.away), size: crowdSize(sim.sides[0].club, !!f.neutral) }) : 0), [sim]);
   const intro3d = introTimes(importance);
   // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
@@ -444,7 +454,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const skipToEnd = () => { haptic("tap"); setIntro(false); setBumper(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); };
   const pickSpeed = (i: number) => { setHl(false); setSpeed(i); saveSpeed(i); };
   const toggleHl = () => { setHl((x) => { saveSpeed(x ? speed : "hl"); return !x; }); };
-  const cycleGfx = () => { const m: Quality = gfx === "alta" ? "media" : gfx === "media" ? "baixa" : "alta"; setGfx(m); saveQuality(m); };
+  const cycleGfx = () => { const m: MatchQuality = gfx === "alta" ? "media" : gfx === "media" ? "baixa" : gfx === "baixa" ? "leve" : "alta"; setGfx(m); saveQuality(m); };
   const goOn = () => { haptic("success"); forceBack(); };
   const toggleFeed = () => setFeedOpen((o) => { try { localStorage.setItem(FEED_KEY, o ? "0" : "1"); } catch { /* */ } return !o; });
 
@@ -459,7 +469,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
-                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa (só desempenho)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
+                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa → Leve (campo 2D, celulares fracos)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
                   {gfx === "alta" ? <Ic n="sparkle" /> : gfx === "media" ? <Ic n="film" /> : <Ic n="feather" />} {QUALITY_LABEL[gfx]}
                 </button>
               )}
@@ -537,6 +547,29 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             onSubs={() => { haptic("tap"); setSubs(true); }}
             onHistory={() => { haptic("tap"); setHistory(true); }} />
         )}
+        {!quick && !over && (
+          <button className={`btn sm block mx-assist${assist ? " active" : ""}`} aria-pressed={assist} onClick={toggleAssist}
+            title="O auxiliar troca cansados e amarelados em risco, dá rodagem aos garotos com o jogo decidido e mexe no time quando perde">
+            <Ic n="refresh" /> Auxiliar faz as trocas: <b>{assist ? "ligado" : "desligado"}</b>
+          </button>
+        )}
+        {!quick && !over && (() => {
+          const ps = sim.powerState(userSide);
+          if (!ps.length) return null;
+          return (
+            <div className="mx-powers" role="group" aria-label="Poderes">
+              {ps.map((p) => (
+                <button key={p.pid} className={`mx-power${p.ready ? " ready" : ""}`} disabled={!p.ready}
+                  aria-label={p.ready ? `Ativar ${p.name} de ${p.player}` : `${p.name} de ${p.player}: ${p.charge}%`}
+                  onClick={() => { if (sim.activatePower(userSide, p.pid)) { haptic("success"); bumpPowers((x) => x + 1); } }}>
+                  <span className="mx-power-ico" aria-hidden="true">{p.emoji}</span>
+                  <span className="mx-power-txt"><b>{p.ready ? "ATIVAR" : p.name}</b><small>{p.player}{!p.onPitch ? " (fora)" : ""}</small></span>
+                  <i className="mx-power-bar" style={{ width: `${p.charge}%` }} />
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {!quick && !over && (
           <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>

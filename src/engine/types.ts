@@ -239,6 +239,8 @@ export interface Club {
   players: number[]; // ids (elenco + base)
   tactic: Tactic;
   lineup?: Lineup;
+  /** poderes comprados na Loja de Poderes (engine/powers.ts), por temporada */
+  powers?: { id: string; pid: number; season: number }[];
   youthLevel: number; // 1-5
   facilities: number; // 1-5
   ticket: number; // preço médio do ingresso
