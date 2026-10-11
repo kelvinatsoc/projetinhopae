@@ -47,9 +47,29 @@ export interface AdminCheats {
 export type SponsorSlot = "shirt" | "stadium" | "kit";
 export interface SponsorBonus { kind: "title" | "top4" | "safe"; value: number }
 export interface SponsorDeal { id: string; slot: SponsorSlot; brand: string; annual: number; years: number; bonus: SponsorBonus[]; since?: number; until?: number }
+/** Padrões do editor de uniforme (mesmos nomes do Kit da Wikipedia + "solid"). */
+export type KitPattern = "solid" | "stripes" | "hoops" | "sash" | "halves" | "band";
+export interface CustomKit {
+  /** temporada em que foi criado (só um por temporada) */
+  season: number;
+  b: string; // corpo
+  sl: string; // mangas
+  sh: string; // calção
+  so: string; // meias
+  pat: KitPattern;
+  st: string; // cor do padrão
+  collar: "redonda" | "v" | "polo";
+  sponsorPos: "alto" | "centro" | "baixo";
+  supplierPos: "direita" | "esquerda" | "centro";
+  /** true = o time usa este uniforme como o primeiro (em casa e fora, se não houver choque) */
+  wear?: boolean;
+}
+
 export interface SponsorState {
   deals: Partial<Record<SponsorSlot, SponsorDeal>>;
   offers?: { season: number; list: SponsorDeal[] };
+  /** contratos já assinados que começam na próxima temporada (troca/renovação no último ano) */
+  next?: Partial<Record<SponsorSlot, SponsorDeal>>;
   paidFor?: number; // última temporada com bônus avaliados
   log?: { season: number; brand: string; text: string; value: number }[];
 }
@@ -225,6 +245,8 @@ export interface Club {
   history: ClubSeasonRecord[];
   trophies: Trophy[];
   customCrest?: string;
+  /** 3º uniforme criado pelo usuário (uma vez por temporada) */
+  customKit?: CustomKit;
   logo?: boolean; // escudo oficial em media/crests/<id>.webp
   stadiumImg?: string; // foto do estádio em media/stadiums/<id>.webp
   finance: FinanceBook;

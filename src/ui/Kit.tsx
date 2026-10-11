@@ -5,7 +5,9 @@
 // arquivos: public/media/kits/.
 import { brandLogo } from "../engine/sponsors";
 import { useId } from "react";
+import type { CustomKit, World } from "../engine/types";
 import kitsData from "../data/kits.json";
+import kitOverrides from "../data/kitOverrides.json";
 import { mediaUrl } from "./mediaUrl";
 
 /** Um uniforme: cor "#RRGGBB" de cada parte e, se houver, o arquivo do padrão em media/kits/. */
@@ -31,6 +33,10 @@ export type Kit = {
   pat?: "stripes" | "hoops" | "sash" | "halves" | "band";
   /** cor secundária do padrão */
   st?: string;
+  /** terceira cor (faixa/listras tricolores) */
+  st2?: string;
+  /** uniforme criado no editor (gola e posição das marcas) */
+  custom?: { collar: CustomKit["collar"]; sponsorPos: CustomKit["sponsorPos"]; supplierPos: CustomKit["supplierPos"] };
 };
 
 type Part = "la" | "b" | "ra" | "sh" | "so";
@@ -47,7 +53,14 @@ const PARTS: readonly { part: Part; x: number; y: number; w: number; h: number; 
   { part: "so", x: 0, y: 95, w: 100, h: 40, overlay: "kit_socks_long.svg", edge: "M-3-3V43H31.5L29.5,9.5H44.5V43H55.5V9.5H70.5L68.5,43H103V-3z" },
 ];
 
-const KITS = kitsData as Record<string, Kit[]>;
+// Correções feitas à mão (conferidas contra as fotos oficiais) por cima dos dados da Wikipedia:
+// src/data/kitOverrides.json {clubId: {"0": {campos}, "1": {...}}}
+const KITS: Record<string, Kit[]> = Object.fromEntries(
+  Object.entries(kitsData as Record<string, Kit[]>).map(([id, ks]) => {
+    const ov = (kitOverrides as Record<string, Record<string, Partial<Kit>>>)[id];
+    return [id, ov ? ks.map((k, i) => (ov[String(i)] ? { ...k, ...ov[String(i)] } : k)) : ks];
+  }),
+);
 
 /** Uniforme liso com as cores dadas (clubes sem dados, ex.: criados pelo jogador). */
 export function plainKit(colors: readonly string[], name = "Titular"): Kit {
@@ -58,7 +71,36 @@ export function plainKit(colors: readonly string[], name = "Titular"): Kit {
 
 /** Uniformes do clube (o primeiro é o titular). Vazio se o clube não tiver dados. */
 export function kitsOf(clubId: string): Kit[] {
-  return KITS[clubId] ?? [];
+  const base = KITS[clubId] ?? [];
+  const ck = CUSTOM.get(clubId);
+  if (!ck) return base;
+  if (ck.first) return [ck.kit, ...base.slice(0, 2)];
+  return [...base.slice(0, 2), ck.kit];
+}
+
+// 3º uniforme do usuário (fica na save; sincronizado por syncCustomKits a cada render do App)
+const CUSTOM = new Map<string, { kit: Kit; first: boolean }>();
+
+/** Converte o uniforme do editor para o formato do Kit. */
+export function customToKit(ck: CustomKit): Kit {
+  return {
+    name: "Terceiro (personalizado)", la: ck.sl, b: ck.b, ra: ck.sl, sh: ck.sh, so: ck.so, shirt: ck.b,
+    ...(ck.pat !== "solid" ? { pat: ck.pat, st: ck.st } : {}),
+    custom: { collar: ck.collar, sponsorPos: ck.sponsorPos, supplierPos: ck.supplierPos },
+  };
+}
+
+/** Registra o uniforme personalizado do clube (ou remove). */
+export function setCustomKit(clubId: string, ck: CustomKit | undefined) {
+  if (!ck) CUSTOM.delete(clubId);
+  else CUSTOM.set(clubId, { kit: customToKit(ck), first: !!ck.wear });
+}
+
+/** Mantém o registro em dia com a save (só o clube do usuário tem uniforme personalizado). */
+export function syncCustomKits(w: World) {
+  for (const id of [...CUSTOM.keys()]) if (!w.clubs[id]?.customKit) CUSTOM.delete(id);
+  const c = w.clubs[w.userClubId];
+  if (c?.customKit) setCustomKit(c.id, c.customKit);
 }
 
 /** Cor que representa a camisa (para marcadores e para checar contraste). */
@@ -146,6 +188,7 @@ export function KitView({ kit, width = 64, title, supplier }: { kit: Kit; width?
               {pattern && (
                 <image href={mediaUrl(`kits/${pattern}`)} x={x} y={y} width={w} height={h} preserveAspectRatio="xMinYMin meet" />
               )}
+              {!pattern && part === "b" && kit.pat && kit.st && <PatternSvg pat={kit.pat} c={kit.st} x={x} y={y} w={w} h={h} />}
               <image href={mediaUrl(`kits/${overlay}`)} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />
             </g>
           );
@@ -154,4 +197,13 @@ export function KitView({ kit, width = 64, title, supplier }: { kit: Kit; width?
       {logo && <image href={mediaUrl(logo)} x={56} y={12} width={10} height={8} preserveAspectRatio="xMidYMid meet" opacity={0.92} />}
     </svg>
   );
+}
+
+/** Padrão desenhado (sem PNG da Wikipedia: uniforme personalizado ou arquivo ainda não baixado). */
+function PatternSvg({ pat, c, x, y, w, h }: { pat: NonNullable<Kit["pat"]>; c: string; x: number; y: number; w: number; h: number }) {
+  if (pat === "stripes") return <>{[1, 3, 5, 7].map((i) => <rect key={i} x={x + (i * w) / 9} y={y} width={w / 9} height={h} fill={c} />)}</>;
+  if (pat === "hoops") return <>{[1, 3, 5, 7].map((i) => <rect key={i} x={x} y={y + 4 + (i * (h - 4)) / 9} width={w} height={(h - 4) / 9} fill={c} />)}</>;
+  if (pat === "halves") return <rect x={x + w / 2} y={y} width={w / 2} height={h} fill={c} />;
+  if (pat === "band") return <rect x={x} y={y + h * 0.3} width={w} height={h * 0.14} fill={c} />;
+  return <path d={`M${x} ${y + h * 0.1} L${x + w * 0.25} ${y} L${x + w} ${y + h * 0.75} L${x + w} ${y + h} Z`} fill={c} />;
 }

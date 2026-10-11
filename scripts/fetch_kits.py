@@ -521,6 +521,37 @@ def valid_file(data: bytes | None, name: str) -> bool:
     return True
 
 
+_last_dl = [0.0]
+# o upload.wikimedia.org limita bem mais quem se identifica como "python-requests"
+DL_UA = wm.UA.replace(" python-requests", "") + " fetch_kits"
+
+
+def direct_download(url: str | None) -> bytes | None:
+    """Baixa direto de upload.wikimedia.org (URL do imageinfo), com ritmo próprio (WM_INTERVAL)
+    e backoff exponencial em 429/5xx. Special:FilePath passa pelo limitador e travava o download."""
+    import time
+    if not url:
+        return None
+    url = url.split("?")[0]
+    for attempt in range(5):
+        wait = _last_dl[0] + wm.MIN_INTERVAL - time.time()
+        if wait > 0:
+            time.sleep(wait)
+        _last_dl[0] = time.time()
+        try:
+            r = wm.session.get(url, timeout=60, headers={"User-Agent": DL_UA})
+        except Exception:  # noqa: BLE001
+            time.sleep(5 * (attempt + 1))
+            continue
+        if r.status_code == 200:
+            return r.content
+        if r.status_code == 404:
+            return None
+        ra = r.headers.get("Retry-After")
+        time.sleep(min(300, float(ra) if ra and ra.isdigit() else 10 * 2 ** attempt))
+    return None
+
+
 def download(specs: dict | None = None):
     specs = specs or load(work("specs.json"), None) or parse()
     inf = load(work("info.json"), None) or info(specs)
@@ -543,7 +574,7 @@ def download(specs: dict | None = None):
     for i, n in enumerate(todo):
         meta = inf[n]
         wiki = "en.wikipedia.org" if meta.get("repo") == "en" else "commons.wikimedia.org"
-        data = wm.download(meta.get("title") or n, wiki=wiki)
+        data = direct_download(meta.get("url")) if meta.get("url") else wm.download(meta.get("title") or n, wiki=wiki)
         if not valid_file(data, names[n]):
             failed[n] = failed.get(n, 0) + 1
             save(work("failed.json"), failed)
@@ -661,6 +692,28 @@ def body_style(kit: dict) -> dict:
             a[0] += c[0]; a[1] += c[1]; a[2] += c[2]; a[3] += 1
     tops = sorted(buckets.values(), key=lambda a: -a[3])
     total = sum(a[3] for a in tops)
+    if len(tops) >= 2 and tops[1][3] < 0.15 * total:
+        # pouca cor secundária: pode ser uma faixa horizontal no peito (ex.: São Paulo)
+        A = tuple(round(v / tops[0][3]) for v in tops[0][:3])
+        far = lambda c: sum((c[i] - A[i]) ** 2 for i in range(3)) > 60 ** 2
+        rows = [sum(far(c) for c in row) / len(row) for row in cells]
+        band = [i for i, f in enumerate(rows) if f > 0.6]
+        if band and 0.05 <= len(band) / len(rows) <= 0.45 and band[-1] - band[0] + 1 <= len(band) + 2:
+            acc = {}
+            for i in band:
+                for c in cells[i]:
+                    if far(c):
+                        k = (c[0] // 48, c[1] // 48, c[2] // 48)
+                        a = acc.setdefault(k, [0, 0, 0, 0, i])
+                        a[0] += c[0]; a[1] += c[1]; a[2] += c[2]; a[3] += 1
+            cols = sorted(acc.values(), key=lambda a: -a[3])[:2]
+            cols = [a for a in cols if a[3] >= 0.25 * cols[0][3]]
+            cols.sort(key=lambda a: a[4])  # de cima para baixo
+            hexes = ["#%02X%02X%02X" % tuple(round(v / a[3]) for v in a[:3]) for a in cols]
+            out = {"pat": "band", "st": hexes[0]}
+            if len(hexes) > 1:
+                out["st2"] = hexes[1]  # faixa de duas cores (ex.: vermelho e preto)
+            return out
     if len(tops) < 2 or tops[1][3] < 0.15 * total:
         return {}
     A = tuple(round(v / tops[0][3]) for v in tops[0][:3])
@@ -675,6 +728,8 @@ def body_style(kit: dict) -> dict:
         return {"pat": "stripes", "st": st}
     if tv >= 2.5 and tv > 2.5 * th:
         return {"pat": "hoops", "st": st}
+    if 1.2 <= th <= 3.2 and 1.2 <= tv <= 3.2 and 0.5 <= th / tv <= 2:
+        return {"pat": "sash", "st": st}  # faixa diagonal: duas trocas por linha e por coluna
     if th < 1.6 and tv < 1.6:
         left = sum(m[y][x] for y in range(H) for x in range(W // 2))
         right = sum(m[y][x] for y in range(H) for x in range(W // 2, W))
@@ -693,7 +748,7 @@ def style():
     n = 0
     for kits in data.values():
         for k in kits:
-            k.pop("pat", None); k.pop("st", None)
+            k.pop("pat", None); k.pop("st", None); k.pop("st2", None)
             k.update(body_style(k))
             n += bool(k.get("pat"))
     lines = [f" {json.dumps(cid)}: {json.dumps(data[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in data]

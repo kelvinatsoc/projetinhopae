@@ -1,5 +1,6 @@
 import { SponsorsScreen } from "./Sponsors";
 import { UniformsScreen } from "./Uniforms";
+import { syncCustomKits } from "./Kit";
 import { FacilitiesScreen } from "./Facilities";
 import { SetPiecesScreen } from "./SetPieces";
 import { useEffect, useRef, useState } from "react";
@@ -144,6 +145,7 @@ export function App() {
   // pré-jogo: sem a navegação flutuante para não disputar o toque com "Jogar"
   const hideNav = top?.name === "prematch";
   const club = w.clubs[w.userClubId];
+  syncCustomKits(w);
   const unread = inboxUnread(w);
 
   let content;

@@ -788,7 +788,7 @@ export class Ps1Renderer {
     if (p.kit) {
       // uniforme real: tecido, fornecedora, escudo, patrocinador, nome e número (kitTexture.ts)
       const [club, which] = p.kit.split(":");
-      const kt = tex(makeKitTexture(club, (Number(which) || 0) as KitWhich, { num: p.num, name: p.name, layout: "sheet", size: 64, onReady: () => { kt.needsUpdate = true; } }));
+      const kt = tex(makeKitTexture(club, (Number(which) || 0) as KitWhich, { num: p.num, name: p.name, layout: "sheet", size: 256, onReady: () => { kt.needsUpdate = true; } }));
       this.shirtTex.set(key, kt);
       return kt;
     }
