@@ -450,6 +450,8 @@ interface Atmos {
   mood: Mood;
   lastOle: number;
   festaUntil: number;
+  /** fração da torcida que já foi embora (goleada): menos som, vaia e depois silêncio */
+  leave: number;
 }
 let atmos: Atmos | null = null;
 
@@ -526,6 +528,7 @@ export function startAtmosphere(p: CrowdProfile) {
     mood: { intensity: 1, chant: 0.6, boo: false, ole: false },
     lastOle: -1e9,
     festaUntil: 0,
+    leave: 0,
   };
   holder.a = a;
   atmos = a;
@@ -539,9 +542,12 @@ function setLayerTargets(c: AudioContext, a: Atmos, secs: number) {
   const m = a.mood;
   const loud = 0.55 + 0.45 * a.p.size;
   const festa = c.currentTime < a.festaUntil ? 1.25 : 1;
-  a.bed.target = BR_LEVEL.bed * loud * m.intensity;
-  a.chant.target = BR_LEVEL.chant * loud * m.chant * Math.min(1.3, m.intensity) * festa;
-  a.boo.target = m.boo ? BR_LEVEL.boo * loud : 0;
+  // goleada: quem ficou vaia no começo; com o estádio esvaziando, sobra o silêncio
+  const stay = 1 - a.leave * 0.92;
+  const booing = m.boo || a.leave > 0;
+  a.bed.target = BR_LEVEL.bed * loud * m.intensity * stay;
+  a.chant.target = BR_LEVEL.chant * loud * m.chant * Math.min(1.3, m.intensity) * festa * (a.leave > 0 ? 0.15 * stay : 1);
+  a.boo.target = booing ? BR_LEVEL.boo * loud * (a.leave > 0 ? Math.max(0.12, 1 - a.leave * 1.15) : 1) : 0;
   rampLayer(c, a.bed, secs);
   rampLayer(c, a.chant, secs);
   rampLayer(c, a.boo, m.boo ? secs * 2 : secs);
@@ -567,6 +573,39 @@ export function stopAtmosphere() {
 /** A torcida brasileira está tocando? */
 export function atmosphereOn(): boolean {
   return atmos !== null;
+}
+
+/**
+ * Torcida indo embora (0..1, ver crowdExodus em torcida.ts): o ambiente vai baixando, a vaia
+ * aparece e some, e fica o silêncio do estádio vazio. Vale também para o som genérico.
+ */
+export function setCrowdExodus(frac: number) {
+  const v = Math.max(0, Math.min(1, frac));
+  const a = atmos;
+  if (a && ctx) {
+    if (Math.abs(a.leave - v) < 0.01) return;
+    a.leave = v;
+    setLayerTargets(ctx, a, 3);
+    return;
+  }
+  if (crowd && v > 0) setCrowdLevel(Math.max(0.15, 1 - v));
+}
+
+/**
+ * Explosão da arquibancada: gol da torcida (forte) ou virada (mais forte, grito dobrado e festa
+ * longa). Chamado além do goalRoar.
+ */
+export function crowdEruption(virada: boolean) {
+  const a = atmos;
+  const c = ctx;
+  if (!a || !c || !enabled) return;
+  a.festaUntil = c.currentTime + (virada ? 30 : 16);
+  if (virada) {
+    const path = a.p.goal[Math.floor(Math.random() * a.p.goal.length)];
+    window.setTimeout(() => playBr(path, BR_LEVEL.goal * 0.8, { rate: 0.94 }), 1400);
+    window.setTimeout(() => { if (atmos === a) playBr(BR_SOUNDS.ole, BR_LEVEL.ole * 0.8); }, 6500);
+  }
+  window.setTimeout(() => { if (atmos === a && ctx) setLayerTargets(ctx, a, 2); }, 5000);
 }
 
 /** Atualiza as camadas com o humor da torcida (chamado a cada minuto simulado). */

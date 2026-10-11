@@ -155,3 +155,35 @@ export function festaLevel(home: Pick<Club, "rep" | "capacity" | "country" | "id
   if (!isBrazilian(home)) return 0;
   return isSelecao(home) ? 1 : Math.max(0.25, crowdSize(home, neutral));
 }
+
+// ---------------------------------------------------------------- torcida reativa
+/**
+ * Fração da torcida (lado `side`) que já foi embora (0..0.85). Começa quando o time perde por 3
+ * ou mais, ou não marcou e levou 4; cresce com a diferença e com o passar do jogo. Quem chama
+ * guarda o máximo (quem saiu não volta).
+ */
+export function crowdExodus(goals: [number, number], side: 0 | 1, minute: number): number {
+  const mine = goals[side], theirs = goals[1 - side];
+  const diff = mine - theirs;
+  const rout = diff <= -3 || (mine === 0 && theirs >= 4);
+  if (!rout) return 0;
+  const depth = Math.max(0, -diff - 3);
+  const v = 0.18 + 0.14 * depth + 0.008 * Math.max(0, minute - 25) + (mine === 0 && theirs >= 4 ? 0.08 : 0);
+  return Math.max(0, Math.min(0.85, v));
+}
+
+/** Virada: o gol colocou na frente um time que já esteve atrás no placar. */
+export function isComeback(prevDiff: number, newDiff: number, worstDiff: number): boolean {
+  return newDiff > 0 && prevDiff <= 0 && worstDiff < 0;
+}
+
+/**
+ * Importância do jogo 0..1 (para a chegada do ônibus e os rituais): fase, Libertadores,
+ * clássico e tamanho da torcida.
+ */
+export function matchImportance(o: { stage: string; comp: string; derby: number; size: number }): number {
+  const st: Record<string, number> = { final: 0.6, sf: 0.42, qf: 0.3, r16: 0.2, r32: 0.1, playoff: 0.25 };
+  let v = 0.12 + 0.25 * o.size + (st[o.stage] ?? 0) + 0.12 * Math.min(3, o.derby);
+  if (o.comp === "liberta") v += 0.22;
+  return Math.max(0, Math.min(1, v));
+}
