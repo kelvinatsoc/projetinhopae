@@ -239,11 +239,13 @@ export const FREE_MAX = 175;
 
 /** Limita a câmera livre (do close no jogador ao estádio inteiro). */
 export function clampFree(f: FreeCam): FreeCam {
+  const dist = Math.max(FREE_MIN, Math.min(FREE_MAX, f.dist));
   return {
     yaw: f.yaw,
     // de longe, a câmera sobe acima das arquibancadas (nunca fica atrás do paredão)
-    pitch: Math.max(0.08, Math.asin(Math.min(0.95, 62 / Math.max(1, f.dist))) * Math.min(1, Math.max(0, (f.dist - 25) / 30)), Math.min(1.45, f.pitch)),
-    dist: Math.max(FREE_MIN, Math.min(FREE_MAX, f.dist)),
+    // de perto, a câmera desce (close no jogador, não no gramado)
+    pitch: Math.max(0.08, Math.asin(Math.min(0.95, 62 / dist)) * Math.min(1, Math.max(0, (dist - 25) / 30)), Math.min(1.45, 0.12 + dist * 0.035, f.pitch)),
+    dist,
     panX: Math.max(-70, Math.min(70, f.panX)),
     panZ: Math.max(-50, Math.min(50, f.panZ)),
   };

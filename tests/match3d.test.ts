@@ -56,7 +56,7 @@ describe("partida 3D: lógica pura", () => {
     // de longe a câmera sobe acima das arquibancadas
     expect(freeCamPose(far, 0, 0).pos[1]).toBeGreaterThan(55);
     // volta da pose de TV sem pulo
-    const tv = broadcastCam(0, 0, 1);
+    const tv = { pos: [3, 10, 20] as [number, number, number], look: [0, 0.4, 0] as [number, number, number], fov: 40 };
     const back = freeCamPose(freeFromPose(tv), 0, 0);
     expect(Math.hypot(back.pos[0] - tv.pos[0], back.pos[2] - tv.pos[2])).toBeLessThan(3);
   });

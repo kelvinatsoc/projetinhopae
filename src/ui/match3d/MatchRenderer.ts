@@ -501,7 +501,7 @@ export class MatchRenderer {
     if (walk >= 0 && walk < 1) to = this.walkoutCam(walk);
     else if (replaying) to = behindGoalCam(this.clipSide, b.x, b.z);
     else if (closeUp && star) to = closeUpCam(star.x, star.z, star.side === 1 ? -1 : 1, sp!.t);
-    else if (this.free) to = freeCamPose(this.free, b.x * 0.6, b.z * 0.4);
+    else if (this.free) to = freeCamPose(this.free, b.x, b.z);
     else {
       to = broadcastCam(b.x, b.z, aspect);
       const [lx, , lz] = to.look;
