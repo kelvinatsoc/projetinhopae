@@ -2184,7 +2184,7 @@ export function MatchView(props: MatchViewProps) {
     let last = 0;
     const running = () => {
       if (document.hidden) return false;
-      if (r3d && (propsRef.current.intro || r3d.freeCam)) return true;
+      if (r3d && (propsRef.current.intro || r3d.busy)) return true;
       return !propsRef.current.paused && !anim.idle();
     };
     const frame = (t: number) => {
@@ -2194,7 +2194,7 @@ export function MatchView(props: MatchViewProps) {
       if (dt >= 1) {
         last = t;
         if (!anim.frozen && !propsRef.current.paused) anim.update(Math.min(dt, 50));
-        if (r3d) r3d.render(snapshot3d(anim), Math.min(dt, 50), hud());
+        if (r3d) r3d.render(snapshot3d(anim), Math.min(dt, 50), hud(), dt);
         else if (dead) anim.draw(g);
       }
       if (running()) raf = requestAnimationFrame(frame);

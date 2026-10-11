@@ -325,7 +325,7 @@ export class Festa {
     const pg = new THREE.BufferGeometry();
     pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     pg.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    const pm = new THREE.PointsMaterial({ size: 0.28, vertexColors: true, sizeAttenuation: true });
+    const pm = new THREE.PointsMaterial({ size: 0.13, vertexColors: true, sizeAttenuation: true });
     this.conf = new THREE.Points(pg, pm);
     this.conf.frustumCulled = false;
     this.group.add(this.conf);

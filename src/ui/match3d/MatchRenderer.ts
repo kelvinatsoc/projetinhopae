@@ -372,6 +372,10 @@ export class MatchRenderer {
   get freeCam() {
     return !!this.free;
   }
+  /** Precisa continuar desenhando mesmo com o jogo pausado (abertura ou câmera livre). */
+  get busy() {
+    return !!this.free || !!this.intro;
+  }
 
   // ------------------------------------------------ quadro
   resize(cssW: number, cssH: number) {
@@ -403,7 +407,7 @@ export class MatchRenderer {
   }
 
   /** Desenha um quadro. live = retrato do jogo agora; dt em ms. */
-  render(live: MatchSnapshot, dt: number, hud: Hud3D) {
+  render(live: MatchSnapshot, dt: number, hud: Hud3D, wall = dt) {
     if (this.disposed || this.lost || this.css.w < 2) return;
     this.time += dt;
     this.adaptQuality(dt);
@@ -412,9 +416,9 @@ export class MatchRenderer {
     // abertura: ônibus chegando, depois a entrada dos times
     if (this.intro) {
       const it = this.intro;
-      it.t += dt;
+      it.t += Math.min(wall, 1000); // a abertura segue o relógio de verdade (o mesmo da tela da partida)
       if (it.arrival) {
-        this.introCaption = it.arrival.update(dt, aspect);
+        this.introCaption = it.arrival.update(Math.min(wall, 1000), aspect);
         if (it.arrival.done) {
           it.arrival.dispose();
           it.arrival = null;
@@ -604,7 +608,7 @@ export class MatchRenderer {
     const lane = p.side === 0 ? -1 : p.side === 1 ? 1 : 0;
     const start = { x: lane * 1.2, z: HALF_W + 9 };
     const line = p.side === 2 ? { x: (idx - 1) * 1.3, z: 2.5 } : { x: lane * (2.6 + idx * 1.25), z: 2.5 };
-    const delay = (p.side === 2 ? 0 : 600 + idx * 380);
+    const delay = (p.side === 2 ? 0 : 300 + idx * 230);
     const mid = { x: lane * 1.2, z: 3.5 };
     const speed = 2.1; // m/s
     const d1 = Math.hypot(mid.x - start.x, mid.z - start.z), d2 = Math.hypot(line.x - mid.x, line.z - mid.z);

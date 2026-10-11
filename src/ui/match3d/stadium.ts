@@ -415,7 +415,7 @@ export class Stadium {
     const endLen = PITCH_WID + 2 * back + 4;
     const stands: StandDef[] = [
       { len: longLen, rot: 0, x: 0, z: -HALF_W - back, rows: st.shape === "bombonera" ? rows + 8 : rows, h0: 1.4, roof: st.roof !== "none", end: -1 },
-      { len: longLen, rot: Math.PI, x: 0, z: HALF_W + back, rows: Math.round(rows * 0.8), h0: 1.4, roof: st.roof === "full" || st.roof === "partial", end: -1 },
+      { len: longLen, rot: Math.PI, x: 0, z: HALF_W + back, rows: Math.round(rows * 0.8), h0: 1.4, roof: false, end: -1 },
     ];
     if (st.shape !== "open-end") stands.push({ len: endLen, rot: Math.PI / 2, x: -HALF_L - back, z: 0, rows: endRows, h0: 1.4, roof: st.roof === "full" || st.roof === "partial", end: 0 });
     stands.push({ len: endLen, rot: -Math.PI / 2, x: HALF_L + back, z: 0, rows: endRows, h0: 1.4, roof: st.roof === "full", end: 1 });
