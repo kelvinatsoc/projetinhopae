@@ -8,6 +8,7 @@ import { nextFixture } from "../src/engine/competitions";
 import { autoLineup, clubStrength } from "../src/engine/lineup";
 import { MatchSim } from "../src/engine/match";
 import { FORMATIONS } from "../src/engine/positions";
+import { shoutDef } from "../src/engine/shouts";
 import { getRngState, rand, setRngState } from "../src/engine/rng";
 import type { Fixture, World } from "../src/engine/types";
 import { createWorld, type Database } from "../src/engine/world";
@@ -173,6 +174,11 @@ describe("auxiliar técnico: dicas ao vivo", () => {
       } else if (a.kind === "pressing") {
         expect(a.value).toBeGreaterThanOrEqual(0);
         expect(a.value).toBeLessThanOrEqual(2);
+      } else if (a.kind === "shout") {
+        if (a.shout != null) expect(shoutDef(a.shout)).toBeTruthy();
+        expect(a.shout).not.toBe(S.shout ?? null);
+      } else if (a.kind === "mark") {
+        expect(sim.sides[1 - side].onPitch).toContain(a.markId);
       } else {
         subs++;
         expect(S.onPitch).toContain(a.outId);
@@ -282,7 +288,9 @@ describe("auxiliar técnico: dicas ao vivo", () => {
     sim.setMentality(0, 0);
     const chase = liveTips(sim, 0).find((t) => t.id.startsWith("chase:"));
     expect(chase).toBeTruthy();
-    const m = chase!.actions.find((a) => a.kind === "mentality");
-    expect(m && m.value! > 0).toBe(true);
+    // vai para frente: mais mentalidade ou uma instrução rápida ofensiva
+    const m = chase!.actions.find((a) => a.kind === "mentality" || a.kind === "shout");
+    const up = m?.kind === "mentality" ? m.value! > 0 : !!m?.shout && ((shoutDef(m.shout)?.m ?? 0) > 0 || ["pontas", "pressao"].includes(m.shout));
+    expect(up).toBe(true);
   });
 });

@@ -19,7 +19,7 @@ import {
   behindGoalCam, broadcastCam, clampFree, closeUpCam, easeCam, freeCamPose, freeFromPose, renderRes, ReplayBuffer,
   type CamPose, type FreeCam, type MatchSnapshot, type Player3D, type Quality,
 } from "./model";
-import { PLAYER_SCALE, PlayerFactory, poseRig, type Rig } from "./player";
+import { PLAYER_SCALE, PlayerFactory, poseRig, stepMotion, type Motion, type Rig } from "./player";
 import { HALF_W, Stadium } from "./stadium";
 
 export interface Hud3D {
@@ -84,6 +84,10 @@ export class MatchRenderer {
   private stadium: Stadium;
   private players: PlayerFactory;
   private rigs = new Map<number, Rig>();
+  private motions = new Map<number, Motion>();
+  private ballPrev = new THREE.Vector3();
+  private rollAxis = new THREE.Vector3();
+  private rollQ = new THREE.Quaternion();
   private ball!: THREE.Mesh;
   private ballShadow!: THREE.Mesh;
   private css = { w: 0, h: 0 };
@@ -484,7 +488,15 @@ export class MatchRenderer {
       this.ball.position.set(0, 0.17, 0);
     } else {
       this.ball.position.set(b.x, 0.17 + b.h, b.z);
-      this.ball.rotation.set(snap.now / 120, snap.now / 170, 0);
+      // a bola gira conforme anda (rolando sem deslizar)
+      const dx = b.x - this.ballPrev.x, dz = b.z - this.ballPrev.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 1e-4 && dist < 8) {
+        this.rollAxis.set(dz, 0, -dx).normalize();
+        this.rollQ.setFromAxisAngle(this.rollAxis, dist / 0.17);
+        this.ball.quaternion.premultiply(this.rollQ);
+      }
+      this.ballPrev.set(b.x, 0, b.z);
     }
     this.ballShadow.position.set(this.ball.position.x, 0.025, this.ball.position.z);
     this.ballShadow.scale.setScalar(1 / (1 + b.h * 0.25));
@@ -597,7 +609,14 @@ export class MatchRenderer {
       }
       r.root.visible = true;
       const p = walk >= 0 ? this.walkoutPose(p0, order[p0.side].indexOf(p0.id), walk, s.now) : p0;
-      poseRig(p, r, s.now, dt, s.ball);
+      // movimento natural: posição/velocidade suavizadas (aceleração, curvas) e passada pela distância
+      let m = this.motions.get(p0.id);
+      if (!m) {
+        m = { x: p.x, z: p.z, vx: 0, vz: 0, phase: 0, turn: 0 };
+        this.motions.set(p0.id, m);
+      }
+      stepMotion(m, p.x, p.z, dt);
+      poseRig(p, r, s.now, dt, s.ball, m);
     }
     for (const [id, r] of this.rigs) if (!live.has(id)) r.root.visible = false;
   }
@@ -759,7 +778,8 @@ export class MatchRenderer {
       const p = s.holder != null ? s.players.find((q) => q.id === s.holder) : undefined;
       if (p && p.side !== 2) {
         const col = hud.color[p.side];
-        const pt = this.project(p.x, 2.25 * PLAYER_SCALE, p.z);
+        const mp = this.motions.get(p.id) ?? p;
+        const pt = this.project(mp.x, 2.25 * PLAYER_SCALE, mp.z);
         if (pt) {
           const bob = Math.sin(this.time / 160) * 2;
           g.beginPath();

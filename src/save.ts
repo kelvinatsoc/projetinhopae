@@ -2,7 +2,53 @@
 import { Capacitor } from "@capacitor/core";
 import type { World } from "./engine/types";
 import { toast } from "./store";
-import { encodeWorld, readRecord } from "./savePack";
+import { encodeWorld, readRecord, type StoredWorld } from "./savePack";
+
+// ---------------------------------------------------------------- compactação num Web Worker
+let worker: Worker | null | undefined;
+let reqId = 0;
+const pending = new Map<number, { ok: (s: StoredWorld) => void; fail: (e: unknown) => void }>();
+
+function saveWorker(): Worker | null {
+  if (worker !== undefined) return worker;
+  worker = null;
+  try {
+    if (typeof Worker === "undefined") return null;
+    const wk = new Worker(new URL("./saveWorker.ts", import.meta.url), { type: "module" });
+    wk.onmessage = (e: MessageEvent<{ id: number; stored?: StoredWorld; error?: string }>) => {
+      const p = pending.get(e.data.id);
+      pending.delete(e.data.id);
+      if (!p) return;
+      if (e.data.stored) p.ok(e.data.stored);
+      else p.fail(new Error(e.data.error ?? "falha no worker"));
+    };
+    wk.onerror = () => {
+      // worker indisponível: volta para a compactação no thread principal
+      worker = null;
+      for (const p of pending.values()) p.fail(new Error("worker"));
+      pending.clear();
+    };
+    worker = wk;
+  } catch {
+    worker = null;
+  }
+  return worker;
+}
+
+/** Compacta o mundo no worker (sem travar a tela); sem worker, faz aqui mesmo. */
+async function encodeOffThread(w: World): Promise<StoredWorld> {
+  const wk = saveWorker();
+  if (!wk) return encodeWorld(w);
+  try {
+    return await new Promise<StoredWorld>((ok, fail) => {
+      const id = ++reqId;
+      pending.set(id, { ok, fail });
+      wk.postMessage({ id, world: w });
+    });
+  } catch {
+    return encodeWorld(w);
+  }
+}
 
 const DB_NAME = "lendas-da-base";
 const STORE = "saves";
@@ -58,7 +104,7 @@ export function metaOf(w: World): SaveMeta {
 
 export async function saveWorld(w: World): Promise<void> {
   // formato compacto (jogadores em colunas + gzip); saves antigos ({ world }) continuam sendo lidos
-  const packed = await encodeWorld(w);
+  const packed = await encodeOffThread(w);
   await tx(STORE, "readwrite", (s) => s.put({ id: w.saveId, ...packed }));
   await tx("meta", "readwrite", (s) => s.put(metaOf(w)));
   try {

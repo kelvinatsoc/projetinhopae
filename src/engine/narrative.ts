@@ -52,7 +52,11 @@ export function applyDerbyOutcome(w: World, f: Fixture, r: MatchResult) {
   const mine = f.home === w.userClubId ? r.hg : r.ag;
   const theirs = f.home === w.userClubId ? r.ag : r.hg;
   const res = Math.sign(mine - theirs);
-  if (w.narrative || int) addFan(w, res > 0 ? 2 : res < 0 ? -2 : 0);
+  // todo jogo do usuário mexe com a torcida (antes só mexia se o save já tivesse a narrativa criada).
+  // Vitória anima, derrota irrita, empate em casa decepciona; perto do teto/chão anda menos (nada cravado em 100).
+  const fan = fanMood(w);
+  const d = res > 0 ? 3 * Math.min(1, (100 - fan) / 25) : res < 0 ? -3 * Math.min(1, fan / 25) : f.home === w.userClubId ? -1 : 0;
+  addFan(w, d + (60 - fan) * 0.03);
   if (!int) return;
   const opp = w.clubs[f.home === w.userClubId ? f.away : f.home];
   const name = derbyName(f.home, f.away) ?? "Clássico";

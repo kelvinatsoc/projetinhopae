@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CompareIconBtn } from "../Compare";
 import { teamLinkAvg } from "../../engine/chemistry";
-import { chemOf } from "../../engine/dressing";
+import { chemOf, dynDelta, moodEmoji, moraleDelta, squadMood } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
 import { awardsOf, formResidual, pendingRequest, streakOf } from "../../engine/form";
 import { lineupStrength, squadOf, validLineup } from "../../engine/lineup";
@@ -11,7 +11,7 @@ import { POS_ORDER } from "../../engine/positions";
 import { familiarityOf } from "../../engine/tactics";
 import type { Player, World } from "../../engine/types";
 import { push, useWorld } from "../../store";
-import { FormDots, PlayerCard, PlayerRow, TrendArrow } from "../components";
+import { DeltaTag, FormDots, PlayerCard, PlayerRow, TrendArrow } from "../components";
 import { AcademyScreen } from "./Academy";
 import { TrainingScreen } from "./Training";
 import { Pitch, TacticsScreen } from "./Tactics";
@@ -60,6 +60,9 @@ function SquadList() {
   };
   list.sort(sorters[sort]);
   const avg = list.length ? Math.round(list.reduce((s, p) => s + p.ovr, 0) / list.length) : 0;
+  const chem = chemOf(w, club);
+  const links = teamLinkAvg(w, club, lineup.starters);
+  const mood = squadMood(w, club);
 
   return (
     <div className="page">
@@ -69,8 +72,11 @@ function SquadList() {
         <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, club))}</b><span>folha mensal</span></div>
       </div>
       <div className="row">
-      <div className="small muted grow" title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas no elenco e o foco Tático no treino)">
-        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chemOf(w, club))}%</b> · em campo {Math.round(teamLinkAvg(w, club, lineup.starters))} · 📘 {Math.round(familiarityOf(w, club))}% · média {avg}
+      <div className="small muted grow" title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas na escalação e o foco Tático no treino). Setinhas = variação desde o último jogo.">
+        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chem)}%</b><DeltaTag d={dynDelta(w, "chem", chem)} />
+        {" "}· em campo {Math.round(links)}<DeltaTag d={dynDelta(w, "links", links)} />
+        {" "}· 🙂 clima {Math.round(mood)}<DeltaTag d={dynDelta(w, "mood", mood)} />
+        {" "}· 📘 {Math.round(familiarityOf(w, club))}% · média {avg}
       </div>
       <div className="view-toggle">
         <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
@@ -92,7 +98,8 @@ function SquadList() {
       {view === "cards" ? (
         <div className="pgrid">
           {list.map((p, i) => (
-            <PlayerCard key={p.id} p={p} club={club} season={w.season} starter={starters.has(p.id)} delay={i} onClick={() => push({ name: "player", id: p.id })} />
+            <PlayerCard key={p.id} p={p} club={club} season={w.season} starter={starters.has(p.id)} delay={i} onClick={() => push({ name: "player", id: p.id })}
+              mood={<span title={`Moral ${p.morale}`}>{moodEmoji(p)}<DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span>} />
           ))}
         </div>
       ) : (
@@ -100,7 +107,7 @@ function SquadList() {
         <div className="list">
           {list.map((p) => (
             <PlayerRow key={p.id} p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-              right={<><CompareIconBtn p={p} /><span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span></>} />
+              right={<><CompareIconBtn p={p} /><span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><span title={`Moral ${p.morale}`}>{moodEmoji(p)}<DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span> <TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span></>} />
           ))}
         </div>
       </div>

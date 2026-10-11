@@ -9,13 +9,15 @@ import { aiMatchLineup } from "./rotation";
 import { FORMATIONS, ovrAt, POS_GROUP } from "./positions";
 import { shortName } from "./player";
 import { commonFactor, HEADER_W, headerXg, NEUTRAL_SIDE, playerMods, SET_PIECE, sideMult, type PMods, type SideMult } from "./matchmods";
-import { chance, clamp, gauss, pickWeighted, rand, randInt } from "./rng";
+import { chance, clamp, gauss, hashString, makeRng, pickWeighted, rand, randInt } from "./rng";
+import { shoutDef, type ShoutId } from "./shouts";
 import { aiTalk, reactions, suggest, talkCtx, talkEffect, type Reaction, type TalkPhase, type Tone } from "./teamtalk";
 import { clubInjuryMult } from "./facilities";
 import { cornerQuality, freeKickXgFor, ROUTINES, takerFor } from "./setpieces";
 import { hasTrait } from "./traits";
+import { activePowers, aiPowers, powerDef, type PowerDef } from "./powers";
 import { instructionFx, NEUTRAL_FX, plannedMentality, roleAt, roleEff, roleStars, type RoleDef, type TacticFx } from "./tactics";
-import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, World } from "./types";
+import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, TeamInstr, World } from "./types";
 
 interface Side {
   club: Club;
@@ -42,6 +44,46 @@ interface Side {
   roles: (RoleDef | null)[]; // função de cada slot (só o usuário define)
   baseM: number; // mentalidade escolhida antes do jogo (as mudanças programadas partem dela)
   manualM?: boolean; // o técnico mexeu na mentalidade durante o jogo: desliga as mudanças programadas
+  /** instrução rápida (shout) ativa: troca algumas instruções do time só nesta partida */
+  shout?: ShoutId | null;
+  tiOver?: Partial<TeamInstr> | null;
+  /** jogador adversário com marcação dobrada (finaliza e serve bem menos; custa um pouco do nosso ataque) */
+  mark?: number | null;
+}
+
+/** Efeitos de dobrar a marcação (o auxiliar usa os mesmos números). */
+export const MARK = { pick: 0.45, xg: 0.8, att: 0.98 };
+
+/** Corredor de ataque de cada posição, do ponto de vista de quem ataca (0 esquerda, 1 centro, 2 direita). */
+export const LANE: Record<Pos, 0 | 1 | 2> = { GOL: 1, ZAG: 1, LD: 2, LE: 0, VOL: 1, MC: 1, MEI: 1, PD: 2, PE: 0, ATA: 1 };
+
+/** Um minuto de jogo para o painel (momentum, posse e zonas). */
+export interface Tick {
+  m: number;
+  h: 1 | 2;
+  a: 0 | 1 | null; // quem teve a bola
+  d: number; // perigo criado por quem teve a bola (0 a ~3)
+  l: 0 | 1 | 2; // corredor
+  z: 0 | 1 | 2; // terço do campo (0 defesa, 1 meio, 2 ataque)
+  p?: number; // jogador que gerou o perigo (finalizou, serviu ou puxou o ataque pelo lado)
+  v?: number; // quanto perigo ele gerou
+  g?: 1; // saiu gol de quem tinha a bola
+}
+
+/**
+ * Números extras do jogo para o painel ao vivo (passes, desarmes, defesas, impedimentos, zonas, momentum).
+ * Saem de um gerador PRÓPRIO, com semente do jogo: não tocam no RNG do motor, então o placar e todo o resto
+ * continuam exatamente iguais com ou sem eles.
+ */
+export interface LiveExtra {
+  passes: [number, number];
+  passesOk: [number, number];
+  tackles: [number, number];
+  saves: [number, number];
+  offsides: [number, number];
+  zones: [number[], number[]]; // 9 células por lado: corredor * 3 + terço
+  timeline: Tick[];
+  pl: Map<number, { sh: number; ot: number; tk: number }>; // finalizações, no alvo, desarmes por jogador
 }
 
 const SHOOT_W: Record<Pos, number> = { GOL: 0, ZAG: 0.12, LD: 0.12, LE: 0.12, VOL: 0.14, MC: 0.28, MEI: 0.5, PD: 0.55, PE: 0.55, ATA: 0.85 };
@@ -70,6 +112,8 @@ export interface MinutePhase {
     og?: number; // quem fez o gol contra
     xg: number;
     kind?: "header" | "freekick" | "long"; // cabeçada de escanteio, falta direta, chute de longe
+    /** poder ativado nesta jogada (engine/powers.ts): o golpe visual a mostrar */
+    power?: string;
   };
   corner?: { side: 0 | 1; taker: number | null };
   tackle?: { side: 0 | 1; pid: number | null }; // desarme de quem estava sem a bola
@@ -105,6 +149,9 @@ export class MatchSim {
   private big: boolean;
   /** Estadual: < 1 comprime a diferença de força (pequeno se fecha, pré-temporada, jogo truncado). */
   private tempo: number;
+  /** Estatísticas extras do painel (gerador próprio, não muda o jogo). */
+  extra: LiveExtra = { passes: [0, 0], passesOk: [0, 0], tackles: [0, 0], saves: [0, 0], offsides: [0, 0], zones: [Array(9).fill(0), Array(9).fill(0)], timeline: [], pl: new Map() };
+  private xr: () => number;
 
   constructor(w: World, f: Fixture, opts: MatchOptions = {}) {
     this.w = w;
@@ -113,6 +160,7 @@ export class MatchSim {
     this.userSide = opts.userSide ?? null;
     this.big = isBigMatch(w, f);
     this.tempo = f.comp.startsWith("est-") ? 0.6 : 1;
+    this.xr = makeRng(hashString(`extra:${f.id}:${f.home}:${f.away}`) || 1);
     const mk = (clubId: string, idx: 0 | 1): Side => {
       const club = w.clubs[clubId];
       const isUser = clubId === w.userClubId;
@@ -216,11 +264,14 @@ export class MatchSim {
       const sm = sideMult(this.w, this.f, s.club, s.slots, s.onPitch, this.sides[1 - i].mentality, s.mentality, s.captain);
       s.sm = sm;
       // instruções do time (linha, largura, ritmo, passes, contrapressão, cera)
-      s.fx = s.club.tactic.ti ? instructionFx(this.w, s.club.tactic, s.slots, s.onPitch, s.goals - this.sides[1 - i].goals, this.minute) : NEUTRAL_FX;
+      const tac = s.tiOver ? { ...s.club.tactic, ti: { ...(s.club.tactic.ti ?? {}), ...s.tiOver } } : s.club.tactic;
+      s.fx = tac.ti ? instructionFx(this.w, tac, s.slots, s.onPitch, s.goals - this.sides[1 - i].goals, this.minute) : NEUTRAL_FX;
       const k = commonFactor(sm, this.talk[i]);
       s.def *= sm.def * k * s.fx.def;
       s.mid *= sm.mid * k * s.fx.mid;
       s.att *= sm.att * k * s.fx.att;
+      // dobrar a marcação prende um jogador lá atrás
+      if (s.mark != null && this.sides[1 - i].onPitch.includes(s.mark)) s.att *= MARK.att;
       s.gk = gk * sm.gk + sm.gkPlus;
     }
   }
@@ -245,12 +296,13 @@ export class MatchSim {
   private pickOnPitch(side: Side, weights: Record<Pos, number>, attr: keyof Player["attrs"], exclude?: number, power = 2, key?: keyof PMods): number | null {
     const ids: number[] = [];
     const ws: number[] = [];
+    const marked = key === "shoot" || key === "assist" || key === "fouled" ? this.sides[side === this.sides[0] ? 1 : 0].mark : null;
     side.onPitch.forEach((id, k) => {
       if (id == null || id === exclude) return;
       const p = this.player(id);
       ids.push(id);
       const role = key === "shoot" || key === "assist" ? this.roleOf(side, k) : null;
-      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1) * (role ? role[key as "shoot" | "assist"] : 1));
+      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1) * (role ? role[key as "shoot" | "assist"] : 1) * (id === marked ? MARK.pick : 1));
     });
     if (!ids.length) return null;
     return pickWeighted(ids, ws);
@@ -293,6 +345,12 @@ export class MatchSim {
     this.minute++;
     const min = this.minute;
     const [H, A] = this.sides;
+    // poderes: medidor enche; um poder ativado vira a jogada deste minuto
+    this.chargePowers();
+    const forced = this.pendingPower;
+    this.pendingPower = null;
+    if (forced?.def.kind === "keeper") this.shieldUp(forced.side, forced.pid, forced.def);
+    const play = forced && forced.def.kind !== "keeper" ? forced : null;
 
     // cansaço
     if (min % 5 === 0) {
@@ -314,7 +372,7 @@ export class MatchSim {
     // posse de bola
     const pm = Math.pow(H.mid, 3);
     const share = pm / (pm + Math.pow(A.mid, 3));
-    const atk = rand() < share ? 0 : 1;
+    const atk = play ? play.side : rand() < share ? 0 : 1;
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     this.stats.poss[atk]++;
@@ -328,7 +386,8 @@ export class MatchSim {
     const lead = S.goals - O.goals;
     const ease = this.tempo < 1 && lead >= 2 ? Math.pow(0.5, lead - 1) : 1;
     const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp * this.tempo) * openness * ease * (this.tempo < 1 ? 1.5 : 1);
-    if (chance(pShot)) this.shot(atk);
+    if (play) this.powerPlay(play.side, play.pid, play.def);
+    else if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
       // escanteio: quem cobra (setpieces.ts) e a jogada ensaiada mudam a chance e o perigo da cabeçada
@@ -370,8 +429,12 @@ export class MatchSim {
       this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("info", { t: S.club.name, p: this.name(this.pickOnPitch(S, MID_W, "pas")) }) });
     }
 
+    this.track(atk as 0 | 1);
+
     // substituições da IA
     if (min >= 55) for (const s of this.sides) this.autoSubs(s, false);
+    // auxiliar técnico do usuário (quando ligado)
+    for (const i of [0, 1] as const) if (this.assistant[i] && !this.sides[i].auto) this.assistantSubs(i);
     return this.events.slice(start);
   }
 
@@ -382,7 +445,7 @@ export class MatchSim {
     if (shooter == null) return;
     const sp = this.player(shooter);
     const z = gauss(0, 1);
-    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg * S.fx.xg * O.fx.xgAgainst, 0.02, 0.6);
+    const xg = clamp(TUNING.xgBase * Math.exp(TUNING.xgSpread * z + (sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg * S.fx.xg * O.fx.xgAgainst * (O.mark === shooter ? MARK.xg : 1), 0.02, 0.6);
     const assister = chance(0.75) ? this.pickOnPitch(S, ASSIST_W, "pas", shooter, 2, "assist") : null;
     const kind = hasTrait(sp, "CHF") && !hasTrait(sp, "MAT") ? "long" : undefined;
     this.finishShot(atk, shooter, assister, xg, kind);
@@ -431,7 +494,8 @@ export class MatchSim {
     this.stats.xg[atk] += xg;
     const gk = this.gkId(O);
     const gkEff = O.gk;
-    const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75);
+    // Muralha (poder do goleiro): por alguns minutos, os chutes entram bem menos
+    const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75) * (this.shield[1 - atk] >= min ? 0.55 : 1);
     const shotInfo: NonNullable<MinutePhase["shot"]> = { side: atk as 0 | 1, shooter, assist: assister, result: "miss", xg };
     if (kind) shotInfo.kind = kind;
     this.phase.shot = shotInfo;
@@ -463,6 +527,7 @@ export class MatchSim {
       this.stats.onTarget[atk]++;
       this.rate(S, shooter, 0.1);
       this.rate(O, gk, 0.28);
+      this.extra.saves[1 - atk]++;
       shotInfo.result = "save";
       if (this.live || xg > 0.25 || kind === "freekick") this.ev({ min, type: "save", key: xg > 0.25 || kind === "freekick" || undefined, side: atk as 0 | 1, pid: shooter, text: phrase(kind === "freekick" ? "freeKickSave" : "save", { p: this.name(shooter), g: this.name(gk) }) });
     } else if (chance(0.06)) {
@@ -703,6 +768,209 @@ export class MatchSim {
     this.recompute();
   }
 
+  // ---------------------------------------------------------------- poderes (Loja de Poderes)
+  /** poderes equipados em cada lado e o medidor de carga (0..100) */
+  private pw: { def: PowerDef; pid: number; charge: number }[][] | null = null;
+  private pendingPower: { side: 0 | 1; pid: number; def: PowerDef } | null = null;
+  /** Muralha ativa até este minuto */
+  shield: [number, number] = [-1, -1];
+  private aiUsed = [0, 0];
+
+  private initPowers() {
+    if (this.pw) return;
+    const u = this.userSide;
+    const mine = u != null ? activePowers(this.w, this.sides[u].club) : [];
+    this.pw = this.sides.map((S, i) => {
+      const list = i === u ? mine : aiPowers(this.w, S.club, mine.length > 0);
+      return list.map((o) => ({ def: powerDef(o.id)!, pid: o.pid, charge: 0 })).filter((x) => !!x.def);
+    });
+  }
+
+  /** Poderes do lado (para a tela): nome, jogador, carga e se dá para ativar agora. */
+  powerState(side: 0 | 1): { id: string; name: string; emoji: string; pid: number; player: string; charge: number; ready: boolean; onPitch: boolean }[] {
+    this.initPowers();
+    return this.pw![side].map((x) => {
+      const onPitch = this.sides[side].onPitch.includes(x.pid);
+      return { id: x.def.id, name: x.def.name, emoji: x.def.emoji, pid: x.pid, player: this.name(x.pid), charge: Math.round(x.charge), ready: x.charge >= 100 && onPitch && !this.finished && !this.pendingPower, onPitch };
+    });
+  }
+
+  /** O usuário ATIVA o poder do jogador (carga cheia): vale na jogada do próximo minuto. */
+  activatePower(side: 0 | 1, pid: number): boolean {
+    this.initPowers();
+    const x = this.pw![side].find((q) => q.pid === pid);
+    if (!x || x.charge < 100 || this.pendingPower || this.finished || !this.sides[side].onPitch.includes(pid)) return false;
+    x.charge = 0;
+    this.pendingPower = { side, pid, def: x.def };
+    if (this.live) this.ev({ min: this.minute, type: "info", side, pid, text: `${x.def.emoji} ${x.def.name}! ${this.name(pid)} ativa o poder.` });
+    return true;
+  }
+
+  private chargePowers() {
+    this.initPowers();
+    this.pw!.forEach((list, side) => {
+      for (const x of list) {
+        if (!this.sides[side].onPitch.includes(x.pid)) continue;
+        x.charge = Math.min(100, x.charge + x.def.rate);
+        // IA (e o usuário no resultado rápido) ativam sozinhos, com moderação: no máximo 2 por jogo
+        const auto = this.sides[side].auto || !this.live;
+        if (auto && x.charge >= 100 && !this.pendingPower && this.minute >= 15 && this.aiUsed[side] < 2) {
+          this.aiUsed[side]++;
+          x.charge = 0;
+          this.pendingPower = { side: side as 0 | 1, pid: x.pid, def: x.def };
+          if (this.live) this.ev({ min: this.minute, type: "info", side: side as 0 | 1, pid: x.pid, text: `${x.def.emoji} ${x.def.name}! ${this.name(x.pid)} (${this.sides[side].club.name}) usa o poder.` });
+        }
+      }
+    });
+  }
+
+  private shieldUp(side: 0 | 1, pid: number, def: PowerDef) {
+    this.shield[side] = this.minute + 10;
+    if (this.live) this.ev({ min: this.minute, type: "info", side, pid, text: `${def.emoji} ${def.name}: ${this.name(pid)} fecha o gol por 10 minutos!` });
+  }
+
+  /** Jogada do poder: finalização com bônus moderado no xG (determinística: só o sorteio do chute). */
+  private powerPlay(side: 0 | 1, pid: number, def: PowerDef) {
+    const S = this.sides[side];
+    const O = this.sides[1 - side];
+    const onPitch = S.onPitch.includes(pid);
+    let shooter = onPitch ? pid : this.pickOnPitch(S, SHOOT_W, "fin", undefined, 1.5, "shoot");
+    let assister: number | null = null;
+    if (def.kind === "pass") {
+      // passe teleguiado: quem tem o poder serve, o melhor finalizador conclui
+      assister = shooter;
+      shooter = this.pickOnPitch(S, SHOOT_W, "fin", assister ?? undefined, 1.5, "shoot");
+    }
+    if (shooter == null) return;
+    const sp = this.player(shooter);
+    const base = def.kind === "header"
+      ? headerXg(sp)
+      : TUNING.xgBase * Math.exp((sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg * S.fx.xg * O.fx.xgAgainst;
+    const xg = clamp(base * def.xgMult + 0.04, 0.08, 0.55);
+    this.finishShot(side, shooter, assister, xg, def.kind === "header" ? "header" : undefined);
+    if (this.phase.shot) this.phase.shot.power = def.special;
+  }
+
+  /** Lado do usuário com o auxiliar técnico cuidando das substituições (liga/desliga na partida). */
+  assistant: [boolean, boolean] = [false, false];
+
+  /**
+   * Liga/desliga o auxiliar técnico nas substituições do usuário. Ele troca cansados e amarelados
+   * em risco, dá rodagem a reservas e jovens com o jogo decidido e mexe no time quando perde.
+   */
+  setAssistant(sideIdx: 0 | 1, on: boolean) {
+    this.assistant[sideIdx] = on;
+  }
+
+  /** Decisões do auxiliar neste minuto (puro: não sorteia nada). Devolve as trocas com o motivo. */
+  assistantPlan(sideIdx: 0 | 1): { out: number; in: number; why: string }[] {
+    const F = this.sides[sideIdx];
+    const O = this.sides[1 - sideIdx];
+    const min = this.minute;
+    if (F.subsLeft <= 0 || (F.windowsLeft <= 0 && min < 90) || min < 46) return [];
+    if (min - this.lastWindowMin[sideIdx] < 8) return [];
+    const diff = F.goals - O.goals;
+    const season = this.w.season;
+    const plan: { out: number; in: number; why: string }[] = [];
+    const usedOut = new Set<number>(), usedIn = new Set<number>();
+    const bench = () => F.bench.filter((b) => !usedIn.has(b) && this.player(b).pos !== "GOL" && this.player(b).injury <= 0);
+    const bestFor = (pos: Pos, pref?: (p: Player) => boolean) => {
+      const pool = bench().map((b) => this.player(b));
+      const pick = (pref ? pool.filter(pref) : []).sort((a, b) => ovrAt(b, pos) - ovrAt(a, pos))[0];
+      return pick ?? pool.sort((a, b) => ovrAt(b, pos) - ovrAt(a, pos))[0];
+    };
+    const room = () => Math.min(F.subsLeft, 3) - plan.length;
+    const field = F.onPitch.map((id, k) => ({ id, k })).filter((x): x is { id: number; k: number } => x.id != null && F.slots[x.k] !== "GOL");
+    // 1) cansados (condição baixa) e amarelados em risco (defensores/volantes após os 60')
+    const risky = field
+      .map(({ id, k }) => {
+        const p = this.player(id);
+        const tired = p.cond < 62;
+        const card = F.yellows.has(id) && min >= 60 && POS_GROUP[F.slots[k]] !== "ATT";
+        return { id, k, tired, card, score: p.cond - (card ? 25 : 0) };
+      })
+      .filter((x) => x.tired || x.card)
+      .sort((a, b) => a.score - b.score);
+    for (const r of risky) {
+      if (room() <= 0) break;
+      const inn = bestFor(F.slots[r.k]);
+      if (!inn) break;
+      plan.push({ out: r.id, in: inn.id, why: r.card ? "amarelado, em risco de expulsão" : "cansado" });
+      usedOut.add(r.id);
+      usedIn.add(inn.id);
+    }
+    // 1b) lateral perdendo o duelo: o ponta deles criou 3+ lances de perigo pelo lado dele nos últimos 25'
+    //     e ele já está mal (nota baixa ou cansado) → entra um lateral descansado
+    if (room() > 0 && min >= 55) {
+      const by = new Map<number, { v: number; n: number }>();
+      const tl = this.extra.timeline;
+      for (let i = tl.length - 1, k = 0; i >= 0 && k < 25; i--, k++) {
+        const x = tl[i];
+        if (x.a !== 1 - sideIdx || x.p == null || !x.v) continue;
+        const e = by.get(x.p) ?? { v: 0, n: 0 };
+        e.v += x.v; e.n++;
+        by.set(x.p, e);
+      }
+      for (const [pid, e] of by) {
+        const kO = O.onPitch.indexOf(pid);
+        if (kO < 0 || e.n < 3 || e.v < 0.35 || LANE[O.slots[kO]] === 1) continue;
+        const fb = field.find(({ id, k }) => !usedOut.has(id) && LANE[F.slots[k]] === 2 - LANE[O.slots[kO]] && POS_GROUP[F.slots[k]] === "DEF");
+        if (!fb || ((F.rating.get(fb.id) ?? 6) >= 5.9 && this.player(fb.id).cond >= 70)) continue;
+        const inn = bestFor(F.slots[fb.k]);
+        if (!inn || ovrAt(inn, F.slots[fb.k]) < ovrAt(this.player(fb.id), F.slots[fb.k]) - 4) continue;
+        plan.push({ out: fb.id, in: inn.id, why: `perdendo o duelo com ${this.name(pid)}` });
+        usedOut.add(fb.id);
+        usedIn.add(inn.id);
+        break;
+      }
+    }
+    // 2) perdendo: sai um defensor/volante, entra um atacante
+    if (diff < 0 && min >= 60 && room() > 0) {
+      const att = bench().map((b) => this.player(b)).filter((p) => POS_GROUP[p.pos] === "ATT").sort((a, b) => b.ovr - a.ovr)[0];
+      const out = field.filter((x) => !usedOut.has(x.id) && POS_GROUP[F.slots[x.k]] !== "ATT")
+        .sort((a, b) => (POS_GROUP[F.slots[a.k]] === "DEF" ? 0 : 1) - (POS_GROUP[F.slots[b.k]] === "DEF" ? 0 : 1) || (F.rating.get(a.id) ?? 6) - (F.rating.get(b.id) ?? 6))[0];
+      if (att && out) {
+        plan.push({ out: out.id, in: att.id, why: "mais ofensividade para buscar o resultado" });
+        usedOut.add(out.id);
+        usedIn.add(att.id);
+      }
+    }
+    // 3) jogo decidido: rodagem para reservas e jovens
+    if (Math.abs(diff) >= 3 && min >= 65) {
+      const young = (p: Player) => season - p.born <= 21 || p.youth;
+      const outs = field.filter((x) => !usedOut.has(x.id)).sort((a, b) => this.player(b.id).ovr - this.player(a.id).ovr);
+      for (const o of outs) {
+        if (room() <= 0) break;
+        const inn = bestFor(F.slots[o.k], young);
+        if (!inn) break;
+        plan.push({ out: o.id, in: inn.id, why: young(inn) ? "rodagem para o garoto, jogo decidido" : "poupar titular, jogo decidido" });
+        usedOut.add(o.id);
+        usedIn.add(inn.id);
+      }
+    }
+    return plan;
+  }
+
+  private assistantSubs(sideIdx: 0 | 1) {
+    const plan = this.assistantPlan(sideIdx);
+    if (!plan.length) return;
+    const F = this.sides[sideIdx];
+    let done = 0;
+    for (const s of plan) {
+      const k = F.onPitch.indexOf(s.out);
+      if (k < 0 || F.subsLeft <= 0) continue;
+      F.onPitch[k] = s.in;
+      if (POS_GROUP[F.slots[k]] === "DEF" && POS_GROUP[this.player(s.in).pos] === "ATT") F.slots[k] = this.player(s.in).pos;
+      this.doSubBookkeeping(F, s.out, s.in);
+      done++;
+      this.ev({ min: this.minute, type: "info", side: sideIdx, text: `🧑‍🏫 Auxiliar: sai ${this.name(s.out)}, entra ${this.name(s.in)} (${s.why}).` });
+    }
+    if (!done) return;
+    if (this.minute !== 45) F.windowsLeft = Math.max(0, F.windowsLeft - 1);
+    this.lastWindowMin[sideIdx] = this.minute;
+    this.recompute();
+  }
+
   /** Janela de substituição do usuário (conta como uma das 3 paradas). */
   useWindow(sideIdx: 0 | 1) {
     if (this.minute !== 45 || this.half !== 2) this.sides[sideIdx].windowsLeft = Math.max(0, this.sides[sideIdx].windowsLeft - 1);
@@ -788,6 +1056,137 @@ export class MatchSim {
       lineups: [H.played.slice(), A.played.slice()],
       motm,
     };
+  }
+
+  // ---------------------------------------------------------------- painel ao vivo
+  /**
+   * Anota o minuto para o painel: passes, desarmes, impedimentos, zonas e momentum.
+   * Lê o que o motor já decidiu neste minuto e sorteia o resto num gerador próprio (this.xr):
+   * nada aqui mexe no RNG do jogo nem em força, placar ou notas.
+   */
+  private track(atk: 0 | 1) {
+    const X = this.extra;
+    const r = this.xr;
+    const S = this.sides[atk], O = this.sides[1 - atk];
+    const ph = this.phase;
+    const plOf = (id: number) => {
+      let x = X.pl.get(id);
+      if (!x) { x = { sh: 0, ot: 0, tk: 0 }; X.pl.set(id, x); }
+      return x;
+    };
+    // passes: quem tem a bola troca ~9 passes no minuto; a precisão sai do meio-campo, do passe e do estilo
+    for (const i of [0, 1] as const) {
+      const me = this.sides[i], op = this.sides[1 - i];
+      const n = i === atk ? 7 + Math.floor(r() * 6) : Math.floor(r() * 3);
+      if (!n) continue;
+      let pas = 0, c = 0;
+      me.onPitch.forEach((id, k) => { if (id != null && me.slots[k] !== "GOL") { pas += this.player(id).attrs.pas; c++; } });
+      const ti = { ...(me.club.tactic.ti ?? {}), ...(me.tiOver ?? {}) };
+      const style = ti.direct === 2 ? -0.05 : ti.direct === 0 ? 0.03 : 0;
+      const acc = clamp(0.78 + 0.24 * (me.mid / Math.max(20, op.mid) - 1) + ((c ? pas / c : 70) - 70) * 0.0035 + style - (i === atk ? 0 : 0.08), 0.6, 0.93);
+      let ok = 0;
+      for (let k = 0; k < n; k++) if (r() < acc) ok++;
+      X.passes[i] += n;
+      X.passesOk[i] += ok;
+    }
+    // finalizações por jogador
+    const sh = ph.shot;
+    if (sh) {
+      const x = plOf(sh.shooter);
+      x.sh++;
+      if (sh.result !== "miss" && sh.result !== "post") x.ot++;
+    } else if (ph.penalty?.taker != null) {
+      const x = plOf(ph.penalty.taker);
+      x.sh++;
+      if (ph.penalty.scored) x.ot++;
+    }
+    // desarmes (nem toda bola recuperada no minuto é um desarme)
+    if (ph.tackle && r() < 0.45) {
+      X.tackles[ph.tackle.side]++;
+      if (ph.tackle.pid != null) plOf(ph.tackle.pid).tk++;
+    }
+    // impedimentos: mais quando o ataque é forte e a linha deles é alta
+    const lineO = (O.tiOver?.line ?? O.club.tactic.ti?.line ?? 1);
+    const ratio = S.att / Math.max(20, O.def);
+    if (!sh && !ph.penalty && r() < 0.03 * clamp(ratio, 0.6, 1.6) * (lineO === 2 ? 1.5 : lineO === 0 ? 0.7 : 1)) X.offsides[atk]++;
+    // zona: terço e corredor do ataque
+    let z: 0 | 1 | 2;
+    if (sh || ph.corner || ph.penalty) z = 2;
+    else {
+      const pa = clamp(0.28 * ratio, 0.12, 0.5), u = r();
+      z = u < pa ? 2 : u < pa + 0.22 ? 0 : 1;
+    }
+    const wide = (S.tiOver?.width ?? S.club.tactic.ti?.width ?? 1) === 2 ? 1.25 : 1;
+    let l: 0 | 1 | 2;
+    let p: number | undefined;
+    let v = 0;
+    if (sh) {
+      // o lado da jogada: o do ponta/lateral envolvido (quem serviu, senão quem chutou)
+      const slot = (id: number | null) => (id != null ? S.slots[S.onPitch.indexOf(id)] : undefined);
+      const as = slot(sh.assist), ss = slot(sh.shooter);
+      const lAs = as ? LANE[as] : 1, lSh = ss ? LANE[ss] : 1;
+      l = lAs !== 1 ? lAs : lSh;
+      p = lAs !== 1 && sh.assist != null ? sh.assist : sh.shooter;
+      v = sh.xg + (sh.result === "goal" ? 0.3 : 0);
+    } else {
+      const lw = [0, 0, 0];
+      S.onPitch.forEach((id, k) => {
+        if (id == null) return;
+        const pos = S.slots[k];
+        lw[LANE[pos]] += ATT_W[pos] * (this.player(id).ovr / 70);
+      });
+      const w0 = (0.5 + lw[0]) * wide, w2 = (0.5 + lw[2]) * wide, w1 = 0.9 + lw[1] * 0.8;
+      const u = r() * (w0 + w1 + w2);
+      l = u < w0 ? 0 : u < w0 + w1 ? 1 : 2;
+      if (l !== 1 && z === 2) {
+        // chegada pelo lado: crédito para o jogador mais ofensivo daquele corredor
+        let best = -1;
+        S.onPitch.forEach((id, k) => {
+          if (id == null || LANE[S.slots[k]] !== l) return;
+          const a = ATT_W[S.slots[k]] + 0.2;
+          if (a > best) { best = a; p = id; }
+        });
+        v = ph.corner ? 0.06 : 0.04;
+      }
+    }
+    X.zones[atk][l * 3 + z]++;
+    const d = 0.12 + (z === 2 ? 0.3 : z === 1 ? 0.08 : 0) + (sh ? sh.xg * 4 + (sh.result === "goal" ? 0.8 : 0) : 0) + (ph.corner ? 0.35 : 0) + (ph.penalty ? 1.2 : 0);
+    const t: Tick = { m: this.minute, h: this.half, a: atk, d: Math.round(d * 100) / 100, l, z };
+    if (p != null && v > 0) { t.p = p; t.v = Math.round(v * 1000) / 1000; }
+    if (sh?.result === "goal" || sh?.result === "owngoal" || ph.penalty?.scored) t.g = 1;
+    X.timeline.push(t);
+  }
+
+  /** Instrução rápida (shout): vale só nesta partida. `null` volta ao plano do pré-jogo. Não sorteia nada. */
+  applyShout(sideIdx: 0 | 1, id: ShoutId | null) {
+    const S = this.sides[sideIdx];
+    if (id == null) {
+      S.shout = null;
+      S.tiOver = null;
+      S.mentality = S.baseM;
+      S.pressing = S.club.tactic.pressing;
+      S.manualM = false;
+      if (this.live) this.ev({ min: this.minute, type: "info", side: sideIdx, text: `📣 ${S.club.name} volta ao plano do jogo.` });
+      this.recompute();
+      return;
+    }
+    const d = shoutDef(id);
+    if (!d) return;
+    S.shout = id;
+    S.tiOver = { ...d.ti };
+    if (d.m != null) { S.mentality = clamp(d.m, -2, 2); S.manualM = true; }
+    if (d.p != null) S.pressing = d.p;
+    if (this.live) this.ev({ min: this.minute, type: "info", side: sideIdx, text: `📣 ${d.emoji} ${d.label}! ${S.club.name} muda a postura.` });
+    this.recompute();
+  }
+
+  /** Dobra a marcação num jogador do adversário (`null` desfaz). Não sorteia nada. */
+  setMark(sideIdx: 0 | 1, pid: number | null) {
+    const S = this.sides[sideIdx];
+    if (pid != null && !this.sides[1 - sideIdx].onPitch.includes(pid)) return;
+    S.mark = pid;
+    if (this.live && pid != null) this.ev({ min: this.minute, type: "info", side: sideIdx, text: `🛡️ ${S.club.name} dobra a marcação em ${this.name(pid)}.` });
+    this.recompute();
   }
 
   strengthLabel(sideIdx: 0 | 1) {

@@ -220,6 +220,17 @@ export interface Lineup {
   captain?: number;
 }
 
+/** Medidores do clube do usuário logo antes do último jogo (a interface mostra a variação). */
+export interface DynSnap {
+  day: number;
+  chem: number; // entrosamento do time
+  mood: number; // clima do grupo (moral média do elenco)
+  fan: number; // torcida
+  board: number; // diretoria
+  links: number; // entrosamento em campo (pares vizinhos do XI)
+  m: Record<string, number>; // moral de cada jogador antes do jogo
+}
+
 export interface Club {
   id: string;
   name: string;
@@ -239,6 +250,8 @@ export interface Club {
   players: number[]; // ids (elenco + base)
   tactic: Tactic;
   lineup?: Lineup;
+  /** poderes comprados na Loja de Poderes (engine/powers.ts), por temporada */
+  powers?: { id: string; pid: number; season: number }[];
   youthLevel: number; // 1-5
   facilities: number; // 1-5
   ticket: number; // preço médio do ingresso
@@ -261,6 +274,7 @@ export interface Club {
   tfam?: Record<string, number>; // familiaridade tática por formação 0-100 (só o usuário)
   links?: Record<string, number>; // entrosamento entre pares "a-b" (parte construída em campo, só o usuário)
   lastXI?: number[]; // titulares do último jogo (rodízio demais atrasa o entrosamento)
+  dprev?: DynSnap; // medidores antes do último jogo (setinhas de variação na interface; só o usuário)
   expansions?: number;
   loanedOut?: number[];
   // --- economia e dia de jogo (Trilha C, opcionais)

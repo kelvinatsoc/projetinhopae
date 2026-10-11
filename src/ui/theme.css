@@ -489,7 +489,13 @@ input.text:focus, select:focus, textarea:focus { outline: none; border-color: va
 
 /* ajustes após revisão das capturas */
 .badge-dot[data-count]::after { top: 2px; right: 0; min-width: 19px; height: 19px; font-size: 11.5px; }
-.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.meters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .meters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.meter-txt .meter-num { display: flex; align-items: baseline; gap: 2px; }
+.meter-txt .meter-num .delta-tag { font-size: 13px; }
+.pcard .pc-mood { display: flex; align-items: center; align-self: flex-end; padding: 1px 4px; border-radius: 8px; background: rgba(0, 0, 0, 0.5); }
+.pcard .pc-mood .delta-tag { margin-left: 2px; font-size: 10.5px; }
+.pcard .pc-mood .delta-tag.up { color: #6ee7a8; } .pcard .pc-mood .delta-tag.down { color: #ff8a8a; }
 .meter { grid-template-columns: 1fr; grid-template-rows: auto auto 6px; row-gap: 6px; min-height: 0; padding: 10px; }
 .meter-ic { grid-row: auto; width: 32px; height: 32px; border-radius: 9px; }
 .meter-txt { flex-direction: column; align-items: flex-start; gap: 2px; font-size: 13.5px; color: var(--text-2); }
@@ -684,3 +690,18 @@ h3 { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spac
 .btn.gold { background: linear-gradient(180deg, color-mix(in srgb, var(--club) 92%, #fff), var(--club)); color: var(--club-ink); box-shadow: var(--glow); }
 .mv-ctrl .seg { grid-auto-columns: minmax(0, 1fr) !important; overflow: visible !important; }
 .mv-ctrl .seg button { padding: 0 !important; }
+
+/* ---------------------------------------------------------------- modo leve (ui/perf.ts)
+   Celulares de entrada (Helio G25 / PowerVR GE8320): nada de desfoque, sombras grandes,
+   animações contínuas ou camadas de composição extras. */
+html.lite *, html.lite *::before, html.lite *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  will-change: auto !important;
+}
+html.lite .card, html.lite .btn, html.lite .sheet, html.lite [class*="-card"] { box-shadow: none !important; }
+html.lite [style*="blur("] { filter: none !important; }
+html.lite img { content-visibility: auto; }

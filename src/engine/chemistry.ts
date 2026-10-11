@@ -109,8 +109,8 @@ export function growLinks(w: World, club: Club, played: number[], starters: numb
     const k = pairKey(ps[i].id, ps[j].id);
     const cur = links[k] ?? 0;
     const both = st.has(ps[i].id) && st.has(ps[j].id) ? 1 : 0.4; // quem entrou no fim jogou menos junto
-    const add = 2.2 * stability * both * (1 - cur / 70);
-    links[k] = Math.round(clamp(cur + add, 0, 60) * 10) / 10;
+    const add = 3 * stability * both * (1 - cur / 80); // ~1,5 a 2 pontos por jogo para a dupla titular
+    links[k] = Math.round(clamp(cur + add, 0, 70) * 10) / 10;
   }
 }
 
