@@ -44,7 +44,7 @@ const BUILDINGS: Record<HqBuilding, { name: string; slug: IconSlug; dests: Dest[
   scouting: { name: "Observação", slug: "olheiros", dests: [{ label: "Mercado e olheiros", slug: "mercado", go: () => setTab("market") }] },
 };
 const ORDER = Object.keys(BUILDINGS) as HqBuilding[];
-const SITE_LABEL: Record<HqSiteKind, string> = { stadium: "Estádio", ct: "CT", sede: "Sede" };
+const SITE_LABEL: Record<HqSiteKind, string> = { stadium: "Estádio", ct: "CT", sede: "Sede", base: "Base" };
 
 function hasWebGL(): boolean {
   try {
@@ -148,7 +148,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
       </div>
       <p className="hq-note t-3">
         {real
-          ? `Locais reais: ${[geo?.sites.stadium?.name, geo?.sites.ct ? "CT" : null, geo?.sites.sede ? "sede" : null].filter(Boolean).join(", ")}. Distâncias longas aparecem encurtadas.`
+          ? `Locais reais: ${[geo?.sites.stadium?.name, geo?.sites.ct ? "CT" : null, geo?.sites.sede ? "sede" : null, geo?.sites.base ? "CT da base" : null].filter(Boolean).join(", ")}. Distâncias longas aparecem encurtadas.`
           : "Mapa ilustrativo: ainda não temos a localização real deste clube."}
         {" "}Os prédios crescem com a Estrutura.
       </p>

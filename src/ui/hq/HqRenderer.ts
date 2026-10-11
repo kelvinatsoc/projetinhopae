@@ -26,7 +26,7 @@ import { buildCity, type GeoOsm } from "./city";
 
 export type { GeoOsm } from "./city";
 export type HqBuilding = "stadium" | "office" | "training" | "locker" | "academy" | "medical" | "press" | "scouting";
-export type HqSiteKind = "stadium" | "ct" | "sede";
+export type HqSiteKind = "stadium" | "ct" | "sede" | "base";
 
 export interface GeoSite { lat: number; lon: number; name?: string; src?: string }
 export interface ClubGeo { sites: Partial<Record<HqSiteKind, GeoSite>>; osm?: Partial<Record<HqSiteKind, GeoOsm>> }
@@ -59,6 +59,41 @@ export interface HqOptions {
 const U = 10; // metros por unidade da cena
 const ISLAND_M = 600; // raio do entorno real (m)
 const SKY_DAY = 0xa9d4f5, SKY_NIGHT = 0x0a1030;
+
+/**
+ * Escudo como textura com fundo transparente: se o arquivo vier com fundo chapado (cor dos
+ * cantos), esse fundo vira transparente a partir das bordas (flood fill), sem furar o escudo.
+ */
+function crestTexture(img: HTMLImageElement): THREE.Texture | null {
+  const W = 256, H = Math.round((256 * img.height) / Math.max(1, img.width)) || 256;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  if (!g) return null;
+  g.drawImage(img, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H), a = d.data;
+  const k0 = 0;
+  if (a[k0 + 3] > 200) {
+    const [r0, g0, b0] = [a[0], a[1], a[2]];
+    const near = (i: number) => Math.abs(a[i] - r0) + Math.abs(a[i + 1] - g0) + Math.abs(a[i + 2] - b0) < 60;
+    const seen = new Uint8Array(W * H), st: number[] = [];
+    for (let x = 0; x < W; x++) st.push(x, (H - 1) * W + x);
+    for (let y = 0; y < H; y++) st.push(y * W, y * W + W - 1);
+    while (st.length) {
+      const p = st.pop()!;
+      if (seen[p]) continue;
+      seen[p] = 1;
+      if (!near(p * 4)) continue;
+      a[p * 4 + 3] = 0;
+      const x = p % W, y = (p / W) | 0;
+      if (x > 0) st.push(p - 1); if (x < W - 1) st.push(p + 1); if (y > 0) st.push(p - W); if (y < H - 1) st.push(p + W);
+    }
+    g.putImageData(d, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 
 /** Projeção local (m): x = leste, z = sul. */
 function projectM(lat0: number, lon0: number, lat: number, lon: number): [number, number] {
@@ -102,6 +137,20 @@ export class HqRenderer {
   private fly: { t0: number; dur: number; from: THREE.Vector3; to: THREE.Vector3; d0: number; d1: number; then?: () => void } | null = null;
   private overview = { target: new THREE.Vector3(), dist: 80 };
   private idleSince = 0;
+  private tourI = 0;
+  /** desnível do terreno em volta do estádio: inclinação (m/m) e direção da subida (graus; 0 = leste, 90 = sul) */
+  private slope: { k: number; dir: number; c: THREE.Vector3 } | null = null;
+  /** altura (unidades) do terreno inclinado no ponto (x, z) da cena */
+  private slopeY(x: number, z: number): number {
+    const s = this.slope;
+    if (!s) return 0;
+    const d = (s.dir * Math.PI) / 180;
+    const raw = s.k * ((x - s.c.x) * Math.cos(d) + (z - s.c.z) * Math.sin(d));
+    const r = Math.hypot(x - s.c.x, z - s.c.z), R = ISLAND_M / U;
+    // dentro da ilha o plano inteiro; fora, volta suavemente ao relevo comum
+    const f = r <= R ? 1 : Math.max(0, 1 - (r - R) / 70);
+    return raw * f * f * (3 - 2 * f);
+  }
   private raf = 0;
   private last = 0;
   private t = 0;
@@ -169,8 +218,11 @@ export class HqRenderer {
     }
     const url = this.o.crestUrl;
     if (!url) return;
-    new THREE.TextureLoader().load(url, (t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const t = crestTexture(img);
+      if (!t) return;
       this.texCache.push(t);
       const mk = (p: THREE.Vector3 | undefined, size: number, dy: number) => {
         if (!p) return;
@@ -183,7 +235,8 @@ export class HqRenderer {
       mk(this.anchors.office, 2.4, 0.6);
       mk(this.anchors.training, 2.4, 0.6);
       mk(this.anchors.locker, 1.6, 0.4);
-    });
+    };
+    img.src = url;
   }
 
   /** Locais disponíveis (para os botões de atalho da interface). */
@@ -316,7 +369,7 @@ export class HqRenderer {
       for (const p of centers) d = Math.min(d, Math.hypot(x - p.x, z - p.z));
       const n = nz(x / 90, z / 90) * 0.7 + nz(x / 30 + 7, z / 30) * 0.3;
       const k = Math.min(1, Math.max(0, (d - R - 4) / 60));
-      pos.setY(i, (n - 0.35) * 26 * k * k - 0.3);
+      pos.setY(i, (n - 0.35) * 26 * k * k - 0.3 + this.slopeY(x, z));
       const u = Math.min(1, Math.max(0, (d - R + 10) / 70));
       c.copy(city).lerp(n > 0.6 ? wood : n < 0.35 ? dry : grass, u);
       col.push(c.r, c.g, c.b);
@@ -339,6 +392,7 @@ export class HqRenderer {
     const st = pos("stadium")!;
     let ct = pos("ct");
     let sede = pos("sede");
+    const base = pos("base");
     // locais colados ao estádio dividem a mesma "ilha" (o entorno real já mostra tudo)
     if (ct && ct.distanceTo(st) < 2 * ISLAND_M / U - 8) ct = ct.distanceTo(st) < 30 ? null : ct;
     if (sede && sede.distanceTo(st) < 30) sede = null;
@@ -347,6 +401,7 @@ export class HqRenderer {
     const islands: [HqSiteKind, THREE.Vector3][] = [["stadium", st]];
     if (ct) islands.push(["ct", ct]);
     if (sede) islands.push(["sede", sede]);
+    if (base && base.distanceTo(st) > 30 && (!ct || base.distanceTo(ct) > 30)) islands.push(["base", base]);
     // ilhas que se sobrepõem: afasta a menor (mantendo a direção real)
     for (let i = 1; i < islands.length; i++) {
       for (let j = 0; j < i; j++) {
@@ -372,8 +427,10 @@ export class HqRenderer {
     };
     const lockerAt = free(0, stadiumGeo.outer[1] + 40);
     this.locker(lockerAt.x, lockerAt.z);
+    const hasBase = islands.some(([k]) => k === "base");
+    if (hasBase) this.baseSite(this.siteCenter.base!, geo.osm?.base);
     if (ct) {
-      this.ctSite(ct, geo.osm?.ct);
+      this.ctSite(ct, geo.osm?.ct, hasBase);
     } else {
       // sem CT conhecido: área de treino num terreno ao lado
       const c2 = new THREE.Vector3(st.x + 140, 0, st.z + 40);
@@ -472,6 +529,7 @@ export class HqRenderer {
       return Math.abs(lx / ra) ** n + Math.abs(lz / rb) ** n < 1;
     };
     void superEllipse;
+    if (model.terrain) this.slope = { k: model.terrain.slope, dir: model.terrain.dir, c: c.clone() };
     return { avoid, outer: [A * fit.sx, B * fit.sz] as [number, number], rotY: fit.rotY, x: fit.x, z: fit.z };
   }
 
@@ -484,6 +542,11 @@ export class HqRenderer {
     });
     lod.scale.setScalar(1 / U);
     lod.position.set(c.x, 0, c.z);
+    // ilha do estádio inclinada pelo desnível real (o estádio fica nivelado, encaixado no terreno)
+    if (kind === "stadium" && this.slope) {
+      const d = (this.slope.dir * Math.PI) / 180, k = this.slope.k;
+      lod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-k * Math.cos(d), 1, -k * Math.sin(d)).normalize());
+    }
     this.scene.add(lod);
   }
 
@@ -575,7 +638,7 @@ export class HqRenderer {
   }
 
   /** CT: prédios e campos reais quando o OSM tem; senão, o CT procedural. */
-  private ctSite(c: THREE.Vector3, osm: GeoOsm | undefined) {
+  private ctSite(c: THREE.Vector3, osm: GeoOsm | undefined, noAcademy = false) {
     const blds = osm?.buildings ?? [];
     const club = (osm?.club ?? []).map((i) => blds[i]).filter(Boolean).sort((a, b) => Math.abs(area(pts(b[1]))) - Math.abs(area(pts(a[1]))));
     // campo real mais próximo do centro do CT para o treino
@@ -588,12 +651,21 @@ export class HqRenderer {
       this.training(c.x + f.cx / U, c.z + f.cz / U, -f.ang, true);
     } else this.training(c.x, c.z);
     const roof = this.o.colors[0];
-    const a = club[0] ? this.realBuilding(c, [club[0]], "academy", roof) : null;
-    if (!a) this.academy(c.x - 26, c.z + 4);
+    const a = club[0] && !noAcademy ? this.realBuilding(c, [club[0]], "academy", roof) : null;
+    if (!a && !noAcademy) this.academy(c.x - 26, c.z + 4);
+    if (noAcademy && club[0]) this.realBuilding(c, [club[0]], "training", roof);
     const m = club[1] ? this.realBuilding(c, [club[1]], "medical", "#e9ecef") : null;
     if (!m) this.medical(c.x + 26, c.z + 4);
     // demais prédios do clube (sem menu próprio): fazem parte do CT
     if (club.length > 2) this.realBuilding(c, club.slice(2), "training", roof, 5);
+  }
+
+  /** CT da base (ex.: Cotia): prédios reais do clube como "Base"; senão, o prédio procedural. */
+  private baseSite(c: THREE.Vector3, osm: GeoOsm | undefined) {
+    const blds = osm?.buildings ?? [];
+    const club = (osm?.club ?? []).map((i) => blds[i]).filter(Boolean).sort((a, b) => Math.abs(area(pts(b[1]))) - Math.abs(area(pts(a[1]))));
+    const r = club.length ? this.realBuilding(c, club.slice(0, 6), "academy", this.o.colors[0], 6) : null;
+    if (!r) this.academy(c.x, c.z);
   }
 
   /** Sede: o prédio real (contorno do OSM) com as cores do clube, imprensa e observação ao lado. */
@@ -616,6 +688,7 @@ export class HqRenderer {
   private tag(obj: THREE.Object3D, id: HqBuilding, anchorY: number, scale = 0.6) {
     obj.scale.multiplyScalar(scale);
     anchorY *= scale;
+    if (id !== "stadium") { const y = this.slopeY(obj.position.x, obj.position.z); obj.position.y += y; anchorY += y; }
     obj.traverse((m) => { m.userData.hq = id; });
     this.pickables.push(obj);
     this.anchors[id] = new THREE.Vector3(obj.position.x, anchorY, obj.position.z);
@@ -920,6 +993,13 @@ export class HqRenderer {
       if (k >= 1) { this.fly = null; f.then?.(); }
     } else if (!this.drag && !this.o.reduced && t - this.idleSince > 3) {
       this.yaw += (dt / 1000) * 0.05; // órbita lenta quando ninguém mexe
+      // depois de um tempo parado, a câmera voa sozinha para o próximo local
+      const ks = this.sites();
+      if (ks.length > 1 && t - this.idleSince > 12) {
+        this.tourI = (this.tourI + 1) % ks.length;
+        this.focusSite(ks[this.tourI]);
+        this.idleSince = this.t - 3.5;
+      }
     }
     for (const m of this.movers) m(t, dt);
     const cp = Math.cos(this.pitch);

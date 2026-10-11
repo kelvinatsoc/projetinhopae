@@ -29,6 +29,8 @@ export interface StadiumModel {
   plan: "oval" | "rect"; n: number; inner: [number, number];
   tiers: TierSpec[]; sides?: [number, number, number, number]; open?: [number, number][];
   roof?: RoofSpec; facade: FacadeSpec; arches?: { color: string; height: number; width: number };
+  /** desnível do terreno em volta (inclinação m/m e direção da subida em graus: 0 = leste, 90 = sul) */
+  terrain?: { slope: number; dir: number };
   /** telão na fachada (Neo Química): lado em graus, abertura, altura e base (m) */
   screen?: { side: number; span: number; height: number; base: number };
   ramps?: number; lights?: "roof" | "rim" | "towers"; screens?: number;

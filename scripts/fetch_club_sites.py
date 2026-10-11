@@ -183,6 +183,10 @@ SEDE_OSM = {
     "cruzeiro": "way/292382598",      # Sede Administrativa do Cruzeiro (Barro Preto)
 }
 SEDE_AT_STADIUM = {"sao-paulo"}
+# CTs das categorias de base em outro lugar (4º local do mapa). Coordenadas da Wikipedia (en: CFA Cotia).
+BASE_SITES = {
+    "sao-paulo": (-23.62032, -46.91459, "CT de Cotia (Centro de Formação de Atletas Presidente Laudo Natel)"),
+}
 # CTs cujo nome o Nominatim não acha: a feição exata no OSM (conferida à mão).
 CT_OSM = {
     "sao-paulo": "way/418131738",     # CCT Frederico Antônio Germano Menzen (Barra Funda), ao lado da Marginal Tietê
@@ -485,13 +489,13 @@ def osm_context(site, kind):
             break
     out["buildings"] = keep
     # prédios do clube (CT/sede): os que ficam dentro da área do clube que contém o ponto, ou bem perto dele
-    if kind in ("ct", "sede"):
+    if kind in ("ct", "sede", "base"):
         area = next((a for a in sorted(areas, key=poly_area) if inside((0, 0), a) and poly_area(a) < 600000), None)
         idx = []
         for i, (h, f) in enumerate(keep):
             pts = [(f[j], f[j + 1]) for j in range(0, len(f), 2)]
             c = centroid(pts)
-            if (area and inside(c, area)) or math.hypot(*c) < (55 if kind == "sede" else 120):
+            if (area and inside(c, area)) or math.hypot(*c) < (55 if kind == "sede" else 160 if kind == "base" else 120):
                 idx.append((poly_area(pts), i))
         idx.sort(reverse=True)
         out["club"] = sorted(i for _, i in idx[:14])
@@ -661,6 +665,9 @@ def main():
                 break
         if "ct" not in sites and prev.get("ct") and (not near or dist_m((prev["ct"]["lat"], prev["ct"]["lon"]), near) < 80000):
             sites["ct"] = prev["ct"]  # Nominatim fora do ar: mantém o CT já conhecido (se for da mesma cidade)
+        if cid in BASE_SITES:
+            la, lo, nm = BASE_SITES[cid]
+            sites["base"] = {"lat": la, "lon": lo, "name": nm, "src": "wikipedia"}
         osm = {}
         for k, s in sites.items():
             ctx = osm_context(s, k)
