@@ -78,6 +78,7 @@ export type Route =
   | { name: "kits"; id: string }
   | { name: "powers" }
   | { name: "facilities" }
+  | { name: "stadiumLook" }
   | { name: "setpieces" }
   | { name: "nts" }
   | { name: "nt"; id: string }

@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import modelsJson from "../../data/stadiumModels.json";
 import { rng, superEllipse, minRect, pts, type P2 } from "./geo";
+import type { StadiumLook } from "../../engine/types";
 
 export interface TierSpec {
   rise: number; depth: number; base?: number; gap?: number; lift?: number;
@@ -57,18 +58,9 @@ export function findModel(clubId: string, stadiumName?: string): StadiumModel | 
  * Personalização do estádio feita pelo clube (cores das cadeiras, cobertura, fachada, nome e
  * reformas). Só descreve o que muda; applyCustom devolve um modelo novo, sem mexer no original.
  */
-export interface StadiumCustom {
-  /** cores das cadeiras (todas as arquibancadas) e o padrão */
-  seats?: string[];
-  pattern?: TierSpec["pattern"];
-  /** nova cobertura (tipo e cor; "none" remove) */
-  roof?: { type: RoofSpec["type"]; color?: string; opacity?: number };
-  facade?: { type?: FacadeSpec["type"]; color?: string; color2?: string };
+export interface StadiumCustom extends StadiumLook {
   /** nome comercial (naming rights) */
   name?: string;
-  /** reformas: anel extra de arquibancada e/ou telões */
-  extraTier?: boolean;
-  screens?: number;
 }
 
 export function applyCustom(m: StadiumModel, c?: StadiumCustom | null): StadiumModel {

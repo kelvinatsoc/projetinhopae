@@ -4,6 +4,7 @@
 import { adminCheats } from "./admin";
 import { monthOf } from "./calendar";
 import { facilitiesDaily } from "./facilities";
+import { stadiumLookDaily } from "./stadiumLook";
 import { decayFamiliarity, growFamiliarity } from "./tactics";
 import { monthlyLinks } from "./chemistry";
 import { expectedRating, streakOf, updateFanFavourite } from "./form";
@@ -323,6 +324,7 @@ export function recoveryBonus(w: World, _p: Player, club: Club | null): number {
 /** Processamento diário do treino (lesões no treino puxado, recuperação extra). */
 export function trainingDaily(w: World) {
   facilitiesDaily(w); // obras de estrutura (facilities.ts)
+  stadiumLookDaily(w); // reformas do visual do estádio (stadiumLook.ts)
   const club = w.clubs[w.userClubId];
   // departamento médico acima do padrão: às vezes o lesionado ganha um dia de recuperação
   const med = club?.fac ? club.fac.medical - 2 : 0;

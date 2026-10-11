@@ -74,6 +74,17 @@ export interface SponsorState {
   log?: { season: number; brand: string; text: string; value: number }[];
 }
 export type FacilityKind = "stadium" | "training" | "youth" | "medical";
+/** Visual personalizado do estádio (stadiumLook.ts): só o que o clube mudou. */
+export interface StadiumLook {
+  seats?: string[];
+  pattern?: "solid" | "mosaic" | "sectors" | "bands";
+  roof?: { type: "ring" | "box" | "canopy" | "petals" | "none"; color?: string; opacity?: number };
+  facade?: { type?: "columns" | "frame" | "ribbons" | "waves" | "cantilever" | "glass" | "panels" | "membrane" | "classic" | "plain"; color?: string; color2?: string };
+  extraTier?: boolean;
+  screens?: number;
+}
+export type StadiumWorkKind = "seats" | "roof" | "facade" | "screens" | "tier";
+export interface StadiumWork { kind: StadiumWorkKind; start: number; done: number; cost: number; look: Partial<StadiumLook> }
 export interface FacilityBuild { kind: FacilityKind; to: number; start: number; done: number; cost: number }
 export interface FacilityState { stadium: number; medical: number; builds: FacilityBuild[] }
 export type SetPieceRoutine = "pp" | "sp" | "curto";
@@ -280,6 +291,9 @@ export interface Club {
   // --- economia e dia de jogo (Trilha C, opcionais)
   sponsors?: SponsorState;
   fac?: FacilityState;
+  /** estádio personalizado e reformas em andamento (stadiumLook.ts) */
+  look?: StadiumLook;
+  lookWorks?: StadiumWork[];
   setPieces?: SetPieceConfig;
   /** UF: clube que só disputa o estadual (fora da pirâmide nacional A–C e do sorteio da Série D).
    *  Real (vem do banco, flag "minor") ou fictício (fictional). */

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { buildOf, buildPct, canUpgrade, FAC_INFO, FAC_KINDS, FAC_MAX, facLevel, startUpgrade, upgradeCost, weeksLeft } from "../engine/facilities";
 import { formatMoney } from "../engine/finance";
 import type { FacilityKind } from "../engine/types";
-import { toast, update, useWorld } from "../store";
+import { push, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
 import { Bar, Sheet } from "./components";
 import "./economy.css";
@@ -44,6 +44,7 @@ export function FacilitiesScreen() {
               </div>
             ) : <div className="tiny muted mt8">Nível máximo!</div>}
             {why && !b && lv < FAC_MAX && <div className="tiny" style={{ color: "var(--warn)" }}>{why}</div>}
+            {k === "stadium" && <button className="btn sm ghost mt8" onClick={() => push({ name: "stadiumLook" })}>🎨 Personalizar o estádio ›</button>}
           </div>
         );
       })}

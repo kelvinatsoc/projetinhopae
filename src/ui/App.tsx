@@ -3,6 +3,7 @@ import { UniformsScreen } from "./Uniforms";
 import { PowersScreen } from "./screens/Powers";
 import { syncCustomKits } from "./Kit";
 import { FacilitiesScreen } from "./Facilities";
+import { StadiumLookScreen } from "./StadiumLook";
 import { SetPiecesScreen } from "./SetPieces";
 import { useEffect, useRef, useState } from "react";
 import { markTitleSeen, TitleCelebration, titlesSeen } from "./CompTheme";
@@ -76,6 +77,7 @@ function routeTitle(r: Route): string {
     case "kits": return "Uniformes";
     case "powers": return "Loja de Poderes";
     case "facilities": return "Estrutura";
+    case "stadiumLook": return "Meu estádio";
     case "setpieces": return "Bola parada";
     case "nts": return "Seleções";
     case "nt": return "Seleção";
@@ -190,6 +192,7 @@ export function App() {
       case "kits": content = <UniformsScreen id={top.id} key={top.id} />; break;
       case "powers": content = <PowersScreen />; break;
       case "facilities": content = <FacilitiesScreen />; break;
+      case "stadiumLook": content = <StadiumLookScreen />; break;
       case "setpieces": content = <SetPiecesScreen />; break;
       case "nts": content = <NationalTeamsScreen />; break;
       case "nt": content = <NationalTeamScreen id={top.id} key={top.id} />; break;

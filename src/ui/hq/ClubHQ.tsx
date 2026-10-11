@@ -20,7 +20,10 @@ import "./hq.css";
 interface Dest { label: string; slug: IconSlug; go: () => void }
 
 const BUILDINGS: Record<HqBuilding, { name: string; slug: IconSlug; dests: Dest[] }> = {
-  stadium: { name: "Estádio", slug: "estadio", dests: [{ label: "Estrutura do estádio", slug: "estrutura", go: () => push({ name: "facilities" }) }] },
+  stadium: { name: "Estádio", slug: "estadio", dests: [
+    { label: "Personalizar e reformar", slug: "estadio", go: () => push({ name: "stadiumLook" }) },
+    { label: "Estrutura do estádio", slug: "estrutura", go: () => push({ name: "facilities" }) },
+  ] },
   office: { name: "Sede", slug: "diretoria", dests: [
     { label: "Diretoria", slug: "diretoria", go: () => push({ name: "board" }) },
     { label: "Finanças", slug: "financas", go: () => push({ name: "finances" }) },
@@ -94,7 +97,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         r = new m.HqRenderer({
           host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium,
           crestUrl: club.customCrest ?? mediaUrlOrNull(club.logo ? `crests/${club.id}.webp` : null), stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
-          matchDay: matchToday, night, reduced, geo: g, labels: labels.current,
+          matchDay: matchToday, night, reduced, geo: g, labels: labels.current, stadiumCustom: club.look ?? null,
           onPick: (b) => { haptic("tap"); setSel(b); },
         });
         rRef.current = r;
@@ -103,7 +106,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
       })
       .catch(() => setFailed(true));
     return () => { dead = true; rRef.current = null; r?.dispose(); };
-  }, [failed, club.id, c1, c2, night, matchToday, levels.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [failed, club.id, c1, c2, night, matchToday, levels.join(","), JSON.stringify(club.look ?? null)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <>{fallback}</>;
 

@@ -2,7 +2,7 @@
 // Os ~45 maiores estádios dos clubes de database.json são feitos à mão; o resto sai
 // de forma procedural a partir da capacidade e das cores do clube mandante.
 
-import type { Club } from "../engine/types";
+import type { Club, StadiumLook } from "../engine/types";
 import { RIVALRIES } from "./rivalries";
 
 /** Formato das arquibancadas. */
@@ -206,8 +206,36 @@ export function proceduralStyle(club: Pick<Club, "id" | "stadium" | "capacity" |
 }
 
 /** Estilo do estádio do clube (neutro → estilo genérico de campo neutro). */
-export function stadiumStyleFor(club: Pick<Club, "id" | "stadium" | "capacity" | "colors"> & { fac?: { stadium: number } }, neutral = false): StadiumStyle {
-  if (neutral) return { ...BASE, key: "neutral", name: "Campo neutro", tag: "Jogo em campo neutro", shape: "bowl", seats: ["#5d6a73", "#7a868e"], roof: "partial", lights: "roof", board: "both", mow: "stripes", fill: 0.75, landmarks: [], handmade: false };
+export function stadiumStyleFor(club: Pick<Club, "id" | "stadium" | "capacity" | "colors"> & { fac?: { stadium: number }; look?: StadiumLook }, neutral = false, name?: string): StadiumStyle {
+  if (neutral) return { ...neutralStyle() };
+  const st = baseStyleFor(club);
+  return withLook(st, club.look, name);
+}
+
+/**
+ * Personalização do clube (stadiumLook.ts) por cima do estilo: cadeiras, cobertura, placares e
+ * o nome do naming rights. O formato e os marcos do estádio real continuam.
+ */
+export function withLook(st: StadiumStyle, look?: StadiumLook, name?: string): StadiumStyle {
+  if (!look && !name) return st;
+  const out = { ...st };
+  if (name) out.name = name;
+  if (look?.seats?.length) out.seats = [...look.seats];
+  if (look?.roof) {
+    out.roof = look.roof.type === "none" ? "none" : look.roof.type === "canopy" ? "main" : "full";
+    if (look.roof.color) out.roofColor = look.roof.color;
+  }
+  if (look?.facade?.color) out.concrete = look.facade.color;
+  if (look?.screens) out.board = "both";
+  if (look?.extraTier) out.fill = Math.min(0.97, out.fill + 0.03);
+  return out;
+}
+
+function neutralStyle(): StadiumStyle {
+  return { ...BASE, key: "neutral", name: "Campo neutro", tag: "Jogo em campo neutro", shape: "bowl", seats: ["#5d6a73", "#7a868e"], roof: "partial", lights: "roof", board: "both", mow: "stripes", fill: 0.75, landmarks: [], handmade: false };
+}
+
+function baseStyleFor(club: Pick<Club, "id" | "stadium" | "capacity" | "colors"> & { fac?: { stadium: number } }): StadiumStyle {
   const hand = handStyle(club.stadium);
   if (hand) return hand;
   return upgradeByLevel(proceduralStyle(club), club.fac?.stadium);

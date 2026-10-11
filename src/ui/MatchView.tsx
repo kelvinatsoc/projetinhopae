@@ -22,6 +22,8 @@ import "./matchView.css";
 import { paintPitch, paintStadium, stadiumArt } from "./stadiumArt";
 import { StadiumBanner } from "./StadiumBanner";
 import { stadiumStyleFor } from "../data/stadiumStyles";
+import { stadiumName } from "../engine/sponsors";
+import { getWorld } from "../store";
 import { ballHeight, hudAbbr, hudName, toWorld, type MatchSnapshot, type Quality } from "./match3d/model";
 import type { MatchRenderer } from "./match3d/MatchRenderer";
 import { pickSpecial, SPECIALS, specialsEnabled, type SpecialDef } from "./specials";
@@ -2312,7 +2314,11 @@ export function MatchView(props: MatchViewProps) {
           const info = (c: Club) => ({ colors: c.colors, abbr: hudAbbr(c.abbr, c.name), name: c.name, stadium: c.stadium || "Estádio" });
           r3d = new mod.MatchRenderer({
             host,
-            style: stadiumStyleFor(sim.sides[0].club, !!sim.f.neutral),
+            style: (() => {
+              // visual personalizado (reformas) e nome do naming rights em vigor
+              const home = sim.sides[0].club, wd = getWorld();
+              return stadiumStyleFor(home, !!sim.f.neutral, wd ? stadiumName(wd, home) : undefined);
+            })(),
             quality: q3,
             home: info(sim.sides[0].club),
             away: info(sim.sides[1].club),
