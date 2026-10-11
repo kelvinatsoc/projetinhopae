@@ -811,6 +811,69 @@ export async function saveMedia(key: string, dataUrl: string | null) {
   });
 }
 
+// ---------------------------------------------------------------- festa do título
+/** Estouro de fogos sintetizado (assobio subindo + estampido + chiado das faíscas). */
+function synthFirework(c: AudioContext, when: number, gain = 0.35) {
+  const o = out(c);
+  const osc = c.createOscillator();
+  const og = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(900, when);
+  osc.frequency.exponentialRampToValueAtTime(2600, when + 0.55);
+  og.gain.setValueAtTime(0, when);
+  og.gain.linearRampToValueAtTime(gain * 0.12, when + 0.08);
+  og.gain.linearRampToValueAtTime(0, when + 0.58);
+  osc.connect(og).connect(o);
+  osc.start(when);
+  osc.stop(when + 0.6);
+  const t = when + 0.6;
+  const src = c.createBufferSource();
+  src.buffer = noiseBuffer(c, 1.6);
+  const lp = c.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(2400, t);
+  lp.frequency.exponentialRampToValueAtTime(300, t + 1.2);
+  const g = c.createGain();
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.004, t + 1.5);
+  src.connect(lp).connect(g).connect(o);
+  src.start(t);
+  src.stop(t + 1.6);
+}
+
+/**
+ * Som da festa do título: explosão da torcida, olé/festa em seguida e fogos estourando.
+ * Usa as gravações reais da torcida brasileira (com reserva sintetizada). Devolve uma função
+ * que encerra tudo com um fade (ao fechar a tela).
+ */
+export function championParty(): () => void {
+  const c = ac();
+  if (!c) return () => undefined;
+  const nodes: { src: AudioBufferSourceNode; g: GainNode }[] = [];
+  const timers: number[] = [];
+  playSample(BR_SOUNDS.goal[0], 900, (cc, b) => nodes.push(playBuffer(cc, b, LEVEL.goal)), (cc) => synthRoar(cc, true));
+  timers.push(window.setTimeout(() => {
+    playSample(BR_SOUNDS.ole, 1500, (cc, b) => { const n = playBuffer(cc, b, LEVEL.chant); n.src.loop = true; nodes.push(n); }, () => undefined);
+  }, 2600));
+  timers.push(window.setTimeout(() => {
+    playSample(BR_SOUNDS.goal[1], 1500, (cc, b) => nodes.push(playBuffer(cc, b, LEVEL.goal * 0.7)), () => undefined);
+  }, 5200));
+  const t0 = c.currentTime + 0.4;
+  for (let i = 0; i < 9; i++) synthFirework(c, t0 + i * 0.9 + Math.random() * 0.5, 0.18 + Math.random() * 0.14);
+  return () => {
+    timers.forEach((t) => window.clearTimeout(t));
+    const now = c.currentTime;
+    for (const n of nodes) {
+      try {
+        n.g.gain.cancelScheduledValues(now);
+        n.g.gain.setValueAtTime(n.g.gain.value, now);
+        n.g.gain.linearRampToValueAtTime(0, now + 0.6);
+        n.src.stop(now + 0.65);
+      } catch { /* já parado */ }
+    }
+  };
+}
+
 export async function loadMedia(key: string): Promise<string | null> {
   const db = await mediaDb();
   return new Promise((resolve) => {

@@ -1,0 +1,43 @@
+/* Fase da partida: faixa simples, selo e banner dos jogos decisivos (usa as variáveis --ct-* do tema). */
+.phase-chip { display: inline-flex; align-items: center; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #fff; text-transform: uppercase; }
+.phase-chip.is-final { background: linear-gradient(90deg, #f7d774, #d4a017); color: #1a1200; }
+.phase-chip.is-semi { background: #fff; color: #111; }
+.phase-chip.is-derby { background: #e11d48; color: #fff; }
+
+.phase-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin: 8px 0; border-radius: 12px; background: linear-gradient(90deg, var(--ct-s), var(--ct-base)); color: var(--ct-ink); border-left: 4px solid var(--ct-p); font-size: 13px; }
+.phase-bar b { font-weight: 900; letter-spacing: 0.02em; }
+.phase-bar span { opacity: 0.85; }
+.phase-agg-mini { margin-left: auto; font-weight: 800; opacity: 1 !important; color: var(--ct-a); }
+
+.phase-banner { position: relative; overflow: hidden; isolation: isolate; border-radius: 18px; margin: 10px 0; padding: 16px 14px; min-height: 120px; color: var(--ct-ink); box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 0 0 1.5px var(--ct-a); }
+.phase-banner.compact { min-height: 96px; padding: 12px; margin: 0 0 10px; }
+.pb-bg { position: absolute; inset: 0; z-index: -2; background: var(--ct-pattern), radial-gradient(120% 140% at 85% 30%, var(--ct-p) 0%, var(--ct-s) 45%, var(--ct-base) 100%); }
+.phase-banner.is-final .pb-bg { background: var(--ct-pattern), radial-gradient(90% 120% at 82% 40%, #fff3c4 0%, var(--ct-p) 22%, var(--ct-s) 58%, var(--ct-base) 100%); }
+.phase-banner.is-derby .pb-bg { background: repeating-linear-gradient(115deg, rgba(255,255,255,0.06) 0 10px, transparent 10px 22px), linear-gradient(110deg, #7f1d1d, var(--ct-s) 55%, var(--ct-base)); }
+.pb-trophy { position: absolute; right: -6px; bottom: -14px; z-index: -1; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5)); animation: pb-float 4s ease-in-out infinite; }
+.pb-trophy .trophy-img { display: block; object-fit: contain; }
+.pb-shine { position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.28) 50%, transparent 65%); background-size: 250% 100%; animation: pb-shine 3.2s ease-in-out infinite; pointer-events: none; }
+.pb-body { display: flex; align-items: center; gap: 12px; max-width: 72%; }
+.pb-logo { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,0.94); box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.phase-banner.compact .pb-logo { width: 50px; height: 50px; border-radius: 13px; }
+.pb-txt { display: flex; flex-direction: column; min-width: 0; }
+.pb-kicker { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ct-a); }
+.pb-label { font-size: 30px; line-height: 1.02; font-weight: 900; letter-spacing: 0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.45); }
+.phase-banner.compact .pb-label { font-size: 24px; }
+.phase-banner.is-final .pb-label { font-size: 38px; letter-spacing: 0.06em; background: linear-gradient(180deg, #fff 30%, #f7d774); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.phase-banner.compact.is-final .pb-label { font-size: 30px; }
+.pb-leg { align-self: flex-start; margin: 3px 0 2px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 6px; background: var(--ct-a); color: var(--ct-base); }
+.pb-comp { font-size: 12px; opacity: 0.88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-agg { margin-top: 12px; display: inline-flex; flex-direction: column; gap: 1px; padding: 7px 12px; border-radius: 12px; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18); }
+.pb-agg span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ct-a); }
+.pb-agg b { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.pb-agg small { font-size: 11px; opacity: 0.85; }
+@keyframes pb-shine { 0% { background-position: 120% 0; } 60%, 100% { background-position: -120% 0; } }
+@keyframes pb-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .pb-shine, .pb-trophy { animation: none; } }
+
+/* cartão do próximo jogo em decisão */
+.next-match.is-final, .next-match.is-semi { box-shadow: 0 0 0 2px #f7d774, 0 12px 30px rgba(212,160,23,0.25); }
+.next-match.is-derby { box-shadow: 0 0 0 2px #e11d48, 0 12px 30px rgba(225,29,72,0.22); }
+.trophy-img { object-fit: contain; display: inline-block; }
+.trophy-img.ph { display: inline-grid; place-items: center; line-height: 1; }

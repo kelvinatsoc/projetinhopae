@@ -5,15 +5,17 @@ import type { ClubSeasonLog, World } from "../engine/types";
 import { push, useWorld } from "../store";
 import { CompLogo, Crest } from "./components";
 import "./progression.css";
+import { TrophyImg } from "./Trophy";
+import { trophySpec } from "./trophies";
 
 const CUP_ORDER = ["liberta", "serieA", "copaBR", "sula", "serieB", "serieC"];
 
 function TrophyIcon({ comp }: { comp: string }) {
-  // o logo oficial aparece se existir; o troféu fica como reserva por baixo
+  // a taça real da competição (foto recortada ou modelo 3D) com a logo oficial como selo
   return (
-    <span className="cup" style={{ position: "relative" }}>
-      <span>🏆</span>
-      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><CompLogo id={comp} size={32} /></span>
+    <span className="cup">
+      <TrophyImg comp={comp} size={64} />
+      <span className="cup-logo"><CompLogo id={comp} size={22} /></span>
     </span>
   );
 }
@@ -78,8 +80,10 @@ export function TrophyRoomScreen() {
           })}
         </div>
         {open && (
-          <div className="small mt8">
+          <div className="small mt8 cabinet-open">
+            <TrophyImg comp={open} size={120} />
             <b>{COMP_META[open]?.name ?? open}:</b>{" "}
+            <div className="tiny muted">{trophySpec(open).name}</div>
             {counts[open]?.length ? counts[open].slice().sort((a, b) => b - a).join(", ") : "ainda não conquistado."}
           </div>
         )}
