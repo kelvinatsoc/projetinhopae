@@ -193,7 +193,7 @@ export class Arrival {
     sm.position.set(6.58, 3.65, 0);
     this.bus.add(sm);
     this.disposables.push(sg, sm.material as THREE.Material);
-    const hl = new THREE.MeshStandardMaterial({ color: "#fff", emissive: "#fff8e6", emissiveIntensity: 8 });
+    const hl = new THREE.MeshStandardMaterial({ color: "#fff", emissive: "#fff8e6", emissiveIntensity: 2.5 });
     this.disposables.push(hl);
     for (const z of [-0.95, 0.95]) {
       const h = new THREE.BoxGeometry(0.08, 0.25, 0.5);

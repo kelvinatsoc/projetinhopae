@@ -2342,7 +2342,9 @@ export function MatchView(props: MatchViewProps) {
 
   // abertura acabou (ou foi pulada)
   useEffect(() => {
-    if (!intro) r3dRef.current?.endIntro();
+    const r = r3dRef.current;
+    if (intro) r?.startIntro(propsRef.current.introArrivalMs ?? 0, propsRef.current.introWalkMs ?? 6000);
+    else r?.endIntro();
     kick.current();
   }, [intro]);
 

@@ -237,7 +237,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [bumper, setBumper] = useState(!quick);
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
   const [gfx, setGfx] = useState<Quality>(() => readQuality());
-  const [is3d, setIs3d] = useState(false);
+  const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
   const [exodus, setExodus] = useState(0);
   const [mood, setMood] = useState(1);
   const [eruption, setEruption] = useState<{ side: 0 | 1; virada: boolean; n: number } | null>(null);
@@ -363,6 +363,11 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (quick || bumper) return;
     if (intro) {
+      // campo ligado: espera saber se o 3D abriu (ônibus + entrada dos times) ou se é o 2D
+      if (field && is3d === null) {
+        const t = window.setTimeout(() => setIs3d((v) => v ?? false), 8000);
+        return () => window.clearTimeout(t);
+      }
       if (is3d && soundEnabled() && sim && !sim.f.neutral && hasClubChant(sim.sides[0].club.id)) playClubChant(sim.sides[0].club.id);
       const t = window.setTimeout(() => setIntro(false), is3d ? intro3d.arrival + intro3d.walk : INTRO_MS);
       return () => window.clearTimeout(t);

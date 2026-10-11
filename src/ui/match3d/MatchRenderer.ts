@@ -104,6 +104,7 @@ export class MatchRenderer {
   private lost = false;
   private disposed = false;
   private intro: Intro | null = null;
+  private introBegun = false;
   private introCaption = "";
   private flash = 0;
   private envRT: THREE.WebGLRenderTarget | null = null;
@@ -151,7 +152,7 @@ export class MatchRenderer {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = q !== "baixa";
-    this.renderer.shadowMap.type = q === "alta" ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     const room = new RoomEnvironment();
     this.envRT = pmrem.fromScene(room, 0.04);
@@ -178,6 +179,8 @@ export class MatchRenderer {
     box.addEventListener("pointerup", this.onUp);
     box.addEventListener("pointercancel", this.onUp);
     box.addEventListener("wheel", this.onWheel, { passive: false });
+    // depuração (só no servidor de desenvolvimento): window.__m3d
+    if (import.meta.env?.DEV) (window as unknown as { __m3d?: MatchRenderer }).__m3d = this;
   }
 
   private onLost = (e: Event) => {
@@ -204,7 +207,7 @@ export class MatchRenderer {
       }
       c.addPass(this.gtao);
     }
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(16, 16), 0.42, 0.55, 0.88);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(16, 16), 0.38, 0.5, 0.93);
     c.addPass(this.bloom);
     c.addPass(new OutputPass());
     this.grade = new ShaderPass(GRADE);
@@ -269,6 +272,8 @@ export class MatchRenderer {
   // ------------------------------------------------ abertura
   /** Começa a abertura: chegada do ônibus (opcional) e entrada dos times com os rituais. */
   startIntro(arrivalMs: number, walkMs: number) {
+    if (this.introBegun) return; // uma vez por partida
+    this.introBegun = true;
     if (this.o.reduced) arrivalMs = 0;
     const club = this.o.crowdSide === 0 || this.o.neutral ? this.o.home : this.o.away;
     const arrival = arrivalMs > 0 ? new Arrival({ ...club, level: Math.max(this.o.importance, this.o.festa), quality: this.o.quality, reduced: this.o.reduced }, arrivalMs) : null;
@@ -497,7 +502,7 @@ export class MatchRenderer {
       to = broadcastCam(b.x, b.z, aspect);
       const [lx, , lz] = to.look;
       const dx = to.pos[0] - lx, dy = to.pos[1], dz = to.pos[2] - lz;
-      const k = aspect < 1 ? 0.8 : 0.72;
+      const k = aspect < 1 ? 0.6 : 0.68;
       to = { pos: [lx + dx * k, dy * k * 0.9, lz + dz * k], look: [lx, 0.6, lz - 1], fov: aspect < 1 ? 40 : to.fov };
     }
     const tau = this.free && !closeUp && !replaying ? 90 : closeUp ? 140 : walk >= 0 ? 700 : 380;

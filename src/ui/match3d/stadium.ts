@@ -373,7 +373,7 @@ export class Stadium {
     const t = boardTexture(this.o);
     this.boards = t;
     this.disposables.push(t);
-    const m = new THREE.MeshStandardMaterial({ map: t, emissive: "#ffffff", emissiveMap: t, emissiveIntensity: 0.9, roughness: 0.4 });
+    const m = new THREE.MeshStandardMaterial({ map: t, emissive: "#ffffff", emissiveMap: t, emissiveIntensity: 0.5, roughness: 0.4 });
     const frame = new THREE.MeshStandardMaterial({ color: "#1a1d22", roughness: 0.6, metalness: 0.4 });
     const H = 0.95;
     const mk = (len: number, x: number, z: number, rot: number) => {

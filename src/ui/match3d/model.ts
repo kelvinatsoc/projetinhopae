@@ -241,7 +241,8 @@ export const FREE_MAX = 175;
 export function clampFree(f: FreeCam): FreeCam {
   return {
     yaw: f.yaw,
-    pitch: Math.max(0.08, Math.min(1.45, f.pitch)),
+    // de longe, a câmera sobe acima das arquibancadas (nunca fica atrás do paredão)
+    pitch: Math.max(0.08, Math.asin(Math.min(0.95, 62 / Math.max(1, f.dist))) * Math.min(1, Math.max(0, (f.dist - 25) / 30)), Math.min(1.45, f.pitch)),
     dist: Math.max(FREE_MIN, Math.min(FREE_MAX, f.dist)),
     panX: Math.max(-70, Math.min(70, f.panX)),
     panZ: Math.max(-50, Math.min(50, f.panZ)),
