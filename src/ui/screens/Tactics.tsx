@@ -2,7 +2,7 @@
 // instruções do time, mudanças de mentalidade programadas e linhas de entrosamento.
 import { useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { pitchLinks, teamLinkAvg } from "../../engine/chemistry";
-import { chemOf } from "../../engine/dressing";
+import { chemOf, dynDelta } from "../../engine/dressing";
 import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
 import { shortName } from "../../engine/player";
 import { FORMATION_DESC, FORMATIONS, MENTALITY_NAMES, ovrAt, POS_NAME, POS_ORDER, PRESSING_NAMES } from "../../engine/positions";
@@ -13,7 +13,7 @@ import type { Club, Lineup, Player, TeamInstr, World } from "../../engine/types"
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { TacticsAdvice } from "../Assistant";
-import { Avatar, Bar, Ovr, PosBadge, Sheet, Stars, Ic } from "../components";
+import { Avatar, Bar, DeltaTag, Ovr, PosBadge, Sheet, Stars, Ic } from "../components";
 import "../tactics.css";
 
 /** Reencaixa os mesmos 11 jogadores numa nova formação. */
@@ -133,11 +133,11 @@ export function TacticsScreen() {
         </div>
         <div className="tac-meter" title="Entrosamento dos titulares vizinhos em campo (minutos juntos, nacionalidade, base, tempo de casa)">
           <span className="tiny muted"><Ic n="link" size={13} /> Entrosamento em campo</span>
-          <Bar v={links} /><b className="kbd">{Math.round(links)}</b>
+          <Bar v={links} /><b className="kbd">{Math.round(links)}<DeltaTag d={dynDelta(w, "links", links)} /></b>
         </div>
         <div className="tac-meter" title="Entrosamento geral do grupo (vestiário)">
           <span className="tiny muted"><Ic n="users" size={13} /> Grupo</span>
-          <Bar v={chemOf(w, club)} /><b className="kbd">{Math.round(chemOf(w, club))}%</b>
+          <Bar v={chemOf(w, club)} /><b className="kbd">{Math.round(chemOf(w, club))}%<DeltaTag d={dynDelta(w, "chem", chemOf(w, club))} /></b>
         </div>
       </div>
 

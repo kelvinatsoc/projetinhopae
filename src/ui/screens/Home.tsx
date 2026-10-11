@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { formatDate } from "../../engine/calendar";
 import { COMP_META, leagueOf, nextFixture, sortTable } from "../../engine/competitions";
-import { chemOf } from "../../engine/dressing";
+import { chemOf, dynDelta, squadMood } from "../../engine/dressing";
 import { inboxUnread } from "../../engine/inbox";
 import { fanMood } from "../../engine/narrative";
 import { LEGENDS } from "../../data/legends";
@@ -10,7 +10,7 @@ import { push, setTab, update, useWorld } from "../../store";
 import { broadcasters, newsSource } from "../../engine/outlets";
 import { stadiumName } from "../../engine/sponsors";
 import { matchPhase, PhaseBanner } from "../MatchPhase";
-import { CompLogo, Crest, Icon, stadiumSrc, visibleColor, Ic, GIcon } from "../components";
+import { CompLogo, Crest, DeltaTag, Icon, stadiumSrc, visibleColor, Ic, GIcon } from "../components";
 import type { IconSlug } from "../icons";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard } from "./Board";
@@ -70,10 +70,11 @@ export function HomeScreen() {
   const unread = inboxUnread(w);
   const offers = w.career?.offers.length ?? 0;
 
-  const meters: { label: string; slug: "diretoria" | "torcida" | "vestiario"; v: number; go: () => void }[] = [
-    { label: "Diretoria", slug: "diretoria", v: w.board.confidence, go: () => push({ name: "board" }) },
-    { label: "Torcida", slug: "torcida", v: fanMood(w), go: () => push({ name: "inbox" }) },
-    { label: "Entrosamento", slug: "vestiario", v: chemOf(w, user), go: () => push({ name: "dressing" }) },
+  const meters: { label: string; slug: IconSlug; v: number; key: "board" | "fan" | "chem" | "mood"; go: () => void }[] = [
+    { label: "Diretoria", slug: "diretoria", key: "board", v: w.board.confidence, go: () => push({ name: "board" }) },
+    { label: "Torcida", slug: "torcida", key: "fan", v: fanMood(w), go: () => push({ name: "inbox" }) },
+    { label: "Entrosamento", slug: "tatica", key: "chem", v: chemOf(w, user), go: () => push({ name: "dressing" }) },
+    { label: "Clima do grupo", slug: "vestiario", key: "mood", v: squadMood(w, user), go: () => push({ name: "dressing" }) },
   ];
   const shortcuts: { label: string; slug: IconSlug; go: () => void; count?: number }[] = [
     { label: "Tática", slug: "tatica", go: () => push({ name: "tactics" }) },
@@ -99,15 +100,18 @@ export function HomeScreen() {
       <section className="ui-card status" aria-labelledby="st-h">
         <div className="sec-head"><h3 id="st-h">Momento do clube</h3><FormPills w={w} clubId={user.id} /></div>
         <ul className="meters">
-          {meters.map((m) => (
+          {meters.map((m) => {
+            const d = dynDelta(w, m.key, m.v);
+            return (
             <li key={m.label}>
-              <button className="meter" onClick={m.go} aria-label={`${m.label}: ${Math.round(m.v)} de 100`}>
+              <button className="meter" onClick={m.go} aria-label={`${m.label}: ${Math.round(m.v)} de 100${d ? ` (${d > 0 ? "+" : ""}${d} desde o último jogo)` : ""}`}>
                 <span className="meter-ic"><GIcon slug={m.slug} size={20} /></span>
-                <span className="meter-txt"><span>{m.label}</span><b className="num">{Math.round(m.v)}</b></span>
+                <span className="meter-txt"><span>{m.label}</span><span className="meter-num"><b className="num">{Math.round(m.v)}</b><DeltaTag d={d} /></span></span>
                 <span className="meter-bar" aria-hidden="true"><i className={m.v >= 66 ? "ok" : m.v >= 40 ? "mid" : "low"} style={{ width: `${Math.max(3, Math.min(100, m.v))}%` }} /></span>
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
         <p className="objective"><Ic n="target" /> <span><b>Meta:</b> {w.board.objective}{w.settings.casual ? " · modo casual" : ""}</span></p>
       </section>

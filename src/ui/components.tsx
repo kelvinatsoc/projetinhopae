@@ -205,8 +205,8 @@ export function cardTier(p: Player): string {
 }
 
 /** Carta de jogador estilo álbum: overall, posição, rosto, nome e condição. */
-export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
-  p: Player; club?: Club | null; season: number; starter?: boolean; onClick?: () => void; delay?: number;
+export function PlayerCard({ p, club, season, starter, onClick, delay = 0, mood }: {
+  p: Player; club?: Club | null; season: number; starter?: boolean; onClick?: () => void; delay?: number; mood?: ReactNode;
 }) {
   const injured = p.injury > 0;
   const banned = Object.values(p.bans).some((b) => b > 0);
@@ -222,6 +222,7 @@ export function PlayerCard({ p, club, season, starter, onClick, delay = 0 }: {
         {streakOf(p) === "hot" && <span title="Em alta">🔥</span>}
         {streakOf(p) === "cold" && <span title="Em baixa">🧊</span>}
         {p.fav && <span title="Ídolo da torcida">❤️</span>}
+        {mood && <span className="pc-mood">{mood}</span>}
       </div>
       <div className="pc-foot">
         <div className="pc-name">{p.name.split(" ").slice(-1)[0]}</div>
@@ -287,6 +288,15 @@ export function TrendArrow({ p, label }: { p: Player; label?: boolean }) {
       {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}{s === "hot" ? " 🔥" : s === "cold" ? " 🧊" : ""}
     </span>
   );
+}
+
+/** Setinha de variação desde o último jogo (▲3 / ▼2 / =). Sem referência, não mostra nada. */
+export function DeltaTag({ d, what = "desde o último jogo" }: { d: number | null; what?: string }) {
+  if (d == null) return null;
+  const cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
+  const txt = d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "=";
+  const lbl = d === 0 ? `sem variação ${what}` : `${d > 0 ? "+" : ""}${d} ${what}`;
+  return <span className={`delta-tag ${cls}`} title={lbl} aria-label={lbl}>{txt}</span>;
 }
 
 export function clubStars(level: number) {

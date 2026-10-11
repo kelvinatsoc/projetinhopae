@@ -2,19 +2,20 @@
 import { useState } from "react";
 import { withWorldRng } from "../../engine/common";
 import { ROLE_LABEL, ROLE_LIST, ROLE_SHARE, ROLE_SHORT, roleOf } from "../../engine/contracts";
-import { chemOf, leadersOf, moodEmoji, shareOf, talkOptions, talkTo, talkWait, unhappyCount, type TalkId, type TalkResult } from "../../engine/dressing";
+import { chemOf, dynDelta, leadersOf, moodEmoji, moraleDelta, shareOf, squadMood, talkOptions, talkTo, talkWait, unhappyCount, type TalkId, type TalkResult } from "../../engine/dressing";
 import { squadOf } from "../../engine/lineup";
 import { loanStats, loanUntilLabel } from "../../engine/loans";
 import type { Player, SquadRole } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Crest, Ovr, Sheet } from "../components";
+import { Avatar, Crest, DeltaTag, Ovr, Sheet } from "../components";
 import "../market.css";
 
 export function DressingScreen() {
   const w = useWorld();
   const club = w.clubs[w.userClubId];
   const chem = Math.round(chemOf(w, club));
+  const mood = Math.round(squadMood(w, club));
   const leaders = leadersOf(w, club);
   const squad = squadOf(w, club).sort((a, b) => {
     const pa = (a.wantsOut ? 2 : 0) + ((a.unhappy ?? 0) >= 2 ? 1 : 0);
@@ -24,13 +25,16 @@ export function DressingScreen() {
   const loaned = (club.loanedOut ?? []).map((id) => w.players[id]).filter((p): p is Player => !!p?.loan);
   const [talk, setTalk] = useState<Player | null>(null);
   const chemColor = chem >= 65 ? "var(--accent)" : chem >= 50 ? "var(--warn)" : "var(--danger)";
+  const moodColor = mood >= 65 ? "var(--accent)" : mood >= 45 ? "var(--warn)" : "var(--danger)";
 
   return (
     <div className="page">
       <div className="card">
-        <div className="row"><b className="grow">🤝 Entrosamento {chem}%</b></div>
+        <div className="row"><b className="grow">🤝 Entrosamento {chem}%<DeltaTag d={dynDelta(w, "chem", chem)} /></b></div>
         <div className="agent-bar"><i style={{ width: `${chem}%`, background: chemColor }} /></div>
-        <div className="small muted mt8">Time entrosado rende até 1% a mais; cada reforço derruba um pouco. Sobe com jogos e treinos (o foco Tático ajuda).</div>
+        <div className="row mt8"><b className="grow">🙂 Clima do grupo {mood}<DeltaTag d={dynDelta(w, "mood", mood)} /></b></div>
+        <div className="agent-bar"><i style={{ width: `${mood}%`, background: moodColor }} /></div>
+        <div className="small muted mt8">Entrosamento sobe quando a mesma base joga junta, com vitórias, boas atuações e treino (o foco Tático ajuda); cai com muitas trocas na escalação, reforços novos e derrotas. O clima é a moral média: vitórias e minutos animam, banco e promessas quebradas pesam. ▲▼ = variação desde o último jogo.</div>
       </div>
 
       {leaders.length > 0 && (
@@ -77,7 +81,7 @@ export function DressingScreen() {
                   </div>
                 </div>
                 <div className="row gap4">
-                  <span style={{ fontSize: 20 }}>{moodEmoji(p)}</span>
+                  <span style={{ fontSize: 20 }} title={`Moral ${p.morale}`}>{moodEmoji(p)}</span><DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" />
                   <button className="btn sm" style={{ minWidth: 40, minHeight: 40 }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>💬</button>
                 </div>
               </div>

@@ -21,7 +21,7 @@ import { clamp, gauss, hashString, rand, randInt, setRngState, getRngState } fro
 import { initialEntrants, startSeason } from "./season";
 import { generateRealSquad, migrateRealEstaduais } from "./estaduais";
 import { freeShirt } from "./transfers";
-import type { Club, CrestPattern, Div, Pos, Settings, World } from "./types";
+import type { Club, CrestPattern, Div, DynSnap, Pos, Settings, World } from "./types";
 import type { WorldData } from "../data/worldTypes";
 import { initWorldLeagues, leagueWageMult, registerWorldMetas, worldBalance } from "./worldLeagues";
 import { initIntl } from "./international";
@@ -290,9 +290,13 @@ export function migrateWorld(w: World, db: Database, world?: WorldData): { repai
 export function migrateDynamics(w: World) {
   const user = w.clubs[w.userClubId];
   if (user) ensureLinks(w, user);
+  // setinhas de variação: referência inválida (save mexido) some; a próxima partida cria outra
+  const dp = user?.dprev as Partial<DynSnap> | undefined;
+  if (user && dp !== undefined && (typeof dp !== "object" || dp === null || !dp.m || typeof dp.m !== "object"
+    || (["chem", "mood", "fan", "board", "links"] as const).some((k) => typeof dp[k] !== "number" || !Number.isFinite(dp[k])))) delete user.dprev;
   for (const c of Object.values(w.clubs)) {
     const t = c.tactic;
-    if (c.id !== w.userClubId) { delete c.links; delete c.lastXI; delete c.tfam; }
+    if (c.id !== w.userClubId) { delete c.links; delete c.lastXI; delete c.tfam; delete c.dprev; }
     if (t.roles && (!Array.isArray(t.roles) || t.roles.some((r) => r != null && !(r in ROLES)))) t.roles = Array.isArray(t.roles) ? t.roles.map((r) => (r != null && r in ROLES ? r : null)) : undefined;
     if (t.ti) for (const k of ["line", "width", "tempo", "direct"] as const) {
       const v = t.ti[k];

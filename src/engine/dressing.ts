@@ -3,8 +3,8 @@
 import { absDay } from "./common";
 import { defaultRole, ROLE_LABEL, ROLE_RANK, ROLE_SHARE, roleOf, seasonsAtClub } from "./contracts";
 import { addNews } from "./news";
-import { ensureLinks, growLinks, onLeaveLinks } from "./chemistry";
-import { addFan } from "./narrative";
+import { ensureLinks, growLinks, onLeaveLinks, teamLinkAvg } from "./chemistry";
+import { addFan, fanMood } from "./narrative";
 import { growFamiliarity } from "./tactics";
 import { H, hidOf } from "./personality";
 import { age } from "./player";
@@ -36,21 +36,134 @@ export function shareOf(p: Player): number | null {
   return pt[0] / pt[1];
 }
 
-/** Depois de cada partida do usuário (minutos, entrosamento). */
+/** Clima do grupo: moral média do elenco profissional (0-100). */
+export function squadMood(w: World, club: Club): number {
+  const ps = userPlayers(w, club);
+  return ps.length ? Math.round((ps.reduce((s, p) => s + p.morale, 0) / ps.length) * 10) / 10 : 70;
+}
+
+/** Guarda os medidores logo antes do jogo do usuário (a interface mostra a variação desde então). */
+export function snapDynamics(w: World, xi?: number[]) {
+  const club = w.clubs[w.userClubId];
+  if (!club) return;
+  const m: Record<string, number> = {};
+  for (const p of userPlayers(w, club)) m[p.id] = p.morale;
+  club.dprev = {
+    day: w.day,
+    chem: chemOf(w, club),
+    mood: squadMood(w, club),
+    fan: fanMood(w),
+    board: w.board.confidence,
+    links: Math.round(teamLinkAvg(w, club, xi ?? club.lastXI ?? []) * 10) / 10,
+    m,
+  };
+}
+
+/** Variação de um medidor desde o último jogo (null = sem referência). */
+export function dynDelta(w: World, key: "chem" | "mood" | "fan" | "board" | "links", now: number): number | null {
+  const prev = w.clubs[w.userClubId]?.dprev;
+  if (!prev || typeof prev[key] !== "number") return null;
+  return Math.round(now) - Math.round(prev[key]);
+}
+
+/** Variação da moral de um jogador desde o último jogo. */
+export function moraleDelta(w: World, p: Player): number | null {
+  const prev = w.clubs[w.userClubId]?.dprev?.m?.[p.id];
+  return typeof prev === "number" ? Math.round(p.morale) - Math.round(prev) : null;
+}
+
+/** Ganho/perda acima de 0 fica mais difícil perto do teto (e a queda perto do piso). */
+const soften = (d: number, v: number, lo: number, hi: number, span: number) =>
+  d > 0 ? d * clamp((hi - v) / span, 0, 1) : d * clamp((v - lo) / span, 0, 1);
+
+export interface ChemInputs {
+  chem: number; // entrosamento atual
+  kept: number; // titulares repetidos do último jogo
+  n: number; // titulares neste jogo
+  res: number; // 1 vitória, 0 empate, -1 derrota
+  margin: number; // saldo do jogo (gols pró - contra)
+  rating: number; // nota média dos titulares
+  links: number; // entrosamento em campo dos titulares (pares vizinhos, 0-100)
+}
+
+/**
+ * Variação do entrosamento do time num jogo. Alguns pontos por rodada:
+ * base repetida soma, rodízio grande e reforços estreantes tiram, resultado e atuação pesam.
+ */
+export function chemMatchDelta(x: ChemInputs): number {
+  const stab = x.n ? x.kept / x.n : 1;
+  const together = 1.5 - 6 * (1 - stab); // 11 iguais +1,5 · 2 trocas +0,4 · 5 trocas −1,2 · time novo −4,5
+  const result = x.res > 0 ? 2 + (x.margin >= 2 ? 0.5 : 0) : x.res < 0 ? -2.5 - (x.margin <= -3 ? 0.5 : 0) : 0;
+  const perf = clamp((x.rating - 6.5) * 2, -2, 2);
+  const pairs = clamp((x.links - 40) / 10, -1.5, 1.5); // estreantes e duplas novas em campo puxam para baixo
+  let d = together + result + perf + pairs;
+  d = soften(d, x.chem, 0, 100, 35);
+  d += (70 - x.chem) * 0.05; // nada fica cravado no teto ou no chão
+  return Math.round(d * 10) / 10;
+}
+
+/** Moral depois do jogo: resultado, nota, minutos (banco de quem esperava jogar) e promessas. */
+function moraleAfterMatch(w: World, club: Club, f: Fixture, r: MatchResult, userIdx: 0 | 1, res: number) {
+  const played = new Set(r.lineups[userIdx]);
+  // capitão com a jogada "Líder" segura o grupo nas derrotas
+  let lossHit = -5;
+  if (res < 0) {
+    const capId = club.lineup?.captain != null && played.has(club.lineup.captain)
+      ? club.lineup.captain
+      : [...played].map((id) => w.players[id]).filter(Boolean).sort((a, b) => b.fame + b.ovr - (a.fame + a.ovr))[0]?.id;
+    if (capId != null && w.players[capId] && hasTrait(w.players[capId], "LID")) lossHit = -3;
+  }
+  for (const p of userPlayers(w, club)) {
+    const out = p.injury > 0 || (p.bans[f.comp] ?? 0) > 0;
+    let d: number;
+    if (played.has(p.id)) {
+      const rating = r.ratings[p.id] ?? 6.5;
+      d = (res > 0 ? 5 : res < 0 ? lossHit : 0) + clamp((rating - 6.5) * 2, -3, 3);
+    } else if (out) {
+      d = res > 0 ? 1 : res < 0 ? -1 : 0;
+    } else {
+      // ficou de fora podendo jogar: comemora menos e, se esperava minutos, reclama
+      const E = ROLE_SHARE[p.role ?? defaultRole(w, club, p)];
+      d = (res > 0 ? 1 : res < 0 ? -2 : 0) - (E >= 0.6 ? 3 : E >= 0.35 ? 1.5 : 0) - (p.promise ? 2 : 0);
+    }
+    d = soften(d, p.morale, moraleFloor(p), 100, 40) + (70 - p.morale) * 0.04;
+    addMorale(p, d);
+  }
+}
+
+/** Depois de cada partida do usuário (minutos, entrosamento, moral do grupo). */
 export function afterUserMatch(w: World, f: Fixture, r: MatchResult, userIdx: 0 | 1) {
   const club = w.clubs[w.userClubId];
   if (!club) return;
-  const played = new Set(r.lineups[userIdx]);
+  const lu = r.lineups[userIdx];
+  const xi = lu.slice(0, 11);
+  const played = new Set(lu);
   for (const p of userPlayers(w, club)) {
     const on = played.has(p.id);
     if (!on && (p.injury > 0 || (p.bans[f.comp] ?? 0) > 0)) continue;
     const pt = p.pt ?? [0, 0];
     p.pt = [pt[0] + (on ? 1 : 0), pt[1] + 1];
   }
-  addChem(club, 0.5);
+  const us = userIdx === 0 ? r.hg : r.ag;
+  const them = userIdx === 0 ? r.ag : r.hg;
+  const res = Math.sign(us - them);
+  // entrosamento do time: lido antes de os pares crescerem e de o último XI ser trocado
+  ensureLinks(w, club);
+  const prevXI = club.lastXI ? new Set(club.lastXI) : null;
+  const rated = xi.map((id) => r.ratings[id]).filter((v): v is number => typeof v === "number");
+  addChem(club, chemMatchDelta({
+    chem: chemOf(w, club),
+    kept: prevXI ? xi.filter((id) => prevXI.has(id)).length : xi.length,
+    n: xi.length,
+    res,
+    margin: us - them,
+    rating: rated.length ? rated.reduce((s, v) => s + v, 0) / rated.length : 6.5,
+    links: teamLinkAvg(w, club, xi),
+  }));
+  club.chem = Math.round(club.chem! * 10) / 10;
+  moraleAfterMatch(w, club, f, r, userIdx, res);
   // entrosamento entre pares e familiaridade com o sistema (chemistry.ts / tactics.ts)
-  const lu = r.lineups[userIdx];
-  growLinks(w, club, lu, lu.slice(0, 11));
+  growLinks(w, club, lu, xi);
   growFamiliarity(club, 1.2);
 }
 
@@ -187,8 +300,10 @@ export function managerChanged(w: World) {
   const club = w.clubs[w.userClubId];
   if (!club) return;
   club.chem = 50;
-  for (const c of Object.values(w.clubs)) if (c.id !== club.id) { delete c.links; delete c.lastXI; delete c.tfam; }
+  for (const c of Object.values(w.clubs)) if (c.id !== club.id) { delete c.links; delete c.lastXI; delete c.tfam; delete c.dprev; }
   delete club.links;
+  delete club.lastXI;
+  delete club.dprev;
   ensureLinks(w, club);
   for (const id of club.players) {
     const p = w.players[id];

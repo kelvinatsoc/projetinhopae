@@ -11,7 +11,7 @@ import { userNtFixtureOn } from "./ntManager";
 import { inWindow, isMonthStart, LEGEND_WAVE_DAY, MID_SEASON_DAY, seasonEndDay, YOUTH_INTAKE_DAY, YOUTH_PREVIEW_DAY } from "./calendar";
 import { fixtureById, progressCompetitions, recordResult } from "./competitions";
 import { goalBonuses } from "./contracts";
-import { afterUserMatch, monthlyMood } from "./dressing";
+import { afterUserMatch, monthlyMood, snapDynamics } from "./dressing";
 import { attendanceFor, gateRevenue, monthlyFinances } from "./finance";
 import { clubStrength } from "./lineup";
 import { aiLoanDay, loanDigest, processLoanReturns } from "./loans";
@@ -20,7 +20,6 @@ import { addNews } from "./news";
 import { age } from "./player";
 import { clamp, getRngState, setRngState } from "./rng";
 import { scoutTick } from "./scouting";
-import { hasTrait } from "./traits";
 import { checkScenario } from "./scenarios";
 import { boardAfterMatch, endSeason } from "./season";
 import { staffMonthly } from "./staff";
@@ -52,6 +51,8 @@ export function userFixtureOn(w: World, day: number): Fixture | undefined {
 
 /** Aplica o resultado de uma partida: tabela, estatísticas, cartões, moral, finanças. */
 export function applyResult(w: World, f: Fixture, r: MatchResult) {
+  const userSide = f.home === w.userClubId ? 0 : f.away === w.userClubId ? 1 : -1;
+  if (userSide >= 0) snapDynamics(w, r.lineups[userSide as 0 | 1].slice(0, 11)); // "antes" do jogo para as setinhas
   f.result = r;
   r.attendance = attendanceFor(w, f);
   gateRevenue(w, f, r.attendance);
@@ -66,14 +67,8 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
     const scored = idx === 0 ? r.hg : r.ag;
     const conceded = idx === 0 ? r.ag : r.hg;
     const played = new Set(r.lineups[idx]);
-    // capitão com a jogada "Líder" segura o grupo nas derrotas (só o clube do usuário)
-    let lossDelta = -4;
-    if (clubId === w.userClubId && scored < conceded) {
-      const capId = club.lineup?.captain != null && played.has(club.lineup.captain)
-        ? club.lineup.captain
-        : [...played].map((id) => w.players[id]).filter(Boolean).sort((a, b) => b.fame + b.ovr - (a.fame + a.ovr))[0]?.id;
-      if (capId != null && w.players[capId] && hasTrait(w.players[capId], "LID")) lossDelta = -2;
-    }
+    // a moral do clube do usuário é tratada no vestiário (dressing.ts → afterUserMatch)
+    const mine = clubId === w.userClubId;
     // quem estava suspenso cumpriu a suspensão
     for (const id of club.players) {
       const p = w.players[id];
@@ -90,7 +85,8 @@ export function applyResult(w: World, f: Fixture, r: MatchResult) {
       p.form.push(rating);
       if (p.form.length > 5) p.form.shift();
       if (p.pos === "GOL" && conceded === 0) p.stats.cs++;
-      const delta = scored > conceded ? 4 : scored < conceded ? lossDelta : 0;
+      if (mine) continue;
+      const delta = scored > conceded ? 4 : scored < conceded ? -4 : 0;
       p.morale = clamp(p.morale + delta + (rating >= 7.5 ? 2 : rating < 5.5 ? -2 : 0), p.wantsOut ? 30 : 15, 100);
     }
   });
