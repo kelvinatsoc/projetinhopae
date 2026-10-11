@@ -16,8 +16,8 @@
       "plan": "oval",
       "n": 2.1,
       "inner": [
-        66,
-        47
+        84,
+        58
       ],
       "tiers": [
         {
@@ -27,11 +27,9 @@
           "seats": [
             "#c4122f",
             "#c4122f",
-            "#c4122f",
-            "#f2f2f2",
-            "#151515"
+            "#b8102b"
           ],
-          "pattern": "mosaic"
+          "pattern": "solid"
         },
         {
           "gap": -6,
@@ -42,8 +40,7 @@
             "#c4122f",
             "#c4122f",
             "#c4122f",
-            "#c4122f",
-            "#f2f2f2",
+            "#d9d6d0",
             "#151515"
           ],
           "pattern": "mosaic",
@@ -52,7 +49,7 @@
       ],
       "roof": {
         "type": "ring",
-        "cover": 54,
+        "cover": 44,
         "height": 50,
         "drop": 4,
         "color": "#f3f5f6",
@@ -62,21 +59,21 @@
         "innerRing": true
       },
       "facade": {
-        "type": "columns",
-        "color": "#b8b3a9",
-        "color2": "#7d786f",
-        "count": 96,
-        "lean": 10
+        "type": "cantilever",
+        "color": "#d3cfc6",
+        "color2": "#c4122f",
+        "count": 0
       },
       "lights": "rim",
       "screens": 2,
-      "plaza": "#bdb6aa",
-      "note": "Oval de concreto aparente de 1960, anel inferior baixo e anel superior alto em balanço, pilares externos inclinados, cobertura nova translúcida/branca sobre as arquibancadas e cadeiras vermelhas com setores brancos e pretos.",
+      "plaza": "#b9a58a",
+      "note": "Oval de concreto aparente de 1960 (Vilanova Artigas): pista em volta do campo, anel inferior baixo e anel superior alto em balanço, com a borda branca e friso vermelho por fora e a circulação escura sob o balanço; cadeiras vermelhas (com setores brancos e pretos), esplanada da Praça Roberto Gomes Pedrosa e cobertura nova translúcida.",
       "ramps": 4,
       "terrain": {
         "slope": 0.045,
         "dir": 200
-      }
+      },
+      "track": "#a9442f"
     },
     "maracana": {
       "name": "Maracanã",

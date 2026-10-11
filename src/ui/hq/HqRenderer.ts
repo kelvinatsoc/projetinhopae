@@ -22,7 +22,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { frameDt } from "../animTime";
 import { rng, pts, area, centroid, minRect, noise2, superEllipse, type P2 } from "./geo";
 import { applyCustom, buildStadium, findModel, fitToBowl, genericModel, type StadiumCustom, type StadiumModel, type TexFactory } from "./stadium";
-import { buildCity, type GeoOsm } from "./city";
+import { buildCity, mergeExtruded, type GeoOsm } from "./city";
 
 export type { GeoOsm } from "./city";
 export type HqBuilding = "stadium" | "office" | "training" | "locker" | "academy" | "medical" | "press" | "scouting";
@@ -138,6 +138,9 @@ export class HqRenderer {
   private overview = { target: new THREE.Vector3(), dist: 80 };
   private idleSince = 0;
   private tourI = 0;
+  private stadiumRing: P2[] | null = null;
+  /** escudos (sprites) que não entram no GTAO */
+  private overlays: THREE.Object3D[] = [];
   /** desnível do terreno em volta do estádio: inclinação (m/m) e direção da subida (graus; 0 = leste, 90 = sul) */
   private slope: { k: number; dir: number; c: THREE.Vector3 } | null = null;
   /** altura (unidades) do terreno inclinado no ponto (x, z) da cena */
@@ -198,6 +201,13 @@ export class HqRenderer {
       const ao = new GTAOPass(this.scene, this.camera, 1, 1);
       ao.updateGtaoMaterial({ radius: 2.2, distanceExponent: 1.4, thickness: 2, scale: 1.1, samples: this.q >= 4 ? 16 : 8 });
       ao.blendIntensity = 0.9;
+      // o GTAO desenha tudo com material próprio (ignora a transparência): os escudos ficam de fora
+      const render = ao.render.bind(ao);
+      ao.render = (...args: Parameters<GTAOPass["render"]>) => {
+        for (const s of this.overlays) s.visible = false;
+        render(...args);
+        for (const s of this.overlays) s.visible = true;
+      };
       c.addPass(ao);
     }
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), this.o.night ? 0.9 : 0.18, 0.5, this.o.night ? 0.6 : 0.92);
@@ -226,12 +236,14 @@ export class HqRenderer {
       this.texCache.push(t);
       const mk = (p: THREE.Vector3 | undefined, size: number, dy: number) => {
         if (!p) return;
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+        // alphaTest + depthWrite: o escudo entra no buffer de profundidade (sem "sombra" do GTAO atrás)
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, alphaTest: 0.5, depthWrite: true }));
         sp.scale.set(size, size * 1.1, 1);
         sp.position.set(p.x, p.y + dy, p.z);
+        this.overlays.push(sp);
         this.scene.add(sp);
       };
-      mk(this.anchors.stadium, 5, 1.5);
+      mk(this.anchors.stadium, 2.6, 1.6);
       mk(this.anchors.office, 2.4, 0.6);
       mk(this.anchors.training, 2.4, 0.6);
       mk(this.anchors.locker, 1.6, 0.4);
@@ -369,7 +381,9 @@ export class HqRenderer {
       for (const p of centers) d = Math.min(d, Math.hypot(x - p.x, z - p.z));
       const n = nz(x / 90, z / 90) * 0.7 + nz(x / 30 + 7, z / 30) * 0.3;
       const k = Math.min(1, Math.max(0, (d - R - 4) / 60));
-      pos.setY(i, (n - 0.35) * 26 * k * k - 0.3 + this.slopeY(x, z));
+      let sy = this.slopeY(x, z);
+      if (this.slope && this.stadiumRing) { const r = Math.hypot(x - this.slope.c.x, z - this.slope.c.z); const f = Math.min(1, Math.max(0, (r - 24) / 10)); sy = Math.min(sy, sy * f) - (1 - f) * 0.6; }
+      pos.setY(i, (n - 0.35) * 26 * k * k - 0.3 + sy);
       const u = Math.min(1, Math.max(0, (d - R + 10) / 70));
       c.copy(city).lerp(n > 0.6 ? wood : n < 0.35 ? dry : grass, u);
       col.push(c.r, c.g, c.b);
@@ -528,7 +542,14 @@ export class HqRenderer {
       const lx = (dx * cos - dz * sin) / fit.sx, lz = (dx * sin + dz * cos) / fit.sz;
       return Math.abs(lx / ra) ** n + Math.abs(lz / rb) ** n < 1;
     };
-    void superEllipse;
+    // contorno da esplanada (m, relativo à ilha): vira buraco no chão da ilha e muro de arrimo no desnível
+    const ring: P2[] = [];
+    for (let i = 0; i < 96; i++) {
+      const [lx, lz] = superEllipse((i / 96) * Math.PI * 2, ra, rb, n);
+      const X = lx * fit.sx, Z = lz * fit.sz;
+      ring.push([fit.x + X * cos + Z * sin, fit.z - X * sin + Z * cos]);
+    }
+    this.stadiumRing = ring;
     if (model.terrain) this.slope = { k: model.terrain.slope, dir: model.terrain.dir, c: c.clone() };
     return { avoid, outer: [A * fit.sx, B * fit.sz] as [number, number], rotY: fit.rotY, x: fit.x, z: fit.z };
   }
@@ -538,6 +559,7 @@ export class HqRenderer {
     const data = osm ?? this.fakeOsm(kind);
     const lod = buildCity(data, {
       q: this.q, night: this.o.night, tex: this.tex, mat: this.smat, radius: ISLAND_M, avoid, skip,
+      hole: kind === "stadium" && this.slope ? this.stadiumRing ?? undefined : undefined,
       seed: Math.round(c.x * 31 + c.z * 17) + 5, farAt: 480,
     });
     lod.scale.setScalar(1 / U);
@@ -546,6 +568,21 @@ export class HqRenderer {
     if (kind === "stadium" && this.slope) {
       const d = (this.slope.dir * Math.PI) / 180, k = this.slope.k;
       lod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-k * Math.cos(d), 1, -k * Math.sin(d)).normalize());
+      // muro de arrimo em volta da esplanada (o estádio fica nivelado, cortado no terreno)
+      if (this.stadiumRing) {
+        const pos: number[] = [], idx: number[] = [];
+        const ring = this.stadiumRing;
+        ring.forEach(([x, z], i) => {
+          const h = (k * (x * Math.cos(d) + z * Math.sin(d))) / U;
+          pos.push(c.x + x / U, Math.min(0, h) - 0.15, c.z + z / U, c.x + x / U, Math.max(0, h) + 0.02, c.z + z / U);
+          const j = (i + 1) % ring.length;
+          idx.push(i * 2, j * 2, i * 2 + 1, i * 2 + 1, j * 2, j * 2 + 1);
+        });
+        const wg = new THREE.BufferGeometry();
+        wg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        wg.setIndex(idx); wg.computeVertexNormals();
+        this.scene.add(this.mesh(wg, this.smat({ color: 0xbdb7ab, roughness: 0.95, side: THREE.DoubleSide }), true, true));
+      }
     }
     this.scene.add(lod);
   }
@@ -624,7 +661,7 @@ export class HqRenderer {
       x.fillStyle = this.o.colors[0]; x.fillRect(0, 0, 128, 6);
     }, true);
     if (win) win.repeat.set(1 / 6, 1 / 6);
-    const m = this.mesh(mergeGeometries(geos, true), [
+    const m = this.mesh(mergeExtruded(geos)!, [
       this.smat({ color: roofColor, roughness: 0.7 }),
       this.smat({ color: 0xffffff, map: win ?? undefined, roughness: 0.6, emissive: this.o.night ? 0xffffff : 0x000000, emissiveMap: this.o.night ? win ?? undefined : undefined, emissiveIntensity: this.o.night ? 0.35 : 0 }),
     ]);

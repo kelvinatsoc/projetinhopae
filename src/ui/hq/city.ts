@@ -31,6 +31,8 @@ export interface CityOpts {
   radius: number;            // m
   /** pontos (m) onde não pode nascer árvore nem prédio de enchimento */
   avoid?: (x: number, z: number) => boolean;
+  /** buraco no chão da ilha (contorno em m, ex.: a esplanada do estádio encaixado no desnível) */
+  hole?: P2[];
   /** índices de prédios que quem chama desenha (prédios do clube) */
   skip?: Set<number>;
   seed: number;
@@ -91,6 +93,33 @@ function fillPoly(p: P2[], y: number): THREE.BufferGeometry | null {
   return g;
 }
 
+/**
+ * Junta prédios extrudados mantendo telhado (grupo 0) e paredes (grupo 1) separados.
+ * (mergeGeometries com grupos numera um grupo por geometria, o que sumia com quase todos os prédios.)
+ */
+export function mergeExtruded(list: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
+  if (!list.length) return null;
+  const parts: THREE.BufferGeometry[][] = [[], []];
+  for (const g0 of list) {
+    const g = g0.index ? g0.toNonIndexed() : g0;
+    const groups = g.groups.length ? g.groups : [{ start: 0, count: (g.attributes.position as THREE.BufferAttribute).count, materialIndex: 1 }];
+    for (const gr of groups) {
+      const part = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(g.attributes)) {
+        const a = attr as THREE.BufferAttribute;
+        part.setAttribute(name, new THREE.BufferAttribute(a.array.slice(gr.start * a.itemSize, (gr.start + gr.count) * a.itemSize), a.itemSize));
+      }
+      parts[Math.min(1, gr.materialIndex ?? 1)].push(part);
+    }
+  }
+  const caps = parts[0].length ? mergeGeometries(parts[0]) : null, sides = parts[1].length ? mergeGeometries(parts[1]) : null;
+  const both = [caps, sides].filter(Boolean) as THREE.BufferGeometry[];
+  const out = mergeGeometries(both, true);
+  // grupos: 0 = telhados, 1 = paredes
+  if (out && both.length === 1) out.groups[0].materialIndex = caps ? 0 : 1;
+  return out;
+}
+
 const flatOf = (e: [number, number[]] | number[]): [number, number[]] => (Array.isArray(e[1]) ? (e as [number, number[]]) : [0, e as number[]]);
 
 /** Monta o entorno; devolve um LOD (perto: tudo; longe: só o essencial). */
@@ -110,7 +139,17 @@ export function buildCity(osm: GeoOsm, o: CityOpts): THREE.LOD {
     x.strokeStyle = "rgba(0,0,0,0.06)"; for (let i = 0; i < 256; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.moveTo(0, i); x.lineTo(256, i); x.stroke(); }
   }, true);
   if (groundTex) groundTex.repeat.set(1 / 40, 1 / 40);
-  const gg = new THREE.CircleGeometry(R * 1.04, 96); gg.rotateX(-Math.PI / 2);
+  let gg: THREE.BufferGeometry;
+  if (o.hole && o.hole.length > 3) {
+    const sh = new THREE.Shape();
+    for (let i = 0; i <= 96; i++) { const a = (i / 96) * Math.PI * 2; const x = Math.cos(a) * R * 1.04, y = Math.sin(a) * R * 1.04; if (i) sh.lineTo(x, y); else sh.moveTo(x, y); }
+    // furo com orientação oposta à do contorno
+    const hp = o.hole.map(([x, z]) => new THREE.Vector2(x, -z));
+    const ccw = THREE.ShapeUtils.isClockWise(hp);
+    sh.holes.push(new THREE.Path(ccw ? hp : hp.reverse()));
+    gg = new THREE.ShapeGeometry(sh, 1);
+  } else gg = new THREE.CircleGeometry(R * 1.04, 96);
+  gg.rotateX(-Math.PI / 2);
   const gpos = gg.attributes.position as THREE.BufferAttribute, guv = gg.attributes.uv as THREE.BufferAttribute;
   for (let i = 0; i < guv.count; i++) guv.setXY(i, gpos.getX(i), gpos.getZ(i));
   const ground = new THREE.Mesh(gg, mat({ color: groundTex ? 0xffffff : 0xb4aea2, map: groundTex ?? undefined, roughness: 1 }));
@@ -308,13 +347,70 @@ export function buildCity(osm: GeoOsm, o: CityOpts): THREE.LOD {
     (house ? low : tall).push(g);
     if (h > 14 || a > 900) bigFar.push(g);
   }
+  // ---------------- lotes: onde o OSM ainda não mapeou as casas (comum em bairros residenciais),
+  // preenche as quadras ao longo das ruas locais com casas baixas de telhado cerâmico
+  if (nb < 900 && (osm.roads?.length ?? 0) > 20) {
+    const CS = 5, NG = Math.ceil((2 * R) / CS);
+    const occ = new Uint8Array(NG * NG);
+    const cell = (x: number, z: number) => { const i = Math.floor((x + R) / CS), j = Math.floor((z + R) / CS); return i < 0 || j < 0 || i >= NG || j >= NG ? -1 : j * NG + i; };
+    const mark = (x: number, z: number, r: number) => {
+      for (let dz = -r; dz <= r; dz += CS) for (let dx = -r; dx <= r; dx += CS) { const k = cell(x + dx, z + dz); if (k >= 0) occ[k] = 1; }
+    };
+    for (const [cls, f] of osm.roads ?? []) {
+      const p = pts(f), w = ROAD_W[Math.max(0, Math.min(5, cls))] / 2 + 3;
+      for (let i = 1; i < p.length; i++) {
+        const L = Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+        for (let s = 0; s <= L; s += CS * 0.8) { const t = s / (L || 1); mark(p[i - 1][0] + (p[i][0] - p[i - 1][0]) * t, p[i - 1][1] + (p[i][1] - p[i - 1][1]) * t, w); }
+      }
+    }
+    for (const [, f] of blds) { const p = pts(f); if (p.length < 3) continue; const c = centroid(p); mark(c[0], c[1], Math.sqrt(Math.abs(area(p))) / 2 + 2); }
+    for (const [, p] of greenPolys) { const mr = minRect(p); if (mr.hw * mr.hh > 400) for (let dz = -mr.hh; dz <= mr.hh; dz += CS) for (let dx = -mr.hw; dx <= mr.hw; dx += CS) {
+      const x = mr.cx + dx * Math.cos(mr.ang) - dz * Math.sin(mr.ang), z = mr.cz + dx * Math.sin(mr.ang) + dz * Math.cos(mr.ang);
+      if (inside([x, z], p)) mark(x, z, 0);
+    } }
+    for (const f of osm.water ?? []) { const p = pts(f); const mr = minRect(p); for (let dz = -mr.hh; dz <= mr.hh; dz += CS) for (let dx = -mr.hw; dx <= mr.hw; dx += CS) mark(mr.cx + dx * Math.cos(mr.ang) - dz * Math.sin(mr.ang), mr.cz + dx * Math.sin(mr.ang) + dz * Math.cos(mr.ang), 0); }
+    const maxFill = [0, 350, 650, 1000, 1300, 1600][q];
+    let nf = 0;
+    const free = (x: number, z: number) => { const k = cell(x, z); return k >= 0 && !occ[k]; };
+    for (const [cls, f] of osm.roads ?? []) {
+      if (cls < 1 || cls > 2 || nf >= maxFill) continue;
+      const p = pts(f), w = ROAD_W[cls] / 2;
+      for (let i = 1; i < p.length && nf < maxFill; i++) {
+        const [x1, z1] = p[i - 1], [x2, z2] = p[i];
+        const L = Math.hypot(x2 - x1, z2 - z1); if (L < 12) continue;
+        const ux = (x2 - x1) / L, uz = (z2 - z1) / L, nx = -uz, nz = ux;
+        for (let s = 7; s < L - 7 && nf < maxFill; s += 13) for (const side of [-1, 1]) {
+          const lw = 9 + r() * 3, ld = 12 + r() * 8, off = w + 4 + ld / 2;
+          const cx = x1 + ux * s + nx * off * side, cz = z1 + uz * s + nz * off * side;
+          if (!inR(cx, cz) || avoid(cx, cz) || !free(cx, cz) || !free(cx + nx * side * ld * 0.4, cz + nz * side * ld * 0.4)) continue;
+          mark(cx, cz, 4);
+          const hx = lw / 2, hz = ld / 2;
+          const corners: P2[] = [[-hx, -hz], [hx, -hz], [hx, hz], [-hx, hz]].map(([a, b]) => [cx + ux * a + nx * side * b, cz + uz * a + nz * side * b]);
+          const shape = new THREE.Shape((area(corners) > 0 ? corners : [...corners].reverse()).map(([x, z]) => new THREE.Vector2(x, -z)));
+          const h = r() < 0.08 ? 9 + r() * 4 : 4 + r() * 3.5;
+          const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 1 });
+          g.rotateX(-Math.PI / 2);
+          col.set(housePal[Math.floor(r() * housePal.length)]);
+          const n = (g.attributes.position as THREE.BufferAttribute).count, cols = new Float32Array(n * 3);
+          for (let k = 0; k < n; k++) { cols[k * 3] = col.r; cols[k * 3 + 1] = col.g; cols[k * 3 + 2] = col.b; }
+          g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+          low.push(g);
+          // quintal com árvore
+          if (r() < 0.45) streetTrees.push([cx + nx * side * (ld / 2 + 3), cz + nz * side * (ld / 2 + 3)]);
+          nf++;
+        }
+      }
+    }
+  }
   const wallM = mat({ color: 0xffffff, map: wt ?? undefined, vertexColors: true, roughness: 0.75, emissive: lt ? 0xffffff : 0x000000, emissiveMap: lt ?? undefined, emissiveIntensity: lt ? 0.9 : 0 });
   const roofM = mat({ color: 0xffffff, map: roofTex ?? undefined, roughness: 0.95 });
   const houseWall = mat({ color: 0xffffff, vertexColors: true, roughness: 0.9 });
   const tileM = mat({ color: 0xb4553a, roughness: 0.85 });
   const addB = (list: THREE.BufferGeometry[], walls: THREE.Material, roofs: THREE.Material) => {
     if (!list.length) return;
-    const m = new THREE.Mesh(mergeGeometries(list, true), [roofs, walls]);
+    const g = mergeExtruded(list);
+    if (!g) return;
+    const m = new THREE.Mesh(g, [roofs, walls]);
     m.castShadow = true; m.receiveShadow = true;
     near.add(m);
   };

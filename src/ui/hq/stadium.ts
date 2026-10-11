@@ -20,7 +20,7 @@ export interface RoofSpec {
   side?: number; span?: number; retractable?: boolean;
 }
 export interface FacadeSpec {
-  type: "columns" | "frame" | "ribbons" | "waves" | "glass" | "panels" | "membrane" | "classic" | "plain";
+  type: "columns" | "frame" | "ribbons" | "waves" | "cantilever" | "glass" | "panels" | "membrane" | "classic" | "plain";
   color: string; color2?: string; count?: number; lean?: number; fork?: boolean;
 }
 export interface StadiumModel {
@@ -165,6 +165,13 @@ function loft(rings: THREE.Vector3[][], segOn: boolean[], closed: boolean, uLen 
 }
 
 const C = (c: string) => new THREE.Color(c);
+
+/** Furo com a orientação oposta à do contorno (o earcut do three exige). */
+function oppositeHole(shape: THREE.Shape, hole: THREE.Vector2[]): THREE.Path {
+  const cw = THREE.ShapeUtils.isClockWise(shape.getPoints());
+  const hcw = THREE.ShapeUtils.isClockWise(hole);
+  return new THREE.Path(cw === hcw ? [...hole].reverse() : hole);
+}
 
 /** Constrói o estádio (Group em metros, origem no centro do campo, eixo longo em +x). */
 export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THREE.Group; topY: number; outer: [number, number] } {
@@ -320,6 +327,18 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
         const k = fac.count ?? 8, bh = H / k;
         for (let i = 0; i < k; i++) { x.fillStyle = fc2; x.fillRect(0, i * bh + bh * 0.62, W, bh * 0.38); }
         x.fillStyle = "rgba(255,255,255,0.25)"; for (let i = 0; i < k; i++) x.fillRect(0, i * bh, W, 3);
+        break;
+      }
+      case "cantilever": {
+        // Morumbis: base de concreto claro com janelas, faixa escura recuada (circulação sob o anel
+        // superior, com as vigas em balanço aparentes) e a borda branca do anel superior com friso vermelho
+        x.fillStyle = fc; x.fillRect(0, 0, W, H);
+        x.fillStyle = "#3b3a37"; x.fillRect(0, H * 0.3, W, H * 0.36);
+        for (let i = 0; i < 16; i++) { x.fillStyle = "#a9a49a"; x.fillRect(i * (W / 16), H * 0.3, 7, H * 0.36); }
+        x.fillStyle = "#f2f1ec"; x.fillRect(0, 0, W, H * 0.3);
+        x.fillStyle = fc2; x.fillRect(0, 4, W, 7);
+        x.fillStyle = "rgba(0,0,0,0.12)"; x.fillRect(0, H * 0.3 - 6, W, 6);
+        for (let i = 0; i < 24; i++) { x.fillStyle = o.night ? "#ffd98a" : "#4f5d68"; x.fillRect(i * (W / 24) + 4, H * 0.76, W / 24 - 8, H * 0.1); }
         break;
       }
       case "waves": {
@@ -609,7 +628,7 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
       s.moveTo(-L, -r); s.lineTo(L, -r); s.absarc(L, 0, r, -Math.PI / 2, Math.PI / 2, false); s.lineTo(-L, r); s.absarc(-L, 0, r, Math.PI / 2, (3 * Math.PI) / 2, false);
       return s;
     };
-    const outer = trackShape(46.3); outer.holes.push(trackShape(36.5) as unknown as THREE.Path);
+    const outer = trackShape(46.3); outer.holes.push(oppositeHole(outer, trackShape(36.5).getPoints(24)));
     const tg = new THREE.ShapeGeometry(outer, 24); tg.rotateX(-Math.PI / 2);
     // uv radial para as raias
     const p = tg.attributes.position as THREE.BufferAttribute; const uv = tg.attributes.uv as THREE.BufferAttribute;
@@ -714,7 +733,7 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
   for (let i = 0; i <= N; i++) { const p = at(i % N, outR[i % N] + pr, 0); if (i === 0) plazaShape.moveTo(p.x, -p.z); else plazaShape.lineTo(p.x, -p.z); }
   const hole = new THREE.Path();
   for (let i = 0; i <= N; i++) { const p = at(i % N, outR[i % N] - 0.5, 0); if (i === 0) hole.moveTo(p.x, -p.z); else hole.lineTo(p.x, -p.z); }
-  plazaShape.holes.push(hole);
+  plazaShape.holes.push(oppositeHole(plazaShape, hole.getPoints()));
   const pg = new THREE.ShapeGeometry(plazaShape, 2); pg.rotateX(-Math.PI / 2);
   const paving = tex(128, 128, (x) => {
     x.fillStyle = m.plaza ?? "#b5b0a6"; x.fillRect(0, 0, 128, 128);
