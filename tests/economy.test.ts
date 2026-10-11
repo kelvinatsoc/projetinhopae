@@ -19,8 +19,8 @@ describe("patrocínios", () => {
     const big = w.clubs.flamengo;
     const a = makeOffers(w, big, "shirt"), b = makeOffers(w, big, "shirt");
     expect(a).toEqual(b);
-    expect(a).toHaveLength(3);
-    expect(new Set(a.map((o) => o.brand)).size).toBe(3);
+    expect(a).toHaveLength(4);
+    expect(new Set(a.map((o) => o.brand)).size).toBe(4);
     const small = Object.values(w.clubs).filter((c) => c.div === "A").sort((x, y) => x.rep - y.rep)[0];
     const avg = (xs: { annual: number }[]) => xs.reduce((s, o) => s + o.annual, 0) / xs.length;
     expect(avg(a)).toBeGreaterThan(avg(makeOffers(w, small, "shirt")));

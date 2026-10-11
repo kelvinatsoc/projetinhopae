@@ -25,6 +25,8 @@ export interface KitTexOptions {
   crest?: string | null;
   /** cores do clube para o uniforme liso quando não há dados */
   colors?: readonly string[];
+  /** desenha este uniforme em vez do do clube (prévia do editor) */
+  kit?: Kit;
   /** "sheet" = textura 2:1 (metade esquerda costas, direita frente; UV do boneco 3D);
    * "front"/"back" = camisa recortada com mangas (telas) */
   layout?: "sheet" | "front" | "back";
@@ -194,7 +196,33 @@ function fabric(g: CanvasRenderingContext2D, kit: Kit, part: "b" | "la" | "ra" |
     g.imageSmoothingEnabled = false;
     g.drawImage(e.img, sx, sy, sw, sh, x, y, w, h);
     g.imageSmoothingEnabled = smooth;
+  } else if (part === "b" && kit.pat && kit.st) {
+    drawPattern(g, kit.pat, kit.st, x, y, w, h, kit.st2);
   }
+}
+
+/** Padrão desenhado à mão (uniforme personalizado ou PNG que não existe/ainda não baixou). */
+export function drawPattern(g: CanvasRenderingContext2D, pat: NonNullable<Kit["pat"]>, c: string, x: number, y: number, w: number, h: number, c2?: string) {
+  g.save();
+  g.fillStyle = c;
+  const alt = (i: number) => { g.fillStyle = c2 && i % 4 === 3 ? c2 : c; };
+  if (pat === "stripes") for (let i = 1; i < 9; i += 2) { alt(i); g.fillRect(x + (i * w) / 9, y, w / 9, h); }
+  else if (pat === "hoops") for (let i = 1; i < 9; i += 2) { alt(i); g.fillRect(x, y + (i * h) / 9, w, h / 9); }
+  else if (pat === "halves") g.fillRect(x + w / 2, y, w / 2, h);
+  else if (pat === "band") {
+    g.fillRect(x, y + h * 0.26, w, h * (c2 ? 0.08 : 0.14));
+    if (c2) { g.fillStyle = c2; g.fillRect(x, y + h * 0.34, w, h * 0.08); }
+  }
+  else if (pat === "sash") {
+    g.beginPath();
+    g.moveTo(x, y + h * 0.12);
+    g.lineTo(x + w * 0.22, y);
+    g.lineTo(x + w, y + h * 0.78);
+    g.lineTo(x + w, y + h);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
 }
 
 // silhueta da camisa numa grade 200×220
@@ -267,18 +295,22 @@ function drawFront(g: CanvasRenderingContext2D, clubId: string, kit: Kit, o: Kit
   const real = kitBrands(clubId);
   const supplier = o.supplier === undefined ? real.supplier : o.supplier;
   const sponsor = o.sponsor === undefined ? real.sponsor : o.sponsor;
-  // fornecedora: peito direito do jogador (esquerda de quem olha)
-  brandMark(g, supplier, x + w * 0.1, y + h * 0.06, w * 0.24, h * 0.13, ink, pending, true);
+  const cu = kit.custom;
+  // fornecedora: peito direito do jogador (esquerda de quem olha), ou onde o editor mandou
+  const sx = cu?.supplierPos === "esquerda" ? 0.64 : cu?.supplierPos === "centro" ? 0.38 : 0.1;
+  brandMark(g, supplier, x + w * sx, y + h * 0.06, w * 0.24, h * 0.13, ink, pending, true);
   // escudo: peito esquerdo (coração)
   const cp = crestPath(clubId, o.crest);
   const e = img(cp);
   if (e && !e.ok) pending.push(e.done);
   if (e?.ok) {
-    const [dx, dy, dw, dh] = fitRect(e.img.naturalWidth, e.img.naturalHeight, x + w * 0.64, y + h * 0.03, w * 0.24, h * 0.2);
+    const cx = cu?.supplierPos === "esquerda" ? 0.1 : 0.64;
+    const [dx, dy, dw, dh] = fitRect(e.img.naturalWidth, e.img.naturalHeight, x + w * cx, y + h * 0.03, w * 0.24, h * 0.2);
     g.drawImage(e.img, dx, dy, dw, dh);
   }
   // patrocinador master no centro
-  brandMark(g, sponsor, x + w * 0.12, y + h * 0.36, w * 0.76, h * 0.22, ink, pending, true);
+  const sy = cu?.sponsorPos === "alto" ? 0.25 : cu?.sponsorPos === "baixo" ? 0.56 : kit.pat === "band" && !cu ? 0.5 : 0.36;
+  brandMark(g, sponsor, x + w * 0.12, y + h * sy, w * 0.76, h * 0.22, ink, pending, true);
   // número pequeno na frente (como em muitas camisas)
   if (o.num && o.layout === "sheet") {
     g.font = `900 ${h * 0.12}px "Arial Black", Impact, system-ui, sans-serif`;
@@ -351,9 +383,20 @@ function paintView(c: HTMLCanvasElement, clubId: string, kit: Kit, o: KitTexOpti
   g.strokeStyle = collar;
   g.lineWidth = 5;
   g.beginPath();
-  g.moveTo(76, 14);
-  g.quadraticCurveTo(100, back ? 22 : 34, 124, 14);
+  const collarKind = kit.custom?.collar;
+  if (!back && collarKind === "v") {
+    g.moveTo(76, 14); g.lineTo(100, 44); g.lineTo(124, 14);
+  } else {
+    g.moveTo(76, 14);
+    g.quadraticCurveTo(100, back ? 22 : 34, 124, 14);
+  }
   g.stroke();
+  if (!back && collarKind === "polo") {
+    g.fillStyle = collar;
+    g.beginPath(); g.moveTo(76, 12); g.lineTo(98, 34); g.lineTo(86, 40); g.lineTo(70, 18); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(124, 12); g.lineTo(102, 34); g.lineTo(114, 40); g.lineTo(130, 18); g.closePath(); g.fill();
+    g.fillRect(98, 30, 4, 22);
+  }
   g.strokeStyle = "rgba(0,0,0,.45)";
   g.lineWidth = 1.5;
   g.stroke(outline);
@@ -371,7 +414,7 @@ export function makeKitTexture(clubId: string, which: KitWhich = 0, opts: KitTex
   const c = document.createElement("canvas");
   c.height = size;
   c.width = layout === "sheet" ? size * 2 : Math.round((size * SHIRT_W) / SHIRT_H);
-  const kit = kitOf(clubId, which, opts.colors);
+  const kit = opts.kit ?? kitOf(clubId, which, opts.colors);
   const paint = () => {
     const pending: Promise<void>[] = [];
     if (layout === "sheet") paintSheet(c, clubId, kit, { ...opts, layout }, pending);

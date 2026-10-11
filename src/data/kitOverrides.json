@@ -1,0 +1,9 @@
+{
+ "fluminense": {"0": {"b": "#7A1E2E", "la": "#7A1E2E", "ra": "#7A1E2E", "pat": "stripes", "st": "#00613C", "st2": "#FFFFFF", "sh": "#FFFFFF", "so": "#FFFFFF", "shirt": "#7A1E2E"}},
+ "vitoria": {"0": {"b": "#000000", "la": "#000000", "ra": "#000000", "pat": "stripes", "st": "#D3101C", "sh": "#000000", "so": "#D3101C", "shirt": "#9A0A12"}},
+ "athletico-pr": {"0": {"b": "#D10A11", "la": "#D10A11", "ra": "#D10A11", "pat": "hoops", "st": "#000000", "sh": "#000000", "so": "#000000", "shirt": "#A00A0E"}},
+ "coritiba": {"0": {"pat": "band", "st": "#00553D", "sh": "#000000", "so": "#FFFFFF"}},
+ "mirassol": {"0": {"la": "#FFF200", "ra": "#FFF200", "sh": "#00703C", "so": "#FFF200"}},
+ "bahia": {"0": {"la": "#FFFFFF", "ra": "#FFFFFF", "sh": "#0033A0", "so": "#FFFFFF"}},
+ "sao-paulo": {"1": {"pat": "stripes", "st": "#000000", "st2": "#FFFFFF"}}
+}

@@ -13,3 +13,7 @@
 .kit-photo { margin: 0; width: 84px; text-align: center; flex: none; }
 .kit-photo img { width: 84px; height: 84px; object-fit: contain; }
 .player-kit { display: flex; align-items: center; gap: 8px; }
+.kit-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.kit-colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
+.kit-color { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.kit-color input { width: 36px; height: 30px; border: 0; padding: 0; background: none; border-radius: 6px; }
