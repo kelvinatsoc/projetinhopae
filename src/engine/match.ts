@@ -372,6 +372,8 @@ export class MatchSim {
 
     // substituições da IA
     if (min >= 55) for (const s of this.sides) this.autoSubs(s, false);
+    // auxiliar técnico do usuário (quando ligado)
+    for (const i of [0, 1] as const) if (this.assistant[i] && !this.sides[i].auto) this.assistantSubs(i);
     return this.events.slice(start);
   }
 
@@ -700,6 +702,101 @@ export class MatchSim {
       if (POS_GROUP[F.slots[k]] === "DEF" && POS_GROUP[this.player(i).pos] === "ATT") F.slots[k] = this.player(i).pos;
       this.doSubBookkeeping(F, o, i);
     }
+    this.recompute();
+  }
+
+  /** Lado do usuário com o auxiliar técnico cuidando das substituições (liga/desliga na partida). */
+  assistant: [boolean, boolean] = [false, false];
+
+  /**
+   * Liga/desliga o auxiliar técnico nas substituições do usuário. Ele troca cansados e amarelados
+   * em risco, dá rodagem a reservas e jovens com o jogo decidido e mexe no time quando perde.
+   */
+  setAssistant(sideIdx: 0 | 1, on: boolean) {
+    this.assistant[sideIdx] = on;
+  }
+
+  /** Decisões do auxiliar neste minuto (puro: não sorteia nada). Devolve as trocas com o motivo. */
+  assistantPlan(sideIdx: 0 | 1): { out: number; in: number; why: string }[] {
+    const F = this.sides[sideIdx];
+    const O = this.sides[1 - sideIdx];
+    const min = this.minute;
+    if (F.subsLeft <= 0 || (F.windowsLeft <= 0 && min < 90) || min < 46) return [];
+    if (min - this.lastWindowMin[sideIdx] < 8) return [];
+    const diff = F.goals - O.goals;
+    const season = this.w.season;
+    const plan: { out: number; in: number; why: string }[] = [];
+    const usedOut = new Set<number>(), usedIn = new Set<number>();
+    const bench = () => F.bench.filter((b) => !usedIn.has(b) && this.player(b).pos !== "GOL" && this.player(b).injury <= 0);
+    const bestFor = (pos: Pos, pref?: (p: Player) => boolean) => {
+      const pool = bench().map((b) => this.player(b));
+      const pick = (pref ? pool.filter(pref) : []).sort((a, b) => ovrAt(b, pos) - ovrAt(a, pos))[0];
+      return pick ?? pool.sort((a, b) => ovrAt(b, pos) - ovrAt(a, pos))[0];
+    };
+    const room = () => Math.min(F.subsLeft, 3) - plan.length;
+    const field = F.onPitch.map((id, k) => ({ id, k })).filter((x): x is { id: number; k: number } => x.id != null && F.slots[x.k] !== "GOL");
+    // 1) cansados (condição baixa) e amarelados em risco (defensores/volantes após os 60')
+    const risky = field
+      .map(({ id, k }) => {
+        const p = this.player(id);
+        const tired = p.cond < 62;
+        const card = F.yellows.has(id) && min >= 60 && POS_GROUP[F.slots[k]] !== "ATT";
+        return { id, k, tired, card, score: p.cond - (card ? 25 : 0) };
+      })
+      .filter((x) => x.tired || x.card)
+      .sort((a, b) => a.score - b.score);
+    for (const r of risky) {
+      if (room() <= 0) break;
+      const inn = bestFor(F.slots[r.k]);
+      if (!inn) break;
+      plan.push({ out: r.id, in: inn.id, why: r.card ? "amarelado, em risco de expulsão" : "cansado" });
+      usedOut.add(r.id);
+      usedIn.add(inn.id);
+    }
+    // 2) perdendo: sai um defensor/volante, entra um atacante
+    if (diff < 0 && min >= 60 && room() > 0) {
+      const att = bench().map((b) => this.player(b)).filter((p) => POS_GROUP[p.pos] === "ATT").sort((a, b) => b.ovr - a.ovr)[0];
+      const out = field.filter((x) => !usedOut.has(x.id) && POS_GROUP[F.slots[x.k]] !== "ATT")
+        .sort((a, b) => (POS_GROUP[F.slots[a.k]] === "DEF" ? 0 : 1) - (POS_GROUP[F.slots[b.k]] === "DEF" ? 0 : 1) || (F.rating.get(a.id) ?? 6) - (F.rating.get(b.id) ?? 6))[0];
+      if (att && out) {
+        plan.push({ out: out.id, in: att.id, why: "mais ofensividade para buscar o resultado" });
+        usedOut.add(out.id);
+        usedIn.add(att.id);
+      }
+    }
+    // 3) jogo decidido: rodagem para reservas e jovens
+    if (Math.abs(diff) >= 3 && min >= 65) {
+      const young = (p: Player) => season - p.born <= 21 || p.youth;
+      const outs = field.filter((x) => !usedOut.has(x.id)).sort((a, b) => this.player(b.id).ovr - this.player(a.id).ovr);
+      for (const o of outs) {
+        if (room() <= 0) break;
+        const inn = bestFor(F.slots[o.k], young);
+        if (!inn) break;
+        plan.push({ out: o.id, in: inn.id, why: young(inn) ? "rodagem para o garoto, jogo decidido" : "poupar titular, jogo decidido" });
+        usedOut.add(o.id);
+        usedIn.add(inn.id);
+      }
+    }
+    return plan;
+  }
+
+  private assistantSubs(sideIdx: 0 | 1) {
+    const plan = this.assistantPlan(sideIdx);
+    if (!plan.length) return;
+    const F = this.sides[sideIdx];
+    let done = 0;
+    for (const s of plan) {
+      const k = F.onPitch.indexOf(s.out);
+      if (k < 0 || F.subsLeft <= 0) continue;
+      F.onPitch[k] = s.in;
+      if (POS_GROUP[F.slots[k]] === "DEF" && POS_GROUP[this.player(s.in).pos] === "ATT") F.slots[k] = this.player(s.in).pos;
+      this.doSubBookkeeping(F, s.out, s.in);
+      done++;
+      this.ev({ min: this.minute, type: "info", side: sideIdx, text: `🧑‍🏫 Auxiliar: sai ${this.name(s.out)}, entra ${this.name(s.in)} (${s.why}).` });
+    }
+    if (!done) return;
+    if (this.minute !== 45) F.windowsLeft = Math.max(0, F.windowsLeft - 1);
+    this.lastWindowMin[sideIdx] = this.minute;
     this.recompute();
   }
 

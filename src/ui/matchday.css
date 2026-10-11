@@ -72,3 +72,7 @@
 .pm-dock .btn:active, .mv-ctrl .btn:active, .sticky-cta .btn:active { transform: none; filter: brightness(1.15); }
 button, .btn { touch-action: manipulation; }
 .ct-confetti, .ct-head::after, .ct-tw-bg { pointer-events: none; }
+
+/* auxiliar técnico faz as trocas (liga/desliga) */
+.mx-assist { margin-top: 8px; justify-content: center; }
+.mx-assist.active { border-color: #3df58a; color: #3df58a; }

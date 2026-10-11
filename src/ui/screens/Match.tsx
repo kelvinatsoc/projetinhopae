@@ -168,6 +168,11 @@ const SPEEDS = [1, 2, 4, 8].map((k) => ({ l: `${k}x`, ms: REAL_MS_PER_MIN / k })
 const FIELD_KEY = "ldb.matchField";
 const SPEED_KEY = "ldb.matchSpeed";
 const FEED_KEY = "ldb.matchFeed";
+const ASSIST_KEY = "ldb.assistSubs";
+/** O auxiliar técnico faz as substituições do usuário? (padrão: desligado) */
+function readAssist(): boolean {
+  try { return localStorage.getItem(ASSIST_KEY) === "1"; } catch { return false; }
+}
 
 /** Última velocidade usada (índice em SPEEDS ou "hl" = melhores momentos). */
 function readSpeed(): { i: number; hl: boolean } {
@@ -237,6 +242,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [bumper, setBumper] = useState(!quick);
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
   const [gfx, setGfx] = useState<Quality>(() => readQuality());
+  const [assist, setAssist] = useState(readAssist);
   const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
   const [exodus, setExodus] = useState(0);
   const [mood, setMood] = useState(1);
@@ -273,6 +279,9 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const sim = simRef.current;
   const profile = useMemo(() => (sim ? crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, userSide) : null), [sim]);
   const streak = useRef(0);
+  // auxiliar técnico nas substituições (o usuário liga/desliga)
+  useEffect(() => { sim?.setAssistant(userSide, assist); }, [sim, assist]);
+  const toggleAssist = () => setAssist((a) => { try { localStorage.setItem(ASSIST_KEY, a ? "0" : "1"); } catch { /* */ } haptic("tap"); return !a; });
   const importance = useMemo(() => (sim && f ? matchImportance({ stage: f.stage, comp: f.comp, derby: derbyIntensity(f.home, f.away), size: crowdSize(sim.sides[0].club, !!f.neutral) }) : 0), [sim]);
   const intro3d = introTimes(importance);
   // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
@@ -536,6 +545,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             onTactic={() => { haptic("tap"); setTacticSheet(true); }}
             onSubs={() => { haptic("tap"); setSubs(true); }}
             onHistory={() => { haptic("tap"); setHistory(true); }} />
+        )}
+        {!quick && !over && (
+          <button className={`btn sm block mx-assist${assist ? " active" : ""}`} aria-pressed={assist} onClick={toggleAssist}
+            title="O auxiliar troca cansados e amarelados em risco, dá rodagem aos garotos com o jogo decidido e mexe no time quando perde">
+            <Ic n="refresh" /> Auxiliar faz as trocas: <b>{assist ? "ligado" : "desligado"}</b>
+          </button>
         )}
 
         {!quick && !over && (
