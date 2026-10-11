@@ -16,6 +16,7 @@ import { crowdExodus, crowdMood, crowdProfile, crowdSize, isComeback, matchImpor
 import { PhaseBanner, matchPhase } from "../MatchPhase";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
+import { MatchDashboard, ShoutBar, sideColors } from "../MatchDash";
 import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type MatchQuality } from "../MatchView";
 import { Pitch } from "./Squad";
 import { CompBumper, CompHeader } from "../CompTheme";
@@ -223,7 +224,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [result, setResult] = useState<MatchResult | null>(null);
   const [speed, setSpeed] = useState(() => readSpeed().i); // lembra a última velocidade usada
   const [paused, setPaused] = useState(false);
-  const [view, setView] = useState<"feed" | "stats" | "teams">("feed");
+  const [view, setView] = useState<"feed" | "stats" | "teams">("stats");
   const [subs, setSubs] = useState(false);
   const [tacticSheet, setTacticSheet] = useState(false);
   const [history, setHistory] = useState(false);
@@ -447,7 +448,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const poss0 = totalPoss ? Math.round((st.poss[0] / totalPoss) * 100) : 50;
   const events = sim.events.filter((e) => e.type !== "info" || !quick).slice().reverse();
   const showField = field && !quick;
-  const awayBar = visibleColor(A.club.colors) === visibleColor(H.club.colors) ? "#9aa5a0" : visibleColor(A.club.colors);
+  const [homeBar, awayBar] = sideColors(sim);
 
   const theme = compTheme(f.comp, COMP_META[f.comp]?.color);
   const over = !!result || sim.finished;
@@ -487,7 +488,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         </div>
         <div className="mv-momentum">
           <div className="momentum">
-            <i style={{ width: `${poss0}%`, background: visibleColor(H.club.colors) }} />
+            <i style={{ width: `${poss0}%`, background: homeBar }} />
             <i style={{ width: `${100 - poss0}%`, background: awayBar }} />
           </div>
         </div>
@@ -547,6 +548,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             onSubs={() => { haptic("tap"); setSubs(true); }}
             onHistory={() => { haptic("tap"); setHistory(true); }} />
         )}
+        {!quick && !over && <ShoutBar sim={sim} side={userSide} onChange={() => setTick((x) => x + 1)} />}
         {!quick && !over && (
           <button className={`btn sm block mx-assist${assist ? " active" : ""}`} aria-pressed={assist} onClick={toggleAssist}
             title="O auxiliar troca cansados e amarelados em risco, dá rodagem aos garotos com o jogo decidido e mexe no time quando perde">
@@ -577,20 +579,29 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           </div>
         )}
 
+        {/* modo "Lances" (sem campo): o painel completo e os últimos lances, sem abrir menu */}
+        {!quick && !over && !showField && (
+          <div className="page mx-dash">
+            <MatchDashboard sim={sim} w={w} userSide={userSide} />
+            <div className="row"><b className="grow">Últimos lances</b><button className="btn sm ghost" onClick={() => { setView("feed"); setHistory(true); }}>Ver todos</button></div>
+            <Feed events={events.slice(0, 8)} />
+          </div>
+        )}
+
         {(over || quick) && <div className="page">
           {result && <PostMatchCard w={w} f={f} r={result} label={resultLabel(w, f, result)} />}
 
           <div className="row gap8">
             <div className="seg grow">
+              <button className={view === "stats" ? "active" : ""} onClick={() => { setView("stats"); if (!feedOpen) toggleFeed(); }}>Painel</button>
               <button className={view === "feed" ? "active" : ""} onClick={() => { setView("feed"); if (!feedOpen) toggleFeed(); }}>Lances</button>
-              <button className={view === "stats" ? "active" : ""} onClick={() => { setView("stats"); if (!feedOpen) toggleFeed(); }}>Estatísticas</button>
               <button className={view === "teams" ? "active" : ""} onClick={() => { setView("teams"); if (!feedOpen) toggleFeed(); }}>Times</button>
             </div>
             <button className="btn sm" aria-expanded={feedOpen} aria-label={feedOpen ? "Recolher" : "Expandir"} onClick={toggleFeed}>{feedOpen ? "▴" : "▾"}</button>
           </div>
 
           {feedOpen && view === "feed" && <Feed events={events} />}
-          {feedOpen && view === "stats" && <StatsTable sim={sim} />}
+          {feedOpen && view === "stats" && <MatchDashboard sim={sim} w={w} userSide={userSide} />}
           {feedOpen && view === "teams" && <TeamsView sim={sim} w={w} />}
         </div>}
 
@@ -603,15 +614,15 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
       {toast && !over && !history && !flash && <EventToast key={sim.events.indexOf(toast)} e={toast} sim={sim} onOpen={() => { setToast(null); setHistory(true); }} />}
       {history && !result && (
-        <Sheet title="Lance a lance" onClose={() => setHistory(false)}>
+        <Sheet title="Histórico da partida" onClose={() => setHistory(false)}>
           <div className="seg">
+            <button className={view === "stats" ? "active" : ""} onClick={() => setView("stats")}>Painel</button>
             <button className={view === "feed" ? "active" : ""} onClick={() => setView("feed")}>Lances</button>
-            <button className={view === "stats" ? "active" : ""} onClick={() => setView("stats")}>Estatísticas</button>
             <button className={view === "teams" ? "active" : ""} onClick={() => setView("teams")}>Times</button>
           </div>
           <div className="mt12">
             {view === "feed" && <Feed events={events} />}
-            {view === "stats" && <StatsTable sim={sim} />}
+            {view === "stats" && <MatchDashboard sim={sim} w={w} userSide={userSide} />}
             {view === "teams" && <TeamsView sim={sim} w={w} />}
           </div>
           <button className="btn primary block mt12" onClick={() => setHistory(false)}>Voltar ao jogo</button>
@@ -711,6 +722,8 @@ function TacticSheet({ sim, side, onClose, onSubs }: { sim: MatchSim; side: 0 | 
         ))}
       </div>
       <div className="small muted mt8">Pressão alta rouba mais bolas, mas cansa o time mais rápido.</div>
+      <b className="small" style={{ display: "block", marginTop: 12 }}>Instruções rápidas</b>
+      <ShoutBar sim={sim} side={side} inSheet onChange={() => force((x) => x + 1)} />
       <div className="grid2 mt12">
         <button className="btn" onClick={onSubs}><Ic n="refresh" size={18} /> Substituições</button>
         <button className="btn primary" onClick={onClose}>Voltar ao jogo</button>
@@ -760,36 +773,6 @@ function HalftimeSheet({ sim, side, w, onClose, onSubs }: { sim: MatchSim; side:
         </>
       )}
     </Sheet>
-  );
-}
-
-function StatsTable({ sim }: { sim: MatchSim }) {
-  const s = sim.stats;
-  const total = s.poss[0] + s.poss[1] || 1;
-  const rows: [string, number, number][] = [
-    ["Posse (%)", Math.round((s.poss[0] / total) * 100), Math.round((s.poss[1] / total) * 100)],
-    ["Finalizações", s.shots[0], s.shots[1]],
-    ["No gol", s.onTarget[0], s.onTarget[1]],
-    ["Gols esperados (xG)", Math.round(s.xg[0] * 10) / 10, Math.round(s.xg[1] * 10) / 10],
-    ["Escanteios", s.corners[0], s.corners[1]],
-    ["Faltas", s.fouls[0], s.fouls[1]],
-    ["Amarelos", s.yellows[0], s.yellows[1]],
-    ["Vermelhos", s.reds[0], s.reds[1]],
-  ];
-  return (
-    <div className="card col gap12">
-      {rows.map(([l, a, b]) => {
-        const t = a + b || 1;
-        return (
-          <div key={l}>
-            <div className="statline"><b className="kbd">{a}</b><span className="center small muted">{l}</span><b className="kbd" style={{ textAlign: "right" }}>{b}</b></div>
-            <div className="statline" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="bars"><i style={{ background: "var(--accent)", marginLeft: `${100 - (a / t) * 100}%` }} /><i style={{ background: "var(--info)", width: `${(b / t) * 100}%` }} /></div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
