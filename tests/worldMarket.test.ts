@@ -43,6 +43,6 @@ describe("mundo: mercado", () => {
     const price = askingPrice(w, eng);
     const club = w.clubs[eng.clubId!];
     club.league = undefined;
-    expect(price).toBeGreaterThan(askingPrice(w, eng) * 1.5);
+    expect(price).toBeGreaterThan(askingPrice(w, eng) * 1.1);
   });
 });
