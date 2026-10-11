@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chaseStep, RUN_PX_S } from "../src/ui/animTime";
-import { easeCam } from "../src/ui/ps1/model";
+import { easeCam } from "../src/ui/match3d/model";
 
 /** Persegue um alvo que se move, com quadros de dt ms, por "total" ms. */
 function run(hz: number, total = 3000) {

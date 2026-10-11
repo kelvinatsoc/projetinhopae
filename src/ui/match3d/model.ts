@@ -1,11 +1,11 @@
-// Lógica pura do modo "📼 Retrô PS1" (sem three.js, sem DOM): o retrato de um quadro da animação
-// do campinho, a câmera de transmissão estilo Winning Eleven, o buffer do replay, a resolução
-// interna e a quantização de 15 bits com pontilhado ordenado (a mesma conta roda no shader).
+// Lógica pura da partida em 3D (sem three.js, sem DOM): o retrato de um quadro da animação do
+// campinho, as câmeras (transmissão, replay, close, câmera livre), o buffer do replay e a
+// resolução de renderização por nível de qualidade.
 import { pitchToWorld, PITCH_LEN } from "../pitchGeom";
 
-export type Ps1Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle" | "pass" | "save" | "special";
+export type Pose3D = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle" | "pass" | "save" | "special";
 
-export interface Ps1Player {
+export interface Player3D {
   /** índice estável do jogador na animação */
   id: number;
   side: 0 | 1 | 2;
@@ -22,7 +22,7 @@ export interface Ps1Player {
   down: boolean;
   arms: boolean;
   sad: boolean;
-  pose: Ps1Pose | null;
+  pose: Pose3D | null;
   /** progresso da pose 0..1 */
   poseS: number;
   shirt: string;
@@ -37,7 +37,7 @@ export interface Ps1Player {
   hair: string;
   num: number;
   name: string;
-  /** visual individual (modo PS2): estilo de cabelo, altura -1/0/1, porte forte, barba */
+  /** visual individual: estilo de cabelo, altura -1/0/1, porte forte, barba */
   hairStyle?: string;
   tall?: number;
   broad?: boolean;
@@ -45,7 +45,7 @@ export interface Ps1Player {
 }
 
 /** Golpe especial em andamento (para câmera lenta, close, brilho e rastro da bola). */
-export interface Ps1Special {
+export interface Special3D {
   /** id do jogador que executa */
   who: number;
   name: string;
@@ -57,9 +57,9 @@ export interface Ps1Special {
   save: boolean;
 }
 
-export interface Ps1Snapshot {
+export interface MatchSnapshot {
   now: number;
-  players: Ps1Player[];
+  players: Player3D[];
   ball: { x: number; z: number; h: number };
   /** id do jogador com a bola (ou para quem ela vai) */
   holder: number | null;
@@ -68,7 +68,7 @@ export interface Ps1Snapshot {
   goalSide: 0 | 1 | null;
   netShake: 0 | 1 | null;
   cheer: boolean;
-  special?: Ps1Special | null;
+  special?: Special3D | null;
 }
 
 /** Converte a posição do campinho (pixels do modo 2D) para metros do 3D. */
@@ -84,7 +84,7 @@ export function ballHeight(h: number): number {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Interpola dois retratos (replay gravado a ~30 Hz tocado na taxa da tela). */
-export function lerpSnapshot(a: Ps1Snapshot, b: Ps1Snapshot, t: number): Ps1Snapshot {
+export function lerpSnapshot(a: MatchSnapshot, b: MatchSnapshot, t: number): MatchSnapshot {
   const byId = new Map(b.players.map((p) => [p.id, p]));
   return {
     ...(t < 0.5 ? a : b),
@@ -100,9 +100,9 @@ export function lerpSnapshot(a: Ps1Snapshot, b: Ps1Snapshot, t: number): Ps1Snap
 
 /** Guarda os últimos segundos de jogo para o replay do gol. */
 export class ReplayBuffer {
-  frames: Ps1Snapshot[] = [];
+  frames: MatchSnapshot[] = [];
   constructor(public seconds = 5, public hz = 30) {}
-  push(s: Ps1Snapshot) {
+  push(s: MatchSnapshot) {
     const last = this.frames[this.frames.length - 1];
     if (last && s.now - last.now < 1000 / this.hz - 0.5) return;
     if (last && s.now < last.now) this.frames = [];
@@ -111,11 +111,11 @@ export class ReplayBuffer {
     while (this.frames.length > 2 && this.frames[0].now < cut) this.frames.shift();
   }
   /** Copia os quadros até o momento do gol (inclusive um pouco depois). */
-  clip(): Ps1Snapshot[] {
+  clip(): MatchSnapshot[] {
     return this.frames.slice();
   }
   /** Quadro do clip no tempo t (ms desde o começo do clip). */
-  static at(clip: Ps1Snapshot[], t: number): Ps1Snapshot | null {
+  static at(clip: MatchSnapshot[], t: number): MatchSnapshot | null {
     if (!clip.length) return null;
     const t0 = clip[0].now + t;
     if (t0 <= clip[0].now) return clip[0];
@@ -128,7 +128,7 @@ export class ReplayBuffer {
     }
     return clip[clip.length - 1];
   }
-  static duration(clip: Ps1Snapshot[]): number {
+  static duration(clip: MatchSnapshot[]): number {
     return clip.length < 2 ? 0 : clip[clip.length - 1].now - clip[0].now;
   }
 }
@@ -140,7 +140,7 @@ export interface CamPose {
 }
 
 /**
- * Câmera de transmissão do Winning Eleven: de lado, no alto da arquibancada, acompanhando a bola
+ * Câmera de transmissão de TV: de lado, no alto da arquibancada, acompanhando a bola
  * no comprimento do campo (sem passar das áreas) e chegando um pouco mais perto perto do gol.
  */
 export function broadcastCam(ballX: number, ballZ: number, aspect: number): CamPose {
@@ -175,24 +175,6 @@ export function easeCam(cur: CamPose, to: CamPose, dt: number, tau = 260): CamPo
   const k = 1 - Math.exp(-dt / tau);
   const m = (a: [number, number, number], b: [number, number, number]): [number, number, number] => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
   return { pos: m(cur.pos, to.pos), look: m(cur.look, to.look), fov: lerp(cur.fov, to.fov, k) };
-}
-
-/** Resolução interna: 240 linhas, largura conforme a tela (4:3 até 2:1, o resto vira tarja preta). */
-export function internalRes(cssW: number, cssH: number): { w: number; h: number; aspect: number } {
-  const h = 240;
-  const aspect = Math.max(4 / 3, Math.min(2, cssW / Math.max(1, cssH)));
-  const w = Math.round((h * aspect) / 2) * 2;
-  return { w, h, aspect: w / h };
-}
-
-/** Matriz de Bayer 4x4 (pontilhado ordenado do PS1), valores -0.5..0.5. */
-export const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => v / 16 - 0.5);
-
-/** Canal 0..255 quantizado a 5 bits (15-bit color) com o pontilhado do pixel (x, y). */
-export function quant15(c: number, x: number, y: number): number {
-  const d = BAYER4[(y & 3) * 4 + (x & 3)] * 8;
-  const q = Math.round(Math.max(0, Math.min(255, c + d)) / (255 / 31));
-  return Math.round(q * (255 / 31));
 }
 
 /** Nome curto para a caixa do jogador (sem acento, maiúsculo, o sobrenome/apelido). */
@@ -230,11 +212,59 @@ export function closeUpCam(x: number, z: number, attackDir: 1 | -1, t: number): 
   };
 }
 
-/** Resolução interna do modo PS2: alta (até 1,5× a tela em CSS, teto de 1600 px de largura). */
-export function hdRes(cssW: number, cssH: number, dpr: number, q = 1): { w: number; h: number; aspect: number } {
-  const aspect = Math.max(1, Math.min(2.2, cssW / Math.max(1, cssH)));
-  const k = Math.min(dpr, 2) * q;
-  const w = Math.min(1600, Math.round((cssW * k) / 2) * 2);
-  const h = Math.round(w / aspect / 2) * 2;
-  return { w, h, aspect: w / h };
+/** Qualidade gráfica (só desempenho): Alta é o padrão. */
+export type Quality = "alta" | "media" | "baixa";
+
+/** Resolução de renderização: escala de pixels por nível (alta = até 2x, teto de 2000 px de largura). */
+export function renderRes(cssW: number, cssH: number, dpr: number, q: Quality, dyn = 1): { w: number; h: number; ratio: number } {
+  const cap = q === "alta" ? 2 : q === "media" ? 1.5 : 1;
+  let ratio = Math.max(0.5, Math.min(dpr, cap) * dyn);
+  if (cssW * ratio > 2000) ratio = 2000 / cssW;
+  return { w: Math.round(cssW * ratio), h: Math.round(cssH * ratio), ratio };
+}
+
+export interface FreeCam {
+  /** giro em volta do alvo (rad) e inclinação (rad, 0.08..1.45) */
+  yaw: number;
+  pitch: number;
+  /** distância ao alvo (m) */
+  dist: number;
+  /** deslocamento do alvo no gramado */
+  panX: number;
+  panZ: number;
+}
+
+export const FREE_MIN = 4;
+export const FREE_MAX = 175;
+
+/** Limita a câmera livre (do close no jogador ao estádio inteiro). */
+export function clampFree(f: FreeCam): FreeCam {
+  const dist = Math.max(FREE_MIN, Math.min(FREE_MAX, f.dist));
+  return {
+    yaw: f.yaw,
+    // de longe, a câmera sobe acima das arquibancadas (nunca fica atrás do paredão)
+    // de perto, a câmera desce (close no jogador, não no gramado)
+    pitch: Math.max(0.08, Math.asin(Math.min(0.95, 62 / dist)) * Math.min(1, Math.max(0, (dist - 25) / 30)), Math.min(1.45, 0.12 + dist * 0.035, f.pitch)),
+    dist,
+    panX: Math.max(-70, Math.min(70, f.panX)),
+    panZ: Math.max(-50, Math.min(50, f.panZ)),
+  };
+}
+
+/** Pose da câmera livre: orbita o alvo (bola + deslocamento). */
+export function freeCamPose(f: FreeCam, tx: number, tz: number): CamPose {
+  const c = Math.cos(f.pitch);
+  const x = tx + f.panX, z = tz + f.panZ;
+  return {
+    pos: [x + Math.sin(f.yaw) * c * f.dist, 0.6 + Math.sin(f.pitch) * f.dist, z + Math.cos(f.yaw) * c * f.dist],
+    look: [x, f.dist < 12 ? 1.1 : 0.4, z],
+    fov: 40,
+  };
+}
+
+/** Câmera livre a partir da pose da TV (para a transição não dar pulo). */
+export function freeFromPose(c: CamPose): FreeCam {
+  const dx = c.pos[0] - c.look[0], dy = c.pos[1] - c.look[1], dz = c.pos[2] - c.look[2];
+  const dist = Math.hypot(dx, dy, dz);
+  return clampFree({ yaw: Math.atan2(dx, dz), pitch: Math.asin(dy / Math.max(1e-3, dist)), dist, panX: 0, panZ: 0 });
 }

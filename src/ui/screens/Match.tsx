@@ -11,11 +11,11 @@ import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reac
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
 import { forceBack, getWorld, push, replace, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
-import { duckForMenu, goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
-import { crowdMood, crowdProfile } from "../torcida";
+import { crowdEruption, duckForMenu, goalRoar, hasClubChant, loadMedia, ooh, playClubChant, playCustomGoal, setCrowdExodus, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
+import { crowdExodus, crowdMood, crowdProfile, crowdSize, isComeback, matchImportance } from "../torcida";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
-import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
+import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type Quality } from "../MatchView";
 import { Pitch } from "./Squad";
 import { CompBumper, CompHeader } from "../CompTheme";
 import { compTheme, themeClass, themeVars } from "../compThemes";
@@ -188,6 +188,10 @@ function readFeedOpen(): boolean {
 }
 const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda na velocidade 1x
 const INTRO_MS = 2600;
+/** Abertura no 3D: chegada do ônibus (maior em jogos grandes) + entrada dos times. */
+function introTimes(importance: number): { arrival: number; walk: number } {
+  return { arrival: Math.round(4500 + importance * 4500), walk: Math.round(6500 + importance * 2500) };
+}
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 
 /** Preferência "campo animado" x "só lances" (fica neste aparelho). */
@@ -232,7 +236,13 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [hl, setHl] = useState(() => readSpeed().hl);
   const [bumper, setBumper] = useState(!quick);
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
-  const [gfx, setGfx] = useState<GraphicsMode>(() => readGraphics());
+  const [gfx, setGfx] = useState<Quality>(() => readQuality());
+  const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
+  const [exodus, setExodus] = useState(0);
+  const [mood, setMood] = useState(1);
+  const [eruption, setEruption] = useState<{ side: 0 | 1; virada: boolean; n: number } | null>(null);
+  /** pior saldo que cada time já teve no jogo (para detectar a virada) */
+  const worst = useRef<[number, number]>([0, 0]);
   const headRef = useRef<HTMLDivElement>(null);
   const celebrated = useRef(new Set<MatchEvent>());
   const timers = useRef<number[]>([]);
@@ -263,6 +273,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const sim = simRef.current;
   const profile = useMemo(() => (sim ? crowdProfile(sim.sides[0].club, sim.sides[1].club, !!sim.f.neutral, userSide) : null), [sim]);
   const streak = useRef(0);
+  const importance = useMemo(() => (sim && f ? matchImportance({ stage: f.stage, comp: f.comp, derby: derbyIntensity(f.home, f.away), size: crowdSize(sim.sides[0].club, !!f.neutral) }) : 0), [sim]);
+  const intro3d = introTimes(importance);
   // menus abertos (intervalo, substituições, pausa): o estádio fica abafado
   useEffect(() => {
     duckForMenu(!quick && !result && (paused || subs || halfSheet || tacticSheet || history));
@@ -293,6 +305,12 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     if (!sim || celebrated.current.has(e)) return;
     celebrated.current.add(e);
     const homeCrowd = !sim.f.neutral && e.side === 0;
+    // virada? (o time que marcou já esteve atrás no placar)
+    const side = (e.side ?? 0) as 0 | 1;
+    const diff = sim.sides[side].goals - sim.sides[1 - side].goals;
+    const virada = isComeback(diff - 1, diff, worst.current[side]);
+    setEruption((x) => ({ side, virada, n: (x?.n ?? 0) + 1 }));
+    if (profile && side === profile.side) crowdEruption(virada);
     if (e.side === userSide && playCustomGoal()) { /* áudio do usuário */ } else goalRoar(homeCrowd || e.side === userSide, e.side);
     const head = headRef.current?.getBoundingClientRect();
     setFlashTop(fieldRef.current && head ? Math.min(head.bottom + 10, window.innerHeight * 0.56) : null);
@@ -345,14 +363,20 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   useEffect(() => {
     if (quick || bumper) return;
     if (intro) {
-      const t = window.setTimeout(() => setIntro(false), INTRO_MS);
+      // campo ligado: espera saber se o 3D abriu (ônibus + entrada dos times) ou se é o 2D
+      if (field && is3d === null) {
+        const t = window.setTimeout(() => setIs3d((v) => v ?? false), 8000);
+        return () => window.clearTimeout(t);
+      }
+      if (is3d && soundEnabled() && sim && !sim.f.neutral && hasClubChant(sim.sides[0].club.id)) playClubChant(sim.sides[0].club.id);
+      const t = window.setTimeout(() => setIntro(false), is3d ? intro3d.arrival + intro3d.walk : INTRO_MS);
       return () => window.clearTimeout(t);
     }
     if (!started.current) {
       started.current = true;
       if (soundEnabled()) whistle(1);
     }
-  }, [intro, bumper]);
+  }, [intro, bumper, is3d]);
 
   // relógio da partida
   useEffect(() => {
@@ -387,10 +411,18 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         }
         else if (e.type === "end") whistle(3);
       }
+      for (const sd of [0, 1] as const) worst.current[sd] = Math.min(worst.current[sd], sim.sides[sd].goals - sim.sides[1 - sd].goals);
+      {
+        const cs = profile?.side ?? 0;
+        const ex = sim.f.neutral && !profile ? 0 : crowdExodus([sim.sides[0].goals, sim.sides[1].goals], cs, sim.minute);
+        if (ex > 0) setExodus((x) => { const v = Math.max(x, ex); if (v !== x) setCrowdExodus(v); return v; });
+      }
       if (profile) {
         const atk = sim.phase.atk ?? null;
         streak.current = atk === profile.side ? streak.current + 1 : 0;
-        updateAtmosphere(crowdMood({ minute: sim.minute, goals: [sim.sides[0].goals, sim.sides[1].goals], poss: [sim.stats.poss[0], sim.stats.poss[1]], shots: [sim.stats.shots[0], sim.stats.shots[1]], atk, streak: streak.current }, profile.side, profile.size));
+        const m = crowdMood({ minute: sim.minute, goals: [sim.sides[0].goals, sim.sides[1].goals], poss: [sim.stats.poss[0], sim.stats.poss[1]], shots: [sim.stats.shots[0], sim.stats.shots[1]], atk, streak: streak.current }, profile.side, profile.size);
+        updateAtmosphere(m);
+        setMood(m.intensity);
       }
       if (sim.finished) finish();
       setTick((x) => x + 1);
@@ -412,7 +444,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const skipToEnd = () => { haptic("tap"); setIntro(false); setBumper(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); };
   const pickSpeed = (i: number) => { setHl(false); setSpeed(i); saveSpeed(i); };
   const toggleHl = () => { setHl((x) => { saveSpeed(x ? speed : "hl"); return !x; }); };
-  const cycleGfx = () => { const m: GraphicsMode = gfx === "leve" ? "ultra" : gfx === "ultra" ? "ps2" : gfx === "ps2" ? "ps1" : "leve"; setGfx(m); saveGraphics(m); };
+  const cycleGfx = () => { const m: Quality = gfx === "alta" ? "media" : gfx === "media" ? "baixa" : "alta"; setGfx(m); saveQuality(m); };
   const goOn = () => { haptic("success"); forceBack(); };
   const toggleFeed = () => setFeedOpen((o) => { try { localStorage.setItem(FEED_KEY, o ? "0" : "1"); } catch { /* */ } return !o; });
 
@@ -427,8 +459,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
-                <button aria-pressed={gfx !== "leve"} title="Gráficos: Leve → Ultra → 3D PS2 → Retrô PS1" aria-label="Trocar gráficos" onClick={cycleGfx}>
-                  {gfx === "ultra" ? <><Ic n="sparkle" /> Ultra</> : gfx === "ps2" ? <><Ic n="film" /> PS2</> : gfx === "ps1" ? <><Ic n="film" /> PS1</> : <><Ic n="feather" /> Leve</>}
+                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa (só desempenho)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
+                  {gfx === "alta" ? <Ic n="sparkle" /> : gfx === "media" ? <Ic n="film" /> : <Ic n="feather" />} {QUALITY_LABEL[gfx]}
                 </button>
               )}
             </div>
@@ -473,9 +505,14 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             sim={sim}
             tick={tick}
             msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
-            ultra={gfx === "ultra"}
-            ps1={gfx === "ps1" || gfx === "ps2"}
-            hd={gfx === "ps2"}
+            quality={gfx}
+            on3d={setIs3d}
+            introArrivalMs={intro3d.arrival}
+            introWalkMs={intro3d.walk}
+            importance={importance}
+            exodus={exodus}
+            crowdIntensity={mood}
+            eruption={eruption}
             paused={(paused || subs || tacticSheet || history) && !result}
             intro={intro && !bumper}
             goalHold={hl || speed <= 1}
@@ -491,8 +528,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       <div className="mx-side">
         <DerbyBanner home={f.home} away={f.away} />
 
-        {/* No PS1 o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
-        {flash && !over && !(showField && (gfx === "ps1" || gfx === "ps2")) && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+        {/* No 3D o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
+        {flash && !over && !(showField && is3d) && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
         {!quick && !over && (
           <LiveStrip sim={sim} w={w}
