@@ -2,7 +2,8 @@
 // Marcas reais: o clube começa com os contratos verdadeiros de 2025/26 (src/data/sponsorsReal.json) e as
 // ofertas novas vêm de marcas ativas no futebol brasileiro (brands.json). Valores escalam com a reputação e a divisão (somadas, ficam perto de annualSponsor).
 // As ofertas usam um gerador próprio por clube/temporada/espaço: não mexem no gerador global.
-import { addIncome, annualSponsor } from "./finance";
+import { addIncome, annualSponsor, formatMoney } from "./finance";
+import { addNews } from "./news";
 import { hashString, makeRng } from "./rng";
 import REAL_JSON from "../data/sponsorsReal.json";
 import LOGOS_JSON from "../data/brandLogos.json";
@@ -110,18 +111,22 @@ export function makeOffers(w: World, c: Club, slot: SponsorSlot): SponsorDeal[] 
   const base = slotBase(c, slot);
   const real = REAL_SPONSORS[c.id]?.[slot];
   // clube do exterior: marcas globais, não as do futebol brasileiro
-  const names = (c.league && c.country !== "BRA" ? GLOBAL_BRANDS[slot] : BRANDS[slot]).filter((b) => b !== real);
+  const all = (c.league && c.country !== "BRA" ? GLOBAL_BRANDS[slot] : BRANDS[slot]).filter((b) => b !== real);
+  // marcas maiores (início da lista) só procuram clubes de mais reputação
+  const tier = c.rep >= 75 ? 0.55 : c.rep >= 55 ? 0.8 : 1;
+  const names = all.slice(0, Math.max(4, Math.ceil(all.length * tier)));
   const out: SponsorDeal[] = [];
   // perfis: seguro (fixo alto), equilibrado, arrojado (fixo baixo, bônus gordos)
   const profiles = [
     { fixed: 1.08, bonus: 0.0 },
     { fixed: 0.95, bonus: 0.25 },
     { fixed: 0.8, bonus: 0.6 },
+    { fixed: 1.0, bonus: 0.1 },
   ];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < profiles.length; i++) {
     const k = Math.floor(rng() * names.length);
     // o parceiro atual (real) sempre aparece para renovar, no perfil seguro
-    const brand = i === 0 && real ? real : names.splice(k, 1)[0];
+    const brand = i === 0 && real ? real : names.splice(k, 1)[0] ?? all[i % all.length];
     const pr = profiles[i];
     const annual = round(base * pr.fixed * (0.92 + rng() * 0.16));
     const bonus: SponsorBonus[] = [];
@@ -134,7 +139,9 @@ export function makeOffers(w: World, c: Club, slot: SponsorSlot): SponsorDeal[] 
         bonus.push({ kind, value: round(base * pr.bonus * mult * (0.85 + rng() * 0.3)) });
       }
     }
-    out.push({ id: `${slot}-${w.season}-${i}`, slot, brand, annual, years: 1 + Math.floor(rng() * 3), bonus });
+    // duração: o perfil "longo" pede 3-4 anos; os demais 1-3
+    const years = i === 3 ? 3 + Math.floor(rng() * 2) : 1 + Math.floor(rng() * 3);
+    out.push({ id: `${slot}-${w.season}-${i}`, slot, brand, annual: i === 3 ? round(annual * (1 + 0.03 * years)) : annual, years, bonus });
   }
   return out;
 }
@@ -152,21 +159,67 @@ export function currentOffers(w: World, c: Club): SponsorDeal[] {
   if (!s.offers || s.offers.season !== w.season) {
     s.offers = { season: w.season, list: SLOTS.flatMap((slot) => makeOffers(w, c, slot)) };
   }
-  return s.offers.list.filter((o) => !activeDeal(w, c, o.slot));
+  return s.offers.list.filter((o) => sponsorWindow(w, c, o.slot).open);
 }
 
 export function activeDeal(w: World, c: Club, slot: SponsorSlot): SponsorDeal | undefined {
   const d = c.sponsors?.deals[slot];
-  return d && (d.until ?? 0) >= w.season ? d : undefined;
+  if (d && (d.since ?? 0) <= w.season && (d.until ?? 0) >= w.season) return d;
+  const n = c.sponsors?.next?.[slot];
+  return n && (n.since ?? 0) <= w.season && (n.until ?? 0) >= w.season ? n : undefined;
+}
+
+/** Contrato já assinado para começar na próxima temporada. */
+export function nextDeal(w: World, c: Club, slot: SponsorSlot): SponsorDeal | undefined {
+  const n = c.sponsors?.next?.[slot];
+  return n && (n.since ?? 0) > w.season ? n : undefined;
+}
+
+/** Janela de troca: sem contrato, ou no último ano dele (assina para começar na temporada seguinte). */
+export function sponsorWindow(w: World, c: Club, slot: SponsorSlot): { open: boolean; from: number; reason?: string } {
+  const d = activeDeal(w, c, slot);
+  if (!d) return { open: true, from: w.season };
+  if (nextDeal(w, c, slot)) return { open: false, from: w.season + 1, reason: `Já assinado com ${nextDeal(w, c, slot)!.brand} a partir de ${w.season + 1}.` };
+  if ((d.until ?? 0) <= w.season) return { open: true, from: w.season + 1 };
+  return { open: false, from: (d.until ?? w.season) + 1, reason: `Contrato com ${d.brand} vai até ${d.until}: troca liberada só no último ano.` };
+}
+
+/** Passa os contratos que começam nesta temporada para "deals". */
+export function rollSponsorDeals(w: World, c: Club) {
+  const s = c.sponsors;
+  if (!s?.next) return;
+  for (const slot of Object.keys(s.next) as SponsorSlot[]) {
+    const n = s.next[slot];
+    if (n && (n.since ?? 0) <= w.season) {
+      s.deals[slot] = n;
+      delete s.next[slot];
+    }
+  }
 }
 
 /** Assina uma das ofertas. Retorna erro em texto ou null. */
 export function signSponsor(w: World, c: Club, id: string): string | null {
+  const any = sp(c).offers?.list.find((o) => o.id === id);
+  if (any) {
+    const win = sponsorWindow(w, c, any.slot);
+    if (!win.open) return win.reason ?? "Troca bloqueada até o fim do contrato.";
+  }
   const offer = currentOffers(w, c).find((o) => o.id === id);
   if (!offer) return "Oferta não disponível.";
   const s = sp(c);
-  s.deals[offer.slot] = { ...offer, since: w.season, until: w.season + offer.years - 1 };
+  const from = sponsorWindow(w, c, offer.slot).from;
+  const deal = { ...offer, since: from, until: from + offer.years - 1 };
+  const prev = activeDeal(w, c, offer.slot);
+  if (from > w.season) (s.next ??= {})[offer.slot] = deal;
+  else s.deals[offer.slot] = deal;
   (s.log ??= []).push({ season: w.season, brand: offer.brand, text: `Contrato assinado: ${SLOT_INFO[offer.slot].label}`, value: offer.annual });
+  if (c.id === w.userClubId) {
+    const renew = prev?.brand === offer.brand;
+    const what = offer.slot === "kit" ? "fornecedora de material" : offer.slot === "shirt" ? "patrocinador master" : "nome do estádio";
+    addNews(w, "info", `${c.name} ${renew ? "renova" : "fecha"} com ${offer.brand}`,
+      `${offer.brand} ${renew ? "segue" : "passa a ser"} ${what} do ${c.name}${from > w.season ? ` a partir de ${from}` : ""}: ${formatMoney(offer.annual)} por ano até ${deal.until}.` +
+      (prev && !renew && from > w.season ? ` O contrato com ${prev.brand} termina em ${prev.until}.` : ""));
+  }
   return null;
 }
 
@@ -196,6 +249,7 @@ export function bonusMet(kind: SponsorBonus["kind"], div: string, pos: number | 
 export function settleSponsorBonuses(w: World, c: Club): number {
   const s = c.sponsors;
   if (!s) return 0;
+  rollSponsorDeals(w, c);
   const last = w.season - 1;
   if ((s.paidFor ?? last - 1) >= last) return 0;
   s.paidFor = last;
