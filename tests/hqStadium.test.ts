@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { STADIUM_MODELS, buildStadium, findModel, fitToBowl, genericModel, type StadiumModel } from "../src/ui/hq/stadium";
+import { STADIUM_MODELS, applyCustom, buildStadium, findModel, fitToBowl, genericModel, type StadiumModel } from "../src/ui/hq/stadium";
 import { minRect, superEllipse } from "../src/ui/hq/geo";
 import { buildCity } from "../src/ui/hq/city";
 import db from "../src/data/database.json";
@@ -62,6 +62,22 @@ describe("estádios marcantes (stadiumModels.json)", () => {
     expect(big.roof?.type).toBe("ring");
     const g = buildStadium(genericModel(["#000000", "#ffffff"], 3, { rect: [0, 0, 120, 95, 30], h: 0, outline: [], fill: 0.8 }), opts(3));
     expect(finite(g.group)).toBe(true);
+  });
+});
+
+describe("personalização do estádio", () => {
+  it("troca cadeiras, cobertura, fachada e nome sem alterar o modelo original", () => {
+    const base = findModel("sao-paulo")!;
+    const c = applyCustom(base, { seats: ["#000000", "#ffffff"], pattern: "sectors", roof: { type: "box", color: "#222222" }, facade: { type: "glass" }, name: "Arena Patrocinada", extraTier: true, screens: 4 });
+    expect(c.name).toBe("Arena Patrocinada");
+    expect(c.tiers.length).toBe(base.tiers.length + 1);
+    expect(c.tiers.every((t) => t.seats[0] === "#000000")).toBe(true);
+    expect(c.roof?.type).toBe("box");
+    expect(c.facade.type).toBe("glass");
+    expect(base.tiers[0].seats[0]).not.toBe("#000000");
+    expect(finite(buildStadium(c, opts(3)).group)).toBe(true);
+    const open = applyCustom(findModel("vasco")!, { roof: { type: "ring" } });
+    expect(finite(buildStadium(open, opts(2)).group)).toBe(true);
   });
 });
 

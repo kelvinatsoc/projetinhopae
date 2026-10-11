@@ -21,49 +21,57 @@
       ],
       "tiers": [
         {
-          "rise": 9,
-          "depth": 21,
+          "rise": 8,
+          "depth": 20,
           "base": 1.2,
           "seats": [
-            "#c4122f"
+            "#c4122f",
+            "#c4122f",
+            "#c4122f",
+            "#f2f2f2",
+            "#151515"
           ],
-          "pattern": "solid"
+          "pattern": "mosaic"
         },
         {
-          "gap": -4,
-          "lift": 5,
-          "rise": 25,
-          "depth": 37,
+          "gap": -6,
+          "lift": 6,
+          "rise": 30,
+          "depth": 40,
           "seats": [
             "#c4122f",
-            "#b30f29"
+            "#c4122f",
+            "#c4122f",
+            "#c4122f",
+            "#f2f2f2",
+            "#151515"
           ],
-          "pattern": "solid",
+          "pattern": "mosaic",
           "boxes": true
         }
       ],
       "roof": {
         "type": "ring",
-        "cover": 34,
-        "height": 47,
-        "drop": 3,
-        "color": "#dfe9ee",
-        "opacity": 0.42,
-        "ribs": 64,
-        "ribColor": "#f4f4f4",
+        "cover": 54,
+        "height": 50,
+        "drop": 4,
+        "color": "#f3f5f6",
+        "opacity": 0.5,
+        "ribs": 48,
+        "ribColor": "#d0d4d8",
         "innerRing": true
       },
       "facade": {
         "type": "columns",
-        "color": "#d6d1c7",
-        "color2": "#8f8a80",
-        "count": 76,
-        "lean": 8
+        "color": "#b8b3a9",
+        "color2": "#7d786f",
+        "count": 96,
+        "lean": 10
       },
       "lights": "rim",
       "screens": 2,
       "plaza": "#bdb6aa",
-      "note": "Oval de concreto de 1960 com dois anéis (o superior enorme, em balanço), cadeiras vermelhas desde 2013, pilares externos inclinados e anel de cobertura translúcida."
+      "note": "Oval de concreto aparente de 1960, anel inferior baixo e anel superior alto em balanço, pilares externos inclinados, cobertura nova translúcida/branca sobre as arquibancadas e cadeiras vermelhas com setores brancos e pretos."
     },
     "maracana": {
       "name": "Maracanã",
@@ -197,15 +205,15 @@
         "innerRing": false
       },
       "facade": {
-        "type": "ribbons",
-        "color": "#eef0f1",
-        "color2": "#26313a",
-        "count": 9
+        "type": "waves",
+        "color": "#f4f5f6",
+        "color2": "#3a454d",
+        "count": 7
       },
       "lights": "roof",
       "screens": 2,
       "plaza": "#a9a59c",
-      "note": "Arena caixote (2014): arquibancadas retas e íngremes coladas ao campo, cadeiras verdes, cobertura cinza sobre todos os setores e fachada de faixas horizontais brancas."
+      "note": "Arena caixote (2014): arquibancadas retas e íngremes coladas ao campo, cadeiras verdes, cobertura cinza sobre todos os setores e fachada ondulada de lâminas brancas."
     },
     "neoquimica": {
       "name": "Neo Química Arena",
@@ -276,7 +284,13 @@
       "lights": "roof",
       "screens": 2,
       "plaza": "#b3aea4",
-      "note": "Arena de 2014 com o setor oeste mais alto (fachada de vidro com telão), leste grande e fundos baixos, cadeiras pretas, brancas e cinza e cobertura branca."
+      "note": "Arena de 2014 com o setor oeste mais alto (fachada de vidro com telão), leste grande e fundos baixos, cadeiras pretas, brancas e cinza e cobertura branca.",
+      "screen": {
+        "side": 270,
+        "span": 70,
+        "height": 22,
+        "base": 14
+      }
     },
     "mineirao": {
       "name": "Mineirão",

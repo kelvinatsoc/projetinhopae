@@ -20,7 +20,7 @@ export interface RoofSpec {
   side?: number; span?: number; retractable?: boolean;
 }
 export interface FacadeSpec {
-  type: "columns" | "frame" | "ribbons" | "glass" | "panels" | "membrane" | "classic" | "plain";
+  type: "columns" | "frame" | "ribbons" | "waves" | "glass" | "panels" | "membrane" | "classic" | "plain";
   color: string; color2?: string; count?: number; lean?: number; fork?: boolean;
 }
 export interface StadiumModel {
@@ -29,6 +29,8 @@ export interface StadiumModel {
   plan: "oval" | "rect"; n: number; inner: [number, number];
   tiers: TierSpec[]; sides?: [number, number, number, number]; open?: [number, number][];
   roof?: RoofSpec; facade: FacadeSpec; arches?: { color: string; height: number; width: number };
+  /** telão na fachada (Neo Química): lado em graus, abertura, altura e base (m) */
+  screen?: { side: number; span: number; height: number; base: number };
   ramps?: number; lights?: "roof" | "rim" | "towers"; screens?: number;
   plaza?: string; plazaR?: number; track?: string; turf?: "natural" | "synthetic"; note?: string;
 }
@@ -47,6 +49,45 @@ export function findModel(clubId: string, stadiumName?: string): StadiumModel | 
     for (const [k, m] of Object.entries(STADIUM_MODELS)) if (m.aliases?.some((a) => s === a || s.includes(a))) return { ...m, key: k };
   }
   return null;
+}
+
+/**
+ * Personalização do estádio feita pelo clube (cores das cadeiras, cobertura, fachada, nome e
+ * reformas). Só descreve o que muda; applyCustom devolve um modelo novo, sem mexer no original.
+ */
+export interface StadiumCustom {
+  /** cores das cadeiras (todas as arquibancadas) e o padrão */
+  seats?: string[];
+  pattern?: TierSpec["pattern"];
+  /** nova cobertura (tipo e cor; "none" remove) */
+  roof?: { type: RoofSpec["type"]; color?: string; opacity?: number };
+  facade?: { type?: FacadeSpec["type"]; color?: string; color2?: string };
+  /** nome comercial (naming rights) */
+  name?: string;
+  /** reformas: anel extra de arquibancada e/ou telões */
+  extraTier?: boolean;
+  screens?: number;
+}
+
+export function applyCustom(m: StadiumModel, c?: StadiumCustom | null): StadiumModel {
+  if (!c) return m;
+  const out: StadiumModel = { ...m, tiers: m.tiers.map((t) => ({ ...t })) };
+  if (c.name) out.name = c.name;
+  if (c.seats?.length) for (const t of out.tiers) { t.seats = [...c.seats]; if (c.pattern) t.pattern = c.pattern; }
+  if (c.extraTier) {
+    const top = out.tiers[out.tiers.length - 1];
+    out.tiers.push({ gap: -2, lift: 4, rise: Math.max(8, top.rise * 0.5), depth: Math.max(12, top.depth * 0.45), seats: [...top.seats], pattern: top.pattern, boxes: true });
+  }
+  if (c.roof) {
+    const top = out.tiers.reduce((s, t) => s + t.rise + (t.lift ?? 0), out.tiers[0].base ?? 1.2);
+    const depth = out.tiers.reduce((s, t) => s + t.depth + (t.gap ?? 0), 0);
+    const base = out.roof && out.roof.type !== "none" ? out.roof : { type: "ring" as const, cover: depth * 0.85, height: top + 8, drop: 2, color: "#f2f3f4", ribs: 48, ribColor: "#b9bec4", innerRing: true };
+    out.roof = { ...base, type: c.roof.type, color: c.roof.color ?? base.color, opacity: c.roof.opacity ?? base.opacity,
+      height: Math.max(base.height, top + 6), cover: c.roof.type === "canopy" ? Math.min(base.cover, depth * 0.5) : base.cover, side: base.side ?? 90, span: base.span ?? 120 };
+  }
+  if (c.facade) out.facade = { ...out.facade, ...Object.fromEntries(Object.entries(c.facade).filter(([, v]) => v !== undefined)) };
+  if (c.screens !== undefined) out.screens = c.screens;
+  return out;
 }
 
 /** Estádio genérico (clubes sem modelo): tamanho pelo contorno do OSM, detalhes pelo nível do estádio. */
@@ -266,7 +307,7 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
         // vãos escuros entre pilares + vigas horizontais (concreto aparente)
         const cols = 8;
         for (let i = 0; i < cols; i++) {
-          x.fillStyle = "#2c2f34"; x.fillRect(i * (W / cols) + (fac.type === "frame" ? 10 : 22), 20, W / cols - (fac.type === "frame" ? 20 : 44), H - 40);
+          x.fillStyle = fac.type === "frame" ? "#2c2f34" : "#6a665f"; x.fillRect(i * (W / cols) + (fac.type === "frame" ? 10 : 22), 20, W / cols - (fac.type === "frame" ? 20 : 44), H - 40);
           if (fac.type === "frame") for (const yy of [H * 0.33, H * 0.62]) { x.fillStyle = fc; x.fillRect(i * (W / cols), yy, W / cols, 14); }
           x.fillStyle = fc2; x.fillRect(i * (W / cols) + 10, H - 40, W / cols - 20, 6);
         }
@@ -277,6 +318,18 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
         const k = fac.count ?? 8, bh = H / k;
         for (let i = 0; i < k; i++) { x.fillStyle = fc2; x.fillRect(0, i * bh + bh * 0.62, W, bh * 0.38); }
         x.fillStyle = "rgba(255,255,255,0.25)"; for (let i = 0; i < k; i++) x.fillRect(0, i * bh, W, 3);
+        break;
+      }
+      case "waves": {
+        // lâminas brancas onduladas sobre fundo escuro (Allianz Parque)
+        x.fillStyle = fc2; x.fillRect(0, 0, W, H);
+        const k = fac.count ?? 7, bh = H / k;
+        for (let i = 0; i < k; i++) {
+          x.fillStyle = fc; x.beginPath();
+          for (let u = 0; u <= W; u += 8) x.lineTo(u, i * bh + bh * 0.2 + Math.sin((u / W) * Math.PI * 4 + i * 0.9) * bh * 0.18);
+          for (let u = W; u >= 0; u -= 8) x.lineTo(u, i * bh + bh * 0.78 + Math.sin((u / W) * Math.PI * 4 + i * 0.9 + 0.6) * bh * 0.18);
+          x.closePath(); x.fill();
+        }
         break;
       }
       case "glass": {
@@ -397,6 +450,29 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
       cyl.position.set(p.x, (maxTop * 0.62) / 2, p.z);
       cyl.castShadow = true;
       g.add(cyl);
+    }
+  }
+
+  // telão na fachada (Neo Química)
+  if (m.screen) {
+    const sc = m.screen, list: THREE.Vector3[][] = [[], []];
+    for (let i = 0; i < N; i++) {
+      const d = ((S[i].t * 180) / Math.PI - sc.side + 540) % 360 - 180;
+      if (Math.abs(d) > sc.span / 2) continue;
+      list[0].push(at(i, outR[i] + 0.6, sc.base)); list[1].push(at(i, outR[i] + 0.6, sc.base + sc.height));
+    }
+    if (list[0].length > 2) {
+      const scrTex = tex(512, 64, (x) => {
+        const gr = x.createLinearGradient(0, 0, 512, 0);
+        gr.addColorStop(0, "#1b1b1b"); gr.addColorStop(0.5, o.colors[0].toLowerCase() === "#ffffff" ? "#d9d9d9" : o.colors[0]); gr.addColorStop(1, "#1b1b1b");
+        x.fillStyle = gr; x.fillRect(0, 0, 512, 64);
+        x.fillStyle = "rgba(0,0,0,0.25)"; for (let u = 0; u < 512; u += 4) x.fillRect(u, 0, 1, 64);
+      });
+      const sg = loft(list, list[0].map(() => true), false, 1, 1);
+      const uv = sg.attributes.uv as THREE.BufferAttribute; let mu = 0;
+      for (let i = 0; i < uv.count; i++) mu = Math.max(mu, uv.getX(i));
+      for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) / mu);
+      g.add(new THREE.Mesh(sg, mat({ color: 0x111111, emissive: 0xffffff, emissiveMap: scrTex ?? undefined, emissiveIntensity: o.night ? 1.4 : 0.8, roughness: 0.3, side: THREE.DoubleSide })));
     }
   }
 

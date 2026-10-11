@@ -13,9 +13,15 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { frameDt } from "../animTime";
 import { rng, pts, area, centroid, minRect, noise2, superEllipse, type P2 } from "./geo";
-import { buildStadium, findModel, fitToBowl, genericModel, type StadiumModel, type TexFactory } from "./stadium";
+import { applyCustom, buildStadium, findModel, fitToBowl, genericModel, type StadiumCustom, type StadiumModel, type TexFactory } from "./stadium";
 import { buildCity, type GeoOsm } from "./city";
 
 export type { GeoOsm } from "./city";
@@ -44,6 +50,8 @@ export interface HqOptions {
   onPick: (b: HqBuilding) => void;
   /** força a qualidade (1-5); por padrão vem da média da Estrutura */
   quality?: number;
+  /** personalização/reformas do estádio feitas pelo clube */
+  stadiumCustom?: StadiumCustom | null;
 }
 
 const U = 10; // metros por unidade da cena
@@ -80,6 +88,9 @@ export class HqRenderer {
   private rnd: () => number;
   private std = true;
   private sun!: THREE.DirectionalLight;
+  private sunDir = new THREE.Vector3(0.5, 0.8, 0.3);
+  private composer?: EffectComposer;
+  private bloom?: UnrealBloomPass;
   private texCache: THREE.Texture[] = [];
   // câmera
   private yaw = -0.5;
@@ -114,6 +125,7 @@ export class HqRenderer {
     cv.style.touchAction = "none";
     o.host.prepend(cv);
     this.build();
+    this.post();
     this.bind(cv);
     this.resize();
     this.ro = new ResizeObserver(() => this.resize());
@@ -122,6 +134,24 @@ export class HqRenderer {
     this.io.observe(o.host);
     this.last = performance.now();
     this.loop();
+  }
+
+  /** Pós-processamento: oclusão de ambiente (GTAO) e brilho (bloom), conforme a qualidade. */
+  private post() {
+    if (typeof window === "undefined") return;
+    const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.q >= 2 ? 4 : 2 });
+    const c = new EffectComposer(this.renderer, rt);
+    c.addPass(new RenderPass(this.scene, this.camera));
+    if (this.q >= 2) {
+      const ao = new GTAOPass(this.scene, this.camera, 1, 1);
+      ao.updateGtaoMaterial({ radius: 2.2, distanceExponent: 1.4, thickness: 2, scale: 1.1, samples: this.q >= 4 ? 16 : 8 });
+      ao.blendIntensity = 0.9;
+      c.addPass(ao);
+    }
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), this.o.night ? 0.9 : 0.18, 0.5, this.o.night ? 0.6 : 0.92);
+    c.addPass(this.bloom);
+    c.addPass(new OutputPass());
+    this.composer = c;
   }
 
   /** Locais disponíveis (para os botões de atalho da interface). */
@@ -170,21 +200,41 @@ export class HqRenderer {
     const night = o.night;
     scene.background = new THREE.Color(night ? SKY_NIGHT : SKY_DAY);
     scene.fog = new THREE.Fog(night ? SKY_NIGHT : SKY_DAY, 300, 1400);
-    // céu em degradê
-    const sky = new THREE.SphereGeometry(4000, 24, 12);
-    const sc: number[] = [];
-    const top = new THREE.Color(night ? 0x050818 : 0x3f86d6), hor = new THREE.Color(night ? SKY_NIGHT : SKY_DAY);
-    const sp = sky.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < sp.count; i++) { const k = Math.max(0, sp.getY(i) / 4000); const c = hor.clone().lerp(top, Math.pow(k, 0.6)); sc.push(c.r, c.g, c.b); }
-    sky.setAttribute("color", new THREE.Float32BufferAttribute(sc, 3));
-    scene.add(new THREE.Mesh(sky, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
-    // luz ambiente de "estúdio" para os materiais PBR (reflexo em vidro, metal e água)
+    // céu físico (espalhamento atmosférico) e o mesmo céu como mapa de ambiente (HDRI procedural)
+    const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(night ? 100 : 52), THREE.MathUtils.degToRad(125));
+    this.sunDir = sunDir.clone();
     const pm = new THREE.PMREMGenerator(this.renderer);
-    scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = night ? 0.12 : 0.45;
+    if (!night) {
+      const sky = new Sky();
+      sky.scale.setScalar(4500);
+      const u = sky.material.uniforms;
+      u.turbidity.value = 4; u.rayleigh.value = 1.2; u.mieCoefficient.value = 0.004; u.mieDirectionalG.value = 0.8;
+      u.sunPosition.value.copy(sunDir);
+      scene.add(sky);
+      const envScene = new THREE.Scene();
+      const sky2 = new Sky(); sky2.scale.setScalar(4500);
+      for (const k of Object.keys(u)) (sky2.material.uniforms[k].value as unknown) = u[k].value;
+      envScene.add(sky2);
+      // chão neutro no ambiente (luz rebatida da cidade)
+      const gnd = new THREE.Mesh(new THREE.CircleGeometry(4000, 16), new THREE.MeshBasicMaterial({ color: 0x5a5850 }));
+      gnd.rotation.x = -Math.PI / 2; gnd.position.y = -10; envScene.add(gnd);
+      scene.environment = pm.fromScene(envScene, 0).texture;
+      scene.environmentIntensity = 0.12;
+      scene.background = null;
+    } else {
+      const sky = new THREE.SphereGeometry(4000, 24, 12);
+      const sc: number[] = [];
+      const top = new THREE.Color(0x050818), hor = new THREE.Color(SKY_NIGHT);
+      const sp = sky.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < sp.count; i++) { const k = Math.max(0, sp.getY(i) / 4000); const c = hor.clone().lerp(top, Math.pow(k, 0.6)); sc.push(c.r, c.g, c.b); }
+      sky.setAttribute("color", new THREE.Float32BufferAttribute(sc, 3));
+      scene.add(new THREE.Mesh(sky, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+      scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 0.12;
+    }
     pm.dispose();
-    scene.add(new THREE.HemisphereLight(night ? 0x4a5a9a : 0xdcecff, night ? 0x101820 : 0x6b7a55, night ? 0.35 : 0.6));
-    const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xfff1dc, night ? 0.5 : 2.1);
+    scene.add(new THREE.HemisphereLight(night ? 0x4a5a9a : 0xcfe3ff, night ? 0x101820 : 0x6b6a5a, night ? 0.35 : 0.35));
+    const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xfff0d6, night ? 0.5 : 2.6);
     sun.castShadow = true;
     const sz = [1024, 2048, 2048, 4096, 4096][this.q - 1];
     sun.shadow.mapSize.set(sz, sz);
@@ -337,7 +387,7 @@ export class HqRenderer {
   private placeStadium(c: THREE.Vector3, osm: GeoOsm | undefined) {
     const o = this.o;
     const bowl = osm?.bowl ?? null;
-    const model: StadiumModel = findModel(o.clubId ?? "", o.stadiumName) ?? genericModel(o.colors, Math.max(1, Math.min(5, o.stadiumLv)), bowl);
+    const model: StadiumModel = applyCustom(findModel(o.clubId ?? "", o.stadiumName) ?? genericModel(o.colors, Math.max(1, Math.min(5, o.stadiumLv)), bowl), o.stadiumCustom);
     const built = buildStadium(model, {
       q: this.q, night: o.night, matchDay: o.matchDay, colors: o.colors, stadiumLv: o.stadiumLv, tex: this.tex, mat: this.smat,
     });
@@ -804,10 +854,12 @@ export class HqRenderer {
 
   private resize() {
     const w = this.o.host.clientWidth || 360, h = this.o.host.clientHeight || 300;
-    // resolução cresce com a estrutura do clube (nível 1: cara de PS2; nível 5: nítido)
+    // resolução cresce com a estrutura do clube
     const dpr = window.devicePixelRatio || 1;
-    this.renderer.setPixelRatio(Math.min(dpr, [1.25, 1.5, 2, 2.5, 3][this.q - 1]));
+    const pr = Math.min(dpr, [1.25, 1.5, 2, 2.25, 2.5][this.q - 1]);
+    this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
+    if (this.composer) { this.composer.setPixelRatio(pr); this.composer.setSize(w, h); }
     const cv = this.renderer.domElement;
     cv.style.width = `${w}px`; cv.style.height = `${h}px`;
     this.camera.aspect = w / h;
@@ -849,9 +901,9 @@ export class HqRenderer {
     const half = Math.min(170, Math.max(28, this.dist * 0.8));
     const sc = this.sun.shadow.camera as THREE.OrthographicCamera;
     if (sc.right !== half) { sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.near = 1; sc.far = 900; sc.updateProjectionMatrix(); }
-    this.sun.position.set(this.target.x + 160, 260, this.target.z + 110);
+    this.sun.position.copy(this.target).addScaledVector(this.sunDir, 320);
     this.sun.target.position.copy(this.target);
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     this.placeLabels();
   }
 
@@ -892,6 +944,7 @@ export class HqRenderer {
     });
     for (const t of this.texCache) t.dispose();
     this.scene.environment?.dispose();
+    this.composer?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
