@@ -13,7 +13,7 @@ import { age, generatePlayer, playerValue, roundMoney, wageFor } from "./player"
 import { chance, clamp, pick, pickWeighted, rand, randInt, shuffle } from "./rng";
 import { hasTrait } from "./traits";
 import type { Club, Player, Pos, TraitId, TransferOffer, World } from "./types";
-import { leagueMoney, leaguePriceMult, leagueWageMult } from "./worldMoney";
+import { leagueMoney, leaguePriceMult, leagueWageMult, PRICE_CAP } from "./worldMoney";
 
 export function isStarter(w: World, p: Player): boolean {
   if (!p.clubId) return false;
@@ -27,11 +27,12 @@ export function askingPrice(w: World, p: Player): number {
   const v = playerValue(p, w.season);
   if (!p.clubId) return 0;
   const yearsLeft = Math.max(0, p.contractEnd - w.season);
-  let mult = 1.2 + (isStarter(w, p) ? 0.35 : 0) + yearsLeft * 0.07;
-  if (p.listed) mult = 0.95;
-  if (p.legend) mult += 0.6;
   const seller = p.loan ? w.clubs[p.loan.from] : w.clubs[p.clubId];
-  return roundMoney(v * mult * leaguePriceMult(seller));
+  // 1,0–1,5× o valor; contrato longo, titular e clube rico chegam perto de 2× (nunca acima).
+  let mult = 1 + (isStarter(w, p) ? 0.15 : 0) + Math.min(5, yearsLeft) * 0.05 + (leaguePriceMult(seller) - 1);
+  if (p.legend) mult += 0.2;
+  if (p.listed) mult = 0.95;
+  return roundMoney(v * Math.min(PRICE_CAP, mult));
 }
 
 /** Salário que o jogador pede para assinar com um clube. */
@@ -39,6 +40,8 @@ export function wageDemand(w: World, p: Player, club: Club): number {
   const base = wageFor(p.ovr, club.rep, age(p, w.season)) * (club.league ? leagueWageMult(club) : 1);
   const from = p.clubId ? w.clubs[p.clubId] : null;
   let mult = 1.05;
+  // estrelas (85+) cobram prêmio: salário anual de 25–60 mi de euros nas ligas ricas
+  if (p.ovr >= 85) mult *= 1 + (p.ovr - 84) * 0.04;
   if (from && from.rep > club.rep + 10) mult += 0.25; // descer de patamar custa caro
   if (!p.clubId) mult = 0.95;
   mult *= 0.95 + 0.0048 * hidOf(p)[H.amb]; // ambiciosos pedem mais
@@ -225,7 +228,8 @@ export function aiWorldBuy(w: World) {
   if (!targets.length) return;
   const p = pickWeighted(targets, targets.map((x) => x.pot + x.ovr - 120));
   const seller = w.clubs[p.clubId!];
-  const fee = roundMoney(playerValue(p, w.season) * (1.3 + rand() * 0.9) * Math.sqrt(leagueMoney(buyer)));
+  // paga acima do valor, mas o prêmio da liga entra uma vez só (comprador) e o teto é 2×
+  const fee = roundMoney(playerValue(p, w.season) * Math.min(PRICE_CAP, (1.15 + rand() * 0.35) * leaguePriceMult(buyer)));
   if (fee > buyer.balance * 0.6) return;
   if (seller.id === w.userClubId) {
     const offer: TransferOffer = { id: w.nextId++, pid: p.id, from: buyer.id, to: seller.id, fee, status: "pending", day: w.day, season: w.season, byUser: false };
