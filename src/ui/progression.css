@@ -1,9 +1,15 @@
 /* Trilha B: sala de troféus, conquistas, carreira e desafios */
 .cabinet { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .cabinet-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px 8px; border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 14%, var(--card2)), var(--card2)); border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--line)); text-align: center; cursor: pointer; }
-.cabinet-item .cup { font-size: 30px; line-height: 1; min-height: 32px; display: flex; align-items: center; }
+.cabinet-item .cup { position: relative; line-height: 1; min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.cabinet-item .cup .trophy-img { filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45)); }
+.cabinet-item .cup-logo { position: absolute; right: -6px; bottom: -2px; }
+.cabinet-open { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.cabinet-open .trophy-img { filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5)); }
 .cabinet-item .count { position: absolute; top: 6px; right: 8px; font-weight: 800; color: var(--gold); font-size: 13px; }
-.cabinet-item.empty { opacity: 0.35; filter: grayscale(1); }
+/* taça ainda não conquistada: só a taça fica em sombra; a logo continua nítida */
+.cabinet-item.empty .cup .trophy-img { filter: grayscale(1) brightness(0.45); opacity: 0.6; }
+.cabinet-item.empty b { opacity: 0.6; }
 .timeline { position: relative; padding-left: 18px; }
 .timeline::before { content: ""; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
 .tl-item { position: relative; padding: 6px 0 10px; }

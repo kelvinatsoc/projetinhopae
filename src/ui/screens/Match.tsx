@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { formatDate } from "../../engine/calendar";
-import { COMP_META, fixtureById, STAGE_NAMES, tieAggregate } from "../../engine/competitions";
+import { COMP_META, fixtureById, tieAggregate } from "../../engine/competitions";
 import { finishUserMatch, loadRng, saveRng } from "../../engine/game";
 import { lineupStrength, validLineup, autoLineup } from "../../engine/lineup";
 import { MatchSim } from "../../engine/match";
@@ -13,6 +13,7 @@ import { forceBack, getWorld, push, replace, update, useWorld } from "../../stor
 import { autosave, goToMatch } from "../actions";
 import { duckForMenu, goalRoar, loadMedia, ooh, playCustomGoal, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
 import { crowdMood, crowdProfile } from "../torcida";
+import { PhaseBanner, matchPhase } from "../MatchPhase";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
 import { GoalCelebration, MatchView, PostMatchCard, readGraphics, saveGraphics, type GraphicsMode } from "../MatchView";
@@ -80,10 +81,8 @@ function TalkCard({ w, f }: { w: World; f: Fixture }) {
 }
 
 function stageLabel(w: World, f: Fixture) {
-  const comp = w.comps[f.comp];
-  if (f.stage === "league") return `Rodada ${f.round}`;
-  if (f.stage === "group") return `${comp?.groups[f.group ?? 0]?.name ?? "Grupos"} · ${f.round}ª rodada`;
-  return `${STAGE_NAMES[f.stage]}${f.leg ? ` · ${f.leg === 1 ? "ida" : "volta"}` : ""}`;
+  const ph = matchPhase(w, f);
+  return ph.detail ? `${ph.label} · ${ph.detail}` : ph.label;
 }
 
 export function PreMatchScreen() {
@@ -105,6 +104,7 @@ export function PreMatchScreen() {
   return (
     <div className="page">
       <CompHeader id={f.comp} title={COMP_META[f.comp]?.short} sub={`${stageLabel(w, f)}${theme.motto ? ` · ${theme.motto}` : ""}`} />
+      <PhaseBanner w={w} f={f} />
       <div className={`hero ct-hero ${themeClass(theme)}`} style={themeVars(theme)}>
         <div className="row" style={{ justifyContent: "space-around", margin: "12px 0" }}>
           {[f.home, f.away].map((id) => (

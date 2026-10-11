@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { formatDate } from "../../engine/calendar";
-import { COMP_META, leagueOf, nextFixture, sortTable, STAGE_NAMES } from "../../engine/competitions";
+import { COMP_META, leagueOf, nextFixture, sortTable } from "../../engine/competitions";
 import { chemOf } from "../../engine/dressing";
 import { inboxUnread } from "../../engine/inbox";
 import { fanMood } from "../../engine/narrative";
@@ -9,6 +9,7 @@ import type { Fixture, NewsItem, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
 import { broadcasters, newsSource } from "../../engine/outlets";
 import { stadiumName } from "../../engine/sponsors";
+import { matchPhase, PhaseBanner } from "../MatchPhase";
 import { CompLogo, Crest, Icon, stadiumSrc, visibleColor, Ic, GIcon } from "../components";
 import type { IconSlug } from "../icons";
 import { PeneiraHomeCard } from "./Academy";
@@ -153,17 +154,20 @@ export function HomeScreen() {
 }
 
 function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
-  const comp = w.comps[f.comp];
   const home = w.clubs[f.home];
   const away = w.clubs[f.away];
   const meta = COMP_META[f.comp];
   const days = f.day - w.day;
   const opp = f.home === w.userClubId ? away : home;
   const photo = f.neutral ? null : stadiumSrc(home);
-  const stage = f.stage === "league" ? `Rodada ${f.round}` : f.stage === "group" ? `${comp?.groups[f.group ?? 0]?.name ?? "Grupos"} · ${f.round}ª rodada` : `${STAGE_NAMES[f.stage]}${f.leg ? ` · jogo ${f.leg}` : ""}`;
+  const ph = matchPhase(w, f);
+  // nos jogos decisivos o banner acima já detalha; o selo fica curto
+  const stage = ph.decisive ? ph.label : ph.detail ? `${ph.label} · ${ph.detail}` : ph.label;
   const tv = broadcasters(f);
   return (
-    <section className="ui-card next-match" aria-label="Próximo jogo" style={{ "--h": visibleColor(home.colors), "--a": visibleColor(away.colors) } as CSSProperties}>
+    <>
+    {ph.decisive && <PhaseBanner w={w} f={f} compact />}
+    <section className={`ui-card next-match${ph.decisive ? ` is-${ph.decisive}` : ""}`} aria-label="Próximo jogo" style={{ "--h": visibleColor(home.colors), "--a": visibleColor(away.colors) } as CSSProperties}>
       <div className="nm-media">
         {photo && <img src={photo} alt="" decoding="async" />}
         <div className="nm-badges">
@@ -186,6 +190,7 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
         <button className="btn" onClick={() => push({ name: "club", id: opp.id })}><Icon name="scout" size={20} />Ver {opp.name.length > 12 ? opp.abbr : opp.name}</button>
       </div>
     </section>
+    </>
   );
 }
 

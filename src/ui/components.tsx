@@ -9,6 +9,7 @@ import { getWorld } from "../store";
 import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
+import { compKey } from "./trophies";
 import { mediaUrlOrNull } from "./mediaUrl";
 import { DUO, GameIcon, type IconSlug } from "./icons";
 import { PlayerBadges } from "./PlayerBadges";
@@ -187,9 +188,9 @@ export function StadiumPhoto({ club }: { club: Club }) {
 /** Logo oficial de uma competição (ou nada, se não houver arquivo). */
 export function CompLogo({ id, size = 24 }: { id: string; size?: number }) {
   const [broken, setBroken] = useState(false);
-  const src = mediaUrlOrNull(`comps/${id}.webp`);
+  const src = mediaUrlOrNull(`comps/${compKey(id)}.webp`);
   if (broken || !src) return null;
-  return <img className="comp-logo" src={src} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setBroken(true)} />;
+  return <img className="comp-logo" src={src} alt="" width={size} height={size} loading="lazy" decoding="async" draggable={false} onError={() => setBroken(true)} />;
 }
 
 // ---------------------------------------------------------------- pequenos
