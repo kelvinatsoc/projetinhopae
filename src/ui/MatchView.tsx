@@ -926,6 +926,24 @@ class PitchAnim {
     }
   }
 
+  /**
+   * Leva a bola até (x, y) sem teletransporte: rola (perto) ou vai pelo alto (longe), como um
+   * repasse do gandula ou do jogador. "Menos movimento": coloca direto.
+   */
+  placeBallAt(x: number, y: number, dur = 700) {
+    const b = this.ball;
+    const d = Math.hypot(x - b.x, y - b.y);
+    if (this.reduced || d < 1.5) {
+      b.fl = null;
+      b.x = x;
+      b.y = y;
+      b.h = 0;
+      return;
+    }
+    b.holder = null;
+    this.fly(x, y, Math.max(dur, d * 9) / Math.max(0.5, this.spd()), d > 30 ? Math.min(8, d * 0.09) : 0, null);
+  }
+
   setHolder(d: Dude | null) {
     this.ball.holder = d;
     this.carryStart = this.now;
@@ -1309,9 +1327,7 @@ class PitchAnim {
           // tiro de meta
           this.at(1600 / sp, () => {
             if (!keeper) return;
-            this.ball.x = gx - f * 7;
-            this.ball.y = CY + rnd(-6, 6);
-            this.ball.h = 0;
+            this.placeBallAt(gx - f * 7, CY + rnd(-6, 6));
             this.setHolder(keeper);
           });
         });
@@ -1381,8 +1397,7 @@ class PitchAnim {
       this.icons.push({ kind: "var", d: null, x: CX, y: CY - 16, until: this.now + 1800 });
       this.at(2200 / this.spd(), () => {
         const keeper = this.gk((1 - atk) as 0 | 1);
-        this.ball.x = goalX(atk) - fwd(atk) * 7;
-        this.ball.y = CY;
+        this.placeBallAt(goalX(atk) - fwd(atk) * 7, CY);
         if (keeper) this.setHolder(keeper);
       });
       return;
@@ -1430,9 +1445,7 @@ class PitchAnim {
       }
       this.ball.fl = null;
       this.ball.holder = null;
-      this.ball.x = CX;
-      this.ball.y = CY;
-      this.ball.h = 0;
+      this.placeBallAt(CX, CY);
     };
     if (hold) this.at(2600, back);
     else this.at(Math.max(60, this.ms * 0.35), back);
@@ -1612,9 +1625,7 @@ class PitchAnim {
     this.mode = "kickoff";
     this.ball.fl = null;
     this.ball.holder = null;
-    this.ball.x = CX;
-    this.ball.y = CY;
-    this.ball.h = 0;
+    this.placeBallAt(CX, CY);
     const tk = (this.ms >= SLOW_MS ? 0.3 : 0.15) * B;
     this.at(tk, () => {
       const mate = this.team(kt).filter((d) => d.grp === 2).sort((a, b) => Math.abs(a.y - CY) - Math.abs(b.y - CY))[0] ?? this.team(kt).find((d) => d.grp !== 0) ?? null;
@@ -1637,9 +1648,7 @@ class PitchAnim {
     this.kickoffPending = true;
     this.ball.fl = null;
     this.ball.holder = null;
-    this.ball.x = CX;
-    this.ball.y = CY;
-    this.ball.h = 0;
+    this.placeBallAt(CX, CY);
     this.say(`Intervalo · ${e.text.replace("Fim do primeiro tempo: ", "")}`, null, 1);
   }
 
@@ -1692,11 +1701,21 @@ class PitchAnim {
     if (b.fl) {
       const fl = b.fl;
       const s = clamp((this.now - fl.t0) / fl.dur, 0, 1);
-      // passe rasteiro desacelera; bola pelo alto vai em linha reta (a altura faz a curva)
-      const k = fl.peak > 0 ? s : 1 - (1 - s) * (1 - s);
+      // rasteira: sai rápida e perde velocidade com o atrito do gramado; pelo alto: parábola até
+      // ~80% do tempo, depois um quique baixo e a bola rolando até o destino
+      const air = 0.8;
+      let k: number;
+      if (fl.peak > 0) {
+        k = s < air ? (s / air) * 0.88 : 0.88 + 0.12 * (1 - Math.pow(1 - (s - air) / (1 - air), 2));
+        const u = s / air;
+        const v = (s - air) / (1 - air);
+        b.h = s < air ? fl.peak * 4 * u * (1 - u) : fl.peak * 0.18 * 4 * v * (1 - v) * (v < 0.6 ? 1 : 0.4);
+      } else {
+        k = 1 - (1 - s) * (1 - s);
+        b.h = 0;
+      }
       b.x = fl.x0 + (fl.x1 - fl.x0) * k;
       b.y = fl.y0 + (fl.y1 - fl.y0) * k;
-      b.h = fl.peak * 4 * s * (1 - s);
       if (fl.curve) b.y += Math.sin(Math.PI * s) * fl.curve;
       b.spin += dt;
       if (s >= 1) {
@@ -1712,12 +1731,39 @@ class PitchAnim {
     } else if (b.holder) {
       if (b.holder.hidden || b.holder.leaving) b.holder = null;
       else {
-        const [ox, oy, oh] = this.holdOffset(b.holder);
-        const k = this.reduced ? 1 : 1 - Math.exp(-dt / 45);
-        b.x += (b.holder.x + ox - b.x) * k;
-        b.y += (b.holder.y + oy - b.y) * k;
-        b.h += (oh - b.h) * k;
-        if (Math.hypot(b.holder.vx, b.holder.vy) > 0.05) b.spin += dt;
+        const h = b.holder;
+        let [ox, oy, oh] = this.holdOffset(h);
+        // condução: toques periódicos; a bola sai à frente do pé e perde velocidade até o próximo toque
+        const v = Math.hypot(h.vx, h.vy);
+        if (v > 0.012 && h.grp !== 0) {
+          const period = 520 / Math.max(0.5, sp);
+          const u = ((this.now - this.carryStart) % period) / period;
+          const ahead = 1.1 + 2.0 * (1 - u) * (1 - u); // px (1 px ≈ 0,66 m)
+          ox = (h.vx / v) * ahead;
+          oy = (h.vy / v) * ahead;
+        }
+        const tx = h.x + ox, ty = h.y + oy;
+        const gap = Math.hypot(tx - b.x, ty - b.y);
+        if (this.reduced || gap < 0.01) {
+          b.x = tx;
+          b.y = ty;
+        } else if (gap > 5) {
+          // bola longe do novo dono (desarme, sobra): rola até ele, sem teletransporte
+          const step = Math.min(gap, ((RUN_PX_S * 2.2 * sp) / 1000) * dt);
+          b.x += ((tx - b.x) / gap) * step;
+          b.y += ((ty - b.y) / gap) * step;
+          if (!h.leaving && this.now >= h.oUntil) {
+            h.ox = b.x;
+            h.oy = b.y;
+            h.oUntil = this.now + 120;
+          }
+        } else {
+          const k = 1 - Math.exp(-dt / 70);
+          b.x += (tx - b.x) * k;
+          b.y += (ty - b.y) * k;
+        }
+        b.h += (oh - b.h) * (1 - Math.exp(-dt / 60));
+        if (v > 0.012) b.spin += dt;
       }
     }
 

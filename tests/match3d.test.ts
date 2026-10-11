@@ -99,3 +99,33 @@ describe("torcida reativa", () => {
     expect(final).toBeLessThanOrEqual(1);
   });
 });
+
+import { stepMotion, type Motion } from "../src/ui/match3d/player";
+
+describe("movimento natural dos jogadores", () => {
+  const run = (hz: number) => {
+    const m: Motion = { x: 0, z: 0, vx: 0, vz: 0, phase: 0, turn: 0 };
+    let maxJump = 0;
+    for (let t = 0; t < 3000; t += 1000 / hz) {
+      const tx = Math.min(20, t / 150), tz = t > 1500 ? 6 : 0; // corre e muda de direção de repente
+      const x0 = m.x, z0 = m.z;
+      stepMotion(m, tx, tz, 1000 / hz);
+      maxJump = Math.max(maxJump, Math.hypot(m.x - x0, m.z - z0) * hz); // m/s
+    }
+    return { m, maxJump };
+  };
+  it("sem teletransporte: velocidade nunca passa de um sprint humano", () => {
+    expect(run(60).maxJump).toBeLessThanOrEqual(9.01);
+  });
+  it("independe da taxa de quadros (60 x 120 Hz)", () => {
+    const a = run(60).m, b = run(120).m;
+    expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeLessThan(0.3);
+  });
+  it("a passada acompanha a distância (sem patinar) e parado não anda", () => {
+    const m: Motion = { x: 0, z: 0, vx: 0, vz: 0, phase: 0, turn: 0 };
+    for (let i = 0; i < 120; i++) stepMotion(m, 0, 0, 16);
+    expect(m.phase).toBeCloseTo(0);
+    for (let i = 0; i < 120; i++) stepMotion(m, i * 0.08, 0, 16);
+    expect(m.phase).toBeGreaterThan(Math.PI);
+  });
+});

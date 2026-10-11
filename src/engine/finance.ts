@@ -21,6 +21,7 @@ export const EXPENSE_LABELS: Record<string, string> = {
   wages: "Salários",
   staff: "Estrutura e funcionários",
   transfers: "Compra de jogadores",
+  powers: "Loja de Poderes",
   youth: "Categorias de base",
   release: "Rescisões",
   comissao: "Comissão técnica",

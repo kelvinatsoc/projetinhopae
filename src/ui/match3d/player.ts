@@ -393,44 +393,141 @@ function angDelta(a: number, b: number) {
   return d;
 }
 
+/** Estado de movimento suavizado de cada jogador (posição, velocidade, passada). */
+export interface Motion {
+  x: number;
+  z: number;
+  vx: number;
+  vz: number;
+  /** fase da passada (rad): avança com a distância percorrida (sem patinar) */
+  phase: number;
+  /** velocidade de giro do corpo (rad/s), para inclinar na curva */
+  turn: number;
+  /** ângulos das articulações no quadro anterior (blend entre animações) */
+  prev?: number[];
+}
+
+/**
+ * Persegue a posição do lance com uma mola criticamente amortecida: acelera e freia, faz curva em
+ * vez de ziguezague e nunca dá "pulo". dt em ms.
+ */
+export function stepMotion(m: Motion, tx: number, tz: number, dt: number) {
+  const d = Math.hypot(tx - m.x, tz - m.z);
+  if (d > 9) {
+    // mudança de cena (replay, gol, intervalo): reposiciona
+    m.x = tx;
+    m.z = tz;
+    m.vx = m.vz = 0;
+    return;
+  }
+  const w = 7.5; // rigidez (1/s)
+  let left = Math.min(dt, 100) / 1000;
+  while (left > 0) {
+    const h = Math.min(left, 1 / 120);
+    left -= h;
+    const ax = w * w * (tx - m.x) - 2 * w * m.vx;
+    const az = w * w * (tz - m.z) - 2 * w * m.vz;
+    m.vx += ax * h;
+    m.vz += az * h;
+    // limite humano: ~9 m/s
+    const v = Math.hypot(m.vx, m.vz);
+    if (v > 9) {
+      m.vx *= 9 / v;
+      m.vz *= 9 / v;
+    }
+    m.x += m.vx * h;
+    m.z += m.vz * h;
+  }
+  const speed = Math.hypot(m.vx, m.vz);
+  // passada mais longa quanto mais rápido; 2 passos por ciclo
+  const stride = 0.85 + 0.17 * speed;
+  m.phase += ((speed * Math.min(dt, 100)) / 1000 / (2 * stride)) * Math.PI * 2;
+}
+
+const JOINTS = 14;
+/** Blend entre poses: cada articulação segue a pose nova com um pequeno atraso (sem estalos). */
+function blendJoints(r: Rig, dt: number, m: Motion | undefined, snap: boolean) {
+  if (!m) return;
+  const js = [r.legL, r.legR, r.shinL, r.shinR, r.armL, r.armR, r.foreL, r.foreR, r.spine, r.head];
+  const cur: number[] = [];
+  for (const j of js) cur.push(j.rotation.x, j.rotation.y, j.rotation.z);
+  cur.push(r.body.rotation.x, r.body.rotation.z, r.body.position.y, r.body.rotation.y);
+  if (!m.prev || snap || m.prev.length !== cur.length) {
+    m.prev = cur;
+    return;
+  }
+  const k = 1 - Math.exp(-Math.max(0, dt) / 55);
+  for (let i = 0; i < cur.length; i++) cur[i] = m.prev[i] + (cur[i] - m.prev[i]) * k;
+  let i = 0;
+  for (const j of js) {
+    j.rotation.set(cur[i], cur[i + 1], cur[i + 2]);
+    i += 3;
+  }
+  r.body.rotation.x = cur[i++];
+  r.body.rotation.z = cur[i++];
+  r.body.position.y = cur[i++];
+  r.body.rotation.y = cur[i++];
+  m.prev = cur;
+}
+void JOINTS;
+
 /** Posa o jogador no quadro: corrida, golpes, goleiro voando, comemoração. */
-export function poseRig(p: Player3D, r: Rig, now: number, dt: number, ball: { x: number; z: number }) {
+export function poseRig(p: Player3D, r: Rig, now: number, dt: number, ball: { x: number; z: number }, m?: Motion) {
+  posePlayer(p, r, now, dt, ball, m);
+  // golpes e quedas entram/saem com blend; a locomoção já é contínua
+  blendJoints(r, dt, m, false);
+}
+
+function posePlayer(p: Player3D, r: Rig, now: number, dt: number, ball: { x: number; z: number }, m?: Motion) {
   const { root, body, spine, head, armL, armR, legL, legR, shinL, shinR, foreL, foreR } = r;
-  root.position.set(p.x, 0, p.z);
+  const px = m ? m.x : p.x, pz = m ? m.z : p.z;
+  root.position.set(px, 0, pz);
   body.position.set(0, 0, 0);
   body.rotation.set(0, 0, 0);
   spine.rotation.set(0, 0, 0);
   head.rotation.set(0, 0, 0);
   for (const j of [shinL, shinR, foreL, foreR]) j.rotation.set(0, 0, 0);
   r.blob.scale.setScalar(1);
-  const sp = Math.hypot(p.vx, p.vz);
-  const moving = sp > 0.02;
+  const vx = m ? m.vx : p.vx, vz = m ? m.vz : p.vz;
+  const speed = m ? Math.hypot(vx, vz) : Math.hypot(vx, vz) * 60; // m/s
+  const moving = speed > 0.35;
   let target = r.facing;
-  if (moving) target = facingAngle(p.vx, p.vz, r.facing);
-  else if (p.dive < 0 && Math.hypot(ball.x - p.x, ball.z - p.z) > 0.5) target = Math.atan2(ball.x - p.x, ball.z - p.z);
-  // vira suave (independe da taxa de quadros)
-  r.facing += angDelta(r.facing, target) * (1 - Math.exp(-Math.max(0, dt) / 90));
+  if (moving) target = facingAngle(vx, vz, r.facing);
+  else if (p.dive < 0 && Math.hypot(ball.x - px, ball.z - pz) > 0.5) target = Math.atan2(ball.x - px, ball.z - pz);
+  // giro do corpo amortecido (mais rápido parado, mais largo correndo)
+  const before = r.facing;
+  r.facing += angDelta(r.facing, target) * (1 - Math.exp(-Math.max(0, dt) / (moving ? 120 : 200)));
+  const turn = dt > 0 ? angDelta(before, r.facing) / (dt / 1000) : 0;
+  if (m) m.turn += (turn - m.turn) * (1 - Math.exp(-Math.max(0, dt) / 150));
   root.rotation.y = r.facing;
-  const phase = p.walk * 0.95;
-  const amp = moving ? Math.min(1, sp * 4) : 0;
-  const sw = Math.sin(phase) * 0.8 * amp;
+  // trote -> corrida -> disparada (pesos contínuos)
+  const phase = m ? m.phase : p.walk * 0.95;
+  const amp = Math.min(1, Math.max(0, (speed - 0.3) / 5.5));
+  const run = Math.min(1, Math.max(0, (speed - 3.5) / 4));
+  const legA = (0.42 + 0.5 * run) * amp;
+  const sw = Math.sin(phase) * legA;
   legL.rotation.set(sw, 0, 0);
   legR.rotation.set(-sw, 0, 0);
-  armL.rotation.set(-sw * 0.85, 0, 0.1);
-  armR.rotation.set(sw * 0.85, 0, -0.1);
-  shinL.rotation.x = Math.max(0, -Math.sin(phase)) * 1.3 * amp + 0.06;
-  shinR.rotation.x = Math.max(0, Math.sin(phase)) * 1.3 * amp + 0.06;
-  foreL.rotation.x = -0.2 - 1.05 * amp;
-  foreR.rotation.x = -0.2 - 1.05 * amp;
+  armL.rotation.set(-Math.sin(phase) * (0.35 + 0.45 * run) * amp, 0, 0.1);
+  armR.rotation.set(Math.sin(phase) * (0.35 + 0.45 * run) * amp, 0, -0.1);
+  // joelho dobra na volta da passada (mais na disparada)
+  shinL.rotation.x = Math.max(0, -Math.sin(phase - 0.6)) * (0.7 + 0.9 * run) * amp + 0.08 * amp + 0.04;
+  shinR.rotation.x = Math.max(0, Math.sin(phase - 0.6)) * (0.7 + 0.9 * run) * amp + 0.08 * amp + 0.04;
+  foreL.rotation.x = -0.25 - (0.7 + 0.4 * run) * amp;
+  foreR.rotation.x = -0.25 - (0.7 + 0.4 * run) * amp;
   if (moving) {
-    body.position.y = Math.abs(Math.cos(phase)) * 0.055 * amp;
-    body.rotation.x = 0.08 + 0.14 * amp;
-    spine.rotation.y = Math.sin(phase) * 0.18 * amp; // ombros giram contra o quadril
-    head.rotation.y = -Math.sin(phase) * 0.12 * amp;
+    body.position.y = (Math.abs(Math.cos(phase)) - 0.5) * 0.06 * amp;
+    body.rotation.x = 0.05 + 0.1 * amp + 0.08 * run;
+    body.rotation.y = -Math.sin(phase) * 0.08 * amp; // quadril gira com a passada
+    spine.rotation.y = Math.sin(phase) * 0.2 * amp; // ombros contra o quadril
+    head.rotation.y = -Math.sin(phase) * 0.1 * amp;
+    // inclina para dentro da curva
+    if (m) body.rotation.z = Math.max(-0.32, Math.min(0.32, -m.turn * speed * 0.035));
   } else {
-    // parado: respiração leve
+    // parado: respiração leve e peso do corpo mudando de perna
     const br = Math.sin(now / 520 + p.id) * 0.015;
     spine.rotation.x = br;
+    body.rotation.z = Math.sin(now / 1700 + p.id) * 0.02;
     armL.rotation.z = 0.12 + br;
     armR.rotation.z = -0.12 - br;
     foreL.rotation.x = foreR.rotation.x = -0.25;
