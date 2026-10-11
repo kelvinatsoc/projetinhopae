@@ -89,7 +89,7 @@ export function PhaseBanner({ w, f, compact }: { w: World; f: Fixture; compact?:
       {ph.decisive === "final" && <div className="pb-trophy" aria-hidden="true"><TrophyImg comp={f.comp} size={compact ? 120 : 170} /></div>}
       <div className="pb-shine" aria-hidden="true" />
       <div className="pb-body">
-        <div className="pb-logo"><CompLogo id={f.comp} size={compact ? 40 : 52} /></div>
+        <div className="pb-logo"><CompLogo id={f.comp} size={compact ? 40 : 52} fallback={<TrophyImg comp={f.comp} size={compact ? 40 : 52} />} /></div>
         <div className="pb-txt">
           <span className="pb-kicker">{ph.derby ? `${kicker} · ${ph.derby}` : kicker}</span>
           <b className="pb-label">{ph.stage}</b>

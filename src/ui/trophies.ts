@@ -1,6 +1,7 @@
-// Troféu oficial de cada competição: foto real recortada (public/media/trophies/, baixada do
-// Wikimedia Commons por scripts/fetch_trophies.py) ou, quando não há foto, um modelo 3D
-// procedural fiel ao formato da taça (trophy3d.ts).
+// Troféu oficial de cada competição: modelo 3D procedural fiel ao formato da taça real
+// (trophy3d.ts). Se uma foto recortada com fundo transparente for colocada em
+// public/media/trophies/<id>.webp e listada em src/data/trophyPhotos.json, ela tem prioridade.
+// (As fotos do Commons testadas tinham fundos de museu/estádio que não recortam limpo.)
 import PHOTOS from "../data/trophyPhotos.json";
 
 export interface TrophySpec {

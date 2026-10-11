@@ -6,7 +6,7 @@ import { CompLogo, Crest } from "./components";
 import { compTheme, confettiColors, themeClass, themeVars } from "./compThemes";
 import { haptic } from "./haptics";
 import { championParty } from "./audio";
-import { TrophyLive } from "./Trophy";
+import { TrophyImg, TrophyLive } from "./Trophy";
 import { trophySpec } from "./trophies";
 
 /** Faixa no topo de telas de competição (tabela, chaveamento, pré-jogo). */
@@ -176,7 +176,7 @@ export function TitleCelebration({ id, club, season, onClose }: { id: string; cl
           <span className="ct-tw-sparks" aria-hidden="true">
             {sparks.map((s, i) => <i key={i} style={{ "--a": `${s.a}deg`, "--d": `${s.d}px`, width: s.s, height: s.s } as React.CSSProperties} />)}
           </span>
-          <CompLogo id={id} size={92} />
+          <CompLogo id={id} size={92} fallback={<TrophyImg comp={id} size={92} />} />
         </div>
         <div className="ct-tw-kicker">{t.motto || "Campeão!"}</div>
         <b className="ct-title ct-tw-name">{meta?.name ?? id} {season}</b>

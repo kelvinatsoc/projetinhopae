@@ -34,21 +34,21 @@ ARTICLES: dict[str, tuple[str, str | None]] = {
     "liberta": ("Copa Libertadores", None),
     "sula": ("Copa Sudamericana", None),
     "recopa": ("Recopa Sudamericana", None),
-    "est-SP": ("Campeonato Paulista", None),
+    "est-SP": ("Campeonato Paulista", "LOGO PAULISTÃO 2024.svg"),
     "est-RJ": ("Campeonato Carioca", None),
     "est-MG": ("Campeonato Mineiro", None),
     "est-RS": ("Campeonato Gaúcho", None),
     "est-PR": ("Campeonato Paranaense", None),
-    "est-SC": ("Campeonato Catarinense", None),
+    "est-SC": ("Campeonato Catarinense", "Campeonatocatarinense2026.jpg"),
     "est-GO": ("Campeonato Goiano", None),
     "est-CE": ("Campeonato Cearense", None),
     "est-PE": ("Campeonato Pernambucano", None),
     "est-BA": ("Campeonato Baiano", None),
-    "est-PA": ("Campeonato Paraense", None),
+    "est-PA": ("Campeonato Paraense", "Parazão 2026 logo.jpg"),
     "ucl": ("UEFA Champions League", None),
     "uel": ("UEFA Europa League", None),
     "uecl": ("UEFA Conference League", None),
-    "eng1": ("Premier League", None),
+    "eng1": ("Premier League", "Premier League Logo.svg"),
     "esp1": ("La Liga", None),
     "ita1": ("Serie A", None),
     "ger1": ("Bundesliga", None),
@@ -61,25 +61,25 @@ ARTICLES: dict[str, tuple[str, str | None]] = {
     "ksa1": ("Saudi Pro League", None),
     "jpn1": ("J1 League", None),
     "usa1": ("Major League Soccer", None),
-    "wc": ("FIFA World Cup", None),
+    "wc": ("FIFA World Cup", "2026 FIFA World Cup emblem.svg"),
     "wcq": ("FIFA World Cup qualification", None),
-    "ca": ("Copa América", None),
-    "euro": ("UEFA European Championship", None),
+    "ca": ("Copa América", "Conmebol Copa America 2024 Logo.svg"),
+    "euro": ("UEFA European Championship", "UEFA Euro 2024 logo.svg"),
     "cwc": ("FIFA Club World Cup", None),
     "intercontinental": ("FIFA Intercontinental Cup", None),
     "acle": ("AFC Champions League Elite", None),
 }
 
-FIELD = re.compile(r"^\s*\|\s*(logo|image|current_logo)\s*=\s*(.+?)\s*$", re.I | re.M)
+FIELD = re.compile(r"^\s*\|\s*(logo|image|current_logo|imagem|logotipo)\s*=\s*(.+?)\s*$", re.I | re.M)
 
 
-def raw(title: str, depth: int = 0) -> str | None:
-    r = wm.get("https://en.wikipedia.org/w/index.php", {"title": title, "action": "raw"})
+def raw(title: str, depth: int = 0, wiki: str = "en.wikipedia.org") -> str | None:
+    r = wm.get(f"https://{wiki}/w/index.php", {"title": title, "action": "raw"})
     if r is None or r.status_code != 200:
         return None
     m = re.match(r"#REDIRECT\s*\[\[([^\]#|]+)", r.text, re.I)
     if m and depth < 3:
-        return raw(m.group(1), depth + 1)
+        return raw(m.group(1), depth + 1, wiki)
     return r.text
 
 
@@ -96,8 +96,8 @@ def logo_file(text: str) -> str | None:
 
 def fetch(name: str) -> bytes | None:
     # tenta Commons e depois a Wikipedia (arquivos de uso restrito ficam lá)
-    for wiki in ("en.wikipedia.org", "commons.wikimedia.org"):
-        for width in ((1280, 960, 500, None) if name.lower().endswith(".svg") else (960, 500, None)):
+    for wiki in ("en.wikipedia.org", "commons.wikimedia.org", "pt.wikipedia.org"):
+        for width in ((1280, 500) if name.lower().endswith(".svg") else (960, None)):
             u = f"https://{wiki}/wiki/Special:FilePath/{urllib.parse.quote(wm.norm_file(name))}"
             if width:
                 u += f"?width={width}"
@@ -129,6 +129,9 @@ def main(ids: list[str]) -> None:
         if not name:
             text = raw(art)
             name = logo_file(text or "")
+            if not name and cid.startswith("est-"):
+                # estaduais: o infobox da Wikipedia em português costuma ter a logo (no Commons)
+                name = logo_file(raw(art + " de Futebol", wiki="pt.wikipedia.org") or "")
         if not name:
             print(f"{cid}: sem logo no artigo {art}", flush=True)
             continue
