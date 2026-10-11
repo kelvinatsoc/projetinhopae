@@ -2138,7 +2138,8 @@ export function MatchView(props: MatchViewProps) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const wrap = wrapRef.current!;
-    const g = canvas.getContext("2d", { alpha: false });
+    // Leve: canvas na CPU (196x132 é pequeno; evita a GPU fraca em cada quadro)
+    const g = canvas.getContext("2d", { alpha: false, willReadFrequently: propsRef.current.quality === "leve" });
     if (!g) return;
     g.imageSmoothingEnabled = false;
     const anim = new PitchAnim(sim, {
@@ -2153,7 +2154,9 @@ export function MatchView(props: MatchViewProps) {
         propsRef.current.onCinema?.(!!sp);
       },
     });
-    anim.rich = true;
+    // Leve (celular fraco): campo 2D sem os efeitos ricos e a ~30 quadros por segundo
+    const lite = propsRef.current.quality === "leve";
+    anim.rich = !lite;
     anim.reduced = prefersReducedMotion();
     if (anim.festa) anim.festa.reduced = anim.reduced;
     anim.ms = propsRef.current.msPerMin;
@@ -2193,7 +2196,7 @@ export function MatchView(props: MatchViewProps) {
       raf = 0;
       if (!last) last = t;
       const dt = t - last;
-      if (dt >= 1) {
+      if (dt >= (lite && !r3d ? 31 : 1)) {
         last = t;
         if (!anim.frozen && !propsRef.current.paused) anim.update(Math.min(dt, 50));
         if (r3d) r3d.render(snapshot3d(anim), Math.min(dt, 50), hud(), dt);
