@@ -27,6 +27,7 @@ import type { MatchRenderer } from "./match3d/MatchRenderer";
 import { pickSpecial, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
 import { Festa2D } from "./torcida2d";
+import { isLite } from "./perf";
 
 // ---------------------------------------------------------------- geometria (pixels de jogo)
 import { W, H, PX0, PX1, PY0, PY1, PL, PW, CX, CY, POST, BOX_D, BOX_H, SPOT } from "./pitchGeom";
@@ -2009,20 +2010,21 @@ class PitchAnim {
 
 // ---------------------------------------------------------------- qualidade gráfica
 // Um único seletor de desempenho (Alta/Média/Baixa); Alta é o padrão (aparelhos topo de linha).
-export type { Quality } from "./match3d/model";
+/** Qualidade da partida: os três níveis do 3D ou o Leve (campo 2D, para celulares fracos). */
+export type MatchQuality = Quality | "leve";
 const GFX_KEY = "ldb.graphics.v4";
 
-export function readQuality(): Quality {
+export function readQuality(): MatchQuality {
   try {
     const v = localStorage.getItem(GFX_KEY);
-    if (v === "alta" || v === "media" || v === "baixa") return v;
+    if (v === "alta" || v === "media" || v === "baixa" || v === "leve") return v;
   } catch {
     /* sem armazenamento local */
   }
-  return "alta";
+  return isLite() ? "leve" : "alta";
 }
 
-export function saveQuality(q: Quality) {
+export function saveQuality(q: MatchQuality) {
   try {
     localStorage.setItem(GFX_KEY, q);
   } catch {
@@ -2030,7 +2032,7 @@ export function saveQuality(q: Quality) {
   }
 }
 
-export const QUALITY_LABEL: Record<Quality, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
+export const QUALITY_LABEL: Record<MatchQuality, string> = { alta: "Alta", media: "Média", baixa: "Baixa", leve: "Leve" };
 
 function prefersReducedMotion(): boolean {
   try {
@@ -2100,8 +2102,8 @@ export interface MatchViewProps {
   /** desfecho de um lance perigoso (defesa, trave, para fora) — para o "uhhh" da torcida */
   onBeat?: (e: MatchEvent) => void;
   onSkipIntro?: () => void;
-  /** qualidade gráfica (só desempenho) */
-  quality: Quality;
+  /** qualidade gráfica (só desempenho); "leve" = campo 2D */
+  quality: MatchQuality;
   /** golpe especial na tela (true) ou acabou (false): o relógio deve segurar */
   onCinema?: (on: boolean) => void;
   /** o 3D ficou pronto (true) ou não há WebGL (false) */
@@ -2246,7 +2248,8 @@ export function MatchView(props: MatchViewProps) {
     };
     resize();
     const host = hostRef.current;
-    if (!host) fallback();
+    const q3 = propsRef.current.quality;
+    if (!host || q3 === "leve") fallback();
     else {
       import("./match3d/MatchRenderer")
         .then((mod) => {
@@ -2257,7 +2260,7 @@ export function MatchView(props: MatchViewProps) {
           r3d = new mod.MatchRenderer({
             host,
             style: stadiumStyleFor(sim.sides[0].club, !!sim.f.neutral),
-            quality: propsRef.current.quality,
+            quality: q3,
             home: info(sim.sides[0].club),
             away: info(sim.sides[1].club),
             neutral: !!sim.f.neutral,

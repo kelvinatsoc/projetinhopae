@@ -13,6 +13,11 @@ import "@fontsource/barlow-condensed/latin-700.css";
 import "@fontsource/barlow-condensed/latin-800.css";
 import "@fontsource/barlow-condensed/latin-900.css";
 import "./ui/theme.css";
+import { applyLite, measureFpsOnce } from "./ui/perf";
+
+// celular fraco: modo leve (sem blur, sem 3D pesado) antes do primeiro quadro
+applyLite();
+measureFpsOnce();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

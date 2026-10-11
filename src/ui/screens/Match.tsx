@@ -15,7 +15,7 @@ import { crowdEruption, duckForMenu, goalRoar, hasClubChant, loadMedia, ooh, pla
 import { crowdExodus, crowdMood, crowdProfile, crowdSize, isComeback, matchImportance } from "../torcida";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
 import { LiveAdvice, PreMatchAdvice } from "../Assistant";
-import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type Quality } from "../MatchView";
+import { GoalCelebration, MatchView, PostMatchCard, QUALITY_LABEL, readQuality, saveQuality, type MatchQuality } from "../MatchView";
 import { Pitch } from "./Squad";
 import { CompBumper, CompHeader } from "../CompTheme";
 import { compTheme, themeClass, themeVars } from "../compThemes";
@@ -241,7 +241,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [hl, setHl] = useState(() => readSpeed().hl);
   const [bumper, setBumper] = useState(!quick);
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
-  const [gfx, setGfx] = useState<Quality>(() => readQuality());
+  const [gfx, setGfx] = useState<MatchQuality>(() => readQuality());
   const [assist, setAssist] = useState(readAssist);
   const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
   const [exodus, setExodus] = useState(0);
@@ -453,7 +453,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const skipToEnd = () => { haptic("tap"); setIntro(false); setBumper(false); setHalfSheet(false); sim.autoTalk = true; sim.runToEnd(); finish(); setTick((x) => x + 1); };
   const pickSpeed = (i: number) => { setHl(false); setSpeed(i); saveSpeed(i); };
   const toggleHl = () => { setHl((x) => { saveSpeed(x ? speed : "hl"); return !x; }); };
-  const cycleGfx = () => { const m: Quality = gfx === "alta" ? "media" : gfx === "media" ? "baixa" : "alta"; setGfx(m); saveQuality(m); };
+  const cycleGfx = () => { const m: MatchQuality = gfx === "alta" ? "media" : gfx === "media" ? "baixa" : gfx === "baixa" ? "leve" : "alta"; setGfx(m); saveQuality(m); };
   const goOn = () => { haptic("success"); forceBack(); };
   const toggleFeed = () => setFeedOpen((o) => { try { localStorage.setItem(FEED_KEY, o ? "0" : "1"); } catch { /* */ } return !o; });
 
@@ -468,7 +468,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
-                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa (só desempenho)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
+                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa → Leve (campo 2D, celulares fracos)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
                   {gfx === "alta" ? <Ic n="sparkle" /> : gfx === "media" ? <Ic n="film" /> : <Ic n="feather" />} {QUALITY_LABEL[gfx]}
                 </button>
               )}

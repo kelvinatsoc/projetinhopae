@@ -2,6 +2,7 @@
 // Estádio, CT e sede ficam nas posições reais quando há dados (src/data/clubSites.json).
 // Toque num prédio: a câmera voa até ele e abre o menu do local.
 // O renderizador three.js e os dados geográficos só são baixados aqui; sem WebGL, mostra a grade.
+import { isLite } from "../perf";
 import "@fontsource/press-start-2p/latin-400.css";
 import "@fontsource/chakra-petch/latin-700-italic.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -63,7 +64,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
   const host = useRef<HTMLDivElement>(null);
   const rRef = useRef<HqRenderer | null>(null);
   const labels = useRef<Partial<Record<HqBuilding, HTMLElement>>>({});
-  const [failed, setFailed] = useState(() => typeof document === "undefined" || !hasWebGL());
+  const [failed, setFailed] = useState(() => typeof document === "undefined" || isLite() || !hasWebGL());
   const [ready, setReady] = useState(false);
   const [sel, setSel] = useState<HqBuilding | null>(null);
   const [geo, setGeo] = useState<ClubGeo | null>(null);
