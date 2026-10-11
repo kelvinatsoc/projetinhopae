@@ -14,6 +14,7 @@ import { aiTalk, reactions, suggest, talkCtx, talkEffect, type Reaction, type Ta
 import { clubInjuryMult } from "./facilities";
 import { cornerQuality, freeKickXgFor, ROUTINES, takerFor } from "./setpieces";
 import { hasTrait } from "./traits";
+import { activePowers, aiPowers, powerDef, type PowerDef } from "./powers";
 import { instructionFx, NEUTRAL_FX, plannedMentality, roleAt, roleEff, roleStars, type RoleDef, type TacticFx } from "./tactics";
 import type { Club, Fixture, Lineup, MatchEvent, MatchResult, MatchStats, Player, Pos, World } from "./types";
 
@@ -70,6 +71,8 @@ export interface MinutePhase {
     og?: number; // quem fez o gol contra
     xg: number;
     kind?: "header" | "freekick" | "long"; // cabeçada de escanteio, falta direta, chute de longe
+    /** poder ativado nesta jogada (engine/powers.ts): o golpe visual a mostrar */
+    power?: string;
   };
   corner?: { side: 0 | 1; taker: number | null };
   tackle?: { side: 0 | 1; pid: number | null }; // desarme de quem estava sem a bola
@@ -293,6 +296,12 @@ export class MatchSim {
     this.minute++;
     const min = this.minute;
     const [H, A] = this.sides;
+    // poderes: medidor enche; um poder ativado vira a jogada deste minuto
+    this.chargePowers();
+    const forced = this.pendingPower;
+    this.pendingPower = null;
+    if (forced?.def.kind === "keeper") this.shieldUp(forced.side, forced.pid, forced.def);
+    const play = forced && forced.def.kind !== "keeper" ? forced : null;
 
     // cansaço
     if (min % 5 === 0) {
@@ -314,7 +323,7 @@ export class MatchSim {
     // posse de bola
     const pm = Math.pow(H.mid, 3);
     const share = pm / (pm + Math.pow(A.mid, 3));
-    const atk = rand() < share ? 0 : 1;
+    const atk = play ? play.side : rand() < share ? 0 : 1;
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     this.stats.poss[atk]++;
@@ -328,7 +337,8 @@ export class MatchSim {
     const lead = S.goals - O.goals;
     const ease = this.tempo < 1 && lead >= 2 ? Math.pow(0.5, lead - 1) : 1;
     const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp * this.tempo) * openness * ease * (this.tempo < 1 ? 1.5 : 1);
-    if (chance(pShot)) this.shot(atk);
+    if (play) this.powerPlay(play.side, play.pid, play.def);
+    else if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {
       this.stats.corners[atk]++;
       // escanteio: quem cobra (setpieces.ts) e a jogada ensaiada mudam a chance e o perigo da cabeçada
@@ -433,7 +443,8 @@ export class MatchSim {
     this.stats.xg[atk] += xg;
     const gk = this.gkId(O);
     const gkEff = O.gk;
-    const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75);
+    // Muralha (poder do goleiro): por alguns minutos, os chutes entram bem menos
+    const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75) * (this.shield[1 - atk] >= min ? 0.55 : 1);
     const shotInfo: NonNullable<MinutePhase["shot"]> = { side: atk as 0 | 1, shooter, assist: assister, result: "miss", xg };
     if (kind) shotInfo.kind = kind;
     this.phase.shot = shotInfo;
@@ -703,6 +714,89 @@ export class MatchSim {
       this.doSubBookkeeping(F, o, i);
     }
     this.recompute();
+  }
+
+  // ---------------------------------------------------------------- poderes (Loja de Poderes)
+  /** poderes equipados em cada lado e o medidor de carga (0..100) */
+  private pw: { def: PowerDef; pid: number; charge: number }[][] | null = null;
+  private pendingPower: { side: 0 | 1; pid: number; def: PowerDef } | null = null;
+  /** Muralha ativa até este minuto */
+  shield: [number, number] = [-1, -1];
+  private aiUsed = [0, 0];
+
+  private initPowers() {
+    if (this.pw) return;
+    const u = this.userSide;
+    const mine = u != null ? activePowers(this.w, this.sides[u].club) : [];
+    this.pw = this.sides.map((S, i) => {
+      const list = i === u ? mine : aiPowers(this.w, S.club, mine.length > 0);
+      return list.map((o) => ({ def: powerDef(o.id)!, pid: o.pid, charge: 0 })).filter((x) => !!x.def);
+    });
+  }
+
+  /** Poderes do lado (para a tela): nome, jogador, carga e se dá para ativar agora. */
+  powerState(side: 0 | 1): { id: string; name: string; emoji: string; pid: number; player: string; charge: number; ready: boolean; onPitch: boolean }[] {
+    this.initPowers();
+    return this.pw![side].map((x) => {
+      const onPitch = this.sides[side].onPitch.includes(x.pid);
+      return { id: x.def.id, name: x.def.name, emoji: x.def.emoji, pid: x.pid, player: this.name(x.pid), charge: Math.round(x.charge), ready: x.charge >= 100 && onPitch && !this.finished && !this.pendingPower, onPitch };
+    });
+  }
+
+  /** O usuário ATIVA o poder do jogador (carga cheia): vale na jogada do próximo minuto. */
+  activatePower(side: 0 | 1, pid: number): boolean {
+    this.initPowers();
+    const x = this.pw![side].find((q) => q.pid === pid);
+    if (!x || x.charge < 100 || this.pendingPower || this.finished || !this.sides[side].onPitch.includes(pid)) return false;
+    x.charge = 0;
+    this.pendingPower = { side, pid, def: x.def };
+    if (this.live) this.ev({ min: this.minute, type: "info", side, pid, text: `${x.def.emoji} ${x.def.name}! ${this.name(pid)} ativa o poder.` });
+    return true;
+  }
+
+  private chargePowers() {
+    this.initPowers();
+    this.pw!.forEach((list, side) => {
+      for (const x of list) {
+        if (!this.sides[side].onPitch.includes(x.pid)) continue;
+        x.charge = Math.min(100, x.charge + x.def.rate);
+        // IA (e o usuário no resultado rápido) ativam sozinhos, com moderação: no máximo 2 por jogo
+        const auto = this.sides[side].auto || !this.live;
+        if (auto && x.charge >= 100 && !this.pendingPower && this.minute >= 15 && this.aiUsed[side] < 2) {
+          this.aiUsed[side]++;
+          x.charge = 0;
+          this.pendingPower = { side: side as 0 | 1, pid: x.pid, def: x.def };
+          if (this.live) this.ev({ min: this.minute, type: "info", side: side as 0 | 1, pid: x.pid, text: `${x.def.emoji} ${x.def.name}! ${this.name(x.pid)} (${this.sides[side].club.name}) usa o poder.` });
+        }
+      }
+    });
+  }
+
+  private shieldUp(side: 0 | 1, pid: number, def: PowerDef) {
+    this.shield[side] = this.minute + 10;
+    if (this.live) this.ev({ min: this.minute, type: "info", side, pid, text: `${def.emoji} ${def.name}: ${this.name(pid)} fecha o gol por 10 minutos!` });
+  }
+
+  /** Jogada do poder: finalização com bônus moderado no xG (determinística: só o sorteio do chute). */
+  private powerPlay(side: 0 | 1, pid: number, def: PowerDef) {
+    const S = this.sides[side];
+    const O = this.sides[1 - side];
+    const onPitch = S.onPitch.includes(pid);
+    let shooter = onPitch ? pid : this.pickOnPitch(S, SHOOT_W, "fin", undefined, 1.5, "shoot");
+    let assister: number | null = null;
+    if (def.kind === "pass") {
+      // passe teleguiado: quem tem o poder serve, o melhor finalizador conclui
+      assister = shooter;
+      shooter = this.pickOnPitch(S, SHOOT_W, "fin", assister ?? undefined, 1.5, "shoot");
+    }
+    if (shooter == null) return;
+    const sp = this.player(shooter);
+    const base = def.kind === "header"
+      ? headerXg(sp)
+      : TUNING.xgBase * Math.exp((sp.attrs.fin - 75) / 30 + ((S.att - O.def) * this.tempo) / TUNING.xgAttDiv) * this.pm(S, shooter).xg * S.fx.xg * O.fx.xgAgainst;
+    const xg = clamp(base * def.xgMult + 0.04, 0.08, 0.55);
+    this.finishShot(side, shooter, assister, xg, def.kind === "header" ? "header" : undefined);
+    if (this.phase.shot) this.phase.shot.power = def.special;
   }
 
   /** Lado do usuário com o auxiliar técnico cuidando das substituições (liga/desliga na partida). */

@@ -76,3 +76,15 @@ button, .btn { touch-action: manipulation; }
 /* auxiliar técnico faz as trocas (liga/desliga) */
 .mx-assist { margin-top: 8px; justify-content: center; }
 .mx-assist.active { border-color: #3df58a; color: #3df58a; }
+
+/* poderes (Loja de Poderes): medidor de carga e botão de ativar */
+.mx-powers { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; margin-top: 8px; }
+.mx-power { position: relative; overflow: hidden; display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: inherit; text-align: left; }
+.mx-power:disabled { opacity: .85; }
+.mx-power-ico { font-size: 22px; }
+.mx-power-txt { display: flex; flex-direction: column; min-width: 0; font-size: 12px; line-height: 1.15; }
+.mx-power-txt small { opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-power-bar { position: absolute; left: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, #ffb000, #fff6a8); transition: width .4s; }
+.mx-power.ready { border-color: #ffd23a; background: rgba(255,190,40,.16); animation: mxPower 0.9s ease-in-out infinite alternate; }
+.mx-power.ready b { color: #ffd23a; }
+@keyframes mxPower { from { box-shadow: 0 0 0 0 rgba(255,200,40,.0); } to { box-shadow: 0 0 14px 2px rgba(255,200,40,.55); } }

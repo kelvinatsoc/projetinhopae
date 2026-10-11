@@ -76,6 +76,7 @@ export type Route =
   | { name: "compare"; ids: number[] }
   | { name: "sponsors" }
   | { name: "kits"; id: string }
+  | { name: "powers" }
   | { name: "facilities" }
   | { name: "setpieces" }
   | { name: "nts" }

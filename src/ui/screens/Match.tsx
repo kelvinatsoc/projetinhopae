@@ -243,6 +243,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   const [feedOpen, setFeedOpen] = useState(readFeedOpen); // "só os melhores momentos": pula direto para o próximo lance importante
   const [gfx, setGfx] = useState<MatchQuality>(() => readQuality());
   const [assist, setAssist] = useState(readAssist);
+  const [, bumpPowers] = useState(0);
   const [is3d, setIs3d] = useState<boolean | null>(null); // null = o 3D ainda está carregando
   const [exodus, setExodus] = useState(0);
   const [mood, setMood] = useState(1);
@@ -552,6 +553,23 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             <Ic n="refresh" /> Auxiliar faz as trocas: <b>{assist ? "ligado" : "desligado"}</b>
           </button>
         )}
+        {!quick && !over && (() => {
+          const ps = sim.powerState(userSide);
+          if (!ps.length) return null;
+          return (
+            <div className="mx-powers" role="group" aria-label="Poderes">
+              {ps.map((p) => (
+                <button key={p.pid} className={`mx-power${p.ready ? " ready" : ""}`} disabled={!p.ready}
+                  aria-label={p.ready ? `Ativar ${p.name} de ${p.player}` : `${p.name} de ${p.player}: ${p.charge}%`}
+                  onClick={() => { if (sim.activatePower(userSide, p.pid)) { haptic("success"); bumpPowers((x) => x + 1); } }}>
+                  <span className="mx-power-ico" aria-hidden="true">{p.emoji}</span>
+                  <span className="mx-power-txt"><b>{p.ready ? "ATIVAR" : p.name}</b><small>{p.player}{!p.onPitch ? " (fora)" : ""}</small></span>
+                  <i className="mx-power-bar" style={{ width: `${p.charge}%` }} />
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {!quick && !over && (
           <div style={{ padding: "8px 12px 0", maxWidth: 560, margin: "0 auto" }}>

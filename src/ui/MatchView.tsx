@@ -24,7 +24,7 @@ import { StadiumBanner } from "./StadiumBanner";
 import { stadiumStyleFor } from "../data/stadiumStyles";
 import { ballHeight, hudAbbr, hudName, toWorld, type MatchSnapshot, type Quality } from "./match3d/model";
 import type { MatchRenderer } from "./match3d/MatchRenderer";
-import { pickSpecial, specialsEnabled, type SpecialDef } from "./specials";
+import { pickSpecial, SPECIALS, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
 import { Festa2D } from "./torcida2d";
 import { isLite } from "./perf";
@@ -1200,7 +1200,11 @@ class PitchAnim {
 
   /** Finalização: às vezes vira golpe especial (câmera lenta antes do chute). */
   doShot(shooter: Dude, sh: NonNullable<MinutePhase["shot"]>, e: MatchEvent | null, hold: boolean) {
-    const pick = this.specialsOn && !this.reduced && this.ms >= SLOW_MS && !document.hidden ? pickSpecial({
+    // poder ativado (Loja de Poderes): o golpe visual sai sempre (menos com "menos movimento")
+    const shielded = sh.result === "save" && this.sim.shield[1 - sh.side] >= this.sim.minute;
+    const powerId = sh.power ?? (shielded ? "muralha" : undefined);
+    const forcedDef = powerId && !this.reduced && !document.hidden ? SPECIALS.find((x) => x.id === powerId) : undefined;
+    const pick = forcedDef ? { def: forcedDef, who: forcedDef.role === "save" ? "keeper" as const : "shooter" as const } : this.specialsOn && !this.reduced && this.ms >= SLOW_MS && !document.hidden ? pickSpecial({
       shooter: this.sim.w.players[sh.shooter],
       keeper: (() => { const k = this.gk((1 - sh.side) as 0 | 1); return k?.pid != null ? this.sim.w.players[k.pid] : undefined; })(),
       kind: sh.kind, result: sh.result, xg: sh.xg, min: this.sim.minute, lastMin: this.specLast, count: this.specCount,

@@ -23,6 +23,7 @@ const BUILDINGS: Record<HqBuilding, { name: string; slug: IconSlug; dests: Dest[
     { label: "Diretoria", slug: "diretoria", go: () => push({ name: "board" }) },
     { label: "Finanças", slug: "financas", go: () => push({ name: "finances" }) },
     { label: "Patrocínios", slug: "patrocinios", go: () => push({ name: "sponsors" }) },
+    { label: "Loja de Poderes", slug: "financas", go: () => push({ name: "powers" }) },
   ] },
   training: { name: "CT", slug: "treino", dests: [
     { label: "Treino", slug: "treino", go: () => push({ name: "training" }) },

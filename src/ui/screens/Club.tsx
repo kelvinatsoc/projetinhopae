@@ -67,6 +67,7 @@ export function ClubScreen() {
         <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
         <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
         <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
+        <Tile icon="⚡" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
         <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
         <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
         <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
