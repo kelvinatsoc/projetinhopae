@@ -71,7 +71,8 @@
       "lights": "rim",
       "screens": 2,
       "plaza": "#bdb6aa",
-      "note": "Oval de concreto aparente de 1960, anel inferior baixo e anel superior alto em balanço, pilares externos inclinados, cobertura nova translúcida/branca sobre as arquibancadas e cadeiras vermelhas com setores brancos e pretos."
+      "note": "Oval de concreto aparente de 1960, anel inferior baixo e anel superior alto em balanço, pilares externos inclinados, cobertura nova translúcida/branca sobre as arquibancadas e cadeiras vermelhas com setores brancos e pretos.",
+      "ramps": 4
     },
     "maracana": {
       "name": "Maracanã",

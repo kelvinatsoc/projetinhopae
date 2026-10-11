@@ -50,6 +50,8 @@ export interface HqOptions {
   onPick: (b: HqBuilding) => void;
   /** força a qualidade (1-5); por padrão vem da média da Estrutura */
   quality?: number;
+  /** escudo do clube (aparece no estádio, na sede e no CT) */
+  crestUrl?: string | null;
   /** personalização/reformas do estádio feitas pelo clube */
   stadiumCustom?: StadiumCustom | null;
 }
@@ -125,6 +127,7 @@ export class HqRenderer {
     cv.style.touchAction = "none";
     o.host.prepend(cv);
     this.build();
+    this.crests();
     this.post();
     this.bind(cv);
     this.resize();
@@ -152,6 +155,35 @@ export class HqRenderer {
     c.addPass(this.bloom);
     c.addPass(new OutputPass());
     this.composer = c;
+  }
+
+  /** Escudo do clube em placas sobre o estádio, a sede e o CT, e bandeiras na esplanada. */
+  private crests() {
+    const st = this.anchors.stadium;
+    if (st) {
+      const g = new THREE.Group();
+      g.position.set(st.x, 0, st.z + 3);
+      const [c1, c2] = this.o.colors;
+      for (let i = 0; i < 6; i++) this.flag(i % 2 ? c2 : c1, -6 + i * 2.4, 16 + (i % 3) * 0.1, 4.5, g);
+      this.scene.add(g);
+    }
+    const url = this.o.crestUrl;
+    if (!url) return;
+    new THREE.TextureLoader().load(url, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      this.texCache.push(t);
+      const mk = (p: THREE.Vector3 | undefined, size: number, dy: number) => {
+        if (!p) return;
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+        sp.scale.set(size, size * 1.1, 1);
+        sp.position.set(p.x, p.y + dy, p.z);
+        this.scene.add(sp);
+      };
+      mk(this.anchors.stadium, 5, 1.5);
+      mk(this.anchors.office, 2.4, 0.6);
+      mk(this.anchors.training, 2.4, 0.6);
+      mk(this.anchors.locker, 1.6, 0.4);
+    });
   }
 
   /** Locais disponíveis (para os botões de atalho da interface). */

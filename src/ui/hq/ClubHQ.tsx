@@ -11,6 +11,7 @@ import { facLevel } from "../../engine/facilities";
 import { push, setTab } from "../../store";
 import { haptic } from "../haptics";
 import { GIcon, Icon, visibleColor } from "../components";
+import { mediaUrlOrNull } from "../mediaUrl";
 import type { IconSlug } from "../icons";
 import type { ClubGeo, HqBuilding, HqRenderer, HqSiteKind } from "./HqRenderer";
 import "./hq.css";
@@ -89,7 +90,8 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         if (dead || !host.current) return;
         setGeo(g);
         r = new m.HqRenderer({
-          host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium, stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
+          host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium,
+          crestUrl: club.customCrest ?? mediaUrlOrNull(club.logo ? `crests/${club.id}.webp` : null), stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
           matchDay: matchToday, night, reduced, geo: g, labels: labels.current,
           onPick: (b) => { haptic("tap"); setSel(b); },
         });

@@ -182,7 +182,11 @@ SEDE_OSM = {
     "botafogo": "way/866731003",      # Botafogo, General Severiano
     "cruzeiro": "way/292382598",      # Sede Administrativa do Cruzeiro (Barro Preto)
 }
-SEDE_AT_STADIUM = {"sao-paulo"}  # a sede social do São Paulo fica no próprio Morumbis
+SEDE_AT_STADIUM = {"sao-paulo"}
+# CTs cujo nome o Nominatim não acha: a feição exata no OSM (conferida à mão).
+CT_OSM = {
+    "sao-paulo": "way/418131738",     # CCT Frederico Antônio Germano Menzen (Barra Funda), ao lado da Marginal Tietê
+}  # a sede social do São Paulo fica no próprio Morumbis
 
 
 def osm_element_center(ref: str):
@@ -642,10 +646,14 @@ def main():
                     break
         if "sede" not in sites and prev.get("sede") and cid not in SEDE_AT_STADIUM and cid not in SEDE_OSM:
             sites["sede"] = prev["sede"]
+        if cid in CT_OSM:
+            p = osm_element_center(CT_OSM[cid])
+            if p:
+                sites["ct"] = {"lat": round(p[0], 6), "lon": round(p[1], 6), "name": "CT da Barra Funda" if cid == "sao-paulo" else "CT", "src": "osm"}
         # CT: primeiro os nomes conhecidos, depois buscas genéricas (o nome precisa citar CT/treinamento/clube)
-        cands = [(n, [w for w in _norm(n).split() if len(w) > 3][:2] or [n]) for n in CT_NAMES.get(cid, [])]
+        cands = [] if "ct" in sites else [(n, [w for w in _norm(n).split() if len(w) > 3][:2] or [n]) for n in CT_NAMES.get(cid, [])]
         # nas buscas genéricas o resultado precisa citar o clube (evita "CT de xadrez" e afins)
-        cands += [(f"Centro de Treinamento {c['name']}", [_norm(c["name"])]), (f"CT {c['name']} {c.get('city', '')}", [_norm(c["name"])])]
+        cands += [] if "ct" in sites else [(f"Centro de Treinamento {c['name']}", [_norm(c["name"])]), (f"CT {c['name']} {c.get('city', '')}", [_norm(c["name"])])]
         for q, must in cands:
             s = nominatim(q, near, must=must)
             if s and (not near or dist_m((s["lat"], s["lon"]), near) > 150):
