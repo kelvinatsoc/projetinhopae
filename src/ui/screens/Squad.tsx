@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
 import { CompareIconBtn } from "../Compare";
-import { teamLinkAvg } from "../../engine/chemistry";
-import { chemOf, dynDelta, moodEmoji, moraleDelta, squadMood } from "../../engine/dressing";
+import { chemOf, dynDelta, moodEmoji, moraleDelta } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
 import { awardsOf, formResidual, pendingRequest, streakOf } from "../../engine/form";
-import { lineupStrength, squadOf, validLineup } from "../../engine/lineup";
+import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
 import { age, playerValue } from "../../engine/player";
 import { potRangeLabel } from "../../engine/scouting";
 import { POS_ORDER } from "../../engine/positions";
-import { familiarityOf } from "../../engine/tactics";
 import type { Player, World } from "../../engine/types";
-import { push, useWorld } from "../../store";
-import { DeltaTag, FormDots, PlayerCard, PlayerRow, TrendArrow } from "../components";
+import { push, toast, update, useWorld } from "../../store";
+import { autosave } from "../actions";
+import { DeltaTag, FormDots, PlayerCard, PlayerRow } from "../components";
 import { AcademyScreen } from "./Academy";
 import { TrainingScreen } from "./Training";
 import { Pitch, TacticsScreen } from "./Tactics";
@@ -19,17 +18,22 @@ import { Pitch, TacticsScreen } from "./Tactics";
 export { Pitch, TacticsScreen };
 
 type Sort = "pos" | "ovr" | "age" | "cond" | "value" | "form";
+type SquadFilter = "all" | "starters" | "GK" | "DEF" | "MID" | "ATT" | "out" | "listed";
 
 export function SquadScreen() {
+  const w = useWorld();
+  const club = w.clubs[w.userClubId];
   const [tab, setTab] = useState<"list" | "tactics" | "train" | "youth">("list");
+  const proCount = squadOf(w, club).length;
+  const youthCount = club.players.filter((id) => w.players[id]?.youth).length;
   return (
     <div>
       <div className="page" style={{ paddingBottom: 0 }}>
         <div className="seg">
-          <button className={tab === "list" ? "active" : ""} onClick={() => setTab("list")}>Elenco</button>
-          <button className={tab === "tactics" ? "active" : ""} onClick={() => setTab("tactics")}>Tática</button>
+          <button className={tab === "list" ? "active" : ""} onClick={() => setTab("list")}>Elenco ({proCount})</button>
+          <button className={tab === "tactics" ? "active" : ""} onClick={() => setTab("tactics")}>Campo Tático</button>
           <button className={tab === "train" ? "active" : ""} onClick={() => setTab("train")}>Treino</button>
-          <button className={tab === "youth" ? "active" : ""} onClick={() => setTab("youth")}>Base</button>
+          <button className={tab === "youth" ? "active" : ""} onClick={() => setTab("youth")}>Base ({youthCount})</button>
         </div>
       </div>
       {tab === "list" ? <SquadList /> : tab === "tactics" ? <TacticsScreen /> : tab === "train" ? <TrainingScreen /> : <AcademyScreen />}
@@ -41,15 +45,25 @@ function SquadList() {
   const w = useWorld();
   const club = w.clubs[w.userClubId];
   const [sort, setSort] = useState<Sort>("pos");
-  const [filter, setFilter] = useState<"all" | "starters" | "out" | "listed">("all");
-  const [view, setViewMode] = useState<"cards" | "list">(() => { try { return localStorage.getItem("ldb.squadView") === "list" ? "list" : "cards"; } catch { return "cards"; } });
-  const pickView = (v: "cards" | "list") => { setViewMode(v); try { localStorage.setItem("ldb.squadView", v); } catch { /* sem armazenamento */ } };
+  const [filter, setFilter] = useState<SquadFilter>("all");
+  const [view, setViewMode] = useState<"cards" | "list">(() => {
+    try { return localStorage.getItem("ldb.squadView") === "cards" ? "cards" : "list"; } catch { return "list"; }
+  });
+  const pickView = (v: "cards" | "list") => {
+    setViewMode(v);
+    try { localStorage.setItem("ldb.squadView", v); } catch { /* sem armazenamento */ }
+  };
   const lineup = useMemo(() => validLineup(w, club), [w, club, club.players.length, club.lineup]);
   const starters = new Set(lineup.starters.filter((x): x is number => x != null));
   let list = squadOf(w, club);
   if (filter === "starters") list = list.filter((p) => starters.has(p.id));
-  if (filter === "out") list = list.filter((p) => p.injury > 0 || Object.values(p.bans).some((b) => b > 0));
-  if (filter === "listed") list = list.filter((p) => p.listed);
+  else if (filter === "GK") list = list.filter((p) => p.pos === "GOL");
+  else if (filter === "DEF") list = list.filter((p) => p.pos === "ZAG" || p.pos === "LD" || p.pos === "LE");
+  else if (filter === "MID") list = list.filter((p) => p.pos === "VOL" || p.pos === "MC" || p.pos === "MEI");
+  else if (filter === "ATT") list = list.filter((p) => p.pos === "PD" || p.pos === "PE" || p.pos === "ATA");
+  else if (filter === "out") list = list.filter((p) => p.injury > 0 || Object.values(p.bans).some((b) => b > 0));
+  else if (filter === "listed") list = list.filter((p) => p.listed);
+
   const sorters: Record<Sort, (a: Player, b: Player) => number> = {
     pos: (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos] || b.ovr - a.ovr,
     ovr: (a, b) => b.ovr - a.ovr,
@@ -59,42 +73,61 @@ function SquadList() {
     form: (a, b) => formResidual(b, 5) - formResidual(a, 5) || b.ovr - a.ovr,
   };
   list.sort(sorters[sort]);
-  const avg = list.length ? Math.round(list.reduce((s, p) => s + p.ovr, 0) / list.length) : 0;
   const chem = chemOf(w, club);
-  const links = teamLinkAvg(w, club, lineup.starters);
-  const mood = squadMood(w, club);
 
   return (
     <div className="page">
-      <div className="grid3">
-        <div className="stat-box"><b>{squadOf(w, club).length}</b><span>jogadores</span></div>
-        <div className="stat-box"><b>{Math.round(lineupStrength(w, club, lineup))}</b><span>força do time</span></div>
-        <div className="stat-box"><b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, club))}</b><span>folha mensal</span></div>
+      <div className="kpi-bar">
+        <div className="kb-item">
+          <b>{Math.round(lineupStrength(w, club, lineup))}</b>
+          <span>Força XI</span>
+        </div>
+        <div className="kb-item">
+          <b style={{ color: "var(--accent)" }}>{Math.round(chem)}%<DeltaTag d={dynDelta(w, "chem", chem)} /></b>
+          <span>Química</span>
+        </div>
+        <div className="kb-item">
+          <b style={{ fontSize: 14 }}>{formatMoney(wageBill(w, club))}</b>
+          <span>Folha/Mês</span>
+        </div>
+        <div className="kb-actions">
+          <button className="kb-auto" onClick={() => {
+            update(() => { club.lineup = autoLineup(w, club, undefined, club.tactic.formation, true); });
+            autosave();
+            toast("Melhores disponíveis escalados!");
+          }}>⚡ Escalar</button>
+          <div className="view-toggle">
+            <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
+            <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
+          </div>
+        </div>
       </div>
-      <div className="row">
-      <div className="small muted grow" title="Entrosamento: o time joga melhor junto (vitórias, poucas trocas na escalação e o foco Tático no treino). Setinhas = variação desde o último jogo.">
-        🤝 Entrosamento <b style={{ color: "var(--text)" }}>{Math.round(chem)}%</b><DeltaTag d={dynDelta(w, "chem", chem)} />
-        {" "}· em campo {Math.round(links)}<DeltaTag d={dynDelta(w, "links", links)} />
-        {" "}· 🙂 clima {Math.round(mood)}<DeltaTag d={dynDelta(w, "mood", mood)} />
-        {" "}· 📘 {Math.round(familiarityOf(w, club))}% · média {avg}
-      </div>
-      <div className="view-toggle">
-        <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
-        <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
-      </div>
-      </div>
+
       <SquadPulse w={w} players={squadOf(w, club)} />
-      <div className="chips">
-        {([["all", "Todos"], ["starters", "Titulares"], ["out", "Lesionados/suspensos"], ["listed", "À venda"]] as const).map(([k, l]) => (
+
+      <div className="chip-row">
+        {([
+          ["all", "Todos"],
+          ["starters", "Titulares"],
+          ["GK", "GOL"],
+          ["DEF", "DEF"],
+          ["MID", "MEI"],
+          ["ATT", "ATA"],
+          ["out", "Lesionados"],
+          ["listed", "À venda"],
+        ] as const).map(([k, l]) => (
           <button key={k} className={`chip${filter === k ? " active" : ""}`} onClick={() => setFilter(k)}>{l}</button>
         ))}
+        <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Ordenar elenco">
+          <option value="pos">↕ Posição</option>
+          <option value="ovr">↕ Overall</option>
+          <option value="form">↕ Fase</option>
+          <option value="age">↕ Idade</option>
+          <option value="cond">↕ Condição</option>
+          <option value="value">↕ Valor</option>
+        </select>
       </div>
-      <div className="chips">
-        <span className="small muted" style={{ alignSelf: "center" }}>Ordenar:</span>
-        {([["pos", "Posição"], ["ovr", "Overall"], ["form", "Fase"], ["age", "Idade"], ["cond", "Condição"], ["value", "Valor"]] as const).map(([k, l]) => (
-          <button key={k} className={`chip${sort === k ? " active" : ""}`} onClick={() => setSort(k)}>{l}</button>
-        ))}
-      </div>
+
       {view === "cards" ? (
         <div className="pgrid">
           {list.map((p, i) => (
@@ -103,14 +136,21 @@ function SquadList() {
           ))}
         </div>
       ) : (
-      <div className="card flat" style={{ padding: "2px 10px" }}>
-        <div className="list">
-          {list.map((p) => (
-            <PlayerRow key={p.id} p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-              right={<><CompareIconBtn p={p} /><span className="col" style={{ alignItems: "flex-end", gap: 2 }}><FormDots p={p} size={13} /><span className="tiny"><span title={`Moral ${p.morale}`}>{moodEmoji(p)}<DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span> <TrendArrow p={p} />{starters.has(p.id) ? <span className="tag good" style={{ marginLeft: 4 }}>XI</span> : null}</span></span></>} />
-          ))}
+        <div className="card flat" style={{ padding: "2px 10px" }}>
+          <div className="list">
+            {list.map((p) => (
+              <PlayerRow key={p.id} p={p} club={club} season={w.season} starter={starters.has(p.id)} onClick={() => push({ name: "player", id: p.id })}
+                mood={<span title={`Moral ${p.morale}`}>{moodEmoji(p)}<DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span>}
+                right={
+                  <span className="row gap4" style={{ flex: "none" }}>
+                    {p.form.length > 0 && <FormDots p={p} size={13} />}
+                    <CompareIconBtn p={p} />
+                  </span>
+                }
+              />
+            ))}
+          </div>
         </div>
-      </div>
       )}
       {!list.length && <div className="empty">😶 Nenhum jogador neste filtro.</div>}
       <div style={{ height: 50 }} />

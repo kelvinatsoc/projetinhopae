@@ -10,24 +10,30 @@ import { acceptOffer, feeWithSellOn, searchMarket, type MarketFilter } from "../
 import type { Pos, TraitId } from "../../engine/types";
 import { push, toast, update, useVersion, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Crest, PlayerRow, Ic } from "../components";
+import { Crest, Icon, PlayerRow, Sheet, Ic } from "../components";
 import { ScoutingTab } from "./Scouting";
 import "../market.css";
 
 export function MarketScreen() {
   const w = useWorld();
+  const user = w.clubs[w.userClubId];
   const [tab, setTab] = useState<"search" | "offers" | "short" | "legends" | "scout">("search");
   const open = userWindowOpen(w);
   const pending = w.offers.filter((o) => o.status === "pending" && !o.byUser).length;
+  const shortCount = w.shortlist.length;
   return (
     <div className="page">
-      <div className={`card flat small ${open ? "" : "muted"}`} style={{ borderColor: open ? "var(--accent)" : undefined }}>
-        {windowLabel(w.day) ?? (open ? "🛠️ Janela sempre aberta (Modo Administrador)." : "Janela fechada: só jogadores livres podem ser contratados. Próxima janela: 1º de julho / janeiro.")}
+      <div className={`window-banner${open ? " open" : " closed"}`}>
+        <span className="wb-txt">
+          <span className="wb-dot" aria-hidden="true" />
+          <span>{windowLabel(w.day) ?? (open ? "🛠️ Janela aberta (Admin)" : "Janela fechada · só livres")}</span>
+        </span>
+        <span className="wb-bal">Caixa: <b>{formatMoney(user.balance)}</b></span>
       </div>
       <div className="seg">
         <button className={tab === "search" ? "active" : ""} onClick={() => setTab("search")}>Buscar</button>
         <button className={tab === "offers" ? "active" : ""} onClick={() => setTab("offers")}>Propostas{pending ? ` (${pending})` : ""}</button>
-        <button className={tab === "short" ? "active" : ""} onClick={() => setTab("short")}>Observados</button>
+        <button className={tab === "short" ? "active" : ""} onClick={() => setTab("short")}>Alvos{shortCount ? ` (${shortCount})` : ""}</button>
         <button className={tab === "legends" ? "active" : ""} onClick={() => setTab("legends")}>Lendas</button>
         <button className={tab === "scout" ? "active" : ""} onClick={() => setTab("scout")}>Olheiros</button>
       </div>
@@ -45,53 +51,113 @@ function Search() {
   const w = useWorld();
   const version = useVersion();
   const [f, setF] = useState<MarketFilter>({ pos: "", maxAge: 0, minOvr: 0, maxValue: 0, scope: "all" });
+  const [filterOpen, setFilterOpen] = useState(false);
   const results = useMemo(() => searchMarket(w, f, 80), [w, f, version]);
   const set = (patch: Partial<MarketFilter>) => setF((x) => ({ ...x, ...patch }));
+  const advCount = (f.maxAge ? 1 : 0) + (f.minOvr ? 1 : 0) + (f.maxValue ? 1 : 0) + (f.scope !== "all" ? 1 : 0) + (f.trait ? 1 : 0);
+
   return (
     <>
-      <input className="text" placeholder="Buscar por nome" value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
-      <div className="chips">
-        <button className={`chip${!f.pos ? " active" : ""}`} onClick={() => set({ pos: "" })}>Todas</button>
-        {POSITIONS.map((p) => <button key={p} className={`chip${f.pos === p ? " active" : ""}`} onClick={() => set({ pos: p as Pos })}>{p}</button>)}
+      <div className="search-bar">
+        <div className="search-input-wrap">
+          <Icon name="search" size={16} />
+          <input placeholder="Buscar jogador por nome..." value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
+        </div>
+        <button className={`filter-drawer-btn${advCount ? " active" : ""}`} onClick={() => setFilterOpen(true)}>
+          ⚙ Filtros{advCount ? ` (${advCount})` : ""}
+        </button>
       </div>
-      <div className="grid2">
-        <select className="text" value={f.maxAge} onChange={(e) => set({ maxAge: Number(e.target.value) })}>
-          <option value={0}>Qualquer idade</option>
-          {[19, 21, 23, 25, 28, 30, 33].map((a) => <option key={a} value={a}>Até {a} anos</option>)}
-        </select>
-        <select className="text" value={f.minOvr} onChange={(e) => set({ minOvr: Number(e.target.value) })}>
-          <option value={0}>Qualquer overall</option>
-          {[60, 65, 70, 75, 80, 85].map((o) => <option key={o} value={o}>Overall {o}+</option>)}
-        </select>
-        <select className="text" value={f.maxValue} onChange={(e) => set({ maxValue: Number(e.target.value) })}>
-          <option value={0}>Qualquer valor</option>
-          {[1, 5, 10, 25, 50, 100].map((v) => <option key={v} value={v * 1_000_000}>Até R$ {v} mi</option>)}
-        </select>
-        <select className="text" value={f.scope} onChange={(e) => set({ scope: e.target.value as MarketFilter["scope"] })}>
-          <option value="all">Brasil + exterior</option>
-          <option value="br">Só clubes brasileiros</option>
-          <option value="foreign">Só sul-americanos</option>
-        </select>
-      </div>
-      <select className="text" value={f.trait ?? ""} onChange={(e) => set({ trait: e.target.value as TraitId | "" })} aria-label="Jogada preferida">
-        <option value="">Jogada: qualquer</option>
-        {TRAIT_IDS.filter((t) => !TRAITS[t].bad).map((t) => <option key={t} value={t}>{TRAITS[t].emoji} {TRAITS[t].label}</option>)}
-      </select>
-      {f.trait && <div className="tiny muted">Só aparecem jogadores que seus olheiros conhecem bem (observe mais jogadores para ampliar a busca).</div>}
-      <div className="chips">
-        <button className={`chip${f.freeOnly ? " active" : ""}`} onClick={() => set({ freeOnly: !f.freeOnly })}>Livres</button>
-        <button className={`chip${f.listedOnly ? " active" : ""}`} onClick={() => set({ listedOnly: !f.listedOnly })}>À venda</button>
+
+      <div className="chip-row">
+        <button className={`chip${!f.pos && !f.freeOnly && !f.listedOnly && !f.legendsOnly ? " active" : ""}`}
+          onClick={() => set({ pos: "", freeOnly: false, listedOnly: false, legendsOnly: false })}>Todas</button>
+        <button className={`chip${f.freeOnly ? " active" : ""}`} onClick={() => set({ freeOnly: !f.freeOnly })}>🟢 Livres</button>
+        <button className={`chip${f.listedOnly ? " active" : ""}`} onClick={() => set({ listedOnly: !f.listedOnly })}>🏷️ À venda</button>
         <button className={`chip${f.legendsOnly ? " active" : ""}`} onClick={() => set({ legendsOnly: !f.legendsOnly })}>★ Lendas</button>
+        {POSITIONS.map((p) => (
+          <button key={p} className={`chip${f.pos === p ? " active" : ""}`} onClick={() => set({ pos: f.pos === p ? "" : (p as Pos) })}>{p}</button>
+        ))}
       </div>
+
+      <div className="sec-head" style={{ marginTop: -2 }}>
+        <h3>Resultados ({results.length})</h3>
+        {advCount > 0 && (
+          <button className="link" onClick={() => set({ maxAge: 0, minOvr: 0, maxValue: 0, scope: "all", trait: "" })}>
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
       <div className="card flat" style={{ padding: "2px 10px" }}>
         <div className="list">
           {results.map((p) => (
             <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-              right={<><CompareIconBtn p={p} withStarter /><span className="small muted" style={{ whiteSpace: "nowrap" }}>{formatMoney(playerValue(p, w.season))}</span></>} />
+              right={
+                <div className="row gap6">
+                  <CompareIconBtn p={p} withStarter />
+                  <div className="col" style={{ alignItems: "flex-end", gap: 1 }}>
+                    <b className="small num" style={{ color: p.clubId ? "#c8f43c" : "#34d27b", whiteSpace: "nowrap" }}>
+                      {p.clubId ? formatMoney(playerValue(p, w.season)) : "Sem custos"}
+                    </b>
+                    <span className="tiny muted">{p.listed ? "À venda" : p.clubId ? `Até ${p.contractEnd}` : "Livre"}</span>
+                  </div>
+                </div>
+              }
+            />
           ))}
         </div>
         {!results.length && <div className="empty">Nenhum jogador encontrado com esses filtros.</div>}
       </div>
+
+      {filterOpen && (
+        <Sheet title="Filtros de Mercado" onClose={() => setFilterOpen(false)}>
+          <div className="col gap10">
+            <div className="grid2">
+              <label className="col gap4 small">
+                <span className="muted">Idade máxima</span>
+                <select className="text" value={f.maxAge} onChange={(e) => set({ maxAge: Number(e.target.value) })}>
+                  <option value={0}>Qualquer idade</option>
+                  {[19, 21, 23, 25, 28, 30, 33].map((a) => <option key={a} value={a}>Até {a} anos</option>)}
+                </select>
+              </label>
+              <label className="col gap4 small">
+                <span className="muted">Overall mínimo</span>
+                <select className="text" value={f.minOvr} onChange={(e) => set({ minOvr: Number(e.target.value) })}>
+                  <option value={0}>Qualquer overall</option>
+                  {[60, 65, 70, 75, 80, 85].map((o) => <option key={o} value={o}>Overall {o}+</option>)}
+                </select>
+              </label>
+              <label className="col gap4 small">
+                <span className="muted">Valor máximo</span>
+                <select className="text" value={f.maxValue} onChange={(e) => set({ maxValue: Number(e.target.value) })}>
+                  <option value={0}>Qualquer valor</option>
+                  {[1, 5, 10, 25, 50, 100].map((v) => <option key={v} value={v * 1_000_000}>Até R$ {v} mi</option>)}
+                </select>
+              </label>
+              <label className="col gap4 small">
+                <span className="muted">Região / Origem</span>
+                <select className="text" value={f.scope} onChange={(e) => set({ scope: e.target.value as MarketFilter["scope"] })}>
+                  <option value="all">Brasil + exterior</option>
+                  <option value="br">Só clubes brasileiros</option>
+                  <option value="foreign">Só sul-americanos</option>
+                </select>
+              </label>
+            </div>
+            <label className="col gap4 small">
+              <span className="muted">Jogada preferida</span>
+              <select className="text" value={f.trait ?? ""} onChange={(e) => set({ trait: e.target.value as TraitId | "" })} aria-label="Jogada preferida">
+                <option value="">Jogada: qualquer</option>
+                {TRAIT_IDS.filter((t) => !TRAITS[t].bad).map((t) => <option key={t} value={t}>{TRAITS[t].emoji} {TRAITS[t].label}</option>)}
+              </select>
+            </label>
+            {f.trait && <div className="tiny muted">Só aparecem jogadores que seus olheiros conhecem bem.</div>}
+            <div className="grid2 mt8">
+              <button className="btn sm" onClick={() => set({ maxAge: 0, minOvr: 0, maxValue: 0, scope: "all", trait: "" })}>Limpar</button>
+              <button className="btn sm primary" onClick={() => setFilterOpen(false)}>Ver {results.length} jogadores</button>
+            </div>
+          </div>
+        </Sheet>
+      )}
     </>
   );
 }

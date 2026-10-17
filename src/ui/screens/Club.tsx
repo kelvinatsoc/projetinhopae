@@ -32,67 +32,127 @@ import { OfferList } from "../Career";
 export function ClubScreen() {
   const w = useWorld();
   const c = w.clubs[w.userClubId];
-  const titles = c.trophies.length;
+  const titles = c.trophies.length + estadualTitles(c);
   const photo = stadiumSrc(c);
   const offers = w.career?.offers.length ?? 0;
   const youth = c.players.filter((id) => w.players[id]?.youth).length;
   const achs = Object.keys(w.ach?.got ?? {}).length;
+
   return (
     <div className="page">
       <div className="club-hero">
         {photo && <img className="bgimg" src={photo} alt="" loading="lazy" decoding="async" />}
-        <div className="row" style={{ alignItems: "flex-end" }}>
-          <Crest club={c} size={72} />
+        <div className="row" style={{ alignItems: "center", gap: 12 }}>
+          <Crest club={c} size={64} />
           <div className="grow" style={{ minWidth: 0 }}>
             <h2 className="ellipsis">{c.name}</h2>
-            <div className="small" style={{ opacity: 0.9 }}>{c.city}/{c.region}{c.nickname ? ` · ${c.nickname.split(",")[0]}` : ""}</div>
-            <div className="small"><Stars n={clubStars(clubStrength(w, c))} /></div>
+            <div className="small" style={{ opacity: 0.9 }}>
+              {c.city}/{c.region}{c.nickname ? ` · ${c.nickname.split(",")[0]}` : ""} · <Stars n={clubStars(clubStrength(w, c))} />
+            </div>
+            <div className="tiny" style={{ opacity: 0.85, marginTop: 2 }}>
+              <Ic n="stadium" size={13} /> {stadiumName(w, c)} · {c.capacity.toLocaleString("pt-BR")} lug.
+            </div>
           </div>
+          <button className="hero-icon-btn" onClick={() => push({ name: "settings" })} aria-label="Ajustes">
+            <GIcon slug="configuracoes" size={20} />
+          </button>
         </div>
-        <div className="small mt8" style={{ opacity: 0.85 }}><Ic n="stadium" /> {stadiumName(w, c)} · {c.capacity.toLocaleString("pt-BR")} lugares</div>
+
+        <div className="club-hero-kpis">
+          <button className="chk-item" onClick={() => push({ name: "finances" })}>
+            <b style={{ color: "#34d27b" }}>{formatMoney(c.balance)}</b>
+            <span>Saldo Atual</span>
+          </button>
+          <button className="chk-item" onClick={() => push({ name: "finances" })}>
+            <b>{formatMoney(wageBill(w, c))}</b>
+            <span>Folha / Mês</span>
+          </button>
+          <button className="chk-item" onClick={() => push({ name: "trophies" })}>
+            <b style={{ color: "#f5c542" }}>🏆 {titles}</b>
+            <span>Sala de Troféus</span>
+          </button>
+        </div>
       </div>
 
-      <div className="grid3">
-        <div className="stat-box tap" onClick={() => push({ name: "finances" })}><b style={{ fontSize: 17 }}>{formatMoney(c.balance)}</b><span>saldo</span></div>
-        <div className="stat-box"><b style={{ fontSize: 17 }}>{formatMoney(wageBill(w, c))}</b><span>folha/mês</span></div>
-        <div className="stat-box tap" onClick={() => push({ name: "trophies" })}><b>{titles}</b><span>títulos</span></div>
-      </div>
-
-      <h3>Sede do clube</h3>
       <ClubHQ club={c} matchToday={nextFixture(w, c.id)?.day === w.day} fallback={
-      <div className="tiles">
-        <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
-        <Tile icon="👔" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
-        <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
-        <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
-        <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
-        <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
-        <Tile icon="⚡" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
-        <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
-        <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
-        <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
-        <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
-      </div>
+        <div className="tiles">
+          <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
+          <Tile icon="👔" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
+          <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
+          <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
+          <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
+          <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
+          <Tile icon="⚡" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
+          <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
+          <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
+          <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
+          <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
+        </div>
       } />
-      <div className="row gap8 wrap">
-        <button className="btn sm" onClick={() => push({ name: "settings" })}><GIcon slug="configuracoes" size={18} /> Ajustes</button>
-        <button className="btn sm" onClick={() => push({ name: "facilities" })}><GIcon slug="estrutura" size={18} /> Estrutura</button>
+
+      <div className="sec-head">
+        <h3>Gestão & Legado</h3>
+        <button className="link" onClick={() => push({ name: "club", id: c.id })}>Ficha do clube ›</button>
       </div>
 
-      <h3>Glória</h3>
-      <div className="tiles">
-        <Tile icon="🏆" label="Sala de troféus" sub={`${titles} no jogo`} tint="#f5c542" wide onClick={() => push({ name: "trophies" })} />
-        <Tile icon="⭐" label="Lendas" sub="Álbum" tint="#ffcf3f" onClick={() => push({ name: "legends" })} />
-        <Tile icon="🏅" label="Conquistas" sub={`${achs} desbloqueadas`} tint="#4fa3ff" onClick={() => push({ name: "achievements" })} />
-        <Tile icon="🧭" label="Carreira" sub={offers > 0 ? `${offers} proposta${offers > 1 ? "s" : ""}!` : "Reputação"} tint="#ff5d8f" hot={offers > 0} onClick={() => push({ name: "career" })} />
-        <Tile icon="📜" label="Histórico" sub="Campeões" tint="#9aa6c4" onClick={() => push({ name: "history" })} />
-        <Tile icon="🔎" label="Página do clube" sub="Elenco e informações" tint="#34d27b" wide onClick={() => push({ name: "club", id: c.id })} />
-        {w.admin?.on && <Tile icon="🛠️" label="Admin" sub="Editor" tint="#f5c542" onClick={() => push({ name: "admin" })} />}
+      <div className="club-grid3">
+        <button className="cg-tile" onClick={() => push({ name: "finances" })}>
+          <span className="cg-ic"><GIcon slug="financas" size={22} /></span>
+          <b>Finanças</b>
+          <small>Balanço e ingresso</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "kits", id: c.id })}>
+          <span className="cg-ic">👕</span>
+          <b>Uniformes</b>
+          <small>Kits {w.season}</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "sponsors" })}>
+          <span className="cg-ic"><GIcon slug="patrocinios" size={22} /></span>
+          <b>Patrocínios</b>
+          <small>{shirtSponsor(w, c) || "Cotas e marcas"}</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "board" })}>
+          <span className="cg-ic"><GIcon slug="diretoria" size={22} /></span>
+          <b>Diretoria</b>
+          <small>{Math.round(w.board.confidence)}% confiança</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "staff" })}>
+          <span className="cg-ic"><GIcon slug="olheiros" size={22} /></span>
+          <b>Comissão</b>
+          <small>Equipe técnica</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "facilities" })}>
+          <span className="cg-ic"><GIcon slug="estrutura" size={22} /></span>
+          <b>Obras & Níveis</b>
+          <small>Estádio, CT, Base</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "career" })}>
+          <span className="cg-ic"><GIcon slug="carreira" size={22} /></span>
+          <b>Carreira</b>
+          <small>{offers > 0 ? `${offers} proposta${offers > 1 ? "s" : ""}!` : "Reputação"}</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "legends" })}>
+          <span className="cg-ic"><GIcon slug="lendas" size={22} /></span>
+          <b>Álbum Lendas</b>
+          <small>{Object.keys(w.legends).length}/{LEGENDS.length} ativas</small>
+        </button>
+        <button className="cg-tile" onClick={() => push({ name: "history" })}>
+          <span className="cg-ic"><Icon name="scroll" size={20} /></span>
+          <b>Histórico</b>
+          <small>Campeões ({achs} 🏅)</small>
+        </button>
       </div>
 
-      <div className="grid2 mt8">
-        <button className="btn" onClick={saveNow}><GIcon slug="salvar" size={20} /> Salvar</button>
-        <button className="btn" onClick={async () => { await saveWorld(w); setWorld(null); resetNav(); }}><Ic n="door" size={18} /> Sair para o menu</button>
+      <div className="chip-row" style={{ marginTop: 2 }}>
+        <button className="chip" onClick={() => push({ name: "achievements" })}>🏅 Conquistas ({achs})</button>
+        <button className="chip" onClick={() => push({ name: "powers" })}>⚡ Loja de Poderes</button>
+        <button className="chip" onClick={() => push({ name: "settings" })}>⚙️ Ajustes</button>
+        {w.admin?.on && <button className="chip active" onClick={() => push({ name: "admin" })}>🛠️ Editor Admin</button>}
+      </div>
+
+      <div className="grid2 mt4">
+        <button className="btn" onClick={saveNow}><GIcon slug="salvar" size={20} /> Salvar Jogo</button>
+        <button className="btn" onClick={async () => { await saveWorld(w); setWorld(null); resetNav(); }}><Ic n="door" size={18} /> Sair ao Menu</button>
       </div>
       <div style={{ height: 30 }} />
     </div>

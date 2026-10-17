@@ -297,7 +297,7 @@ input.text:focus, select:focus, textarea:focus { outline: none; border-color: va
   position: relative; height: 132px; overflow: hidden;
   background: linear-gradient(120deg, color-mix(in srgb, var(--h) 65%, #0b0e14), color-mix(in srgb, var(--a) 65%, #0b0e14));
 }
-.nm-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nm-media > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .nm-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,14,20,0.15), rgba(11,14,20,0.25) 50%, var(--surface)); }
 .nm-badges { position: absolute; z-index: 1; left: 12px; right: 12px; top: 12px; display: flex; justify-content: space-between; gap: 8px; }
 .pill {
@@ -705,3 +705,633 @@ html.lite *, html.lite *::before, html.lite *::after {
 html.lite .card, html.lite .btn, html.lite .sheet, html.lite [class*="-card"] { box-shadow: none !important; }
 html.lite [style*="blur("] { filter: none !important; }
 html.lite img { content-visibility: auto; }
+
+/* ================================================================
+   ARQUIBANCADA PRO — Redesign UI/UX Conciso (Tarefa B)
+   ================================================================ */
+:root {
+  --bg: #080b12;
+  --bg2: #0d121d;
+  --surface: #111826;
+  --surface-2: #172033;
+  --surface-3: #1e2940;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --volt: #c8f43c;
+}
+
+.page {
+  padding: 12px 14px;
+  gap: 11px;
+}
+
+/* Topbar refinada */
+.topbar {
+  background: rgba(11, 16, 26, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Home — NextMatch Hero & CTA integrado */
+.next-match .nm-media {
+  height: 112px;
+  min-height: 112px;
+  padding: 10px 12px;
+}
+.next-match .nm-media > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.next-match .nm-badges {
+  align-items: flex-start;
+}
+.next-match .nm-badges .pill {
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+.next-match .nm-badges .comp-logo,
+.sec-head .comp-logo {
+  width: 18px !important;
+  height: 18px !important;
+  padding: 2px !important;
+  border-radius: 5px !important;
+  flex: none;
+}
+.sec-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sec-head .link {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.form-dots .fd.empty {
+  padding: 0 !important;
+  border-radius: 50% !important;
+}
+.next-match .nm-teams {
+  padding: 6px 14px 10px;
+}
+.next-match .nm-team.tap {
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 4px;
+  transition: background 0.15s;
+}
+.next-match .nm-team.tap:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+.next-match .nm-vs {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+.next-match .nm-actions {
+  grid-template-columns: 1fr 1.35fr;
+  padding: 10px 12px 12px;
+  gap: 8px;
+}
+
+/* Home — Pulse Strip (4 colunas compactas) */
+.status-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.pulse-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.pulse-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 8px 6px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  color: var(--text);
+}
+.pulse-card:active {
+  transform: scale(0.97);
+}
+.pulse-card .pc-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+}
+.pulse-card .pc-num {
+  font-family: var(--num);
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+.pulse-card .pc-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pulse-card .pc-bar {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-top: 2px;
+}
+.pulse-card .pc-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+}
+.pulse-card .pc-bar i.ok { background: #34d27b; }
+.pulse-card .pc-bar i.mid { background: #f5a524; }
+.pulse-card .pc-bar i.low { background: #ef5350; }
+
+/* Home — 4 pílulas contextuais rápidas (sem duplicar abas inferiores) */
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.q-pill {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 9px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--text);
+  text-align: center;
+}
+.q-pill:active {
+  transform: scale(0.97);
+}
+.q-pill .q-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--club) 22%, var(--surface-3));
+  color: #fff;
+}
+.q-pill .q-lbl {
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.q-pill .q-sub {
+  font-size: 9.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.q-pill .q-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+
+/* Home — MiniTable broadcast e NewsStrip */
+.mini-tbl th {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  padding: 4px 5px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.mini-tbl td {
+  padding: 6px 5px;
+  text-align: center;
+  font-size: 12.5px;
+}
+.mini-tbl td.team {
+  text-align: left;
+}
+.form-pill.sm {
+  width: 16px;
+  height: 16px;
+  font-size: 9.5px;
+  border-radius: 4px;
+}
+.news-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.news-strip .ns-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(200, 244, 60, 0.12);
+  color: var(--volt);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.news-strip .ns-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.news-strip .ns-body b {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.news-strip .ns-body span {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+/* Elenco — KPI Bar unificada + Filtros 1-linha */
+.kpi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 8px 10px;
+}
+.kpi-bar .kb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.kpi-bar .kb-item b {
+  font-family: var(--num);
+  font-size: 15px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.kpi-bar .kb-item span {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.kpi-bar .kb-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kb-auto {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(200, 244, 60, 0.4);
+  background: rgba(200, 244, 60, 0.12);
+  color: var(--volt);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.chip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-select {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.chip-select.active {
+  border-color: var(--club);
+  background: color-mix(in srgb, var(--club) 22%, var(--surface-2));
+  color: #fff;
+}
+
+/* PlayerRow moderno (prow-modern) */
+.prow.prow-modern {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding: 8px 4px;
+  gap: 8px;
+}
+.xi-pill {
+  font-family: var(--display);
+  font-size: 10.5px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(200, 244, 60, 0.16);
+  border: 1px solid rgba(200, 244, 60, 0.42);
+  color: var(--volt);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* Tática — Seletores rápidos + Campo no topo + Banco de Reservas compacto */
+.tac-pitch {
+  aspect-ratio: 0.85;
+  max-height: 410px;
+}
+.tac-top-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.tac-top-strip::-webkit-scrollbar { display: none; }
+.tac-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.tac-status-line b {
+  color: #fff;
+  font-family: var(--num);
+}
+.bench-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+.bench-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--text);
+  text-align: center;
+}
+.bench-card.swap-ready {
+  border-color: rgba(200, 244, 60, 0.45);
+  background: rgba(200, 244, 60, 0.06);
+}
+.bench-card .bc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 2px;
+}
+.bench-card .bc-top .pos {
+  font-size: 9px;
+  min-width: 24px;
+  padding: 1px 3px;
+}
+.bench-card .bc-ovr {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+.bench-card .bc-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.bench-card .bc-cond {
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+/* Mercado — Banner da Janela + Busca com Gaveta de Filtros */
+.window-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.window-banner.open {
+  background: rgba(31, 191, 104, 0.1);
+  border-color: rgba(31, 191, 104, 0.35);
+}
+.window-banner .wb-txt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  min-width: 0;
+}
+.window-banner .wb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex-shrink: 0;
+}
+.window-banner.open .wb-dot {
+  background: #34d27b;
+  box-shadow: 0 0 8px #34d27b;
+}
+.window-banner .wb-bal {
+  font-size: 11.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.window-banner .wb-bal b {
+  color: var(--volt);
+  font-family: var(--num);
+}
+.search-bar {
+  display: flex;
+  gap: 7px;
+}
+.search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+}
+.search-input-wrap input {
+  flex: 1;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+}
+.filter-drawer-btn {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.filter-drawer-btn.active {
+  background: rgba(200, 244, 60, 0.14);
+  border-color: rgba(200, 244, 60, 0.45);
+  color: var(--volt);
+}
+
+/* Clube — Hero integrado com KPIs + Grid 3x3 conciso */
+.hero-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(7, 10, 18, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.club-hero-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.chk-item {
+  background: rgba(7, 10, 18, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #fff;
+}
+.chk-item b {
+  font-family: var(--num);
+  font-size: 14px;
+  font-weight: 900;
+}
+.chk-item span {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+  text-transform: uppercase;
+}
+.club-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.cg-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--text);
+  text-align: left;
+  min-width: 0;
+}
+.cg-tile:active {
+  transform: scale(0.97);
+}
+.cg-tile .cg-ic {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+.cg-tile b {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cg-tile small {
+  font-size: 10px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+

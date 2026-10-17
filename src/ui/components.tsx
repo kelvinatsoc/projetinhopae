@@ -315,28 +315,33 @@ export function Sheet({ onClose, children, title }: { onClose: () => void; child
   );
 }
 
-export function PlayerRow({ p, club, season, right, onClick, showClub }: {
-  p: Player; club?: Club | null; season: number; right?: ReactNode; onClick?: () => void; showClub?: boolean;
+export function PlayerRow({ p, club, season, right, onClick, showClub, starter, mood }: {
+  p: Player; club?: Club | null; season: number; right?: ReactNode; onClick?: () => void; showClub?: boolean; starter?: boolean; mood?: ReactNode;
 }) {
   const injured = p.injury > 0;
   const banned = Object.values(p.bans).some((b) => b > 0);
+  const condColor = p.cond >= 80 ? "var(--ok)" : p.cond >= 60 ? "var(--warn)" : "var(--danger)";
   return (
-    <div data-player className="list-item" onClick={onClick}>
-      <Avatar p={p} club={club} season={season} size={42} />
-      <div className="grow">
-        <div className="row gap4">
-          <b className="ellipsis">{p.name}</b>
-          {p.legend && <span className="tag legend">★</span>}
+    <div data-player className={`list-item prow-modern${p.legend ? " is-legend" : ""}`} onClick={onClick}>
+      <Avatar p={p} club={club} season={season} size={38} />
+      <PosBadge pos={p.pos} />
+      <div className="grow" style={{ minWidth: 0 }}>
+        <div className="row gap4" style={{ minWidth: 0 }}>
+          <b className="ellipsis" style={{ fontSize: 14.5 }}>{p.name}</b>
+          {starter && <span className="xi-pill">XI</span>}
+          {p.legend && <span className="tag legend">★ LENDA</span>}
           {injured && <span className="tag danger">🚑 {p.injury}d</span>}
           {banned && <span className="tag danger">🟥</span>}
-          {p.listed && <span className="tag">💲</span>}
-          <PlayerBadges p={p} />
+          {p.listed && <span className="tag">🏷️</span>}
         </div>
-        <div className="row gap8 small muted" style={{ whiteSpace: "nowrap", minWidth: 0 }}>
-          <PosBadge pos={p.pos} />
+        <div className="row gap6 small muted" style={{ whiteSpace: "nowrap", minWidth: 0, fontSize: 11.5 }}>
           <span style={{ flex: "none" }}><Flag code={p.nat} /> {age(p, season)}a</span>
-          {showClub && club && <span className="ellipsis" style={{ minWidth: 0 }}>{club.name}</span>}
-          {!showClub && <span style={{ width: 46 }}><Bar v={p.cond} /></span>}
+          {showClub && club && <span className="ellipsis" style={{ minWidth: 0 }}>· {club.name}</span>}
+          {!showClub && (
+            <span style={{ color: condColor, fontWeight: 700, flex: "none" }}>· ⚡{Math.round(p.cond)}% <TrendArrow p={p} /></span>
+          )}
+          {mood && <span style={{ flex: "none" }}>{mood}</span>}
+          <PlayerBadges p={p} />
         </div>
       </div>
       {right}

@@ -201,7 +201,7 @@ export function App() {
     }
   }
 
-  const showFab = !top && (nav.tab === "home" || nav.tab === "squad" || nav.tab === "comps");
+  const showFab = !top && (nav.tab === "squad" || nav.tab === "comps");
   const nf = nextFixture(w, w.userClubId);
   const matchToday = !!nf && nf.day === w.day;
   const routeKey = top ? `${nav.stack.length}:${top.name}:${"id" in top ? top.id : ""}` : `tab:${nav.tab}`;

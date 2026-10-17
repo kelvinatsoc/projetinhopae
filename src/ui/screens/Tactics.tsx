@@ -2,10 +2,10 @@
 // instruções do time, mudanças de mentalidade programadas e linhas de entrosamento.
 import { useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { pitchLinks, teamLinkAvg } from "../../engine/chemistry";
-import { chemOf, dynDelta } from "../../engine/dressing";
+import { dynDelta } from "../../engine/dressing";
 import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
 import { shortName } from "../../engine/player";
-import { FORMATION_DESC, FORMATIONS, MENTALITY_NAMES, ovrAt, POS_NAME, POS_ORDER, PRESSING_NAMES } from "../../engine/positions";
+import { FORMATIONS, MENTALITY_NAMES, ovrAt, POS_NAME, POS_ORDER, PRESSING_NAMES } from "../../engine/positions";
 import {
   applyPreset, bestRole, familiarityOf, onFormationChange, PRESETS, roleAt, ROLES, roleStars, rolesFor, TI_INFO, tiOf, type RoleId,
 } from "../../engine/tactics";
@@ -43,6 +43,7 @@ export function TacticsScreen() {
   const [sel, setSel] = useState<number | null>(null);
   const [roleSheet, setRoleSheet] = useState<number | null>(null);
   const [showLinks, setShowLinks] = useState(true);
+  const [showAdv, setShowAdv] = useState(false);
   const slots = FORMATIONS[club.tactic.formation] ?? FORMATIONS["4-3-3"];
   const ti = tiOf(club.tactic);
   const fam = familiarityOf(w, club);
@@ -115,6 +116,7 @@ export function TacticsScreen() {
   }
 
   const startersSet = new Set(lineup.starters.filter((x): x is number => x != null));
+  const benchPlayers = lineup.bench.map((id) => w.players[id]).filter((p): p is Player => !!p && !startersSet.has(p.id));
   const others = squadOf(w, club, true).filter((p) => !startersSet.has(p.id)).sort((a, b) => {
     const ba = lineup.bench.includes(a.id) ? 0 : 1, bb = lineup.bench.includes(b.id) ? 0 : 1;
     if (ba !== bb) return ba - bb;
@@ -125,98 +127,114 @@ export function TacticsScreen() {
 
   return (
     <div className="page">
-      <TacticsAdvice />
-      <div className="tac-meters">
-        <div className="tac-meter" title="Familiaridade com a formação: cresce jogando e treinando (foco Tático acelera)">
-          <span className="tiny muted"><Ic n="book" size={13} /> Familiaridade {club.tactic.formation}</span>
-          <Bar v={fam} /><b className="kbd">{Math.round(fam)}%</b>
-        </div>
-        <div className="tac-meter" title="Entrosamento dos titulares vizinhos em campo (minutos juntos, nacionalidade, base, tempo de casa)">
-          <span className="tiny muted"><Ic n="link" size={13} /> Entrosamento em campo</span>
-          <Bar v={links} /><b className="kbd">{Math.round(links)}<DeltaTag d={dynDelta(w, "links", links)} /></b>
-        </div>
-        <div className="tac-meter" title="Entrosamento geral do grupo (vestiário)">
-          <span className="tiny muted"><Ic n="users" size={13} /> Grupo</span>
-          <Bar v={chemOf(w, club)} /><b className="kbd">{Math.round(chemOf(w, club))}%<DeltaTag d={dynDelta(w, "chem", chemOf(w, club))} /></b>
-        </div>
+      {/* Barra rápida de seletores táticos no topo */}
+      <div className="tac-top-strip">
+        <select className="chip-select active" value={club.tactic.formation} onChange={(e) => setFormation(e.target.value)} aria-label="Formação">
+          {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>📐 {f}</option>)}
+        </select>
+        <select className="chip-select" value={club.tactic.mentality} onChange={(e) => { update(() => { club.tactic.mentality = Number(e.target.value); delete club.tactic.preset; }); autosave(); }} aria-label="Mentalidade">
+          {[-2, -1, 0, 1, 2].map((m) => <option key={m} value={m}>🔥 {MENTALITY_NAMES[m].split(" ")[0]}</option>)}
+        </select>
+        <select className="chip-select" value={club.tactic.pressing} onChange={(e) => { update(() => { club.tactic.pressing = Number(e.target.value); delete club.tactic.preset; }); autosave(); }} aria-label="Pressão">
+          {[0, 1, 2].map((m) => <option key={m} value={m}>⚡ Pressão {PRESSING_NAMES[m].replace("Marcação ", "")}</option>)}
+        </select>
+        <button className="chip" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar</button>
+        <button className={`chip${showLinks ? " active" : ""}`} onClick={() => setShowLinks((x) => !x)}><Ic n="link" size={13} /> Linhas ({Math.round(links)})</button>
+        <button className="chip" onClick={() => push({ name: "setpieces" })}><Ic n="target" size={13} /> Bola parada</button>
+        {sel !== null && <button className="chip active" onClick={() => setRoleSheet(sel)}><Ic n="role" size={13} /> Função</button>}
       </div>
 
-      <div className="small muted">Modelos prontos</div>
-      <div className="chips">
-        {PRESETS.map((pr) => (
-          <button key={pr.id} className={`chip${club.tactic.preset === pr.id ? " active" : ""}`} title={pr.desc} onClick={() => pickPreset(pr.id)}>{pr.emoji} {pr.label}</button>
-        ))}
-      </div>
-      <div className="chips">
-        {Object.keys(FORMATIONS).map((f) => (
-          <button key={f} className={`chip${club.tactic.formation === f ? " active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
-        ))}
-      </div>
-      <div className="small muted">{FORMATION_DESC[club.tactic.formation]} · força {Math.round(lineupStrength(w, club, lineup))}</div>
-
+      {/* Campo tático imediatamente visível */}
       <TacticsPitch w={w} club={club} lineup={lineup} sel={sel} showLinks={showLinks} onTap={tapSlot} onSwap={(a, b) => { swap(a, b); setSel(null); }} />
 
-      <div className="row gap8 wrap">
-        <button className="btn sm" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar</button>
-        <button className={`btn sm${showLinks ? " primary" : ""}`} onClick={() => setShowLinks((x) => !x)}><Ic n="link" /> Linhas</button>
-        <button className="btn sm" onClick={() => push({ name: "setpieces" })}><Ic n="target" /> Bola parada</button>
-        {sel !== null && <button className="btn sm primary" onClick={() => setRoleSheet(sel)}><Ic n="role" /> Função</button>}
+      <div className="tac-status-line">
+        <span>📘 Familiaridade <b>{Math.round(fam)}%</b></span>
+        <span>🤝 Ligações <b>{Math.round(links)}</b><DeltaTag d={dynDelta(w, "links", links)} /></span>
+        <span>⚡ Força XI <b>{Math.round(lineupStrength(w, club, lineup))}</b></span>
       </div>
-      <div className="tiny muted">{sel !== null ? "Toque em outro jogador para trocar, ou de novo nele para escolher a função." : "Toque num jogador para selecionar; arraste para trocar de posição."}</div>
+      <div className="tiny muted" style={{ marginTop: -4 }}>
+        {sel !== null
+          ? "Toque em outro titular ou num reserva abaixo para trocar, ou toque de novo no titular para escolher a função."
+          : "Toque num titular para selecionar ou arraste para trocar de posição."}
+      </div>
 
-      <div className="card flat">
-        <b className="small">Mentalidade</b>
-        <div className="seg mt8">
-          {[-2, -1, 0, 1, 2].map((m) => (
-            <button key={m} className={club.tactic.mentality === m ? "active" : ""} onClick={() => { update(() => { club.tactic.mentality = m; delete club.tactic.preset; }); autosave(); }}>
-              {MENTALITY_NAMES[m].split(" ")[0]}
-            </button>
-          ))}
+      {/* Banco de reservas logo abaixo do campo para substituição imediata */}
+      <div className="sec-head" style={{ marginTop: 2 }}>
+        <h3>Banco de Reservas ({benchPlayers.length}/9)</h3>
+        <button className="link" onClick={() => setShowAdv((v) => !v)}>
+          {showAdv ? "Ocultar instruções ▲" : "Instruções da equipe ▼"}
+        </button>
+      </div>
+      {benchPlayers.length > 0 && (
+        <div className="bench-row">
+          {benchPlayers.map((p) => {
+            const posOvr = sel !== null ? ovrAt(p, slots[sel].pos) : p.ovr;
+            return (
+              <button key={p.id} className={`bench-card${sel !== null ? " swap-ready" : ""}`} onClick={() => tapReserve(p)}>
+                <div className="bc-top">
+                  <PosBadge pos={p.pos} />
+                  <span className="bc-ovr num">{posOvr}</span>
+                </div>
+                <span className="bc-name">{shortName(p.name)}</span>
+                <span className="bc-cond" style={{ color: p.cond >= 80 ? "#34d27b" : p.cond >= 65 ? "#f5a524" : "#ef5350" }}>⚡ {Math.round(p.cond)}%</span>
+              </button>
+            );
+          })}
         </div>
-        <b className="small" style={{ display: "block", marginTop: 10 }}>Pressão</b>
-        <div className="seg mt8">
-          {[0, 1, 2].map((m) => (
-            <button key={m} className={club.tactic.pressing === m ? "active" : ""} onClick={() => { update(() => { club.tactic.pressing = m; delete club.tactic.preset; }); autosave(); }}>
-              {PRESSING_NAMES[m].replace("Marcação ", "")}
-            </button>
-          ))}
-        </div>
-        {(Object.keys(TI_INFO) as (keyof typeof TI_INFO)[]).map((k) => (
-          <div key={k}>
-            <div className="row" style={{ marginTop: 10 }}><b className="small grow">{TI_INFO[k].label}</b></div>
-            <div className="seg mt4">
-              {TI_INFO[k].opts.map((label, v) => (
-                <button key={v} className={ti[k] === v ? "active" : ""} onClick={() => setTi({ [k]: v })}>{label}</button>
+      )}
+
+      {/* Instruções da equipe e modelos táticos */}
+      {showAdv && (
+        <>
+          <div className="card flat">
+            <b className="small">Modelos prontos</b>
+            <div className="chips mt8">
+              {PRESETS.map((pr) => (
+                <button key={pr.id} className={`chip${club.tactic.preset === pr.id ? " active" : ""}`} title={pr.desc} onClick={() => pickPreset(pr.id)}>{pr.emoji} {pr.label}</button>
               ))}
             </div>
-            <div className="tiny muted mt4">{TI_INFO[k].hint}</div>
+            {(Object.keys(TI_INFO) as (keyof typeof TI_INFO)[]).map((k) => (
+              <div key={k}>
+                <div className="row" style={{ marginTop: 10 }}><b className="small grow">{TI_INFO[k].label}</b></div>
+                <div className="seg mt4">
+                  {TI_INFO[k].opts.map((label, v) => (
+                    <button key={v} className={ti[k] === v ? "active" : ""} onClick={() => setTi({ [k]: v })}>{label}</button>
+                  ))}
+                </div>
+                <div className="tiny muted mt4">{TI_INFO[k].hint}</div>
+              </div>
+            ))}
+            <div className="chips mt12">
+              <button className={`chip${ti.cpress ? " active" : ""}`} onClick={() => setTi({ cpress: !ti.cpress })}><Ic n="bolt" size={14} /> Contrapressão</button>
+              <button className={`chip${ti.waste ? " active" : ""}`} onClick={() => setTi({ waste: !ti.waste })}>⏳ Fazer cera (vencendo)</button>
+            </div>
           </div>
-        ))}
-        <div className="chips mt12">
-          <button className={`chip${ti.cpress ? " active" : ""}`} onClick={() => setTi({ cpress: !ti.cpress })}><Ic n="bolt" size={14} /> Contrapressão</button>
-          <button className={`chip${ti.waste ? " active" : ""}`} onClick={() => setTi({ waste: !ti.waste })}>⏳ Fazer cera (vencendo)</button>
-        </div>
-        <div className="tiny muted mt4">Contrapressão rouba a bola logo após perder, mas cansa e expõe a defesa. Cera esfria o jogo na reta final.</div>
-      </div>
 
-      <div className="card flat">
-        <b className="small">Mudanças durante o jogo</b>
-        <div className="tiny muted mt4">O time muda a mentalidade sozinho conforme o placar (você ainda pode mexer ao vivo).</div>
-        <div className="small mt8">Vencendo a partir dos 75'</div>
-        <div className="seg mt4">
-          {([[null, "Manter"], [-1, "Segurar"], [-2, "Retranca"]] as const).map(([v, l]) => (
-            <button key={l} className={(sh.lead ?? null) === v ? "active" : ""} onClick={() => setShift("lead", v)}>{l}</button>
-          ))}
-        </div>
-        <div className="small mt8">Perdendo a partir dos 70'</div>
-        <div className="seg mt4">
-          {([[null, "Manter"], [1, "Ofensiva"], [2, "Tudo ao ataque"]] as const).map(([v, l]) => (
-            <button key={l} className={(sh.trail ?? null) === v ? "active" : ""} onClick={() => setShift("trail", v)}>{l}</button>
-          ))}
-        </div>
-      </div>
+          <div className="card flat">
+            <b className="small">Mudanças durante o jogo</b>
+            <div className="tiny muted mt4">O time muda a mentalidade sozinho conforme o placar (você ainda pode mexer ao vivo).</div>
+            <div className="small mt8">Vencendo a partir dos 75'</div>
+            <div className="seg mt4">
+              {([[null, "Manter"], [-1, "Segurar"], [-2, "Retranca"]] as const).map(([v, l]) => (
+                <button key={l} className={(sh.lead ?? null) === v ? "active" : ""} onClick={() => setShift("lead", v)}>{l}</button>
+              ))}
+            </div>
+            <div className="small mt8">Perdendo a partir dos 70'</div>
+            <div className="seg mt4">
+              {([[null, "Manter"], [1, "Ofensiva"], [2, "Tudo ao ataque"]] as const).map(([v, l]) => (
+                <button key={l} className={(sh.trail ?? null) === v ? "active" : ""} onClick={() => setShift("trail", v)}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      <h3>Banco ({lineup.bench.length}/9) e reservas</h3>
+      <TacticsAdvice />
+
+      <div className="sec-head">
+        <h3>Todos os suplentes e não relacionados</h3>
+        <span className="tiny muted">Toque para por/tirar do banco</span>
+      </div>
       <div className="card flat" style={{ padding: "2px 10px" }}>
         <div className="list">
           {others.map((p) => {
