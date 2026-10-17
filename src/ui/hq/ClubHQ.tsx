@@ -4,9 +4,7 @@
 // Toque num prédio: a câmera voa até ele e abre o menu do local.
 // O renderizador three.js e os dados geográficos só são baixados aqui; sem WebGL, mostra a grade.
 import { isLite } from "../perf";
-import "@fontsource/press-start-2p/latin-400.css";
-import "@fontsource/chakra-petch/latin-700-italic.css";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Club } from "../../engine/types";
 import { facLevel } from "../../engine/facilities";
 import { push, setTab } from "../../store";
@@ -14,7 +12,7 @@ import { haptic } from "../haptics";
 import { GIcon, Icon, visibleColor } from "../components";
 import { mediaUrlOrNull } from "../mediaUrl";
 import type { IconSlug } from "../icons";
-import type { ClubGeo, HqBuilding, HqRenderer, HqSiteKind } from "./HqRenderer";
+import type { ClubGeo, HqBuilding, HqRenderer, HqSiteKind, HqTimeOfDay } from "./HqRenderer";
 import "./hq.css";
 
 interface Dest { label: string; slug: IconSlug; go: () => void }
@@ -50,6 +48,7 @@ const BUILDINGS: Record<HqBuilding, { name: string; slug: IconSlug; dests: Dest[
 };
 const ORDER = Object.keys(BUILDINGS) as HqBuilding[];
 const SITE_LABEL: Record<HqSiteKind, string> = { stadium: "Estádio", ct: "CT", sede: "Sede", base: "Base" };
+const TIME_LABELS: [HqTimeOfDay, string][] = [["day", "Dia"], ["sunset", "Tarde"], ["night", "Noite"]];
 
 function hasWebGL(): boolean {
   try {
@@ -73,14 +72,19 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
   const [failed, setFailed] = useState(() => typeof document === "undefined" || isLite() || !hasWebGL());
   const [ready, setReady] = useState(false);
   const [sel, setSel] = useState<HqBuilding | null>(null);
+  const [activeSite, setActiveSite] = useState<HqSiteKind | "overview">("overview");
   const [geo, setGeo] = useState<ClubGeo | null>(null);
   const [sites, setSites] = useState<HqSiteKind[]>([]);
+
+  const hour = new Date().getHours();
+  const [timeOfDay, setTimeOfDay] = useState<HqTimeOfDay>(() =>
+    matchToday || hour >= 19 || hour < 6 ? "night" : hour >= 16 ? "sunset" : "day"
+  );
 
   const c1 = visibleColor(club.colors);
   const c2 = club.colors.find((c) => c.toLowerCase() !== c1.toLowerCase()) ?? "#ffffff";
   const levels = [facLevel(club, "stadium"), facLevel(club, "training"), facLevel(club, "youth"), facLevel(club, "medical")];
-  const hour = new Date().getHours();
-  const night = matchToday || hour >= 19 || hour < 6;
+  const night = timeOfDay === "night";
 
   useEffect(() => {
     if (failed || !host.current) return;
@@ -97,7 +101,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         r = new m.HqRenderer({
           host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium,
           crestUrl: club.customCrest ?? mediaUrlOrNull(club.logo ? `crests/${club.id}.webp` : null), stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
-          matchDay: matchToday, night, reduced, geo: g, labels: labels.current, stadiumCustom: club.look ?? null,
+          matchDay: matchToday, night, timeOfDay, reduced, geo: g, labels: labels.current, stadiumCustom: club.look ?? null,
           onPick: (b) => { haptic("tap"); setSel(b); },
         });
         rRef.current = r;
@@ -106,7 +110,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
       })
       .catch(() => setFailed(true));
     return () => { dead = true; rRef.current = null; r?.dispose(); };
-  }, [failed, club.id, c1, c2, night, matchToday, levels.join(","), JSON.stringify(club.look ?? null)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [failed, club.id, c1, c2, timeOfDay, matchToday, levels.join(","), JSON.stringify(club.look ?? null)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <>{fallback}</>;
 
@@ -118,20 +122,35 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
   };
   const st = geo?.sites.stadium;
   const real = !!st;
+  const accentColor = c1.toLowerCase() === "#ffffff" ? (c2.toLowerCase() !== "#111111" ? c2 : "#e4002b") : c1;
   return (
-    <div className="hq">
+    <div className="hq" style={{ "--hq-club": accentColor } as CSSProperties}>
       <div className="hq-stage" ref={host} role="application" aria-label="Mapa 3D da sede do clube. Arraste para girar, use dois dedos para aproximar e toque num prédio.">
         {!ready && <div className="hq-loading">Carregando a sede…</div>}
+        <div className="hq-sky-toggle" role="group" aria-label="Horário do mapa">
+          {TIME_LABELS.map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              className={`hq-sky-btn${timeOfDay === k ? " active" : ""}`}
+              aria-pressed={timeOfDay === k}
+              onClick={() => { haptic("tap"); setTimeOfDay(k); }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {ORDER.map((id) => (
           <button key={id} className="hq-pin" ref={(el) => { if (el) labels.current[id] = el; }} onClick={() => open(id)} aria-label={`Ir para ${BUILDINGS[id].name}`}>
-            <GIcon slug={BUILDINGS[id].slug} size={16} />{BUILDINGS[id].name}
+            <span className="hq-pin-dot" aria-hidden="true" />
+            <GIcon slug={BUILDINGS[id].slug} size={15} />{BUILDINGS[id].name}
           </button>
         ))}
         {real && <div className="hq-credit">Mapa: © OpenStreetMap · Wikidata</div>}
         {b && (
           <div className="hq-menu" role="dialog" aria-label={b.name}>
             <div className="hq-menu-head"><GIcon slug={b.slug} size={22} /><b>{b.name}</b>
-              <button className="hq-x" aria-label="Fechar" onClick={() => { setSel(null); rRef.current?.focus("overview"); }}><Icon name="close" size={22} /></button></div>
+              <button className="hq-x" aria-label="Fechar" onClick={() => { setSel(null); setActiveSite("overview"); rRef.current?.focus("overview"); }}><Icon name="close" size={20} /></button></div>
             <div className="hq-menu-items">
               {b.dests.map((d) => (
                 <button key={d.label} className="btn" onClick={() => { setSel(null); d.go(); }}><GIcon slug={d.slug} size={20} />{d.label}</button>
@@ -141,11 +160,13 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         )}
       </div>
       <div className="hq-sites" role="group" aria-label="Ir para um local">
-        <button className="chip" onClick={() => rRef.current?.focus("overview")}><Icon name="compass" size={18} /> Visão geral</button>
+        <button className={`chip${activeSite === "overview" ? " active" : ""}`} onClick={() => { setSel(null); setActiveSite("overview"); rRef.current?.focus("overview"); }}>
+          <Icon name="compass" size={18} /> Visão geral
+        </button>
         {sites.map((k) => {
           const d = k === "stadium" ? null : km(st, geo?.sites[k]);
           return (
-            <button key={k} className="chip" onClick={() => rRef.current?.focusSite(k)}>
+            <button key={k} className={`chip${activeSite === k ? " active" : ""}`} onClick={() => { setSel(null); setActiveSite(k); rRef.current?.focusSite(k); }}>
               {SITE_LABEL[k]}{d ? <span className="t-3"> · {d}</span> : null}
             </button>
           );
@@ -153,7 +174,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
       </div>
       <p className="hq-note t-3">
         {real
-          ? `Locais reais: ${[geo?.sites.stadium?.name, geo?.sites.ct ? "CT" : null, geo?.sites.sede ? "sede" : null, geo?.sites.base ? "CT da base" : null].filter(Boolean).join(", ")}. Distâncias longas aparecem encurtadas.`
+          ? `Locais reais: ${[geo?.sites.stadium?.name, geo?.sites.ct ? "CT" : null, geo?.sites.sede || sites.includes("sede") ? "sede social" : null, geo?.sites.base ? "CT da base" : null].filter(Boolean).join(", ")}. Distâncias longas aparecem encurtadas.`
           : "Mapa ilustrativo: ainda não temos a localização real deste clube."}
         {" "}Os prédios crescem com a Estrutura.
       </p>

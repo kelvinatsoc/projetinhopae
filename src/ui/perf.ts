@@ -16,12 +16,15 @@ export interface DeviceInfo {
 
 /** GPUs de entrada que travam com 3D, blur e muitas camadas. */
 const WEAK_GPU = /PowerVR|GE8\d{3}|Mali-(4\d\d|T\d+|G31|G51|G52 MC1)|Adreno \(TM\) (3\d\d|4\d\d|50\d|505|506|508|509|510|512)|SwiftShader|llvmpipe/i;
+/** GPUs topo de linha (ex.: S24 Ultra Adreno 750 / Xclipse 940) que nunca devem cair no modo leve por oscilação de FPS. */
+const STRONG_GPU = /Adreno \(TM\) ([678]\d\d)|Xclipse|Apple GPU|Mali-G(7\d|61\d|71\d|72\d|9\d\d)|Immortalis|RTX|Radeon RX/i;
 
 /** Aparelho fraco? Função pura (testável): qualquer sinal forte basta. */
 export function isWeakDevice(d: DeviceInfo): boolean {
+  if (d.gpu && WEAK_GPU.test(d.gpu)) return true;
   if (d.memory != null && d.memory <= 3) return true;
   if (d.cores != null && d.cores <= 4) return true;
-  if (d.gpu && WEAK_GPU.test(d.gpu)) return true;
+  if (d.gpu && STRONG_GPU.test(d.gpu) && (d.memory == null || d.memory >= 6)) return false;
   if (d.fps != null && d.fps < 40) return true;
   return false;
 }
@@ -100,8 +103,10 @@ export function measureFpsOnce() {
     return;
   }
   let n = 0;
-  const t0 = performance.now();
+  let t0 = 0;
   const step = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    if (!t0) t0 = performance.now();
     n++;
     const dt = performance.now() - t0;
     if (dt < 1500) requestAnimationFrame(step);

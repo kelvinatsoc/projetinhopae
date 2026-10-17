@@ -21,9 +21,9 @@
       ],
       "tiers": [
         {
-          "rise": 8,
-          "depth": 20,
-          "base": 1.2,
+          "rise": 5.5,
+          "depth": 15,
+          "base": 1.0,
           "seats": [
             "#c4122f",
             "#c4122f",
@@ -32,15 +32,29 @@
           "pattern": "solid"
         },
         {
+          "gap": -3,
+          "lift": 4.2,
+          "rise": 9.5,
+          "depth": 17,
+          "seats": [
+            "#c4122f",
+            "#f2f0ec",
+            "#181818",
+            "#c4122f"
+          ],
+          "pattern": "sectors",
+          "boxes": true
+        },
+        {
           "gap": -6,
-          "lift": 6,
-          "rise": 30,
-          "depth": 40,
+          "lift": 5.5,
+          "rise": 21,
+          "depth": 30,
           "seats": [
             "#c4122f",
             "#c4122f",
             "#c4122f",
-            "#d9d6d0",
+            "#f0ede6",
             "#151515"
           ],
           "pattern": "mosaic",
@@ -49,13 +63,13 @@
       ],
       "roof": {
         "type": "ring",
-        "cover": 44,
-        "height": 50,
-        "drop": 4,
-        "color": "#f3f5f6",
-        "opacity": 0.5,
-        "ribs": 48,
-        "ribColor": "#d0d4d8",
+        "cover": 46,
+        "height": 51,
+        "drop": 3.5,
+        "color": "#f3f5f8",
+        "opacity": 0.55,
+        "ribs": 56,
+        "ribColor": "#d2d7dc",
         "innerRing": true
       },
       "facade": {
@@ -66,14 +80,15 @@
       },
       "lights": "rim",
       "screens": 2,
-      "plaza": "#b9a58a",
-      "note": "Oval de concreto aparente de 1960 (Vilanova Artigas): pista em volta do campo, anel inferior baixo e anel superior alto em balanço, com a borda branca e friso vermelho por fora e a circulação escura sob o balanço; cadeiras vermelhas (com setores brancos e pretos), esplanada da Praça Roberto Gomes Pedrosa e cobertura nova translúcida.",
+      "plaza": "#c2b39c",
+      "plazaR": 24,
+      "note": "Oval de concreto aparente de 1960 (Vilanova Artigas): pista de atletismo e escudo tricolor ao redor do campo, três anéis sobrepostos em balanço com a borda branca e friso tricolor por fora, circulação escura sob o balanço, quatro rampas helicoidais, cadeiras vermelhas, brancas e pretas, Praça Roberto Gomes Pedrosa e cobertura translúcida.",
       "ramps": 4,
       "terrain": {
         "slope": 0.045,
         "dir": 200
       },
-      "track": "#a9442f"
+      "track": "#a93528"
     },
     "maracana": {
       "name": "Maracanã",

@@ -322,15 +322,40 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
         break;
       }
       case "cantilever": {
-        // Morumbis: base de concreto claro com janelas, faixa escura recuada (circulação sob o anel
-        // superior, com as vigas em balanço aparentes) e a borda branca do anel superior com friso vermelho
-        x.fillStyle = fc; x.fillRect(0, 0, W, H);
-        x.fillStyle = "#3b3a37"; x.fillRect(0, H * 0.3, W, H * 0.36);
-        for (let i = 0; i < 16; i++) { x.fillStyle = "#a9a49a"; x.fillRect(i * (W / 16), H * 0.3, 7, H * 0.36); }
-        x.fillStyle = "#f2f1ec"; x.fillRect(0, 0, W, H * 0.3);
-        x.fillStyle = fc2; x.fillRect(0, 4, W, 7);
-        x.fillStyle = "rgba(0,0,0,0.12)"; x.fillRect(0, H * 0.3 - 6, W, 6);
-        for (let i = 0; i < 24; i++) { x.fillStyle = o.night ? "#ffd98a" : "#4f5d68"; x.fillRect(i * (W / 24) + 4, H * 0.76, W / 24 - 8, H * 0.1); }
+        // Morumbis (Vilanova Artigas): base monumental de concreto aparente canelado, vão escuro
+        // recuado da circulação sob o grande balanço com vigas radiais aparentes, e borda branca
+        // superior com o friso tricolor (vermelho, branco e preto) e janelas iluminadas dos camarotes
+        x.fillStyle = "#cfc9be"; x.fillRect(0, 0, W, H);
+        // textura vertical de concreto aparente (fôrmas de madeira)
+        for (let u = 0; u < W; u += 4) {
+          x.fillStyle = (u / 4) % 2 === 0 ? "rgba(0,0,0,0.035)" : "rgba(255,255,255,0.03)";
+          x.fillRect(u, 0, 2, H);
+        }
+        // galeria escura sob o balanço do anel superior
+        x.fillStyle = "#26282c"; x.fillRect(0, H * 0.28, W, H * 0.36);
+        // vigas protendidas inclinadas do balanço (marca registrada do Morumbi)
+        for (let i = 0; i < 16; i++) {
+          const bx = i * (W / 16);
+          x.fillStyle = "#b5afa4"; x.fillRect(bx + 6, H * 0.28, 10, H * 0.56);
+          x.fillStyle = "rgba(0,0,0,0.22)"; x.fillRect(bx + 16, H * 0.28, 4, H * 0.56);
+        }
+        // faixa contínua de camarotes/vidros no meio do balanço
+        for (let i = 0; i < 32; i++) {
+          x.fillStyle = o.night ? "#ffe094" : "#3a5068";
+          x.fillRect(i * (W / 32) + 2, H * 0.44, W / 32 - 4, H * 0.11);
+        }
+        // testeira superior branca em balanço + friso tricolor do SPFC
+        x.fillStyle = "#f5f4ef"; x.fillRect(0, 0, W, H * 0.28);
+        x.fillStyle = fc2; x.fillRect(0, 0, W, 11); // vermelho no topo
+        x.fillStyle = "#ffffff"; x.fillRect(0, 11, W, 5);
+        x.fillStyle = "#141414"; x.fillRect(0, 16, W, 6);
+        x.fillStyle = fc2; x.fillRect(0, H * 0.24, W, 8); // friso vermelho inferior da testeira
+        x.fillStyle = "rgba(0,0,0,0.18)"; x.fillRect(0, H * 0.28 - 4, W, 4);
+        // vitrine do Concept Hall / portões no térreo
+        for (let i = 0; i < 24; i++) {
+          x.fillStyle = o.night ? "#ffd98a" : "#435361";
+          x.fillRect(i * (W / 24) + 4, H * 0.75, W / 24 - 8, H * 0.14);
+        }
         break;
       }
       case "waves": {
@@ -391,8 +416,77 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
   const facadeGround = last.map((_, i) => at(i, outR[i], 0));
   const fg = loft([facadeGround, parapetTop], segOn, true, fac.type === "glass" ? 18 : 30, 1);
   const glassy = fac.type === "glass";
-  const fm = mat({ color: facadeTex ? 0xffffff : C(fc).getHex(), map: facadeTex ?? undefined, roughness: glassy ? 0.18 : 0.8, metalness: glassy ? 0.55 : 0.05, side: THREE.DoubleSide });
+  const fm = mat({ color: facadeTex ? 0xffffff : C(fc).getHex(), map: facadeTex ?? undefined, roughness: glassy ? 0.18 : 0.72, metalness: glassy ? 0.55 : 0.08, side: THREE.DoubleSide });
   const fmesh = new THREE.Mesh(fg, fm); fmesh.castShadow = true; fmesh.receiveShadow = true; g.add(fmesh);
+  // No Morumbis (cantilever): anel saliente em balanço com friso vermelho + 72 vigas radiais + letreiro MORUMBIS
+  if (fac.type === "cantilever") {
+    const beltLow = last.map((_, i) => at(i, outR[i] + 2.4, facadeH[i] * 0.72));
+    const beltTop = last.map((_, i) => at(i, outR[i] + 2.8, facadeH[i] * 0.98));
+    const beltIn = last.map((_, i) => at(i, outR[i] - 0.2, facadeH[i] * 0.70));
+    const beltCap = last.map((_, i) => at(i, outR[i] - 0.2, facadeH[i] * 0.99));
+    const beltTex = tex(256, 64, (x) => {
+      x.fillStyle = "#f4f3ee"; x.fillRect(0, 0, 256, 64);
+      x.fillStyle = fc2; x.fillRect(0, 0, 256, 12);
+      x.fillStyle = "#151515"; x.fillRect(0, 12, 256, 5);
+      x.fillStyle = fc2; x.fillRect(0, 52, 256, 12);
+    }, true);
+    const bg = loft([beltIn, beltLow, beltTop, beltCap], segOn, true, 24, 1);
+    const bm = new THREE.Mesh(bg, mat({ color: 0xffffff, map: beltTex ?? undefined, roughness: 0.55, metalness: 0.08, side: THREE.DoubleSide }));
+    bm.castShadow = true; bm.receiveShadow = true;
+    g.add(bm);
+    // 72 pórticos/vigas monumentais de concreto aparente sustentando o balanço
+    const finCount = 72;
+    const finGeo = new THREE.BoxGeometry(1.1, 1, 3.4);
+    finGeo.translate(0, 0.5, 0);
+    const fins = new THREE.InstancedMesh(finGeo, mat({ color: 0xc8c2b6, roughness: 0.82 }), finCount);
+    const mm = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    let fk = 0;
+    for (let c = 0; c < finCount; c++) {
+      const i = Math.floor((c / finCount) * N);
+      if (S[i].open) continue;
+      const p = at(i, outR[i] + 0.5, 0);
+      const out = at(i, outR[i] + 2.5, 0).sub(p).normalize();
+      const tang = new THREE.Vector3().crossVectors(up, out).normalize();
+      const h = facadeH[i] * 0.74;
+      qq.setFromAxisAngle(tang, -0.14).multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), out));
+      sc.set(1, h, 1);
+      mm.compose(p, qq, sc);
+      fins.setMatrixAt(fk++, mm);
+    }
+    fins.count = fk; fins.castShadow = true; fins.receiveShadow = true;
+    g.add(fins);
+    // Letreiro luminoso frontal "MorumBIS" / nome do estádio nas fachadas principais da Praça Roberto Gomes Pedrosa
+    const signTex = tex(512, 96, (x) => {
+      x.fillStyle = "#c4122f"; x.fillRect(0, 0, 512, 96);
+      x.fillStyle = "#111111"; x.fillRect(0, 0, 512, 10); x.fillRect(0, 86, 512, 10);
+      x.fillStyle = "#ffffff"; x.fillRect(0, 10, 512, 5); x.fillRect(0, 81, 512, 5);
+      x.font = "900 50px 'Barlow Condensed', Arial, sans-serif";
+      x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillStyle = "#ffffff";
+      x.fillText((m.name || "MORUMBIS").toUpperCase(), 256, 50);
+    });
+    const signMat = mat({
+      color: 0xffffff, map: signTex ?? undefined,
+      emissive: 0xffffff, emissiveMap: signTex ?? undefined, emissiveIntensity: o.night ? 1.15 : 0.25,
+      roughness: 0.35, side: THREE.DoubleSide,
+    });
+    for (const [d0, d1] of [[68, 112], [248, 292]] as [number, number][]) {
+      const signList: THREE.Vector3[][] = [[], []];
+      for (let i = 0; i < N; i++) {
+        const deg = ((S[i].t * 180) / Math.PI + 360) % 360;
+        if (deg < d0 || deg > d1) continue;
+        signList[0].push(at(i, outR[i] + 3.05, facadeH[i] * 0.76));
+        signList[1].push(at(i, outR[i] + 3.05, facadeH[i] * 0.95));
+      }
+      if (signList[0].length > 2) {
+        const sg = loft(signList, signList[0].map(() => true), false, 1, 1);
+        const uv = sg.attributes.uv as THREE.BufferAttribute; let mu = 0;
+        for (let i = 0; i < uv.count; i++) mu = Math.max(mu, uv.getX(i));
+        for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i) / (mu || 1));
+        g.add(new THREE.Mesh(sg, signMat));
+      }
+    }
+  }
   // tampas das pontas abertas (ferradura)
   if (m.open?.length) {
     const caps: THREE.BufferGeometry[] = [];
@@ -413,7 +507,7 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
     }
     if (caps.length) { const cm = new THREE.Mesh(mergeGeometries(caps), mat({ color: C(fc).getHex(), roughness: 0.85, side: THREE.DoubleSide })); cm.castShadow = true; g.add(cm); }
   }
-  // pilares externos (Morumbis, Maracanã, Mineirão)
+  // pilares externos (Maracanã, Mineirão)
   if ((fac.type === "columns" || fac.type === "frame") && (fac.count ?? 0) > 0) {
     const cnt = fac.count!;
     const hBase = Math.max(...facadeH);
@@ -449,20 +543,34 @@ export function buildStadium(m: StadiumModel, o: StadiumBuildOpts): { group: THR
     im.castShadow = true; im.receiveShadow = true;
     g.add(im);
   }
-  // rampas helicoidais (Maracanã)
+  // rampas helicoidais externas com passarela de ligação (Morumbis, Maracanã)
   if (m.ramps) {
     const rampTex = tex(256, 256, (x) => {
       x.fillStyle = fc; x.fillRect(0, 0, 256, 256);
-      x.strokeStyle = "#5d636b"; x.lineWidth = 10;
+      x.strokeStyle = "#484d54"; x.lineWidth = 14;
       for (let i = -4; i < 8; i++) { x.beginPath(); x.moveTo(0, i * 48); x.lineTo(256, i * 48 + 64); x.stroke(); }
+      x.strokeStyle = fc2; x.lineWidth = 4;
+      for (let i = -4; i < 8; i++) { x.beginPath(); x.moveTo(0, i * 48 + 7); x.lineTo(256, i * 48 + 71); x.stroke(); }
     }, true);
+    const rh = maxTop * 0.68;
     for (let k = 0; k < m.ramps; k++) {
-      const i = Math.floor(((k + 0.25) / m.ramps) * N) % N;
-      const p = at(i, outR[i] + 13, 0);
-      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, maxTop * 0.62, 32, 1, true), mat({ color: 0xffffff, map: rampTex ?? undefined, roughness: 0.85, side: THREE.DoubleSide }));
-      cyl.position.set(p.x, (maxTop * 0.62) / 2, p.z);
-      cyl.castShadow = true;
+      const i = Math.floor(((k + 0.125) / m.ramps) * N) % N;
+      const pWall = at(i, outR[i] + 1, 0);
+      const p = at(i, outR[i] + 13.5, 0);
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(10.5, 10.5, rh, 32, 1, true), mat({ color: 0xffffff, map: rampTex ?? undefined, roughness: 0.78, side: THREE.DoubleSide }));
+      cyl.position.set(p.x, rh / 2, p.z);
+      cyl.castShadow = true; cyl.receiveShadow = true;
       g.add(cyl);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 1.2, 32), mat({ color: C(fc).getHex(), roughness: 0.75 }));
+      cap.position.set(p.x, rh + 0.4, p.z); cap.castShadow = true;
+      g.add(cap);
+      // passarela ligando a torre helicoidal ao anel superior
+      const mid = p.clone().lerp(pWall, 0.5);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.2, p.distanceTo(pWall)), mat({ color: C(fc).getHex(), roughness: 0.8 }));
+      bridge.position.set(mid.x, rh * 0.78, mid.z);
+      bridge.lookAt(pWall.x, rh * 0.78, pWall.z);
+      bridge.castShadow = true;
+      g.add(bridge);
     }
   }
 
