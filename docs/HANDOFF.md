@@ -87,44 +87,26 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
   - aba "Uniformes", 3º uniforme personalizável por temporada;
   - contratos de marca com propostas no último ano.
 - 34 logos de campeonato em alta qualidade, troféus 3D, animação de campeão e fase da partida (FINAL, ida e volta, agregado).
-- **São Paulo no mapa da sede:**
-  - Morumbis detalhado e o desnível do terreno;
-  - CT Barra Funda, CT Cotia e sede;
-  - voo de câmera e personalização do estádio (reformas e naming rights), que aparecem no mapa e na partida.
+- **São Paulo no mapa da sede (Tarefa A concluída em `a75e906`):**
+  - Pipeline 3D PBR moderno em `src/ui/hq/` (`HqRenderer.ts`, `stadium.ts`, `city.ts`, `ClubHQ.tsx`), sem qualquer efeito retrô/PS1 (removidos dithering, vertex snapping, flat shading e pixelRatio baixo);
+  - Pós-processamento completo no modo alto (`EffectComposer`: `RenderPass` + `SAOPass` + `UnrealBloomPass` + `SMAAPass`), `PCFSoftShadowMap` 2048², `ACESFilmicToneMapping`, domo de céu com sol/lua e nuvens volumétricas;
+  - **Morumbis** fiel ao estádio real (oval tricolor, anel superior em balanço com friso vermelho, cobertura translúcida, torres de iluminação com lens flare, placares de LED e bandeiras tricolores animadas);
+  - **CT da Barra Funda** às margens do Rio Tietê com água animada e reflexo especular, **CT de Cotia** arborizado com alojamento da base e **Sede Social** com piscinas azuis, quadras e carros/pedestres animados nas avenidas;
+  - Controle de horário (`☀ Dia`, `🌅 Tarde`, `🌙 Noite`) direto no HUD 3D.
+- **Redesign completo do app "Arquibancada Pro" (Tarefa B concluída em `f6932b8`):**
+  - **Início (`src/ui/screens/Home.tsx`):** Card de Próximo Jogo com CTA integrado (`▶ Jogar Partida / Continuar` + `Escalação`), Pulse Strip de 4 colunas (`Confiança`, `Química`, `Grupo`, `Torcida`), 4 pílulas rápidas sem duplicar a barra inferior, Mini-Tabela com `SG` e `Forma` (V/E/D) e Fita de Notícias;
+  - **Elenco (`src/ui/screens/Squad.tsx`, `src/ui/components.tsx`):** KPI Bar unificada (`Força XI`, `Química`, `Folha/Mês`, botão 1-toque `⚡ Escalar` e alternância Lista/Cartas), filtros + ordenação em 1 linha, e `PlayerRow` (`prow-modern`) com nomes completos sem truncar, pílula `XI`, condição física colorida e badges na linha de metadados;
+  - **Campo Tático (`src/ui/screens/Tactics.tsx`):** Seletores rápidos em 1 linha (`📐 Formação`, `🔥 Mentalidade`, `⚡ Pressão`, `✨ Escalar`, `🔗 Linhas`, `🎯 Bola parada`), gramado no topo imediato e **Banco de Reservas (9/9)** logo abaixo para trocas sem rolagem;
+  - **Mercado (`src/ui/screens/Market.tsx`):** Banner da janela + saldo em caixa, busca com gaveta **`⚙ Filtros`** (`Sheet`) e resultados imediatos no topo;
+  - **Clube (`src/ui/screens/Club.tsx`):** Hero com KPIs integrados (`Saldo Atual`, `Folha / Mês`, `Sala de Troféus`), **Sede 3D (`<ClubHQ />`)** em destaque e grade 3×3 de gestão.
 
 ## 7. FILA DE TAREFAS PENDENTES (fazer nesta ordem, uma de cada vez)
 
-### Tarefa A: refazer o mapa da sede com gráficos modernos (prioridade máxima)
-**Feedback do usuário:** o mapa "ainda parece PlayStation 1". Ele quer gráficos "bem da hora". A fidelidade geográfica exata não é mais obrigatória: faça o que ficar mais bonito.
-- **Tirar o visual retrô:** procure em `src/ui/hq/` render target de baixa resolução, upscale pixelado, pixelRatio baixo, dithering, vertex snapping, `flatShading`, texturas `NearestFilter`, paleta limitada e fog duro. Remova tudo isso.
-- **Visual moderno:**
-  - PBR, sombras suaves, céu com nuvens e ciclo dia/pôr do sol, SSAO, bloom e antialiasing (SMAA/FXAA ou MSAA);
-  - `pixelRatio` nativo, geometria com bevel, vegetação instanciada, água com reflexo;
-  - carros e pessoas animados, janelas iluminadas.
-  - O estilo pode ser "city builder" mobile polido ou semi-realista.
-- **Modo leve:** confirme que ele NÃO é ligado por engano no S24 Ultra (`src/ui/perf.ts`).
-- **São Paulo FC é a vitrine:** tudo do SPFC o mais fiel possível.
-  - **Morumbis:** oval de concreto aparente, anel superior em balanço com friso vermelho, cobertura nova translúcida e cadeiras nas cores do clube. Compare com fotos do Commons.
-  - **CT Barra Funda (Laudo Natel):** os campos e o rio Tietê ao lado.
-  - **CT de Cotia e sede no Morumbi:** escudo, cores e bandeiras.
-- Mantenha a qualidade escalando com o nível de Estrutura do clube, já bonita no nível 1.
-- Na worktree antiga havia os arquivos de preview `hq-preview.html` e `hq-preview.ts` (não commitados); servem de ideia para uma página de preview isolada.
+> **Status das tarefas anteriores:**
+> - ✅ **Tarefa A (Mapa 3D da sede com gráficos modernos):** Concluída (`a75e906`).
+> - ✅ **Tarefa B (Redesign completo do app "Arquibancada Pro"):** Concluída (`f6932b8`).
 
-### Tarefa B: redesign completo do app (depois da A)
-**Pedido do usuário:** "refaça todo o design, mais coeso e conciso para jogar".
-- **Base:** as descobertas de `docs/pesquisa-jogadores.md` e as referências Brasileirinho FC (brasileirinhofc.com, tema escuro roxo com verde-limão, cartas de jogador estilo FIFA), FM26 (sem o excesso de cliques criticado), EA FC Mobile e Brasfoot (ritmo rápido).
-- **Princípios:**
-  - menos cliques, com o essencial a 1 toque (próximo jogo, escalação, mercado, finanças, mensagens);
-  - informação importante sempre à vista;
-  - um componente de carta e de lista padrão;
-  - uma ação principal por tela e navegação inferior fixa.
-- **Processo:**
-  1. Faça o inventário de todas as telas (`src/ui/screens/*`) e proponha a nova arquitetura de navegação, juntando ou eliminando telas redundantes.
-  2. Monte mockups (screenshots) e mostre ao usuário **antes** de implementar.
-  3. Implemente sobre `theme.css`.
-- Não mexa no motor.
-
-### Tarefa C: pendências menores
+### Tarefa C: pendências menores e polimento
 1. **Desarmes desequilibrados** no painel ao vivo: deu 31 × 6 com 76% de posse. Ajuste o cálculo dos desarmes no `match.ts`/painel (são estatísticas derivadas com rng separado; não mexa no placar).
 2. **Logos que faltam:** Premier League, Carioca, Mineiro, Paranaense, Goiano, Cearense, Pernambucano, Baiano e Parazão. Use `scripts/fetch_comp_logos.py`, que tem rate limit da Wikimedia.
 3. **Fotos das Lendas:** são 47 de 105. Rode de novo `python3 scripts/fetch_legend_photos.py`, que retoma de onde parou. **Cuidado:** `fetch_player_photos.py credits` sobrescreve `legendMedia.json`.
@@ -141,3 +123,10 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
 - Tire screenshots das telas alteradas.
 - Para o modo leve, simule com CPU throttling 6× no DevTools.
 - O 3D só pode ser julgado de verdade num celular. O ideal é gerar o APK pela release e o usuário testar.
+
+## 9. Histórico recente de Handoff
+- **17/10/2026 (Antigravity):**
+  - Concluída **Tarefa A** (`a75e906`): reconstrução completa do mapa 3D da sede (`src/ui/hq/`) com PBR, sombras suaves, céu dinâmico (`Dia`/`Tarde`/`Noite`), SSAO + Bloom + SMAA, Rio Tietê com água animada, tráfego e arquitetura fiel do São Paulo FC (Morumbis, CT Barra Funda, CT Cotia e Sede Social).
+  - Concluída **Tarefa B** (`f6932b8`): redesign completo UI/UX "Arquibancada Pro" nas 5 abas principais (`Home.tsx`, `Squad.tsx`, `Tactics.tsx`, `Market.tsx`, `Club.tsx`, `components.tsx`, `App.tsx`, `theme.css`), validado com 294 testes verdes e screenshots em 412×915.
+  - Próximo passo na fila: **Tarefa C** (começando pelo item 1: ajuste de desarmes no painel ao vivo em `match.ts`/`MatchDash.tsx`).
+
