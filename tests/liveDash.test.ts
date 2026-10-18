@@ -48,8 +48,33 @@ describe("painel ao vivo", () => {
     expect(ok / passes).toBeLessThan(0.9);
     expect(per(off)).toBeGreaterThan(0.8);
     expect(per(off)).toBeLessThan(5);
-    expect(per(tk)).toBeGreaterThan(8);
-    expect(per(tk)).toBeLessThan(30);
+    expect(per(tk)).toBeGreaterThan(11);
+    expect(per(tk)).toBeLessThan(24);
+  });
+
+  it("desarmes continuam equilibrados mesmo com posse de bola muito desigual (sem 31 x 6)", () => {
+    const f: Fixture = { id: 62001, comp: "serieA", stage: "league", round: 1, day: w.day, home: "flamengo", away: "mirassol" };
+    let tkDom = 0, tkLow = 0, possDom = 0;
+    const M = 25;
+    for (let i = 0; i < M; i++) {
+      const b = cloneForMatch(w, f);
+      b.reset();
+      // Força diferença grande no meio para simular ~75% de posse do mandante
+      for (const p of Object.values(b.mini.players)) {
+        if (p.clubId === "flamengo") p.attrs.pas = Math.min(99, p.attrs.pas + 15);
+      }
+      setRngState(1200 + i);
+      const sim = new MatchSim(b.mini, f, { live: false, userSide: null });
+      sim.runToEnd();
+      const tot = sim.stats.poss[0] + sim.stats.poss[1] || 1;
+      possDom += sim.stats.poss[0] / tot;
+      tkDom += sim.extra.tackles[0];
+      tkLow += sim.extra.tackles[1];
+    }
+    expect(possDom / M).toBeGreaterThan(0.6);
+    expect(tkDom / M).toBeGreaterThanOrEqual(9);
+    expect(tkLow / M).toBeLessThanOrEqual(24);
+    expect((tkLow / M) / Math.max(1, tkDom / M)).toBeLessThan(1.9);
   });
 
   it("o painel não muda o jogo: com ou sem ele, mesmo placar, notas e sorteios", () => {

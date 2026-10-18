@@ -107,7 +107,7 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
 > - ✅ **Tarefa B (Redesign completo do app "Arquibancada Pro"):** Concluída (`f6932b8`).
 
 ### Tarefa C: pendências menores e polimento
-1. **Desarmes desequilibrados** no painel ao vivo: deu 31 × 6 com 76% de posse. Ajuste o cálculo dos desarmes no `match.ts`/painel (são estatísticas derivadas com rng separado; não mexa no placar).
+1. ✅ **Desarmes desequilibrados** no painel ao vivo (concluído): calibrado em `MatchSim.track()` (`src/engine/match.ts`) com contrapressão do time com a bola e amortecimento do lado recuado no RNG próprio (`this.xr`), sem tocar no placar, testado em `tests/liveDash.test.ts`.
 2. **Logos que faltam:** Premier League, Carioca, Mineiro, Paranaense, Goiano, Cearense, Pernambucano, Baiano e Parazão. Use `scripts/fetch_comp_logos.py`, que tem rate limit da Wikimedia.
 3. **Fotos das Lendas:** são 47 de 105. Rode de novo `python3 scripts/fetch_legend_photos.py`, que retoma de onde parou. **Cuidado:** `fetch_player_photos.py credits` sobrescreve `legendMedia.json`.
 4. **Padrões de uniforme:** ainda faltam cerca de 1.200 imagens do Commons. Rode `python3 scripts/fetch_kits.py build style`, depois `python3 scripts/fetch_kits.py --world info download build style`, de novo `python3 scripts/fetch_kits.py style`, e faça commit do `kits.json`.
@@ -128,5 +128,5 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
 - **17/10/2026 (Antigravity):**
   - Concluída **Tarefa A** (`a75e906`): reconstrução completa do mapa 3D da sede (`src/ui/hq/`) com PBR, sombras suaves, céu dinâmico (`Dia`/`Tarde`/`Noite`), SSAO + Bloom + SMAA, Rio Tietê com água animada, tráfego e arquitetura fiel do São Paulo FC (Morumbis, CT Barra Funda, CT Cotia e Sede Social).
   - Concluída **Tarefa B** (`f6932b8`): redesign completo UI/UX "Arquibancada Pro" nas 5 abas principais (`Home.tsx`, `Squad.tsx`, `Tactics.tsx`, `Market.tsx`, `Club.tsx`, `components.tsx`, `App.tsx`, `theme.css`), validado com 294 testes verdes e screenshots em 412×915.
-  - Próximo passo na fila: **Tarefa C** (começando pelo item 1: ajuste de desarmes no painel ao vivo em `match.ts`/`MatchDash.tsx`).
+  - Concluída **Tarefa C.1**: equilíbrio de desarmes no painel ao vivo (`src/engine/match.ts`, `tests/liveDash.test.ts`), evitando placares de desarmes irreais como 31 × 6 em jogos de posse dominante sem alterar o RNG principal das partidas.
 

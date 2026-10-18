@@ -1100,10 +1100,30 @@ export class MatchSim {
       x.sh++;
       if (ph.penalty.scored) x.ot++;
     }
-    // desarmes (nem toda bola recuperada no minuto é um desarme)
-    if (ph.tackle && r() < 0.45) {
+    // desarmes: equilibrados entre quem defende a posse principal e a contrapressão / divididas de quem tem a bola.
+    // Usa exclusivamente this.xr para não tocar no RNG do motor nem alterar placar/notas.
+    const totPoss = Math.max(1, this.stats.poss[0] + this.stats.poss[1]);
+    const atkShare = this.stats.poss[atk] / totPoss;
+    // Quem está sem a bola no minuto desarma menos se já passa o jogo inteiro recuado (evita 31 x 6 com 76% de posse)
+    const pDefTackle = clamp(0.32 * (0.55 + 0.55 * (1 - atkShare)) * (1 + 0.08 * (O.pressing - 1)), 0.16, 0.36);
+    if (ph.tackle && r() < pDefTackle) {
       X.tackles[ph.tackle.side]++;
       if (ph.tackle.pid != null) plOf(ph.tackle.pid).tk++;
+    }
+    // Contrapressão / divididas ganhas no meio pelo time que domina o minuto (pressão pós-perda)
+    const pAtkTackle = clamp(0.14 * (0.75 + 0.5 * (1 - atkShare)) * (1 + 0.15 * (S.pressing - 1)), 0.08, 0.24);
+    if (r() < pAtkTackle) {
+      X.tackles[atk]++;
+      const cand = S.onPitch
+        .map((id, k) => ({ id, w: id != null ? DEF_W[S.slots[k]] + 0.35 * MID_W[S.slots[k]] : 0 }))
+        .filter((x): x is { id: number; w: number } => x.id != null && x.w > 0);
+      if (cand.length) {
+        const sum = cand.reduce((a, b) => a + b.w, 0);
+        let u = r() * sum;
+        let pick = cand[0].id;
+        for (const c of cand) { u -= c.w; if (u <= 0) { pick = c.id; break; } }
+        plOf(pick).tk++;
+      }
     }
     // impedimentos: mais quando o ataque é forte e a linha deles é alta
     const lineO = (O.tiOver?.line ?? O.club.tactic.ti?.line ?? 1);
