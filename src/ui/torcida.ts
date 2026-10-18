@@ -23,7 +23,6 @@ export function isBrazilian(c: Pick<Club, "id" | "country">): boolean {
  */
 export const CLUB_TORCIDA: Record<string, { chant?: string; goal?: string }> = {
   vasco: { chant: "audio/br/vasco-canto.m4a", goal: "audio/br/vasco-gol.m4a" },
-  gremio: { goal: "audio/br/gremio-gol.m4a" },
 };
 
 /** Sons da torcida brasileira genérica e da Seleção (caminhos relativos a media/). */

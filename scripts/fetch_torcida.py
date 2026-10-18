@@ -22,6 +22,11 @@ import sys
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+if sys.stdout.encoding != "utf-8" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8" and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import wm  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,7 +48,6 @@ SOUNDS: dict[str, tuple[str, float, bool, float | None]] = {
     "selecao-canto": ("Torcedores fazem \"ola\" durante amistoso entre Brasil e Austrália no estádio Mané Garrincha.webm", 16, True, None),
     "vasco-canto": ("Torcida do Vasco da Gama comemorando uma vitória contra o Atlético Mineiro pela 20ª rodada do Campeonato Brasileiro de 2023.webm", 9, True, 0.0),
     "vasco-gol": ("Pablo Vegetti marca um gol contra o Puerto Cabello pela Copa Sul-americana 2025.webm", 8, False, None),
-    "gremio-gol": ("Grêmio 1 x 0 Lanus - Final da Libertadores 2017.webm", 9, False, None),
 }
 
 
@@ -65,34 +69,36 @@ def fetch(name: str) -> str | None:
 
 
 def duration(p: str) -> float:
-    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p], capture_output=True, text=True)
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     try:
-        return float(r.stdout.strip())
+        return float((r.stdout or "").strip())
     except ValueError:
         return 0.0
 
 
 def speech_spans(p: str) -> list[tuple[float, float]]:
-    """Trechos com fala (narração/entrevista). Vazio se o whisper não estiver instalado."""
+    """Trechos com fala (narração/entrevista). Vazio se o whisper não estiver instalado ou falhar."""
     try:
         from faster_whisper import WhisperModel
-    except ImportError:
+        m = WhisperModel("tiny", device="cpu", compute_type="int8")
+        segs, _ = m.transcribe(p, language="pt", vad_filter=False, no_speech_threshold=0.5)
+        out = []
+        for s in segs:
+            words = len(s.text.split())
+            # torcida cantando também vira "texto"; só conta como fala se tiver cara de frase
+            if s.no_speech_prob < 0.5 and words >= 4 and (s.end - s.start) < words * 0.8:
+                out.append((s.start, s.end))
+        return out
+    except Exception as e:
+        print(f"  whisper indisponível ({e}); selecionando trecho por volume")
         return []
-    m = WhisperModel("tiny", device="cpu", compute_type="int8")
-    segs, _ = m.transcribe(p, language="pt", vad_filter=False, no_speech_threshold=0.5)
-    out = []
-    for s in segs:
-        words = len(s.text.split())
-        # torcida cantando também vira "texto"; só conta como fala se tiver cara de frase
-        if s.no_speech_prob < 0.5 and words >= 4 and (s.end - s.start) < words * 0.8:
-            out.append((s.start, s.end))
-    return out
 
 
 def loudness(p: str, start: float, dur: float) -> float:
     r = subprocess.run(["ffmpeg", "-hide_banner", "-ss", str(start), "-t", str(dur), "-i", p, "-af", "volumedetect", "-f", "null", "-"],
-                       capture_output=True, text=True)
-    m = re.search(r"mean_volume: (-?[\d.]+) dB", r.stderr)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    m = re.search(r"mean_volume: (-?[\d.]+) dB", r.stderr or "")
     return float(m.group(1)) if m else -99
 
 
@@ -135,7 +141,7 @@ def main():
     dry = "--dry-run" in sys.argv
     os.makedirs(OUT, exist_ok=True)
     info = meta(sorted({v[0] for v in SOUNDS.values()}))
-    credits = json.load(open(CREDITS)) if os.path.exists(CREDITS) else {}
+    credits = json.load(open(CREDITS, encoding="utf-8")) if os.path.exists(CREDITS) else {}
     for key, (name, want, loop, pref) in SOUNDS.items():
         dst = os.path.join(OUT, key + ".m4a")
         p = fetch(name)
@@ -153,10 +159,10 @@ def main():
         }
     if dry:
         return
-    json.dump(dict(sorted(credits.items())), open(CREDITS, "w"), ensure_ascii=False, indent=1)
-    idx = json.load(open(INDEX))
+    json.dump(dict(sorted(credits.items())), open(CREDITS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    idx = json.load(open(INDEX, encoding="utf-8"))
     idx.update({k: v for k, v in credits.items() if k.startswith("audio/")})
-    json.dump(dict(sorted(idx.items())), open(INDEX, "w"), ensure_ascii=False, separators=(",", ":"))
+    json.dump(dict(sorted(idx.items())), open(INDEX, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,70 @@
 {
+ "audio/br/arquibancada.m4a": {
+  "author": "TV NBR",
+  "file": "Torcedores_enchem_Arena_Corinthians_no_primeiro_jogo_da_Copa_do_Mundo.webm",
+  "license": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Torcedores_enchem_Arena_Corinthians_no_primeiro_jogo_da_Copa_do_Mundo.webm"
+ },
+ "audio/br/canto.m4a": {
+  "author": "Secretaria Especial do Esporte",
+  "file": "-GRITO_DE_PAZ!_-_Cruzeiro_1_x_1_Atlético_-_Mineirão_-_Belo_Horizonte.webm",
+  "license": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:-GRITO_DE_PAZ%21_-_Cruzeiro_1_x_1_Atl%C3%A9tico_-_Mineir%C3%A3o_-_Belo_Horizonte.webm"
+ },
+ "audio/br/gol.m4a": {
+  "author": "Paixão da Gama",
+  "file": "Pablo_Vegetti_marca_um_gol_contra_o_Puerto_Cabello_pela_Copa_Sul-americana_2025.webm",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Pablo_Vegetti_marca_um_gol_contra_o_Puerto_Cabello_pela_Copa_Sul-americana_2025.webm"
+ },
+ "audio/br/gol2.m4a": {
+  "author": "MajorPrince",
+  "file": "Dimitri_Payet_faz_um_gol_de_pênalti_pelo_CR_Vasco_da_Gama_em_2024.webm",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Dimitri_Payet_faz_um_gol_de_p%C3%AAnalti_pelo_CR_Vasco_da_Gama_em_2024.webm"
+ },
+ "audio/br/ole.m4a": {
+  "author": "EBC na Rede",
+  "file": "Torcedores_fazem_\"ola\"_durante_amistoso_entre_Brasil_e_Austrália_no_estádio_Mané_Garrincha.webm",
+  "license": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Torcedores_fazem_%22ola%22_durante_amistoso_entre_Brasil_e_Austr%C3%A1lia_no_est%C3%A1dio_Man%C3%A9_Garrincha.webm"
+ },
+ "audio/br/selecao-canto.m4a": {
+  "author": "EBC na Rede",
+  "file": "Torcedores_fazem_\"ola\"_durante_amistoso_entre_Brasil_e_Austrália_no_estádio_Mané_Garrincha.webm",
+  "license": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Torcedores_fazem_%22ola%22_durante_amistoso_entre_Brasil_e_Austr%C3%A1lia_no_est%C3%A1dio_Man%C3%A9_Garrincha.webm"
+ },
+ "audio/br/selecao.m4a": {
+  "author": "TV NBR",
+  "file": "Torcedores_enchem_Arena_Corinthians_no_primeiro_jogo_da_Copa_do_Mundo.webm",
+  "license": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Torcedores_enchem_Arena_Corinthians_no_primeiro_jogo_da_Copa_do_Mundo.webm"
+ },
+ "audio/br/uh.m4a": {
+  "author": "MajorPrince",
+  "file": "Pablo_Vegetti_faz_um_gol_de_pênalti_contra_o_EC_Bahia_pelo_Campeonato_Brasileiro_de_Futebol_de_2023_-_Série_A,_22ª_rodada.webm",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Pablo_Vegetti_faz_um_gol_de_p%C3%AAnalti_contra_o_EC_Bahia_pelo_Campeonato_Brasileiro_de_Futebol_de_2023_-_S%C3%A9rie_A%2C_22%C2%AA_rodada.webm"
+ },
+ "audio/br/vaia.m4a": {
+  "author": "Brendon",
+  "file": "Soundgoats_-_Audience_Booing.wav",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Soundgoats_-_Audience_Booing.wav"
+ },
+ "audio/br/vasco-canto.m4a": {
+  "author": "MajorPrince",
+  "file": "Torcida_do_Vasco_da_Gama_comemorando_uma_vitória_contra_o_Atlético_Mineiro_pela_20ª_rodada_do_Campeonato_Brasileiro_de_2023.webm",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Torcida_do_Vasco_da_Gama_comemorando_uma_vit%C3%B3ria_contra_o_Atl%C3%A9tico_Mineiro_pela_20%C2%AA_rodada_do_Campeonato_Brasileiro_de_2023.webm"
+ },
+ "audio/br/vasco-gol.m4a": {
+  "author": "Paixão da Gama",
+  "file": "Pablo_Vegetti_marca_um_gol_contra_o_Puerto_Cabello_pela_Copa_Sul-americana_2025.webm",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Pablo_Vegetti_marca_um_gol_contra_o_Puerto_Cabello_pela_Copa_Sul-americana_2025.webm"
+ },
  "audio/crowd.m4a": {
   "author": "Work With Sounds / Torsten Nilsson",
   "file": "WWS_FootballAustriavs.Sweden.ogg",
