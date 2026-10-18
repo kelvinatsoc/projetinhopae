@@ -9,7 +9,10 @@ fazem backoff exponencial (respeitando Retry-After). Tudo fica em scripts/cache/
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import hashlib
 import json
 import os
@@ -31,7 +34,8 @@ session.headers["User-Agent"] = UA
 def _throttle(host):
     os.makedirs(CACHE, exist_ok=True)
     with open(os.path.join(CACHE, f".rate_{host}.lock"), "a+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if fcntl is not None:
+            fcntl.flock(f, fcntl.LOCK_EX)
         try:
             f.seek(0)
             raw = f.read().strip()
@@ -43,7 +47,8 @@ def _throttle(host):
             f.truncate()
             f.write(repr(max(nxt, now) + INTERVAL[host]))
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def get(host, url, params=None, tries=7, **kw):

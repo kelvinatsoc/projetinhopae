@@ -39,8 +39,58 @@ import tempfile
 import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+if sys.stdout.encoding != "utf-8" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8" and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import wm  # noqa: E402
 from clubs_catalog import ALL_CLUBS, BR_CLUBS  # noqa: E402
+
+# Times prioritários: Brasileirão Série A/B, Libertadores e gigantes europeus / Mundial de Clubes
+PRIORITY_SERIE_A = [
+    "flamengo", "palmeiras", "corinthians", "sao-paulo", "santos", "atletico-mg",
+    "cruzeiro", "gremio", "internacional", "botafogo", "fluminense", "vasco",
+    "bahia", "vitoria", "athletico-pr", "coritiba", "chapecoense", "bragantino",
+    "mirassol", "remo",
+]
+PRIORITY_SERIE_B = [
+    "america-mg", "athletic", "atletico-go", "avai", "botafogo-sp", "ceara",
+    "criciuma", "cuiaba", "crb", "fortaleza", "goias", "juventude",
+    "londrina", "nautico", "novorizontino", "operario-pr", "ponte-preta",
+    "sao-bernardo", "sport", "vila-nova",
+]
+PRIORITY_LIBERTADORES = [
+    "river-plate", "boca-juniors", "racing", "independiente", "san-lorenzo",
+    "estudiantes", "velez", "lanus", "rosario-central", "talleres", "argentinos-juniors",
+    "penarol", "nacional-uru",
+    "olimpia", "cerro-porteno", "libertad-par", "guarani-par",
+    "colo-colo", "u-de-chile", "u-catolica",
+    "atletico-nacional", "millonarios", "santa-fe", "junior", "america-cali", "medellin", "tolima",
+    "ldu-quito", "independiente-del-valle", "barcelona-sc", "emelec",
+    "universitario", "alianza-lima", "sporting-cristal", "melgar",
+    "bolivar", "the-strongest",
+    "tachira", "caracas",
+]
+PRIORITY_DOMESTIC = set(PRIORITY_SERIE_A + PRIORITY_SERIE_B + PRIORITY_LIBERTADORES)
+
+PRIORITY_WORLD = {
+    # Inglaterra
+    "manchester-city", "liverpool-eng", "arsenal", "chelsea", "manchester-united", "tottenham",
+    # Espanha
+    "real-madrid", "barcelona-esp", "atletico-madrid",
+    # Alemanha
+    "bayern-munich", "borussia-dortmund", "bayer-leverkusen", "rb-leipzig",
+    # Itália
+    "inter-milan", "juventus", "ac-milan", "napoli", "roma", "atalanta",
+    # França
+    "psg", "monaco", "marseille", "lyon",
+    # Portugal & Holanda
+    "benfica", "porto", "sporting-cp", "ajax", "psv", "feyenoord",
+    # Mundial de Clubes / Outros continentes
+    "al-hilal", "al-nassr", "al-ittihad", "al-ahli",
+    "inter-miami", "lafc", "seattle-sounders",
+}
 
 
 def _world_entries():
@@ -68,6 +118,8 @@ def _world_entries():
 
 
 WORLD = "--world" in sys.argv
+PRIORITY = "--priority" in sys.argv
+CLEANUP = "--cleanup" in sys.argv
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCACHE = os.path.join(ROOT, "scripts", "cache")
@@ -300,13 +352,14 @@ def resolve_titles() -> dict:
     if WORLD:
         return {c["id"]: {"en": c["wiki"], "pt": None} for c in WORLD_CLUBS}
     path = work("titles.json")
-    out = load(path, None)
-    if out is not None:
+    out = load(path, {})
+    needed = [c for c in KIT_CLUBS if c["id"] not in out]
+    if not needed:
         for c in WORLD_CLUBS:
             out[c["id"]] = {"en": c["wiki"], "pt": None}
         return out
     cands = {}
-    for c in ALL_CLUBS:
+    for c in needed:
         first = TITLE_FIX.get(c["id"], c["wiki"])
         cands[c["id"]] = [first] + ([c["full"]] if c.get("full") and c["id"] not in TITLE_FIX else [])
     resolved = {}
@@ -323,11 +376,10 @@ def resolve_titles() -> dict:
             u = step.get(t, t)
             u = redir.get(u, u)
             resolved[t] = u if u in exists else None
-    out = {}
-    for c in ALL_CLUBS:
+    for c in needed:
         en = next((resolved.get(t) for t in cands[c["id"]] if resolved.get(t)), None)
         out[c["id"]] = {"en": en, "pt": None}
-    br = {out[c["id"]]["en"]: c["id"] for c in BR_CLUBS if out[c["id"]]["en"]}
+    br = {out[c["id"]]["en"]: c["id"] for c in needed if c.get("region") not in ("ARG", "URU", "PAR", "CHI", "COL", "ECU", "PER", "BOL", "VEN") and out[c["id"]]["en"]}
     for batch in chunks(sorted(br), 50):
         r = wm.api(wm.WIKIDATA_API, {"action": "wbgetentities", "sites": "enwiki", "titles": "|".join(batch),
                                      "props": "sitelinks", "sitefilter": "enwiki|ptwiki"})
@@ -602,6 +654,12 @@ def club_colors(cid: str) -> list:
     for c in db.get("clubs", []):
         if c.get("id") == cid and c.get("colors"):
             return c["colors"]
+    world_path = os.path.join(ROOT, "src", "data", "world.json")
+    if os.path.exists(world_path):
+        world_data = load(world_path, {})
+        for c in world_data.get("clubs", []):
+            if c.get("id") == cid and c.get("colors"):
+                return c["colors"]
     cat = next((c for c in KIT_CLUBS if c["id"] == cid), {})
     return cat.get("colors") or ["#FFFFFF", "#111111"]
 
@@ -805,13 +863,12 @@ def build(specs: dict | None = None):
             used.add(title_key(ov))
         else:
             print(f"  AVISO: contorno ausente: {ov}")
-    # kits.json compacto (uma linha por clube)
+    # kits.json compacto (uma linha por clube), preservando outros clubes já existentes
     os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
-    if WORLD:
-        prev = load(OUT_JSON, {})
-        prev.update(out)
-        out = prev
-    lines = [f" {json.dumps(cid)}: {json.dumps(out[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in out]
+    prev = load(OUT_JSON, {})
+    prev.update(out)
+    out = prev
+    lines = [f" {json.dumps(cid)}: {json.dumps(out[cid], ensure_ascii=False, separators=(',', ':'))}" for cid in sorted(out)]
     with open(OUT_JSON, "w", encoding="utf-8") as f:
         f.write("{\n" + ",\n".join(lines) + "\n}\n")
     # créditos de cada arquivo publicado
@@ -823,14 +880,13 @@ def build(specs: dict | None = None):
         cred[f"kits/{have[n]}"] = {"file": title, "author": m.get("author") or "desconhecido",
                                    "license": m.get("license") or "ver página do arquivo",
                                    "url": m.get("desc") or base + wm.norm_file(title)}
-    if WORLD:
-        prev = load(CREDITS, {})
-        prev.update(cred)
-        cred = prev
+    prev = load(CREDITS, {})
+    prev.update(cred)
+    cred = prev
     save(CREDITS, cred)
-    # remove arquivos que não são mais usados
-    keep = {have[n] for n in used} | {"credits.json"}
-    if not WORLD and all(n in inf for n in needed_files(specs)):
+    # remove arquivos que não são mais usados (somente quando explicitamente solicitado com --cleanup)
+    if CLEANUP and all(n in inf for n in needed_files(specs)):
+        keep = {have[n] for n in used} | {"credits.json"}
         for f in os.listdir(MEDIA):
             if f not in keep and not f.endswith(".tmp"):
                 os.remove(os.path.join(MEDIA, f))
@@ -914,14 +970,41 @@ def qa(clubs=None):
 
 # ---------------------------------------------------------------- linha de comando
 def main(argv):
-    global WORLD_CLUBS, KIT_CLUBS
-    WORLD_CLUBS = _world_entries() if WORLD else []
-    KIT_CLUBS = WORLD_CLUBS if WORLD else list(ALL_CLUBS)
+    global WORLD_CLUBS, KIT_CLUBS, WORLD, PRIORITY, CLEANUP
+    WORLD = "--world" in argv or WORLD
+    PRIORITY = "--priority" in argv or PRIORITY
+    CLEANUP = "--cleanup" in argv or CLEANUP
+
+    custom_clubs = None
+    clean_argv = []
+    for a in argv:
+        if a.startswith("--clubs="):
+            custom_clubs = set(a.split("=", 1)[1].split(","))
+        elif a not in ("--world", "--priority", "--cleanup"):
+            clean_argv.append(a)
+    argv = clean_argv
+
+    if WORLD:
+        all_w = _world_entries()
+        if custom_clubs:
+            WORLD_CLUBS = [c for c in all_w if c["id"] in custom_clubs]
+        elif PRIORITY:
+            WORLD_CLUBS = [c for c in all_w if c["id"] in PRIORITY_WORLD]
+        else:
+            WORLD_CLUBS = all_w
+        KIT_CLUBS = WORLD_CLUBS
+    else:
+        if custom_clubs:
+            KIT_CLUBS = [c for c in ALL_CLUBS if c["id"] in custom_clubs]
+        elif PRIORITY:
+            KIT_CLUBS = [c for c in ALL_CLUBS if c["id"] in PRIORITY_DOMESTIC]
+        else:
+            KIT_CLUBS = list(ALL_CLUBS)
+
     if WORLD:  # cache separado; o resultado é MESCLADO ao kits.json existente
         global WORK
         WORK = os.path.join(WORK, "world")
         os.makedirs(WORK, exist_ok=True)
-    argv = [a for a in argv if a != "--world"]
     stages = argv or ["parse", "info", "download", "build"]  # "style" recalcula só os padrões
     specs = None
     for st in stages:
