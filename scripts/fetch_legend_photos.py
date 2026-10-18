@@ -94,8 +94,17 @@ def resolve_qid(title):
     d = jget(WD_API, {"action": "wbgetentities", "sites": "enwiki", "titles": title, "props": "claims|sitelinks",
                       "sitefilter": "enwiki|ptwiki", "redirects": "yes"})
     for q, e in ((d or {}).get("entities") or {}).items():
-        if q.startswith("Q"):
+        if q.startswith("Q") and (e.get("claims") or e.get("sitelinks")):
             return q, e
+    # fallback: consulta a Wikipedia em inglês para seguir desambiguações/redirecionamentos
+    wq = jget(WIKI_API["en"], {"action": "query", "titles": title, "prop": "pageprops", "ppprop": "wikibase_item", "redirects": "1"})
+    for pg in ((wq or {}).get("query") or {}).get("pages", {}).values():
+        qid = (pg.get("pageprops") or {}).get("wikibase_item")
+        if qid:
+            d2 = jget(WD_API, {"action": "wbgetentities", "ids": qid, "props": "claims|sitelinks", "sitefilter": "enwiki|ptwiki"})
+            e2 = ((d2 or {}).get("entities") or {}).get(qid)
+            if e2:
+                return qid, e2
     return None, None
 
 
@@ -279,7 +288,16 @@ def publish(st):
     return lm
 
 
+def safe_str(s):
+    return str(s).encode("ascii", errors="backslashreplace").decode("ascii")
+
+
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:
+            pass
     redo = set(sys.argv[sys.argv.index("--redo") + 1:]) if "--redo" in sys.argv else set()
     os.makedirs(CACHE, exist_ok=True)
     st = load(STATE, {})
@@ -293,9 +311,9 @@ def main():
         if not title:
             st[lid] = {"status": "no-title"}
             continue
-        print(f"{lid} ({title})...", flush=True)
+        print(safe_str(f"{lid} ({title})..."), flush=True)
         st[lid] = process(row, title, st)
-        print(f"   -> {st[lid]['status']} {st[lid].get('source', '')} {st[lid].get('tried', '')}", flush=True)
+        print(safe_str(f"   -> {st[lid]['status']} {st[lid].get('source', '')} {st[lid].get('tried', '')}"), flush=True)
         write_json(STATE, st)
     lm = publish(st)
     missing = [r["id"] for r in rows if r["id"] not in lm]

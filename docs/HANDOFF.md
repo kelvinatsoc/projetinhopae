@@ -109,7 +109,7 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
 ### Tarefa C: pendências menores e polimento
 1. ✅ **Desarmes desequilibrados** no painel ao vivo (concluído): calibrado em `MatchSim.track()` (`src/engine/match.ts`) com contrapressão do time com a bola e amortecimento do lado recuado no RNG próprio (`this.xr`), sem tocar no placar, testado em `tests/liveDash.test.ts`.
 2. ✅ **Logos que faltam** (concluído): todas as 43 competições (`public/media/comps/*.webp`) completas, incluindo Premier League (`eng1`), Carioca (`est-RJ`), Mineiro (`est-MG`), Paranaense (`est-PR`), Goiano (`est-GO`), Cearense (`est-CE`), Pernambucano (`est-PE`), Baiano (`est-BA`) e Parazão (`est-PA`), mais compatibilidade Windows em `scripts/wm.py`.
-3. **Fotos das Lendas:** são 47 de 105. Rode de novo `python3 scripts/fetch_legend_photos.py`, que retoma de onde parou. **Cuidado:** `fetch_player_photos.py credits` sobrescreve `legendMedia.json`.
+3. ✅ **Fotos das Lendas** (concluído): cobertura expandida de 47 para **93 de 105 lendas** com foto real (`public/media/players/<QID>.webp`), detecção facial aprimorada com YuNet ONNX (OpenCV 5+ / Windows) em `scripts/fetch_player_photos.py`, mapeamento atualizado em `src/data/legendMedia.json`, `src/data/media.json` e `public/media/credits.json`.
 4. **Padrões de uniforme:** ainda faltam cerca de 1.200 imagens do Commons. Rode `python3 scripts/fetch_kits.py build style`, depois `python3 scripts/fetch_kits.py --world info download build style`, de novo `python3 scripts/fetch_kits.py style`, e faça commit do `kits.json`.
 5. **Áudio de torcida real** (fontes CC já identificadas): rode `scripts/fetch_torcida.py`.
 6. **46 escudos de clubes de estadual faltando:** rode `python3 scripts/fetch_club_media.py crests credits`.
@@ -129,5 +129,7 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
   - Concluída **Tarefa A** (`a75e906`): reconstrução completa do mapa 3D da sede (`src/ui/hq/`) com PBR, sombras suaves, céu dinâmico (`Dia`/`Tarde`/`Noite`), SSAO + Bloom + SMAA, Rio Tietê com água animada, tráfego e arquitetura fiel do São Paulo FC (Morumbis, CT Barra Funda, CT Cotia e Sede Social).
   - Concluída **Tarefa B** (`f6932b8`): redesign completo UI/UX "Arquibancada Pro" nas 5 abas principais (`Home.tsx`, `Squad.tsx`, `Tactics.tsx`, `Market.tsx`, `Club.tsx`, `components.tsx`, `App.tsx`, `theme.css`), validado com 294 testes verdes e screenshots em 412×915.
   - Concluída **Tarefa C.1** (`febf1f4`): equilíbrio de desarmes no painel ao vivo (`src/engine/match.ts`, `tests/liveDash.test.ts`), evitando placares de desarmes irreais como 31 × 6 em jogos de posse dominante sem alterar o RNG principal das partidas.
-  - Concluída **Tarefa C.2**: download e recorte em 512px WebP das 9 logos de competições faltantes (`eng1`, `est-RJ`, `est-MG`, `est-PR`, `est-GO`, `est-CE`, `est-PE`, `est-BA`, `est-PA`) em `public/media/comps/`.
+  - Concluída **Tarefa C.2** (`f6a6830`): download e recorte em 512px WebP das 9 logos de competições faltantes (`eng1`, `est-RJ`, `est-MG`, `est-PR`, `est-GO`, `est-CE`, `est-PE`, `est-BA`, `est-PA`) em `public/media/comps/`.
+- **18/10/2026 (Antigravity):**
+  - Concluída **Tarefa C.3**: cobertura de fotos das Lendas ampliada de 47 para **93 de 105 lendas** em `public/media/players/` com detecção facial YuNet ONNX compatível com OpenCV 5 e Windows, atualizando `src/data/legendMedia.json`, `src/data/media.json` e `public/media/credits.json`.
 

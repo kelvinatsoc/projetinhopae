@@ -582,6 +582,7 @@ def phase_legends(st):
 
 # ------------------------------------------------------------------ etapa 6: fotos
 
+YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 _net = None
 
 
@@ -590,6 +591,27 @@ def face_net():
     if _net is None:
         import cv2
         os.makedirs(MODELS, exist_ok=True)
+        # OpenCV 5+ removeu suporte a Caffe: usa YuNet ONNX oficial
+        yunet = os.path.join(MODELS, "face_detection_yunet_2023mar.onnx")
+        if hasattr(cv2, "FaceDetectorYN_create"):
+            if not os.path.exists(yunet):
+                import requests
+                r = requests.get(YUNET_URL, timeout=120)
+                r.raise_for_status()
+                with open(yunet, "wb") as f:
+                    f.write(r.content)
+            model_path = yunet
+            try:
+                cv2.FaceDetectorYN_create(model_path, "", (300, 300), 0.5, 0.3, 5000)
+            except Exception:
+                import shutil
+                import tempfile
+                tmp_dir = tempfile.gettempdir()
+                ascii_path = os.path.join(tmp_dir, "yunet.onnx")
+                shutil.copyfile(yunet, ascii_path)
+                model_path = ascii_path
+            _net = ("yunet", cv2.FaceDetectorYN_create(model_path, "", (300, 300), 0.5, 0.3, 5000))
+            return _net
         proto = os.path.join(MODELS, "deploy.prototxt")
         model = os.path.join(MODELS, "res10_300x300_ssd_iter_140000.caffemodel")
         for path, url in ((proto, PROTO_URL), (model, MODEL_URL)):
@@ -599,17 +621,31 @@ def face_net():
                 r.raise_for_status()
                 with open(path, "wb") as f:
                     f.write(r.content)
-        _net = cv2.dnn.readNetFromCaffe(proto, model)
+        _net = ("caffe", cv2.dnn.readNetFromCaffe(proto, model))
     return _net
 
 
-def detect_faces(img, conf=0.6):
-    """Rostos (x1, y1, x2, y2, confiança) em pixels. Duas passagens: 300x300 (rostos grandes)
-    e na resolução da imagem (rostos pequenos); resultados combinados por NMS."""
+def detect_faces(img, conf=0.5):
+    """Rostos (x1, y1, x2, y2, confiança) em pixels."""
     import cv2
     import numpy as np
-    net = face_net()
+    kind, net = face_net()
     h, w = img.shape[:2]
+    if kind == "yunet":
+        net.setInputSize((w, h))
+        net.setScoreThreshold(conf)
+        _, faces = net.detect(img)
+        boxes = []
+        if faces is not None:
+            for f in faces:
+                x, y, fw, fh = float(f[0]), float(f[1]), float(f[2]), float(f[3])
+                score = float(f[14])
+                x1, y1, x2, y2 = max(0, x), max(0, y), min(w, x + fw), min(h, y + fh)
+                if x2 - x1 < 12 or y2 - y1 < 12:
+                    continue
+                boxes.append((x1, y1, x2, y2, score))
+        return boxes
+
     boxes = []
     sizes = [(300, 300)]
     scale = min(1.0, 900 / max(h, w))
@@ -629,7 +665,6 @@ def detect_faces(img, conf=0.6):
             if x2 - x1 < 12 or y2 - y1 < 12:
                 continue
             boxes.append((x1, y1, x2, y2, c))
-    # NMS simples
     boxes.sort(key=lambda b: -b[4])
     keep = []
     for b in boxes:
