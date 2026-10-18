@@ -15,29 +15,30 @@
   --club2: #1f6fd1;
   --club-ink: #06120a;
 
-  /* superfícies (escuro) */
-  --bg: #0b0e14;
-  --bg2: #10141c;
-  --surface: #151a24;
-  --surface-2: #1c2230;
-  --surface-3: #262d3e;
-  --border: #2b3345;
-  --border-strong: #3b4560;
+  /* superfícies (escuro - Arcade Strikers Carbon Metal) */
+  --bg: #07090e;
+  --bg2: #0c111c;
+  --surface: #121824;
+  --surface-2: #182030;
+  --surface-3: #222d42;
+  --border: #233047;
+  --border-strong: #36496b;
 
   /* texto — contraste sobre --surface: t1 15:1, t2 9:1, t3 5,3:1 (AA) */
-  --text: #f3f5f9;
-  --text-2: #c2c9d6;
-  --text-3: #8f99ad;
+  --text: #f5f8fc;
+  --text-2: #c6d0e0;
+  --text-3: #8a96ad;
 
-  /* marca e estados */
-  --brand: #c8f43c;
-  --brand-ink: #0b0e14;
-  --brand-soft: rgba(200, 244, 60, 0.14);
-  --ok: #34d399;
-  --warn: #fbbf24;
-  --danger: #ff6369;
-  --info: #60a5fa;
-  --gold: #f5c542;
+  /* marca e estados (Volt Lime, Cyber Cyan, Strikers Hot Pink/Crimson) */
+  --brand: #ccff00;
+  --brand-2: #00f0ff;
+  --brand-ink: #07090e;
+  --brand-soft: rgba(204, 255, 0, 0.16);
+  --ok: #00ff88;
+  --warn: #ffb703;
+  --danger: #ff0055;
+  --info: #00f0ff;
+  --gold: #ffd000;
   --legend: #ffcf3f;
 
   /* compatibilidade com o CSS das telas antigas */
@@ -132,61 +133,93 @@ a { color: var(--brand); }
 .topbar {
   height: calc(var(--top-h) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 8px 0 12px; gap: 8px;
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: saturate(1.5) blur(16px); -webkit-backdrop-filter: saturate(1.5) blur(16px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
-.topbar-crest { display: grid; place-items: center; width: 44px; height: 44px; flex: none; }
-.topbar .title b { font-family: var(--display); font-size: 21px; font-weight: 700; }
-.topbar .title small { display: block; font-size: 13px; color: var(--text-3); }
+.topbar-crest {
+  display: grid; place-items: center; width: 44px; height: 44px; flex: none;
+  filter: drop-shadow(0 0 6px var(--brand-soft));
+}
+.topbar .title b { font-family: var(--display); font-size: 21px; font-weight: 800; letter-spacing: 0.02em; }
+.topbar .title small { display: block; font-size: 13px; color: var(--text-3); font-weight: 600; }
 .topbar .money-chip {
-  flex: none; min-height: 44px; padding: 0 12px; border-radius: 999px; cursor: pointer;
-  font-size: 17px; font-weight: 700; color: var(--text);
-  background: var(--surface-2); border: 1px solid var(--border);
+  flex: none; min-height: 44px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  font-size: 17px; font-weight: 800; color: #ffd000;
+  background: linear-gradient(180deg, #222a38 0%, #151a24 100%);
+  border: 1px solid rgba(255, 208, 0, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.1s ease, border-color 0.2s ease;
 }
+.topbar .money-chip:active { transform: scale(0.96); border-color: #ffd000; }
 .icon-btn {
   width: 44px; height: 44px; border-radius: 999px; flex: none; display: grid; place-items: center; cursor: pointer;
   color: var(--text); background: transparent; border: 0;
+  transition: background 0.15s, transform 0.1s;
 }
 .icon-btn:hover { background: var(--surface-2); }
 .icon-btn:active { background: var(--surface-3); transform: scale(0.94); }
 .back-btn { margin-left: -4px; }
 .badge-dot[data-count]::after {
-  top: 4px; right: 2px; min-width: 20px; height: 20px; border-radius: 10px; font-size: 12px; font-weight: 700;
-  background: var(--danger); color: #fff; box-shadow: 0 0 0 2px var(--bg);
+  top: 4px; right: 2px; min-width: 20px; height: 20px; border-radius: 10px; font-size: 12px; font-weight: 800;
+  background: var(--danger); color: #fff; box-shadow: 0 0 0 2px var(--bg), 0 0 8px rgba(255, 0, 85, 0.6);
 }
 
-/* navegação inferior: barra fixa, itens grandes, rótulos sempre visíveis */
+/* navegação inferior: barra fixa, itens grandes, estilo dock fliperama */
 .bottomnav {
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   padding: 4px 6px env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--bg2) 96%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  background: color-mix(in srgb, var(--bg2) 94%, transparent);
+  backdrop-filter: saturate(1.5) blur(16px); -webkit-backdrop-filter: saturate(1.5) blur(16px);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 }
 .bottomnav button {
-  position: relative; min-height: 56px; gap: 2px; color: var(--text-3); font-size: 12.5px; font-weight: 600; border-radius: var(--r-md);
+  position: relative; min-height: 56px; gap: 2px; color: var(--text-3); font-size: 12.5px; font-weight: 700; border-radius: var(--r-md);
+  transition: color 0.15s ease, transform 0.1s ease;
 }
+.bottomnav button:active { transform: scale(0.94); }
 .bottomnav .nav-ic {
-  display: grid; place-items: center; width: 56px; height: 32px; border-radius: 999px; transition: background 0.2s var(--ease);
+  display: grid; place-items: center; width: 56px; height: 32px; border-radius: 999px; transition: background 0.2s var(--ease), box-shadow 0.2s;
 }
-.bottomnav button.active { color: var(--text); }
-.bottomnav button.active .nav-ic { background: var(--brand-soft); color: var(--brand); }
-.bottomnav .nav-badge { position: absolute; top: 6px; right: calc(50% - 22px); width: 10px; height: 10px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg2); }
+.bottomnav button.active { color: #ffffff; }
+.bottomnav button.active .nav-ic {
+  background: rgba(204, 255, 0, 0.18);
+  color: var(--brand);
+  box-shadow: 0 0 12px rgba(204, 255, 0, 0.45);
+}
+.bottomnav .nav-badge { position: absolute; top: 6px; right: calc(50% - 22px); width: 10px; height: 10px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg2), 0 0 8px var(--danger); }
 
-/* barra do próximo passo (substitui o botão flutuante: nunca cobre conteúdo) */
+/* barra do próximo passo */
 .nextbar {
   position: fixed; z-index: 19; left: 50%; transform: translateX(-50%);
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   width: 100%; max-width: 560px; height: var(--next-h);
   display: flex; align-items: center; gap: 10px; padding: 0 12px;
   background: var(--bg2); border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
 }
 .nextbar-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .nextbar-info > span { min-width: 0; display: flex; flex-direction: column; }
-.nextbar-info b { font-size: 16px; }
-.nextbar-info small { font-size: 13px; color: var(--text-3); }
-.nextbar-go { flex: none; min-width: 148px; }
+.nextbar-info b { font-size: 16px; font-family: var(--display); font-weight: 800; letter-spacing: 0.02em; }
+.nextbar-info small { font-size: 13px; color: var(--text-3); font-weight: 600; }
+.nextbar-go {
+  flex: none; min-width: 148px;
+  background: linear-gradient(180deg, #ccff00 0%, #9ec900 100%) !important;
+  color: #07090e !important;
+  border: 1px solid #eeff88 !important;
+  box-shadow: 0 0 18px rgba(204, 255, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  font-family: var(--display) !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+.nextbar-go:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 24px rgba(204, 255, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
 
 /* troca de tela: só opacidade (transform quebraria os filhos fixos) */
 .screen { animation: screen-in 0.18s var(--ease); }
@@ -202,38 +235,61 @@ a { color: var(--brand); }
 
 /* ---------------------------------------------------------------- superfícies */
 .card, .ui-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px; box-shadow: var(--shadow); color: var(--text);
+  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 92%, #000) 100%);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--text);
 }
 .card.flat { box-shadow: none; }
-.card.tap, .tap { cursor: pointer; transition: transform 0.15s var(--ease), background 0.15s; }
-.card.tap:active, .tap:active { transform: scale(0.985); background: var(--surface-2); }
+.card.tap, .tap { cursor: pointer; transition: transform 0.12s var(--ease), background 0.15s, border-color 0.15s; }
+.card.tap:active, .tap:active { transform: translateY(2px) scale(0.985); background: var(--surface-2); border-color: var(--brand-2); }
 .hero { border-radius: var(--r-lg); }
 .grid2, .grid3 { gap: 10px; }
 
-/* ---------------------------------------------------------------- botões */
+/* ---------------------------------------------------------------- botões táteis arcade */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 0 18px; border-radius: var(--r-md);
-  font-family: var(--font); font-size: 16px; font-weight: 700; letter-spacing: 0;
-  color: var(--text); background: var(--surface-3); border: 1px solid var(--border-strong);
-  cursor: pointer; transition: transform 0.12s var(--ease), background 0.15s, filter 0.15s;
+  font-family: var(--font); font-size: 16px; font-weight: 800; letter-spacing: 0;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--surface-3) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  cursor: pointer; transition: transform 0.1s var(--ease), filter 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
-.btn:hover { filter: brightness(1.08); }
-.btn:active { transform: scale(0.97); }
-.btn.primary, .btn.gold {
-  background: var(--brand); color: var(--brand-ink); border-color: transparent;
-  font-family: var(--display); font-size: 19px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase;
+.btn:hover { filter: brightness(1.1); border-color: var(--brand-2); }
+.btn:active { transform: translateY(2px) scale(0.98); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.btn.primary {
+  background: linear-gradient(180deg, #ccff00 0%, #a0cc00 100%);
+  color: var(--brand-ink);
+  border: 1px solid #e6ff66;
+  box-shadow: 0 4px 16px rgba(204, 255, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-family: var(--display); font-size: 19px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase;
 }
-.btn.gold { background: var(--gold); color: #1d1500; }
-.btn.danger { background: color-mix(in srgb, var(--danger) 18%, var(--surface)); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.btn.primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(204, 255, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.btn.gold {
+  background: linear-gradient(180deg, #ffd000 0%, #cc9900 100%);
+  color: #1d1500;
+  border: 1px solid #ffe680;
+  box-shadow: 0 4px 16px rgba(255, 208, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-family: var(--display); font-size: 19px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.btn.danger {
+  background: linear-gradient(180deg, rgba(255, 0, 85, 0.28) 0%, rgba(255, 0, 85, 0.15) 100%);
+  color: #ff3377;
+  border-color: rgba(255, 0, 85, 0.5);
+  box-shadow: 0 4px 14px rgba(255, 0, 85, 0.25);
+}
 .btn.ghost { background: transparent; border-color: var(--border-strong); }
 .btn.sm { min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: var(--r-md); }
 .btn.sm.primary { font-size: 17px; }
 .btn.lg { min-height: 56px; font-size: 18px; }
 .btn.lg.primary { font-size: 22px; }
 .btn.block { width: 100%; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.5); }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px;

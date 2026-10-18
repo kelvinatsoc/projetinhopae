@@ -151,6 +151,14 @@ export class MatchSim {
   private tempo: number;
   /** Estatísticas extras do painel (gerador próprio, não muda o jogo). */
   extra: LiveExtra = { passes: [0, 0], passesOk: [0, 0], tackles: [0, 0], saves: [0, 0], offsides: [0, 0], zones: [Array(9).fill(0), Array(9).fill(0)], timeline: [], pl: new Map() };
+  /** Estado Arcade Super Mario Strikers (interações ao vivo) */
+  arcade = {
+    voltage: 0, // Voltagem da bola (0..3)
+    stunUntil: [-1, -1] as [number, number], // Atordoamento de defesa por choque
+    starUntil: [-1, -1] as [number, number], // Modo Super Estrela
+    bananaTrap: [-1, -1] as [number, number], // Armadilha de banana ativa
+    pendingQteBonus: 0,
+  };
   private xr: () => number;
 
   constructor(w: World, f: Fixture, opts: MatchOptions = {}) {
@@ -372,15 +380,30 @@ export class MatchSim {
     // posse de bola
     const pm = Math.pow(H.mid, 3);
     const share = pm / (pm + Math.pow(A.mid, 3));
-    const atk = play ? play.side : rand() < share ? 0 : 1;
+    let atk = play ? play.side : rand() < share ? 0 : 1;
+    if (this.arcade.bananaTrap[atk] >= min) {
+      this.arcade.bananaTrap[atk] = -1;
+      atk = (1 - atk) as 0 | 1;
+      if (this.live) this.ev({ min, type: "info", side: (1 - atk) as 0 | 1, text: "🍌 O condutor escorregou na casca de banana e perdeu a posse!" });
+    }
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     this.stats.poss[atk]++;
+    if (this.phase.atk === atk) {
+      this.arcade.voltage = Math.min(3, this.arcade.voltage + 1);
+    } else {
+      this.arcade.voltage = 0;
+    }
+    if (this.arcade.starUntil[atk] >= min) {
+      this.arcade.voltage = 3;
+    }
     this.phase = { min, half: this.half, atk: atk as 0 | 1 };
 
     // chance de finalização neste minuto
-    const ratio = S.att / Math.max(20, O.def);
-    const openness = (1 + 0.06 * S.mentality + 0.03 * O.mentality) * S.fx.open * O.fx.openAgainst;
+    const oppDef = this.arcade.stunUntil[1 - atk] >= min ? Math.max(10, O.def * 0.45) : O.def;
+    const ratio = S.att / Math.max(20, oppDef);
+    const starMult = this.arcade.starUntil[atk] >= min ? 1.4 : 1;
+    const openness = (1 + 0.06 * S.mentality + 0.03 * O.mentality) * S.fx.open * O.fx.openAgainst * starMult;
     // estadual / copas: quem vence por 2+ tira o pé e quem perde fecha a casinha (evita goleadas irreais);
     // o 1,5 repõe o volume de chutes perdido na compressão (média ~2,6 gols/jogo)
     const lead = S.goals - O.goals;
@@ -494,6 +517,14 @@ export class MatchSim {
     const S = this.sides[atk];
     const O = this.sides[1 - atk];
     const min = this.minute;
+    const voltBonus = this.arcade.voltage;
+    if (voltBonus > 0) {
+      xg = Math.min(0.85, xg * (1 + voltBonus * 0.12));
+    }
+    if (this.arcade.pendingQteBonus !== 0) {
+      xg = clamp(xg + this.arcade.pendingQteBonus, 0.05, 0.95);
+      this.arcade.pendingQteBonus = 0;
+    }
     this.stats.shots[atk]++;
     this.stats.xg[atk] += xg;
     const gk = this.gkId(O);
@@ -502,6 +533,9 @@ export class MatchSim {
     const pGoal = clamp(xg * (1 + (70 - gkEff) / 50), 0.01, 0.75) * (this.shield[1 - atk] >= min ? 0.55 : 1);
     const shotInfo: NonNullable<MinutePhase["shot"]> = { side: atk as 0 | 1, shooter, assist: assister, result: "miss", xg };
     if (kind) shotInfo.kind = kind;
+    if (voltBonus >= 2) shotInfo.power = "trovao";
+    else if (voltBonus === 1) shotInfo.power = "canhao";
+    this.arcade.voltage = 0;
     this.phase.shot = shotInfo;
     if (this.live && xg > 0.3 && chance(0.6)) {
       this.ev({ min, type: "chance", key: true, side: atk as 0 | 1, pid: shooter, text: phrase("bigChance", { p: this.name(shooter), a: this.name(assister) }) });
@@ -853,6 +887,56 @@ export class MatchSim {
     const xg = clamp(base * def.xgMult + 0.04, 0.08, 0.55);
     this.finishShot(side, shooter, assister, xg, def.kind === "header" ? "header" : undefined);
     if (this.phase.shot) this.phase.shot.power = def.special;
+  }
+
+  /** Ativa um item de batalha arcade estilo Super Mario Strikers */
+  useArcadeItem(side: 0 | 1, itemId: "raio" | "carrinho" | "cogumelo" | "bomba" | "banana" | "estrela"): boolean {
+    if (this.finished) return false;
+    const opp = (1 - side) as 0 | 1;
+    if (itemId === "raio") {
+      this.arcade.stunUntil[opp] = this.minute + 3;
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "⚡ RAIO STRIKERS! A zaga adversária paralisou em choque!" });
+      return true;
+    }
+    if (itemId === "carrinho") {
+      this.phase.atk = side;
+      this.phase.tackle = { side, pid: this.sides[side].onPitch[1] ?? null };
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "💥 CARRINHO NA GRADE! O adversário voou na cerca elétrica e você retomou a bola!" });
+      return true;
+    }
+    if (itemId === "cogumelo") {
+      this.arcade.voltage = Math.min(3, this.arcade.voltage + 2);
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "🍄 COGUMELO TURBO! Arrancada supersônica em velocidade máxima!" });
+      this.shot(side);
+      return true;
+    }
+    if (itemId === "bomba") {
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "💣 BOB-BOMBA! Explosão limpou a grande área adversária!" });
+      this.shot(side);
+      return true;
+    }
+    if (itemId === "banana") {
+      this.arcade.bananaTrap[opp] = this.minute + 6;
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "🍌 CASCA DE BANANA! Armadilha posicionada no meio de campo!" });
+      return true;
+    }
+    if (itemId === "estrela") {
+      this.arcade.starUntil[side] = this.minute + 5;
+      this.arcade.voltage = 3;
+      if (this.live) this.ev({ min: this.minute, type: "info", side, text: "⭐ SUPER ESTRELA! O time brilha em dourado e fica invencível!" });
+      return true;
+    }
+    return false;
+  }
+
+  /** Aplica bônus de QTE do Hyper Strike no lance atual ou no próximo chute */
+  applyHyperStrikeQte(bonusXg: number) {
+    if (this.phase.shot) {
+      this.phase.shot.xg = Math.max(0.05, Math.min(0.95, this.phase.shot.xg + bonusXg));
+      this.stats.xg[this.phase.shot.side] += bonusXg;
+    } else {
+      this.arcade.pendingQteBonus = bonusXg;
+    }
   }
 
   /** Lado do usuário com o auxiliar técnico cuidando das substituições (liga/desliga na partida). */

@@ -28,6 +28,18 @@ import "../narrative.css";
 import "../matchday.css";
 import { derbyIntensity, derbyName } from "../../data/rivalries";
 import { pressDone } from "../../engine/press";
+import { StrikersArcadeDeck, HyperStrikeModal } from "../StrikersArcadeDeck";
+import {
+  ARCADE_ITEMS,
+  ITEM_LIST,
+  playArcadeExplosion,
+  playArcadePowerUp,
+  playArcadeTackle,
+  playArcadeZap,
+  triggerScreenShake,
+  type ArcadeItemId,
+} from "../strikersArcade";
+import "../strikersArcade.css";
 
 /** Tom da preleção escolhido no pré-jogo (sem escolha, vale a sugestão do auxiliar). */
 let chosenTalk: { fid: number; tone: Tone } | null = null;
@@ -269,6 +281,48 @@ export function MatchScreen({ quick }: { quick: boolean }) {
   }
   const userSide: 0 | 1 = f && f.away === w.userClubId ? 1 : 0;
 
+  // Strikers Arcade: estado dos itens e QTE
+  const [itemCharge, setItemCharge] = useState(30);
+  const [currentItem, setCurrentItem] = useState<ArcadeItemId | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const [comicBadge, setComicBadge] = useState<string | null>(null);
+  const [qteOpen, setQteOpen] = useState(false);
+  const comicTimer = useRef(0);
+
+  function showComic(text: string) {
+    setComicBadge(text);
+    window.clearTimeout(comicTimer.current);
+    comicTimer.current = window.setTimeout(() => setComicBadge(null), 1400);
+  }
+
+  function handleUseItem() {
+    if (!sim || !currentItem) return;
+    const it = ARCADE_ITEMS[currentItem];
+    if (sim.useArcadeItem(userSide, currentItem)) {
+      if (currentItem === "raio") { playArcadeZap(); triggerScreenShake("heavy"); }
+      else if (currentItem === "carrinho") { playArcadeTackle(); triggerScreenShake("heavy"); }
+      else if (currentItem === "bomba") { playArcadeExplosion(); triggerScreenShake("heavy"); }
+      else if (currentItem === "cogumelo" || currentItem === "estrela") { playArcadePowerUp(); triggerScreenShake("light"); }
+      else if (currentItem === "banana") { playArcadeZap(); triggerScreenShake("light"); }
+      showComic(it.comic);
+      haptic("success");
+      setCurrentItem(null);
+      setItemCharge(0);
+      setTick((x) => x + 1);
+    }
+  }
+
+  function handleTackle() {
+    if (!sim) return;
+    if (sim.useArcadeItem(userSide, "carrinho")) {
+      playArcadeTackle();
+      triggerScreenShake("heavy");
+      showComic("💥 POW! NA GRADE ELÉTRICA!");
+      haptic("warn");
+      setTick((x) => x + 1);
+    }
+  }
+
   if (!simRef.current && f) {
     loadRng(w);
     const s = new MatchSim(w, f, { live: !quick, userSide });
@@ -391,7 +445,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
 
   // relógio da partida
   useEffect(() => {
-    if (!sim || quick || paused || result || subs || tacticSheet || history || intro || bumper || hold || halfSheet || cine) return;
+    if (!sim || quick || paused || result || subs || tacticSheet || history || intro || bumper || hold || halfSheet || cine || qteOpen) return;
     const t = window.setInterval(() => {
       let evs = sim.step();
       if (hl) {
@@ -407,6 +461,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       for (const e of evs) {
         if (isGoal(e)) {
           if (slow) setHold(true);
+          if (e.side !== userSide) {
+            // tomar gol carrega a caixa de itens como no Strikers
+            setItemCharge((ch) => Math.min(100, ch + 40));
+          }
           if (viewLive) {
             // garantia, se o campo não avisar (espera a cena de lance decisivo acabar)
             const fallback = () => (cineRef.current ? later(fallback, 700) : celebrate(e));
@@ -414,6 +472,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           }
           else celebrate(e);
         } else if (e.type === "post" || e.type === "save" || e.type === "pen-miss") {
+          if (e.type === "post") {
+            triggerScreenShake("light");
+            showComic("💥 NA TRAVE!");
+          }
           if (!viewLive) beat(e);
         } else if (e.type === "half") {
           whistle(2);
@@ -422,6 +484,24 @@ export function MatchScreen({ quick }: { quick: boolean }) {
         }
         else if (e.type === "end") whistle(3);
       }
+      // Carregar caixa de itens ao longo da partida (Super Mario Strikers)
+      setItemCharge((ch) => {
+        if (currentItem || rolling) return ch;
+        const next = Math.min(100, ch + 8);
+        if (next >= 100 && !currentItem && !rolling) {
+          setRolling(true);
+          window.setTimeout(() => {
+            const picked = ITEM_LIST[Math.floor(Math.random() * ITEM_LIST.length)];
+            setCurrentItem(picked);
+            setRolling(false);
+            playArcadePowerUp();
+            haptic("success");
+            showComic(`🎁 ${ARCADE_ITEMS[picked].name}!`);
+          }, 1100);
+          return 100;
+        }
+        return next;
+      });
       for (const sd of [0, 1] as const) worst.current[sd] = Math.min(worst.current[sd], sim.sides[sd].goals - sim.sides[1 - sd].goals);
       {
         const cs = profile?.side ?? 0;
@@ -439,7 +519,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       setTick((x) => x + 1);
     }, hl ? HIGHLIGHT_MS : SPEEDS[speed].ms);
     return () => window.clearInterval(t);
-  }, [sim, speed, paused, result, subs, tacticSheet, history, intro, bumper, hold, halfSheet, hl, cine]);
+  }, [sim, speed, paused, result, subs, tacticSheet, history, intro, bumper, hold, halfSheet, hl, cine, qteOpen]);
 
   if (!f || !sim) return <div className="page"><div className="empty">Partida não encontrada.</div><button className="btn" onClick={forceBack}>Voltar</button></div>;
   const [H, A] = sim.sides;
@@ -512,27 +592,30 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           )}
         </div>
         {showField && (
-          <MatchView
-            sim={sim}
-            tick={tick}
-            msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
-            quality={gfx}
-            on3d={setIs3d}
-            introArrivalMs={intro3d.arrival}
-            introWalkMs={intro3d.walk}
-            importance={importance}
-            exodus={exodus}
-            crowdIntensity={mood}
-            eruption={eruption}
-            paused={(paused || subs || tacticSheet || history) && !result}
-            intro={intro && !bumper}
-            goalHold={hl || speed <= 1}
-            onGoal={celebrate}
-            onBeat={beat}
-            onSkipIntro={() => setIntro(false)}
-            onCinema={setCine}
-            hudFrame={[theme.base, theme.primary]}
-          />
+          <div className="strikers-fence" style={{ position: "relative" }}>
+            {comicBadge && <div className="strikers-comic-badge">{comicBadge}</div>}
+            <MatchView
+              sim={sim}
+              tick={tick}
+              msPerMin={hl ? HIGHLIGHT_MS : SPEEDS[speed].ms}
+              quality={gfx}
+              on3d={setIs3d}
+              introArrivalMs={intro3d.arrival}
+              introWalkMs={intro3d.walk}
+              importance={importance}
+              exodus={exodus}
+              crowdIntensity={mood}
+              eruption={eruption}
+              paused={(paused || subs || tacticSheet || history) && !result}
+              intro={intro && !bumper}
+              goalHold={hl || speed <= 1}
+              onGoal={celebrate}
+              onBeat={beat}
+              onSkipIntro={() => setIntro(false)}
+              onCinema={setCine}
+              hudFrame={[theme.base, theme.primary]}
+            />
+          </div>
         )}
       </div>
 
@@ -547,6 +630,18 @@ export function MatchScreen({ quick }: { quick: boolean }) {
             onTactic={() => { haptic("tap"); setTacticSheet(true); }}
             onSubs={() => { haptic("tap"); setSubs(true); }}
             onHistory={() => { haptic("tap"); setHistory(true); }} />
+        )}
+        {!quick && !over && (
+          <StrikersArcadeDeck
+            sim={sim}
+            userSide={userSide}
+            currentItem={currentItem}
+            itemCharge={itemCharge}
+            rolling={rolling}
+            onUseItem={handleUseItem}
+            onTackle={handleTackle}
+            onHyperStrike={() => setQteOpen(true)}
+          />
         )}
         {!quick && !over && <ShoutBar sim={sim} side={userSide} onChange={() => setTick((x) => x + 1)} />}
         {!quick && !over && (
@@ -635,6 +730,16 @@ export function MatchScreen({ quick }: { quick: boolean }) {
           onClose={() => { setHalfSheet(false); setPaused(false); setTick((x) => x + 1); }} />
       )}
       {subs && !result && <SubsSheet sim={sim} side={userSide} w={w} onClose={() => { setSubs(false); setPaused(false); setTick((x) => x + 1); }} />}
+      {qteOpen && (
+        <HyperStrikeModal
+          onResolve={(bonusXg, label) => {
+            if (sim) sim.applyHyperStrikeQte(bonusXg);
+            showComic(label);
+            setTick((x) => x + 1);
+          }}
+          onClose={() => setQteOpen(false)}
+        />
+      )}
     </div>
   );
 }

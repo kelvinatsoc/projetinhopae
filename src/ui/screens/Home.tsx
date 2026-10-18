@@ -79,6 +79,7 @@ export function HomeScreen() {
   ];
 
   const quickActions: { label: string; sub: string; slug: IconSlug; go: () => void; badge?: number }[] = [
+    { label: "Poderes", sub: "Loja Arcade", slug: "vestiario", go: () => push({ name: "powers" }) },
     { label: "Base", sub: `${youthCount} jovens`, slug: "base", go: () => push({ name: "youth" }) },
     { label: "Treino", sub: "Foco & evolução", slug: "treino", go: () => push({ name: "training" }) },
     { label: "Vestiário", sub: `${Math.round(squadMood(w, user))}% moral`, slug: "vestiario", go: () => push({ name: "dressing" }) },
@@ -226,6 +227,9 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
         <div className="nm-actions">
           <button className="btn" onClick={() => push({ name: "tactics" })}>
             <GIcon slug="tatica" size={19} /> Escalação
+          </button>
+          <button className="btn" onClick={() => push({ name: "powers" })} title="Loja de Poderes e Itens">
+            ⚡ Poderes
           </button>
           <button className="btn primary" onClick={continueGame}>
             <Icon name="play" size={16} /> {days <= 0 ? "Jogar Partida" : "Continuar"}
