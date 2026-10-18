@@ -10,7 +10,10 @@ responde 400. Use as constantes de THUMB_WIDTHS.
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import os
 import time
 import urllib.parse
@@ -30,7 +33,8 @@ session.headers["User-Agent"] = UA
 def _with_lock(fn):
     os.makedirs(CACHE, exist_ok=True)
     with open(LOCK, "a+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if fcntl is not None:
+            fcntl.flock(f, fcntl.LOCK_EX)
         try:
             f.seek(0)
             raw = f.read().strip()
@@ -41,7 +45,8 @@ def _with_lock(fn):
             f.write(repr(new))
             f.flush()
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def _throttle():
