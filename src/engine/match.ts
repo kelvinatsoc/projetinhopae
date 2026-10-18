@@ -381,11 +381,15 @@ export class MatchSim {
     // chance de finalização neste minuto
     const ratio = S.att / Math.max(20, O.def);
     const openness = (1 + 0.06 * S.mentality + 0.03 * O.mentality) * S.fx.open * O.fx.openAgainst;
-    // estadual: quem vence por 2+ tira o pé e quem perde fecha a casinha (evita 10 x 0 contra os pequenos);
+    // estadual / copas: quem vence por 2+ tira o pé e quem perde fecha a casinha (evita goleadas irreais);
     // o 1,5 repõe o volume de chutes perdido na compressão (média ~2,6 gols/jogo)
     const lead = S.goals - O.goals;
-    const ease = this.tempo < 1 && lead >= 2 ? Math.pow(0.5, lead - 1) : 1;
-    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp * this.tempo) * openness * ease * (this.tempo < 1 ? 1.5 : 1);
+    const isCont = this.f.comp === "liberta" || this.f.comp === "sula";
+    const ease = this.tempo < 1 && lead >= 2
+      ? Math.pow(0.5, lead - 1)
+      : (isCont && lead >= 2 ? Math.pow(0.65, lead - 1) : 1);
+    const contMult = isCont ? 0.94 : 1;
+    const pShot = TUNING.shotBase * Math.pow(ratio, TUNING.shotExp * this.tempo) * openness * ease * (this.tempo < 1 ? 1.5 : 1) * contMult;
     if (play) this.powerPlay(play.side, play.pid, play.def);
     else if (chance(pShot)) this.shot(atk);
     else if (chance(0.045)) {

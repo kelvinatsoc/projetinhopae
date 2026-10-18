@@ -35,6 +35,11 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+if sys.stdout.encoding != "utf-8" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8" and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import wm  # noqa: E402
 from clubs_catalog import ALL_CLUBS  # noqa: E402
 
@@ -72,6 +77,8 @@ CREST_OVERRIDES: dict[str, tuple[str, str]] = {
     "corinthians": ("Sport Club Corinthians Paulista crest.svg", "en"),  # a P154 é uma foto
     "maringa": ("Mfc monocromia verde paixao.png", "commons"),  # a P154 é a versão cinza (monocromia)
     "tombense": ("Tombense FC.png", "en"),  # a P154 é só o monograma "TFC"
+    "duque-de-caxias": ("Duque de Caxias Futebol Clube.png", "pt"),
+    "capital-to": ("CapitalFC2024.png", "pt"),
 }
 # Estádio do clube: clubId -> QID do estádio (quando o link da Wikipedia/P115 não bate com o
 # estádio usado no banco de dados, inclusive os nomes fixados em build_database.STADIUMS)
@@ -177,7 +184,7 @@ def raw_path(wiki, name, width):
 def thumb_urls(files, width, wiki="commons"):
     """URLs diretas das miniaturas (ou do original, se for menor), 50 arquivos por requisição.
     Evita o redirecionamento de Special:FilePath e a segunda tentativa sem miniatura."""
-    api = wm.COMMONS_API if wiki == "commons" else EN_API
+    api = wm.COMMONS_API if wiki == "commons" else (PT_API if wiki == "pt" else EN_API)
     out = {}
     for batch in chunks(sorted(set(files)), 50):
         r = wm.api(api, {"action": "query", "titles": "|".join("File:" + f for f in batch),
@@ -214,9 +221,9 @@ def fetch_url(name, width, wiki, url):
 
 
 def fetch_raw(name, width, wiki="commons"):
-    """Baixa (com cache) um arquivo da Wikimedia. wiki: "commons" ou "en".
+    """Baixa (com cache) um arquivo da Wikimedia. wiki: "commons", "en" ou "pt".
     Tenta a miniatura na largura pedida e, se não der (raster menor que a largura), o original."""
-    host = "commons.wikimedia.org" if wiki == "commons" else "en.wikipedia.org"
+    host = "commons.wikimedia.org" if wiki == "commons" else ("pt.wikipedia.org" if wiki == "pt" else "en.wikipedia.org")
     os.makedirs(RAWDIR, exist_ok=True)
     tries = [width, None] if width else [None]
     for w in tries:
@@ -775,7 +782,7 @@ def crests(db, force=False):
     crest_candidates(db)
     clubs = db["clubs"]
     ok, miss = 0, []
-    todo = {"commons": set(), "en": set()}
+    todo = {"commons": set(), "en": set(), "pt": set()}
     for c in ALL_CLUBS:
         v, out = clubs[c["id"]], os.path.join(MEDIA, "crests", c["id"] + ".webp")
         cr = v.get("crest")
@@ -783,7 +790,8 @@ def crests(db, force=False):
                 and not os.path.exists(raw_path(cr["wiki"], cr["file"], 500 if cr["wiki"] == "commons" else 250)):
             todo[cr["wiki"]].add(cr["file"])
     urls = {"commons": thumb_urls(todo["commons"], 500, "commons") if todo["commons"] else {},
-            "en": thumb_urls(todo["en"], 250, "en") if todo["en"] else {}}
+            "en": thumb_urls(todo["en"], 250, "en") if todo["en"] else {},
+            "pt": thumb_urls(todo["pt"], 250, "pt") if todo["pt"] else {}}
     for c in ALL_CLUBS:
         v = clubs[c["id"]]
         out = os.path.join(MEDIA, "crests", c["id"] + ".webp")

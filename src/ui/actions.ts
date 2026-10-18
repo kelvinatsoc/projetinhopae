@@ -7,7 +7,7 @@ import { registerMedia, type RegenFace } from "../engine/media";
 import { clearAdminUndo, markAdmin } from "../engine/admin";
 import type { World } from "../engine/types";
 import { loadSnapshot, saveSnapshot, saveWorld } from "../save";
-import { getWorld, push, replace, resetNav, setWorld, toast, update } from "../store";
+import { getNav, getWorld, push, replace, resetNav, setWorld, toast, update } from "../store";
 
 let dbPromise: Promise<Database> | null = null;
 
@@ -85,6 +85,9 @@ let saving = false;
 export function autosave(immediate = false) {
   const w = getWorld();
   if (!w || !w.settings.autoSave) return;
+  // Durante a partida ao vivo, adia o autosave em segundo plano para não roubar quadros (19 FPS) da animação
+  const inMatch = getNav().stack.some((r) => r.name === "match");
+  if (inMatch && !immediate) return;
   window.clearTimeout(saveTimer);
   const run = async () => {
     if (saving) return;

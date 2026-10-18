@@ -12,14 +12,24 @@ export interface PackedWorld { v: number; world: Omit<World, "players">; players
 /** Jogadores em colunas. A ordem dos ids é preservada. */
 export function packPlayers(players: Record<number, Player>): PackedPlayers {
   const list = Object.values(players);
+  const n = list.length;
   const keySet = new Set<string>();
-  for (const p of list) for (const k of Object.keys(p)) if ((p as unknown as Record<string, unknown>)[k] !== undefined) keySet.add(k);
+  for (let i = 0; i < n; i++) {
+    const p = list[i] as unknown as Record<string, unknown>;
+    for (const k in p) if (p[k] !== undefined) keySet.add(k);
+  }
   const keys = [...keySet];
-  const cols = keys.map((k) => list.map((p) => {
-    const v = (p as unknown as Record<string, unknown>)[k];
-    return v === undefined ? MISSING : v;
-  }));
-  return { keys, cols, n: list.length };
+  const numKeys = keys.length;
+  const cols: unknown[][] = new Array(numKeys);
+  for (let k = 0; k < numKeys; k++) cols[k] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = list[i] as unknown as Record<string, unknown>;
+    for (let k = 0; k < numKeys; k++) {
+      const v = p[keys[k]];
+      cols[k][i] = v === undefined ? MISSING : v;
+    }
+  }
+  return { keys, cols, n };
 }
 
 export function unpackPlayers(pk: PackedPlayers): Record<number, Player> {

@@ -35,9 +35,9 @@ function poisson(l: number): number {
 /** Gols esperados (mandante, visitante) para forças sH/sA. */
 export function expectedGoals(sH: number, sA: number, neutral: boolean): [number, number] {
   const d = sH - sA;
-  // calibrado para ~2,6–2,8 gols/jogo nas ligas (real: 2,4–2,9); a diferença de força ainda decide
-  const base = neutral ? [1.2, 1.2] : [1.36, 1.05];
-  return [base[0] * Math.exp(d / 14), base[1] * Math.exp(-d / 14)];
+  // calibrado para ~2,5–2,7 gols/jogo nas ligas (real: 2,4–2,9); a diferença de força ainda decide
+  const base = neutral ? [1.18, 1.18] : [1.32, 1.02];
+  return [base[0] * Math.exp(d / 16), base[1] * Math.exp(-d / 16)];
 }
 
 /**

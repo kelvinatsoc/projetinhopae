@@ -487,8 +487,15 @@ export function fireAndRehire(w: World, newClubId: string) {
 
 export function boardAfterMatch(w: World, won: boolean, draw: boolean, oppStronger: boolean) {
   let d = won ? 1.5 : draw ? (oppStronger ? 0.5 : -0.3) : oppStronger ? -1 : -2.2;
-  if (w.board.confidence > 85 && d > 0) d *= 0.5;
-  w.board.confidence = Math.max(w.settings.casual ? 5 : 0, Math.min(100, w.board.confidence + d));
+  if (w.board.confidence > 90 && d > 0) {
+    // Rendimentos decrescentes e resistência à perfeição (não trava em 100 em sequências longas)
+    d *= Math.max(0.08, (99 - w.board.confidence) / 16);
+  } else if (w.board.confidence > 80 && d > 0) {
+    d *= 0.5;
+  }
+  // Teto de partidas de 99 (100 fica reservado para celebração de títulos no fim de temporada)
+  const maxConf = 99;
+  w.board.confidence = Math.max(w.settings.casual ? 5 : 0, Math.min(maxConf, Math.round((w.board.confidence + d) * 10) / 10));
   if (w.board.confidence < 25 && !w.board.warned) {
     w.board.warned = true;
     addNews(w, "board", "A diretoria está preocupada", w.settings.casual

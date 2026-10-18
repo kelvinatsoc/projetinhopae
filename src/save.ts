@@ -43,7 +43,8 @@ async function encodeOffThread(w: World): Promise<StoredWorld> {
     return await new Promise<StoredWorld>((ok, fail) => {
       const id = ++reqId;
       pending.set(id, { ok, fail });
-      wk.postMessage({ id, world: w });
+      const rawJson = JSON.stringify(w);
+      wk.postMessage({ id, rawJson });
     });
   } catch {
     return encodeWorld(w);
