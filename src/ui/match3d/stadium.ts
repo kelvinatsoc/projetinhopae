@@ -48,7 +48,7 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
   const t = canvasTex(W, H, (g) => {
     const X = (m: number) => (m + AREA_L / 2) * S;
     const Y = (m: number) => (m + AREA_W / 2) * S;
-    const A = "#3b8c35", B = "#2f7a2b";
+    const A = "#183a24", B = "#122e1c"; // Strikers dark turf
     g.fillStyle = A;
     g.fillRect(0, 0, W, H);
     g.fillStyle = B;
@@ -84,7 +84,7 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
       }
     }
     // área fora do campo um pouco mais escura; pista de atletismo
-    g.fillStyle = "rgba(10,30,8,0.18)";
+    g.fillStyle = "rgba(5,15,9,0.35)";
     g.fillRect(0, 0, W, Y(-HALF_W - 2));
     g.fillRect(0, Y(HALF_W + 2), W, H);
     g.fillRect(0, 0, X(-HALF_L - 2), H);
@@ -112,8 +112,8 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
       d[i + 2] += n * 0.4;
     }
     g.putImageData(img, 0, 0);
-    // linhas
-    g.strokeStyle = "rgba(250,250,245,0.92)";
+    // linhas elétricas Super Mario Strikers (Cyber Cyan)
+    g.strokeStyle = "rgba(0, 240, 255, 0.95)";
     g.lineWidth = Math.max(2, 0.12 * S);
     const rect = (x0: number, y0: number, x1: number, y1: number) => g.strokeRect(X(x0), Y(y0), (x1 - x0) * S, (y1 - y0) * S);
     rect(-HALF_L, -HALF_W, HALF_L, HALF_W);
@@ -124,7 +124,7 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
     g.beginPath();
     g.arc(X(0), Y(0), 9.15 * S, 0, Math.PI * 2);
     g.stroke();
-    g.fillStyle = "rgba(250,250,245,0.95)";
+    g.fillStyle = "rgba(0, 240, 255, 0.95)";
     const spot = (x: number) => {
       g.beginPath();
       g.arc(X(x), Y(0), 0.2 * S, 0, Math.PI * 2);

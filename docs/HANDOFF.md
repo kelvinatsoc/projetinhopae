@@ -158,4 +158,9 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
       - Botões táteis 3D com chanfros, gradientes metálicos e afundamento mecânico no clique (`transform: translateY(2px)`).
       - Topbar e bottomnav redesenhados com dock fliperama flutuante e botão de ação principal pulsante em volt neon.
       - Atalho rápido e cartão de poderes/itens integrado na tela de Início (`Home.tsx`).
+    - **Transformação Gráfica Strikers no Campo (2D & 3D) e Painel Tático**:
+      - **Gramado de Combate Industrial (`src/ui/MatchView.tsx`, `src/ui/match3d/stadium.ts`)**: Gramado em tons profundos de arena grunge (`#1a3d28` e `#13311f`), marcações e linhas de campo em ciano elétrico de alta voltagem (`#00f0ff` Cyber Cyan), bandeirinhas de escanteio em Volt Lime (`#ccff00`) e goleiras de aço reforçado com rede de energia neon pulsante.
+      - **Auras de Voltagem da Bola & Traps (`src/ui/MatchView.tsx`)**: Renderização dinâmica de plasma na bola conforme o nível de Voltagem (Nível 1: amarelo volt com faíscas; Nível 2: ciano elétrico; Nível 3: chama plasma branca/magenta Hyper Strike), aura arco-íris da Super Estrela, chevron direcional arcade sobre a cabeça do condutor da bola e sprite de casca de banana no gramado.
+      - **Onomatopeias e Comic Pops no Campinho (`src/ui/matchSprites.ts`, `src/ui/MatchView.tsx`)**: Estendido `PixelFX` com sistema de Comic Pops balísticos ("ZAP!", "POW!", "CARRINHO!", "FALTA DURA!", "GOL!", "HYPER STRIKE!") que surgem com escala dinâmica em carrinhos, faltas, chutes fortes e gols.
+      - **Campo Tático Arcade Strikers (`src/ui/screens/Tactics.tsx`, `src/ui/tactics.css`)**: Tabuleiro tático com grade elétrica neon, gramado metálico escuro, marcações em ciano elétrico, feixes de energia nas linhas de entrosamento (`#00ff88`, `#ccff00`, `#ff9900`, `#ff0055`) e slots com relevo e badges futuristas de posição e função.
 

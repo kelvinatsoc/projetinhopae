@@ -325,21 +325,27 @@ function parse(h: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-// ---------------------------------------------------------------- efeitos em pixel (faíscas, rastro)
+// ---------------------------------------------------------------- efeitos em pixel (faíscas, rastro, comic pops)
 interface Spark { x: number; y: number; vx: number; vy: number; life: number; c: string }
+interface ComicPop { x: number; y: number; text: string; color: string; life: number; maxLife: number }
 
-/** Faíscas na trave, poeira do carrinho, rastro do chute forte: desenhado na escala do campinho. */
+/** Faíscas na trave, poeira do carrinho, rastro do chute e comic pops estilo Super Mario Strikers. */
 export class PixelFX {
   sparks: Spark[] = [];
   streak: { x: number; y: number }[] = [];
   streakColor = "#ffffff";
   streakOn = false;
+  comicPops: ComicPop[] = [];
 
   burst(x: number, y: number, colors: string[], n = 12, power = 1) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, v = (0.4 + Math.random() * 0.9) * power;
       this.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.3, life: 260 + Math.random() * 260, c: colors[i % colors.length] });
     }
+  }
+
+  pop(x: number, y: number, text: string, color = "#ccff00") {
+    this.comicPops.push({ x, y, text, color, life: 650, maxLife: 650 });
   }
 
   update(dt: number, ball: { x: number; y: number; h: number }) {
@@ -351,6 +357,11 @@ export class PixelFX {
       s.life -= dt;
     }
     if (this.sparks.length) this.sparks = this.sparks.filter((s) => s.life > 0);
+    for (const cp of this.comicPops) {
+      cp.y -= 0.15 * k;
+      cp.life -= dt;
+    }
+    if (this.comicPops.length) this.comicPops = this.comicPops.filter((cp) => cp.life > 0);
     if (this.streakOn) {
       this.streak.push({ x: ball.x, y: ball.y - ball.h });
       if (this.streak.length > 9) this.streak.shift();
@@ -369,6 +380,25 @@ export class PixelFX {
     for (const s of this.sparks) {
       g.fillStyle = s.c;
       g.fillRect(Math.round(s.x), Math.round(s.y), 1, 1);
+    }
+    for (const cp of this.comicPops) {
+      const alpha = Math.min(1, cp.life / 180);
+      g.save();
+      g.globalAlpha = alpha;
+      const progress = 1 - cp.life / cp.maxLife;
+      const scale = progress < 0.25 ? 0.7 + progress * 2.0 : 1.2 - progress * 0.3;
+      g.translate(cp.x, cp.y);
+      g.scale(scale, scale);
+      g.font = "900 8px 'Barlow Condensed', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "#000000";
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        g.fillText(cp.text, dx, dy);
+      }
+      g.fillStyle = cp.color;
+      g.fillText(cp.text, 0, 0);
+      g.restore();
     }
   }
 }

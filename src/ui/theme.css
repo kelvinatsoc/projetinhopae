@@ -1391,3 +1391,133 @@ html.lite img { content-visibility: auto; }
   max-width: 100%;
 }
 
+/* ================================================================
+   SUPER MARIO STRIKERS × FOOTBALL MANAGER — Visual Overhaul
+   Grunge Metal, Electric Cyber Lines, 3D Arcade Tactile Buttons,
+   High-Voltage HUD & Futuristic Player Cards
+   ================================================================ */
+:root {
+  --bg: #07090e;
+  --bg2: #0b0f17;
+  --surface: #101622;
+  --surface-2: #161e2e;
+  --surface-3: #1d273c;
+  --border: rgba(0, 240, 255, 0.2);
+  --border-strong: rgba(0, 240, 255, 0.42);
+  --volt: #ccff00;
+  --cyan: #00f0ff;
+  --strikers-pink: #ff0055;
+  --glow-cyan: 0 0 16px rgba(0, 240, 255, 0.5);
+  --glow-volt: 0 0 16px rgba(204, 255, 0, 0.5);
+}
+
+/* Fundo da aplicação com malha de arena cyberpunk */
+.app, .start-bg {
+  background:
+    radial-gradient(circle at 50% -40px, rgba(0, 240, 255, 0.12), transparent 60%),
+    radial-gradient(circle at 90% 20%, rgba(204, 255, 0, 0.06), transparent 50%),
+    radial-gradient(circle at 10% 80%, rgba(255, 0, 85, 0.05), transparent 45%),
+    linear-gradient(180deg, #07090e 0%, #0a0e16 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Botões 3D Táteis estilo Fliperama / Arcade */
+.btn {
+  position: relative;
+  font-family: var(--display);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 12px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.btn:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+.btn.primary, .nextbar-go {
+  background: linear-gradient(180deg, #d4ff1a 0%, #a2d400 100%) !important;
+  color: #07090e !important;
+  border: 1px solid #eaff66 !important;
+  box-shadow: 0 3px 0 #6e9100, 0 0 18px rgba(204, 255, 0, 0.45) !important;
+}
+.btn.primary:active, .nextbar-go:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 #6e9100, 0 0 8px rgba(204, 255, 0, 0.45) !important;
+}
+.btn.gold {
+  background: linear-gradient(180deg, #00f0ff 0%, #0099cc 100%) !important;
+  color: #07090e !important;
+  border: 1px solid #7df9ff !important;
+  box-shadow: 0 3px 0 #006688, 0 0 18px rgba(0, 240, 255, 0.45) !important;
+}
+
+/* Placar de partida e HUD de alta voltagem */
+.scoreboard .score {
+  color: #ccff00 !important;
+  text-shadow: 0 0 14px rgba(204, 255, 0, 0.6), 0 2px 0 rgba(0, 0, 0, 0.8) !important;
+  font-family: var(--num) !important;
+  letter-spacing: 2px !important;
+}
+.minute {
+  background: #00f0ff !important;
+  color: #07090e !important;
+  font-weight: 900 !important;
+  border: 1px solid #7df9ff !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5) !important;
+}
+
+/* Barra de Navegação Inferior estilo Dock Fliperama */
+.bottomnav {
+  background: rgba(8, 12, 19, 0.94) !important;
+  border-top: 1px solid rgba(0, 240, 255, 0.25) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 240, 255, 0.15) !important;
+}
+.bottomnav button.active .nav-ic {
+  background: rgba(0, 240, 255, 0.18) !important;
+  color: #00f0ff !important;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.55), inset 0 0 0 1.5px #00f0ff !important;
+}
+.bottomnav button.active {
+  color: #00f0ff !important;
+}
+.bottomnav button.active .nav-lb {
+  font-weight: 900 !important;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6) !important;
+}
+
+/* Cartas de jogador FUT estilo Strikers */
+.pcard {
+  border: 1.5px solid rgba(0, 240, 255, 0.28) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 240, 255, 0.12) !important;
+}
+.pcard.gold {
+  border-color: #ffd700 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 215, 0, 0.4) !important;
+}
+.pcard.legend {
+  border-color: #ff0055 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), 0 0 18px rgba(255, 0, 85, 0.5) !important;
+}
+.pcard .pc-ovr {
+  color: #ccff00 !important;
+  text-shadow: 0 0 8px rgba(204, 255, 0, 0.5) !important;
+}
+
+/* Chips e Seletores ativos com brilho neon */
+.chip.active, .view-toggle button.active {
+  background: #ccff00 !important;
+  color: #07090e !important;
+  border-color: #ccff00 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 12px rgba(204, 255, 0, 0.45) !important;
+}
+.seg button.active {
+  background: linear-gradient(180deg, #18263a 0%, #101b2a 100%) !important;
+  color: #00f0ff !important;
+  border: 1px solid rgba(0, 240, 255, 0.4) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3) !important;
+  font-weight: 900 !important;
+}
+
