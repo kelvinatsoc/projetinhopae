@@ -35,11 +35,10 @@ import { isLite } from "./perf";
 import { W, H, PX0, PX1, PY0, PY1, PL, PW, CX, CY, POST, BOX_D, BOX_H, SPOT } from "./pitchGeom";
 const TUNNEL = { x: CX, y: PY0 - 5 };
 
-// Super Mario Strikers: gramado grunge escuro de arena e marcações em ciano elétrico
-const GRASS_A = "#1a3d28";
-const GRASS_B = "#13311f";
-const LINE = "#00f0ff";
-const OUTLINE = "#050d09";
+const GRASS_A = "#3f9a45";
+const GRASS_B = "#378c3d";
+const LINE = "#e6f4e6";
+const OUTLINE = "#0d1a12";
 
 // ---------------------------------------------------------------- cores dos times
 /** Cores de um uniforme como o campo desenha (camisa, mangas, calção, meias e padrão). */
@@ -377,9 +376,9 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
       px(g, gx + dir * 2, cy);
       px(g, gx + dir, cy + vy);
       px(g, gx, cy + vy * 2);
-      g.fillStyle = "#ccff00"; // Volt Lime Strikers corner flag
+      g.fillStyle = "#f2d22e";
       px(g, gx - dir, cy - 3 * (cy === PY0 ? 1 : 0) + (cy === PY0 ? 0 : 1), 1, 2);
-      g.fillStyle = "#ffffff";
+      g.fillStyle = "#ddd";
       px(g, gx, cy - (cy === PY0 ? 3 : -1), 1, 3);
       g.fillStyle = LINE;
     }
@@ -457,20 +456,19 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
 
   // [stadium-art] estrutura, teto, marcos, luzes, telão e mosaico
   paintStadium(g, art, { home, away, neutral: !!sim.f.neutral, stage: sim.f.stage }, rng);
-  // goleiras (redes) por cima do gramado — Strikers: armação metálica com rede de energia neon
+  // goleiras (redes) por cima do gramado
   for (const s of [0, 1] as const) {
     const gx = s === 0 ? PX0 : PX1;
     const back = s === 0 ? PX0 - 3 : PX1 + 3;
     const x0 = Math.min(gx, back);
-    g.fillStyle = "rgba(0, 240, 255, 0.45)";
+    g.fillStyle = "rgba(255,255,255,0.5)";
     for (let y = CY - POST + 1; y < CY + POST; y++) for (let x = x0 + 1; x < x0 + 3; x++) if ((x + y) % 2 === 0) px(g, x, y);
-    g.fillStyle = "#ffffff";
+    g.fillStyle = "#f7f7f7";
     g.fillRect(x0, CY - POST, 4, 1);
     g.fillRect(x0, CY + POST, 4, 1);
     g.fillRect(back, CY - POST, 1, POST * 2 + 1);
-    g.fillStyle = "#00f0ff";
-    px(g, gx, CY - POST);
-    px(g, gx, CY + POST);
+    g.fillStyle = "#c9d2cc";
+    g.fillRect(back, CY - POST + 1, 1, POST * 2 - 1);
   }
 
   // quadros da torcida "pulando" (só os torcedores levantados; o resto já está no fundo)
@@ -1349,14 +1347,8 @@ class PitchAnim {
     const style = shotStyle(p, sh.kind, this.sim.minute, sh.result);
     const pose = style === "header" ? "header" : style === "bicycle" ? "bicycle" : style === "volley" ? "volley" : "kick";
     setPose(shooter, pose, this.now, pose === "bicycle" ? 520 : pose === "header" ? 420 : 260);
-    const volt = this.sim.arcade?.voltage ?? 0;
-    if (style === "power" || style === "volley" || style === "bicycle" || volt > 0) {
-      this.nextFx = { power: true };
-      const popText = volt === 3 ? "HYPER STRIKE!" : volt === 2 ? "SUPER CHUTE!" : style === "bicycle" ? "BICICLETA!" : "CHUTE!";
-      const popColor = volt === 3 ? "#ff0055" : volt === 2 ? "#00f0ff" : "#ccff00";
-      this.pfx.burst(shooter.x, shooter.y, [popColor, "#ffffff"], 12, 1.2);
-      this.pfx.pop(shooter.x, shooter.y - 14, popText, popColor);
-    } else if (style === "curl" || style === "freekick") this.nextFx = { curve: (Math.random() < 0.5 ? -1 : 1) * rnd(3, 6) };
+    if (style === "power" || style === "volley" || style === "bicycle") this.nextFx = { power: true };
+    else if (style === "curl" || style === "freekick") this.nextFx = { curve: (Math.random() < 0.5 ? -1 : 1) * rnd(3, 6) };
     const outcome: CineOutcome = sh.result === "goal" ? "goal" : sh.result === "save" ? "save" : sh.result === "post" ? "post" : "miss";
     if (sh.result !== "var" && sh.result !== "owngoal" && !this.special) this.maybeCine(shooter, keeper, sh.side, outcome, style, sh.xg, false);
   }
@@ -1406,8 +1398,6 @@ class PitchAnim {
   scored(sh: NonNullable<MinutePhase["shot"]> | { side: 0 | 1; result: "goal" }, e: MatchEvent | null, scorer: Dude | null, hold: boolean) {
     const atk = sh.side;
     this.netShake = { side: atk, until: this.now + 450 };
-    this.pfx.burst(goalX(atk), CY, ["#00f0ff", "#ccff00", "#ff0055", "#ffd700", "#ffffff"], 20, 1.8);
-    this.pfx.pop(goalX(atk), CY - 14, "GOL!", "#ccff00");
     if (sh.result === "var") {
       if (e) this.say(e.text, atk, 1);
       this.icons.push({ kind: "var", d: null, x: CX, y: CY - 16, until: this.now + 1800 });
@@ -1594,8 +1584,6 @@ class PitchAnim {
               setPose(d, "slide", this.now, 380);
               const victim = this.nearest((1 - (ev.side ?? 0)) as 0 | 1, d.x, d.y);
               if (victim) setPose(victim, "fall", this.now + 150, 900);
-              this.pfx.burst(d.x, d.y, ["#ff0055", "#00f0ff", "#ffffff"], 14, 1.3);
-              this.pfx.pop(d.x, d.y - 12, "FALTA DURA!", "#ff0055");
             }
             if (ref) {
               ref.ox = d.x + (d.x < ref.x ? 4 : -4);
@@ -1631,8 +1619,6 @@ class PitchAnim {
           setPose(d, "slide", this.now, 360);
           const victim = this.ball.holder && this.ball.holder.side !== side ? this.ball.holder : this.nearest((1 - side) as 0 | 1, d.x, d.y);
           if (victim) setPose(victim, "fall", this.now + 120, 800);
-          this.pfx.burst(d.x, d.y, ["#ccff00", "#00f0ff", "#ffffff"], 12, 1.2);
-          this.pfx.pop(d.x, d.y - 10, "CARRINHO!", "#ccff00");
         }
       });
     }
@@ -1821,7 +1807,7 @@ class PitchAnim {
     };
     for (const d of this.dudes) move(d);
     for (const g of this.ghosts) move(g);
-    if (this.rich || this.special || this.pfx.sparks.length || this.pfx.comicPops.length) {
+    if (this.rich || this.special || this.pfx.sparks.length) {
       this.pfx.streakOn = !!b.fl?.power || !!b.fl?.glow;
       this.pfx.streakColor = b.fl?.glow?.[1] ?? "#ffffff";
       this.pfx.update(dt, b);
@@ -1867,10 +1853,10 @@ class PitchAnim {
         else g.fillRect(Math.floor(Math.random() * W), 123 + Math.floor(Math.random() * 8), 1, 1);
       }
     }
-    // rede balançando — Strikers: faíscas neon na rede
+    // rede balançando
     if (now < this.netShake.until) {
       const back = this.netShake.side === 0 ? PX1 + 4 : PX0 - 4;
-      g.fillStyle = "rgba(0, 240, 255, 0.9)";
+      g.fillStyle = "rgba(255,255,255,0.8)";
       g.fillRect(back, CY - POST + 2, 1, POST * 2 - 3);
     }
     const all = this.dudes.filter((d) => !d.hidden).concat(this.ghosts);
@@ -1885,7 +1871,7 @@ class PitchAnim {
       if (this.rich && d.side !== 2 || this.rich && d.pose) drawPitchDude(g, d, now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
       else this.drawDude(g, d);
     }
-    if (this.rich || this.special || this.pfx.sparks.length || this.pfx.comicPops.length) this.pfx.draw(g);
+    if (this.rich || this.special || this.pfx.sparks.length) this.pfx.draw(g);
     this.drawBall(g);
     for (const ic of this.icons) this.drawIcon(g, ic);
   }
@@ -1994,71 +1980,23 @@ class PitchAnim {
     const x = Math.round(b.x) - 1, y = Math.round(b.y) - 1, by = y - Math.round(b.h);
     g.fillStyle = "rgba(0,0,0,0.4)";
     g.fillRect(x, y + 2, 2, 1);
-
-    // Efeitos visuais do Super Mario Strikers: Voltagem da bola e Super Estrela
-    const arc = this.sim.arcade;
-    const volt = arc?.voltage ?? 0;
-    const star = arc?.starUntil && this.now < arc.starUntil[0];
-
-    if (star) {
-      // Super Estrela: aura brilhante arco-íris
-      const cols = ["#ff0055", "#ffd700", "#00f0ff", "#ccff00"];
-      g.fillStyle = cols[Math.floor(this.now / 90) % cols.length];
-      g.fillRect(x - 2, by - 1, 6, 4);
-      g.fillRect(x - 1, by - 2, 4, 6);
-    } else if (volt === 3) {
-      // Nível 3: Hyper Strike Plasma White/Crimson pulsante
-      const pulse = Math.floor(this.now / 60) % 2 === 0;
-      g.fillStyle = pulse ? "#ff0055" : "#ffffff";
-      g.fillRect(x - 3, by - 2, 8, 6);
-      g.fillRect(x - 2, by - 3, 6, 8);
-      g.fillStyle = "#00f0ff";
-      g.fillRect(x - 1, by - 1, 4, 4);
-    } else if (volt === 2) {
-      // Nível 2: Ciano Elétrico de Alta Voltagem
-      g.fillStyle = "rgba(0, 240, 255, 0.85)";
-      g.fillRect(x - 2, by - 1, 6, 4);
-      g.fillRect(x - 1, by - 2, 4, 6);
-    } else if (volt === 1) {
-      // Nível 1: Volt Lime / Amarelo Elétrico
-      g.fillStyle = "rgba(204, 255, 0, 0.75)";
-      g.fillRect(x - 2, by, 6, 2);
-      g.fillRect(x, by - 2, 2, 6);
-    }
-
     g.fillStyle = OUTLINE;
     g.fillRect(x - 1, by, 4, 2);
     g.fillRect(x, by - 1, 2, 4);
-    g.fillStyle = volt === 3 ? "#ffffff" : "#ffffff";
+    g.fillStyle = "#ffffff";
     g.fillRect(x, by, 2, 2);
-    g.fillStyle = volt === 3 ? "#ff0055" : volt === 2 ? "#00f0ff" : volt === 1 ? "#ffd700" : "#7d8a84";
+    g.fillStyle = "#7d8a84";
     const sp = Math.floor(b.spin / 90) % 2;
     g.fillRect(x + sp, by + 1 - sp, 1, 1);
-
-    // Marcador de quem está com a bola: Chevron arcade com pulso
+    // marcador de quem está com a bola
     const d = b.holder;
     if (d && d.side !== 2 && this.mode === "play" && d.grp !== 0) {
-      const bob = Math.floor(this.now / 160) % 2;
-      const mx = Math.round(d.x), my = Math.round(d.y) - 12 - bob;
-      g.fillStyle = "#050d09";
-      g.fillRect(mx - 3, my - 1, 7, 5);
-      g.fillStyle = volt === 3 ? "#ff0055" : volt > 0 ? "#ccff00" : "#00f0ff";
-      g.fillRect(mx - 2, my, 5, 2);
-      g.fillRect(mx - 1, my + 2, 3, 1);
-      g.fillRect(mx, my + 3, 1, 1);
-    }
-
-    // Armadilha de Casca de Banana no gramado (se ativa)
-    if (arc?.bananaTrap && arc.bananaTrap[0] > 0) {
-      const bx0 = arc.bananaTrap[1] === 0 ? PX0 + 32 : PX1 - 32;
-      const by0 = CY + 4;
-      g.fillStyle = "#050d09";
-      g.fillRect(bx0 - 2, by0 - 1, 5, 4);
-      g.fillStyle = "#ffe600";
-      g.fillRect(bx0 - 1, by0, 3, 2);
-      g.fillStyle = "#7a4a15";
-      g.fillRect(bx0 - 1, by0 - 1, 1, 1);
-      g.fillRect(bx0 + 1, by0 + 1, 1, 1);
+      const mx = Math.round(d.x), my = Math.round(d.y) - 11;
+      g.fillStyle = OUTLINE;
+      g.fillRect(mx - 2, my - 1, 5, 3);
+      g.fillStyle = "#ffe14d";
+      g.fillRect(mx - 1, my, 3, 1);
+      g.fillRect(mx, my + 1, 1, 1);
     }
   }
 

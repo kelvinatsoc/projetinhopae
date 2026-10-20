@@ -33,7 +33,7 @@ export function refit(w: World, formation: string, current: Lineup): Lineup {
   return { ...current, starters };
 }
 
-const linkColor = (v: number) => (v >= 70 ? "#00ff88" : v >= 50 ? "#ccff00" : v >= 35 ? "#ff9900" : "#ff0055");
+const linkColor = (v: number) => (v >= 70 ? "#34d27b" : v >= 50 ? "#c9e05a" : v >= 35 ? "#f5a742" : "#ef5350");
 const slotTop = (y: number) => 100 - y * 0.92 - 4;
 
 export function TacticsScreen() {
@@ -307,7 +307,7 @@ export function TacticsPitch({ w, club, lineup, sel, showLinks, onTap, onSwap }:
   return (
     <div className="pitch tac-pitch" ref={ref}>
       <svg className="lines" viewBox="0 0 100 140" preserveAspectRatio="none">
-        <g fill="none" stroke="#00f0ff" strokeWidth="0.8" opacity="0.85">
+        <g fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.5">
           <rect x="3" y="3" width="94" height="134" />
           <line x1="3" y1="70" x2="97" y2="70" />
           <circle cx="50" cy="70" r="11" />
