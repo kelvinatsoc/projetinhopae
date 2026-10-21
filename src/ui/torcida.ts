@@ -21,8 +21,12 @@ export function isBrazilian(c: Pick<Club, "id" | "country">): boolean {
  * Gravações reais de torcida por clube (id do jogo -> arquivos em media/audio/).
  * Só entra aqui o clube que tem gravação livre da própria torcida; o resto usa o canto genérico.
  */
-export const CLUB_TORCIDA: Record<string, { chant?: string; goal?: string }> = {
-  "sao-paulo": { chant: "audio/br/spfc-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
+export const CLUB_TORCIDA: Record<string, { chant?: string; chants?: string[]; goal?: string }> = {
+  "sao-paulo": {
+    chant: "audio/br/spfc-canto.m4a",
+    chants: ["audio/br/spfc-canto.m4a", "audio/br/spfc-canto2.m4a", "audio/br/spfc-canto3.m4a"],
+    goal: "audio/br/gol-estadio.m4a",
+  },
   corinthians: { chant: "audio/br/corinthians-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
   palmeiras: { chant: "audio/br/palmeiras-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
   flamengo: { chant: "audio/br/flamengo-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
@@ -55,6 +59,7 @@ export interface CrowdProfile {
   /** caminhos dos sons */
   bed: string;
   chant: string;
+  chants?: string[];
   goal: string[];
   /** a torcida deste clube tem gravação própria */
   clubSpecific: boolean;
@@ -81,7 +86,17 @@ export function crowdProfile(home: Club, away: Club, neutral: boolean, userSide:
     const mine = userSide === 0 ? home : away;
     const other = userSide === 0 ? away : home;
     if (isBrazilian(mine)) { club = mine; side = userSide; } else if (isBrazilian(other)) { club = other; side = (1 - userSide) as 0 | 1; } else return null;
-  } else if (!isBrazilian(home)) return null;
+  } else if (!isBrazilian(home)) {
+    // Mandante estrangeiro (ex.: Libertadores fora): se o time do usuário for brasileiro, toca a torcida visitante do usuário!
+    const mine = userSide === 1 ? away : home;
+    if (isBrazilian(mine)) { club = mine; side = userSide; } else return null;
+  } else {
+    // Mandante brasileiro: se o visitante for o clube do usuário com canto próprio (ex: São Paulo jogando fora)
+    if (userSide === 1 && !CLUB_TORCIDA[home.id] && CLUB_TORCIDA[away.id]) {
+      club = away;
+      side = 1;
+    }
+  }
   const selecao = isSelecao(club);
   const own = CLUB_TORCIDA[club.id];
   const bed = selecao ? BR_SOUNDS.selecaoBed : BR_SOUNDS.bed;
@@ -95,6 +110,7 @@ export function crowdProfile(home: Club, away: Club, neutral: boolean, userSide:
     side,
     bed,
     chant,
+    chants: own?.chants,
     goal,
     clubSpecific: !!own,
   };

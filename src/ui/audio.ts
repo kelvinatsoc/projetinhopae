@@ -27,13 +27,24 @@ const SAMPLE = {
 } as const;
 
 /** Cantos de torcida por clube (id do jogo -> arquivo em media/). */
-// Hinos livres já escolhidos em scripts/fetch_audio.py (São Paulo, Nacional-URU); ainda não
-// baixados por limite de taxa do Commons. Para ativar: rode o script e acrescente aqui, ex.:
-// "sao-paulo": "audio/chant-sao-paulo.m4a".
-const CLUB_CHANTS: Record<string, string> = {};
+const CLUB_CHANTS: Record<string, string> = {
+  "sao-paulo": "audio/br/spfc-canto.m4a",
+  corinthians: "audio/br/corinthians-canto.m4a",
+  palmeiras: "audio/br/palmeiras-canto.m4a",
+  flamengo: "audio/br/flamengo-canto.m4a",
+  vasco: "audio/br/vasco-canto.m4a",
+};
+
+const CLUB_CHANTS_POOL: Record<string, string[]> = {
+  "sao-paulo": ["audio/br/spfc-canto.m4a", "audio/br/spfc-canto2.m4a", "audio/br/spfc-canto3.m4a"],
+  corinthians: ["audio/br/corinthians-canto.m4a"],
+  palmeiras: ["audio/br/palmeiras-canto.m4a"],
+  flamengo: ["audio/br/flamengo-canto.m4a"],
+  vasco: ["audio/br/vasco-canto.m4a"],
+};
 
 /** Volume base de cada som (as gravações saem normalizadas em loudness do script). */
-const LEVEL = { crowd: 0.32, goal: 0.9, goalAway: 0.35, ooh: 0.55, whistle: 0.5, chant: 0.6 };
+const LEVEL = { crowd: 0.25, goal: 0.98, goalAway: 0.35, ooh: 0.55, whistle: 0.5, chant: 0.88 };
 
 function readEnabled(): boolean {
   try {
@@ -456,17 +467,19 @@ interface Atmos {
 let atmos: Atmos | null = null;
 
 /** Volume base das camadas da torcida brasileira. */
-const BR_LEVEL = { bed: 0.36, chant: 0.42, boo: 0.5, goal: 0.95, goalAway: 0.3, ooh: 0.6, ole: 0.55 };
+const BR_LEVEL = { bed: 0.12, chant: 0.88, boo: 0.5, goal: 0.98, goalAway: 0.35, ooh: 0.6, ole: 0.65 };
 
 function brPaths(p: CrowdProfile): string[] {
-  return [p.bed, p.chant, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, BR_SOUNDS.goalShout, ...p.goal];
+  const allChants = p.chants && p.chants.length ? p.chants : [p.chant];
+  return [p.bed, ...allChants, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, BR_SOUNDS.goalShout, ...p.goal];
 }
 
-function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean, synth?: (c: AudioContext, out: GainNode) => AudioBufferSourceNode): Layer {
+function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean, synth?: (c: AudioContext, out: GainNode) => AudioBufferSourceNode, pool?: readonly string[]): Layer {
   const g = c.createGain();
   g.gain.value = 0;
   g.connect(bus);
   const layer: Layer = { src: null, g, target: 0 };
+  let poolIdx = 0;
   const startWith = (b: AudioBuffer | null, alt: boolean) => {
     if (!me() || !enabled) return;
     if (!b) {
@@ -479,13 +492,23 @@ function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: stri
     }
     const src = c.createBufferSource();
     src.buffer = b;
-    src.loop = true;
-    if (b.duration > 2) {
-      src.loopStart = 0.03;
-      src.loopEnd = b.duration - 0.03;
+    if (pool && pool.length > 1) {
+      // Quando tem várias músicas de torcida (ex.: São Paulo Independente), toca uma completa e engata na próxima!
+      src.onended = () => {
+        if (!me() || !enabled) return;
+        poolIdx = (poolIdx + 1) % pool.length;
+        const nextPath = pool[poolIdx];
+        void sample(nextPath).then((nextBuf) => startWith(nextBuf, false));
+      };
+    } else {
+      src.loop = true;
+      if (b.duration > 2) {
+        src.loopStart = 0.03;
+        src.loopEnd = b.duration - 0.03;
+      }
     }
     src.connect(g);
-    src.start(c.currentTime, Math.random() * b.duration);
+    src.start(c.currentTime, pool && pool.length > 1 ? 0 : Math.random() * b.duration);
     layer.src = src;
     rampLayer(c, layer, 1.5);
   };
@@ -533,7 +556,7 @@ export function startAtmosphere(p: CrowdProfile) {
   holder.a = a;
   atmos = a;
   a.bed = loopLayer(c, tone, p.bed, SAMPLE.crowd, me);
-  a.chant = loopLayer(c, tone, p.chant, null, me);
+  a.chant = loopLayer(c, p.clubSpecific ? out(c) : tone, p.chant, null, me, undefined, p.chants);
   a.boo = loopLayer(c, tone, BR_SOUNDS.boo, null, me, synthBoo);
   setLayerTargets(c, a, 2);
 }
@@ -545,8 +568,9 @@ function setLayerTargets(c: AudioContext, a: Atmos, secs: number) {
   // goleada: quem ficou vaia no começo; com o estádio esvaziando, sobra o silêncio
   const stay = 1 - a.leave * 0.92;
   const booing = m.boo || a.leave > 0;
-  a.bed.target = BR_LEVEL.bed * loud * m.intensity * stay;
-  a.chant.target = BR_LEVEL.chant * loud * m.chant * Math.min(1.3, m.intensity) * festa * (a.leave > 0 ? 0.15 * stay : 1);
+  const bedLevel = a.p.clubSpecific ? 0.08 : BR_LEVEL.bed;
+  a.bed.target = bedLevel * loud * m.intensity * stay;
+  a.chant.target = BR_LEVEL.chant * loud * Math.max(0.7, m.chant) * Math.min(1.3, m.intensity) * festa * (a.leave > 0 ? 0.15 * stay : 1);
   a.boo.target = booing ? BR_LEVEL.boo * loud * (a.leave > 0 ? Math.max(0.12, 1 - a.leave * 1.15) : 1) : 0;
   rampLayer(c, a.bed, secs);
   rampLayer(c, a.chant, secs);
@@ -655,16 +679,23 @@ function playBufferTo(c: AudioContext, dest: AudioNode, buf: AudioBuffer, gain: 
   src.start();
 }
 
+function playGoalShout(c: AudioContext) {
+  void sample(BR_SOUNDS.goalShout).then((buf) => {
+    if (!buf || !enabled) return;
+    playBuffer(c, buf, 1.25);
+  });
+}
+
 /** Gol com a torcida brasileira: explosão, depois festa (canto mais alto por um tempo). */
 function atmosphereGoal(forCrowd: boolean): boolean {
   const a = atmos;
   const c = ctx;
   if (!a || !c) return false;
   if (forCrowd) {
-    if (BR_SOUNDS.goalShout) playBr(BR_SOUNDS.goalShout, 0.95);
+    playGoalShout(c);
     const path = a.p.goal[Math.floor(Math.random() * a.p.goal.length)];
-    playBr(path, BR_LEVEL.goal * (0.75 + 0.25 * a.p.size), {}, () => goalRoarGeneric(true));
-    a.festaUntil = c.currentTime + 14;
+    playBr(path, BR_LEVEL.goal * (0.8 + 0.2 * a.p.size), {}, () => goalRoarGeneric(true));
+    a.festaUntil = c.currentTime + 16;
     // a explosão cobre o ambiente; o canto volta mais forte logo depois
     const t = c.currentTime;
     for (const l of [a.bed, a.chant]) {
@@ -708,20 +739,23 @@ export function whistle(times = 1) {
  * brasileira ligada, `side` (lado que marcou) decide se a arquibancada explode ou silencia.
  */
 export function goalRoar(home: boolean, side?: 0 | 1) {
+  const c = ac();
+  if (c && (home || (atmos && side === atmos.p.side))) playGoalShout(c);
   if (atmos && side !== undefined && atmosphereGoal(side === atmos.p.side)) return;
   goalRoarGeneric(home);
 }
 
 function goalRoarGeneric(home: boolean) {
-  if (home && BR_SOUNDS.goalShout) playBr(BR_SOUNDS.goalShout, 0.92);
+  const c = ac();
+  if (c && home) playGoalShout(c);
   // sorteia entre as gravações de gol já carregadas
   const alt = ready.get(SAMPLE.goal2);
   const path = home && alt && Math.random() < 0.4 ? SAMPLE.goal2 : SAMPLE.goal;
-  playSample(path, 400, (c, b) => {
+  playSample(path, 400, (cc, b) => {
     // gol do visitante: a explosão vem do setor visitante, mais longe e abafada
-    playBuffer(c, b, home ? LEVEL.goal : LEVEL.goalAway, home ? {} : { lowpass: 1800 });
+    playBuffer(cc, b, home ? LEVEL.goal : LEVEL.goalAway, home ? {} : { lowpass: 1800 });
     if (home) duckCrowd(Math.min(b.duration, 6), 0.6);
-  }, (c) => synthRoar(c, home));
+  }, (cc) => synthRoar(cc, home));
 }
 
 /** "Uhhh" da torcida numa chance perdida. */
@@ -751,17 +785,17 @@ function stopChant() {
 
 /** Diz se o clube tem um canto de torcida gravado (ver playClubChant). */
 export function hasClubChant(clubId: string): boolean {
-  return clubId in CLUB_CHANTS;
+  return clubId in CLUB_CHANTS || clubId in CLUB_CHANTS_POOL;
 }
 
 /**
- * Toca o canto da torcida do clube (gravação real do Commons), por cima do ambiente.
- * Devolve false se o clube não tiver canto gravado ou o som estiver desligado (aí quem chama
- * pode usar outro som). Se o arquivo não carregar, não toca nada.
+ * Toca o canto da torcida do clube (gravação real), por cima do ambiente.
+ * Devolve false se o clube não tiver canto gravado ou o som estiver desligado.
  */
 export function playClubChant(clubId: string): boolean {
-  const path = CLUB_CHANTS[clubId];
-  if (!path || !enabled) return false;
+  const pool = CLUB_CHANTS_POOL[clubId] ?? (CLUB_CHANTS[clubId] ? [CLUB_CHANTS[clubId]] : null);
+  if (!pool || !pool.length || !enabled) return false;
+  const path = pool[Math.floor(Math.random() * pool.length)];
   const c = ac();
   if (!c) return false;
   void sample(path).then((b) => {
@@ -772,7 +806,7 @@ export function playClubChant(clubId: string): boolean {
     p.src.onended = () => {
       if (chant === p) chant = null;
     };
-    duckCrowd(Math.min(b.duration, 12), 0.55);
+    duckCrowd(Math.min(b.duration, 16), 0.35);
   });
   return true;
 }

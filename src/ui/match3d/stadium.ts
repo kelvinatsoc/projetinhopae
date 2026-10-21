@@ -89,10 +89,76 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
     g.fillRect(0, Y(HALF_W + 2), W, H);
     g.fillRect(0, 0, X(-HALF_L - 2), H);
     g.fillRect(X(HALF_L + 2), 0, W, H);
-    if (st.track) {
-      g.strokeStyle = st.track;
-      g.lineWidth = 7 * S;
-      g.strokeRect(X(-HALF_L - 6.5), Y(-HALF_W - 6.5), (PITCH_LEN + 13) * S, (PITCH_WID + 13) * S);
+    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis";
+    if (isMorumbi || st.track) {
+      const trackCol = isMorumbi ? "#a83c2e" : st.track!;
+      g.strokeStyle = trackCol;
+      g.lineWidth = 9 * S;
+      g.strokeRect(X(-HALF_L - 7.5), Y(-HALF_W - 7.5), (PITCH_LEN + 15) * S, (PITCH_WID + 15) * S);
+      // raias brancas da pista de atletismo
+      g.strokeStyle = "rgba(255,255,255,0.45)";
+      g.lineWidth = Math.max(1, 0.08 * S);
+      for (let r = 1; r <= 6; r++) {
+        const off = 3.6 + r * 1.25;
+        g.strokeRect(X(-HALF_L - off), Y(-HALF_W - off), (PITCH_LEN + 2 * off) * S, (PITCH_WID + 2 * off) * S);
+      }
+    }
+    if (isMorumbi) {
+      // Escudo oficial do São Paulo FC pintado na grama sintética atrás de cada baliza
+      const drawSpfcCrest = (cx: number, cy: number, sz: number) => {
+        g.save();
+        g.translate(cx, cy);
+        const w = sz, h = sz * 0.96;
+        // base branca do escudo
+        g.beginPath();
+        g.moveTo(-w / 2, -h / 2);
+        g.lineTo(w / 2, -h / 2);
+        g.lineTo(w / 2, 0);
+        g.lineTo(0, h / 2);
+        g.lineTo(-w / 2, 0);
+        g.closePath();
+        g.fillStyle = "#ffffff";
+        g.fill();
+        g.strokeStyle = "#121212";
+        g.lineWidth = Math.max(2, 0.12 * S);
+        g.stroke();
+        // triângulos tricolores inferiores: vermelho à esquerda, preto à direita
+        g.beginPath();
+        g.moveTo(-w / 2 + 0.12 * S, 0);
+        g.lineTo(0, h / 2 - 0.2 * S);
+        g.lineTo(0, 0);
+        g.closePath();
+        g.fillStyle = "#c4122f";
+        g.fill();
+        g.beginPath();
+        g.moveTo(w / 2 - 0.12 * S, 0);
+        g.lineTo(0, h / 2 - 0.2 * S);
+        g.lineTo(0, 0);
+        g.closePath();
+        g.fillStyle = "#121212";
+        g.fill();
+        // faixas superiores: vermelho à esquerda, preto à direita
+        g.fillStyle = "#c4122f";
+        g.fillRect(-w / 2 + 0.12 * S, -h / 2 + 0.12 * S, w * 0.45, 0.42 * S);
+        g.fillStyle = "#121212";
+        g.fillRect(w * 0.05, -h / 2 + 0.12 * S, w * 0.45 - 0.12 * S, 0.42 * S);
+        // texto SPFC no meio da faixa branca
+        g.font = `900 ${Math.round(w * 0.26)}px "Barlow Condensed", Arial, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#121212";
+        g.fillText("SPFC", 0, -h * 0.16);
+        // estrelas douradas (mundiais) e vermelhas no topo
+        for (let i = -2; i <= 2; i++) {
+          g.beginPath();
+          g.arc(i * 0.58 * S, -h / 2 - 0.38 * S, 0.18 * S, 0, Math.PI * 2);
+          g.fillStyle = Math.abs(i) <= 1 ? "#ffd700" : "#c4122f";
+          g.fill();
+        }
+        g.restore();
+      };
+      drawSpfcCrest(X(-HALF_L - 6.5), Y(0), 7 * S);
+      drawSpfcCrest(X(HALF_L + 6.5), Y(0), 7 * S);
     }
     // variação natural (manchas e grão)
     const r = prng(7);
@@ -187,15 +253,27 @@ function netTexture(): THREE.CanvasTexture {
 
 /** Placas de LED (texto em faixas, rola devagar). */
 function boardTexture(o: StadiumOpts): THREE.CanvasTexture {
+  const isMorumbi = o.style.landmarks.includes("morumbi-ring") || o.style.key === "morumbis" || o.home.abbr === "SPFC";
   const t = canvasTex(2048, 64, (g) => {
-    const items: [string, string, string][] = [
-      [o.home.colors[0], "#ffffff", o.home.name.toUpperCase()],
-      ["#0b1d3a", "#f5c542", "LENDAS DA BASE"],
-      [o.away.colors[0], "#ffffff", o.away.name.toUpperCase()],
-      ["#101010", "#3df58a", "FUTEBOL BRASILEIRO"],
-      ["#f5c542", "#101010", "BASE FORTE"],
-      [o.home.colors[1] ?? "#ffffff", o.home.colors[0], o.home.abbr],
-    ];
+    const items: [string, string, string][] = isMorumbi
+      ? [
+          ["#c4122f", "#ffffff", "MORUMBIS"],
+          ["#0b0d12", "#ffffff", "SUPERBET"],
+          ["#ffffff", "#c4122f", "NEW BALANCE"],
+          ["#c4122f", "#ffffff", "SÃO PAULO FUTEBOL CLUBE"],
+          ["#0b0d12", "#c4122f", "SÓCIO TORCEDOR SPFC"],
+          ["#ffffff", "#0b0d12", "AVANTE MEU TRICOLOR"],
+          ["#c4122f", "#f5c542", "TRICOLOR DO MORUMBI"],
+          ["#0b0d12", "#ffffff", "SPFC"],
+        ]
+      : [
+          [o.home.colors[0], "#ffffff", o.home.name.toUpperCase()],
+          ["#0b1d3a", "#f5c542", "LENDAS DA BASE"],
+          [o.away.colors[0], "#ffffff", o.away.name.toUpperCase()],
+          ["#101010", "#3df58a", "FUTEBOL BRASILEIRO"],
+          ["#f5c542", "#101010", "BASE FORTE"],
+          [o.home.colors[1] ?? "#ffffff", o.home.colors[0], o.home.abbr],
+        ];
     const w = 2048 / items.length;
     items.forEach(([bg, fg, txt], i) => {
       g.fillStyle = bg;
@@ -461,7 +539,20 @@ export class Stadium {
       return new THREE.Color().setRGB(mos[i] / 255, mos[i + 1] / 255, mos[i + 2] / 255, THREE.SRGBColorSpace);
     };
     const front: [number, number, number, number][] = [];
-    const banners = ["RAÇA E PAIXÃO", "SEMPRE AO SEU LADO", "ETERNO AMOR", `${mc.abbr} ATÉ MORRER`, "AQUI É CALDEIRÃO", "TORCIDA JOVEM", "GARRA"];
+    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis" || o.home.abbr === "SPFC";
+    const isSPFC = isMorumbi || mc.abbr === "SPFC" || mc.name.toLowerCase().includes("são paulo") || mc.name.toLowerCase().includes("sao paulo");
+    const banners = isSPFC
+      ? [
+          "TORCIDA TRICOLOR INDEPENDENTE",
+          "DRAGÕES DA REAL",
+          "COMO EU TE AMO TRICOLOR",
+          "O MAIS QUERIDO",
+          "MORUMBIS - O MAIOR DO BRASIL",
+          "AVANTE MEU TRICOLOR",
+          "INDEPENDENTE 1972",
+          "SOBERANO",
+        ]
+      : ["RAÇA E PAIXÃO", "SEMPRE AO SEU LADO", "ETERNO AMOR", `${mc.abbr} ATÉ MORRER`, "AQUI É CALDEIRÃO", "TORCIDA JOVEM", "GARRA"];
     let bi = 0;
     let bannerSpot: { x: number; y: number; z: number; w: number; d: number; slope: number; rot: number } | undefined;
     for (const s of stands) {
@@ -484,7 +575,19 @@ export class Stadium {
       for (let i = 0; i < s.rows; i++) {
         const z0 = -i * RUN, z1 = -(i + 1) * RUN;
         const y0 = yAt(i), y1 = y0 + RISE;
-        const cc = seats[Math.floor(i / 4) % seats.length].clone().multiplyScalar(i % 2 ? 0.86 : 1);
+        let cc: THREE.Color;
+        if (isMorumbi) {
+          if (i < 10) {
+            cc = new THREE.Color("#c4122f").multiplyScalar(i % 2 ? 0.9 : 1);
+          } else if (i < 20) {
+            cc = (i % 4 < 2 ? new THREE.Color("#c4122f") : new THREE.Color("#f0f0f0")).multiplyScalar(i % 2 ? 0.88 : 1);
+          } else {
+            const tricolors = ["#c4122f", "#f2f2f2", "#181818"];
+            cc = new THREE.Color(tricolors[Math.floor(i / 4) % tricolors.length]).multiplyScalar(i % 2 ? 0.86 : 1);
+          }
+        } else {
+          cc = seats[Math.floor(i / 4) % seats.length].clone().multiplyScalar(i % 2 ? 0.86 : 1);
+        }
         quad([-half, y0, z0], [half, y0, z0], [half, y1, z0], [-half, y1, z0], [0, 0, 1], cc.clone().multiplyScalar(0.7));
         quad([-half, y1, z0], [half, y1, z0], [half, y1, z1], [-half, y1, z1], [0, 1, 0], cc);
         if (i === gap) {
@@ -530,7 +633,10 @@ export class Stadium {
       this.add(bw, concrete, true, true, grp).position.set(0, (top + 3) / 2, -depth - 0.6);
       if (o.festa > 0 && s.end !== 1 && !(s.rot === Math.PI)) {
         for (let k = 0; k < 3; k++) {
-          const t = bannerTexture(k % 2 ? [mc.colors[1] ?? "#ffffff", mc.colors[0]] : mc.colors, banners[bi++ % banners.length]);
+          const bannerCols = isSPFC
+            ? (k % 3 === 0 ? ["#ffffff", "#c4122f"] : k % 3 === 1 ? ["#c4122f", "#ffffff"] : ["#121212", "#ffffff"])
+            : (k % 2 ? [mc.colors[1] ?? "#ffffff", mc.colors[0]] : mc.colors);
+          const t = bannerTexture(bannerCols, banners[bi++ % banners.length]);
           this.disposables.push(t);
           const bg = new THREE.PlaneGeometry(9, 1.4);
           const bm = this.add(bg, new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }), false, false, grp);
