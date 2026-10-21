@@ -821,19 +821,35 @@ export class MatchRenderer {
     }
     if (this.goalTimer > 0 && !replaying) {
       const t = 2600 - this.goalTimer;
-      const sc = t < 180 ? 0.6 + (t / 180) * 0.6 : 1.2 - Math.min(0.2, (t - 180) / 900);
+      const sc = t < 160 ? 0.5 + (t / 160) * 0.7 : 1.2 - Math.min(0.2, (t - 160) / 900);
       g.save();
-      g.translate(W / 2, H * 0.38);
+      g.translate(W / 2, H * 0.36);
       g.scale(sc, sc);
-      g.font = font(900, Math.min(76, W * 0.17));
+      // Fundo em moldura de placar de videogame
+      const bannerW = Math.min(480, W * 0.85);
+      const bannerH = 110;
+      this.rrect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 16);
+      g.fillStyle = "rgba(10, 14, 22, 0.88)";
+      g.fill();
+      g.lineWidth = 3;
+      g.strokeStyle = Math.floor(t / 100) % 2 ? "#ffd700" : "#c4122f";
+      g.stroke();
+      // Texto GOL principal
+      g.font = font(900, Math.min(72, W * 0.16));
       g.textAlign = "center";
-      g.shadowColor = "rgba(255,190,40,0.9)";
-      g.shadowBlur = 24;
+      g.textBaseline = "middle";
+      g.shadowColor = "rgba(255,215,0,0.95)";
+      g.shadowBlur = 28;
       g.lineWidth = 6;
-      g.strokeStyle = "#0b0f18";
-      g.strokeText(this.goalText, 0, 0);
+      g.strokeStyle = "#080c14";
+      g.strokeText(this.goalText, 0, -10);
       g.fillStyle = Math.floor(t / 120) % 2 ? "#ffe14a" : "#ffffff";
-      g.fillText(this.goalText, 0, 0);
+      g.fillText(this.goalText, 0, -10);
+      // Subtítulo
+      g.shadowBlur = 0;
+      g.font = font(800, 16);
+      g.fillStyle = "#3df58a";
+      g.fillText("BOLA NA REDE!", 0, 34);
       g.restore();
     }
     if (replaying) {

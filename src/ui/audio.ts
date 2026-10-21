@@ -769,6 +769,33 @@ export function ooh() {
   }, (c) => synthOoh(c));
 }
 
+/** Som metálico de bola na trave (CLANG!) seguido do 'uhhh' da torcida. */
+export function postClang() {
+  const c = ac();
+  if (c && enabled) {
+    const t0 = c.currentTime;
+    const osc = c.createOscillator();
+    const osc2 = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "sine";
+    osc2.type = "triangle";
+    osc.frequency.setValueAtTime(1420, t0);
+    osc.frequency.exponentialRampToValueAtTime(760, t0 + 0.18);
+    osc2.frequency.setValueAtTime(880, t0);
+    osc2.frequency.exponentialRampToValueAtTime(420, t0 + 0.22);
+    g.gain.setValueAtTime(0.75, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+    osc.connect(g);
+    osc2.connect(g);
+    g.connect(out(c));
+    osc.start(t0);
+    osc2.start(t0);
+    osc.stop(t0 + 0.36);
+    osc2.stop(t0 + 0.36);
+  }
+  ooh();
+}
+
 // ---------------------------------------------------------------- cantos de torcida
 let chant: { src: AudioBufferSourceNode; g: GainNode } | null = null;
 

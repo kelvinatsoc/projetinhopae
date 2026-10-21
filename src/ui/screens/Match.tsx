@@ -11,7 +11,7 @@ import { halfTones, PRE_TONES, reactions, suggest, TONES, userPreTalk, type Reac
 import type { Fixture, MatchEvent, MatchResult, World } from "../../engine/types";
 import { forceBack, getWorld, push, replace, update, useWorld } from "../../store";
 import { autosave, goToMatch } from "../actions";
-import { crowdEruption, duckForMenu, goalRoar, hasClubChant, loadMedia, ooh, playClubChant, playCustomGoal, setCrowdExodus, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
+import { crowdEruption, duckForMenu, goalRoar, hasClubChant, loadMedia, ooh, playClubChant, playCustomGoal, postClang, setCrowdExodus, setCustomGoalAudio, soundEnabled, startAtmosphere, startCrowd, stopAtmosphere, stopCrowd, updateAtmosphere, whistle } from "../audio";
 import { crowdExodus, crowdMood, crowdProfile, crowdSize, isComeback, matchImportance } from "../torcida";
 import { PhaseBanner, matchPhase } from "../MatchPhase";
 import { Avatar, Bar, CompLogo, Crest, Ovr, PosBadge, Sheet, visibleColor, Ic, Icon, GIcon } from "../components";
@@ -193,10 +193,10 @@ function readFeedOpen(): boolean {
   try { return localStorage.getItem(FEED_KEY) !== "0"; } catch { return true; }
 }
 const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda na velocidade 1x
-const INTRO_MS = 2600;
-/** Abertura no 3D: chegada do ônibus (maior em jogos grandes) + entrada dos times. */
+const INTRO_MS = 800;
+/** Abertura no 3D: entrada rápida dos times e pontapé inicial imediato. */
 function introTimes(importance: number): { arrival: number; walk: number } {
-  return { arrival: Math.round(4500 + importance * 4500), walk: Math.round(6500 + importance * 2500) };
+  return { arrival: 0, walk: Math.round(900 + importance * 300) };
 }
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 
@@ -333,9 +333,10 @@ export function MatchScreen({ quick }: { quick: boolean }) {
     }, 2000);
   }
 
-  /** Defesa, trave, pênalti perdido: "uhhh" da torcida. */
+  /** Defesa, trave, pênalti perdido: som metálico da trave e reação da torcida. */
   function beat(e: MatchEvent) {
-    if (e.type === "post" || (e.type === "save" && Math.random() < 0.4) || e.type === "pen-miss") ooh();
+    if (e.type === "post") postClang();
+    else if ((e.type === "save" && Math.random() < 0.6) || e.type === "pen-miss" || e.type === "miss") ooh();
   }
 
   function toggleField(on: boolean) {
@@ -539,8 +540,8 @@ export function MatchScreen({ quick }: { quick: boolean }) {
       <div className="mx-side">
         <DerbyBanner home={f.home} away={f.away} />
 
-        {/* No 3D o próprio campo mostra o "GOL!" (com replay): sem popup duplicado por cima */}
-        {flash && !over && !(showField && is3d) && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
+        {/* Celebração de gol clara e destacada com foto do artilheiro, confetes e placar atualizado */}
+        {flash && !over && <GoalCelebration e={flash} sim={sim} top={flashTop} />}
 
         {!quick && !over && (
           <LiveStrip sim={sim} w={w}

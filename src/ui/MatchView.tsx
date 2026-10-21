@@ -915,7 +915,11 @@ class PitchAnim {
   // ------------------------------------------------ bola
   holdOffset(d: Dude): [number, number, number] {
     if (d.grp === 0 && d.side !== 2) return [0, -1, 3];
-    return [fwd(d.side as 0 | 1) * 2, 0, 0];
+    const v = Math.hypot(d.vx, d.vy);
+    if (v > 0.01) {
+      return [(d.vx / v) * 1.8, (d.vy / v) * 1.8, 0];
+    }
+    return [fwd(d.side as 0 | 1) * 1.8, 0, 0];
   }
 
   placeBall() {
@@ -964,7 +968,7 @@ class PitchAnim {
   }
   nextFx: { curve?: number; power?: boolean; glow?: [string, string] } | null = null;
 
-  /** Passe: o recebedor corre para o ponto onde a bola vai chegar. */
+  /** Passe: o recebedor corre para o ponto onde a bola vai chegar com dinâmica de jogo ágil. */
   pass(to: Dude, lob = false) {
     if (to.hidden || to.leaving) return;
     const b = this.ball;
@@ -974,20 +978,20 @@ class PitchAnim {
       b.y = b.holder.y + hy;
     }
     const dist0 = Math.hypot(to.tx - b.x, to.ty - b.y);
-    const dur = Math.min(2000, ballTime(dist0, lob || dist0 > 48 ? BALL_MPS.long : 18, 180)) / this.spd();
-    if (!this.reduced && this.rich && b.holder && b.holder.side !== 2) setPose(b.holder, "pass", this.now, Math.max(140, 340 / this.spd()));
+    const dur = Math.max(160, Math.min(850, ballTime(dist0, lob || dist0 > 48 ? BALL_MPS.long : 22, 140))) / this.spd();
+    if (!this.reduced && b.holder && b.holder.side !== 2) setPose(b.holder, "pass", this.now, Math.max(120, 260 / this.spd()));
     const reach = (RUN_PX_S * this.spd() * to.speed * dur) / 1000;
     const dx = to.tx - to.x, dy = to.ty - to.y;
     const dd = Math.hypot(dx, dy) || 1;
-    const k = Math.min(1, (reach * 0.9) / dd);
+    const k = Math.min(1, (reach * 0.95) / dd);
     const lx = to.x + dx * k, ly = to.y + dy * k;
     const [ox, oy] = this.holdOffset(to);
     to.ox = lx;
     to.oy = ly;
-    to.oUntil = this.now + dur + 60;
+    to.oUntil = this.now + dur + 80;
     const dist = Math.hypot(lx - b.x, ly - b.y);
     this.poss = to.side as 0 | 1;
-    this.fly(lx + ox, ly + oy, dur, lob || dist > 48 ? Math.min(9, dist * 0.11) : 0, to);
+    this.fly(lx + ox, ly + oy, dur, lob || dist > 48 ? Math.min(8, dist * 0.1) : 0, to);
   }
 
   // ------------------------------------------------ roteiro de cada minuto
@@ -1107,9 +1111,9 @@ class PitchAnim {
     const atk = ph.atk!;
     const [start, t1] = this.ensurePossession(atk, t0, B);
     if (!start) return;
-    const n = this.ms >= X1_MS ? 2 + (Math.random() < 0.5 ? 1 : 0) : this.ms >= SLOW_MS ? 1 + (Math.random() < 0.6 ? 1 : 0) : 1;
+    const n = this.ms >= X1_MS ? (Math.random() < 0.4 ? 4 : 3) : this.ms >= SLOW_MS ? 3 : 2;
     const tackler = ph.tackle?.pid != null ? this.byPid(ph.tackle.pid) : null;
-    const end = tackler ? 0.72 * B : 0.9 * B;
+    const end = tackler ? 0.76 * B : 0.92 * B;
     const gap = Math.max(0, end - t1) / n;
     let cur = start;
     let prev: Dude | null = null;
@@ -1118,14 +1122,14 @@ class PitchAnim {
       const nx = this.pickNext(cur, atk, prev);
       if (!nx) break;
       const from = cur;
-      const tt = t1 + gap * i + gap * 0.25;
+      const tt = t1 + gap * i + gap * 0.15;
       this.at(tt, () => this.pass(nx));
       if (first || Math.random() < 0.5) {
         const passText = (from.grp >= 2 && nx.grp >= 2 && Math.random() < 0.35)
           ? `${this.name(from)} tabela bonito com ${this.name(nx)}`
-          : (from.grp === 1 && nx.grp === 2)
-          ? `${this.name(from)} acha ${this.name(nx)} livre`
-          : `${this.name(from)} toca para ${this.name(nx)}`;
+          : (from.grp === 1 && nx.grp >= 2)
+          ? `${this.name(from)} acha ${this.name(nx)} livre no ataque`
+          : `${this.name(from)} toca rápido para ${this.name(nx)}`;
         this.at(tt, () => this.say(passText, atk));
       }
       first = false;
@@ -1653,19 +1657,19 @@ class PitchAnim {
     this.ball.fl = null;
     this.ball.holder = null;
     this.placeBallAt(CX, CY);
-    const tk = (this.ms >= SLOW_MS ? 0.3 : 0.15) * B;
+    const tk = 0.04 * B;
     this.at(tk, () => {
       const mate = this.team(kt).filter((d) => d.grp === 2).sort((a, b) => Math.abs(a.y - CY) - Math.abs(b.y - CY))[0] ?? this.team(kt).find((d) => d.grp !== 0) ?? null;
       this.mode = "play";
       this.kickoffPending = false;
       this.poss = kt;
       if (mate) this.pass(mate);
-      const label = this.kicks === 0 ? "Rola a bola!" : this.halfKick ? "Começa o segundo tempo!" : `Saída de bola do ${this.sim.sides[kt].club.name}`;
+      const label = this.kicks === 0 ? "Apita o árbitro! Rola a bola!" : this.halfKick ? "Começa o segundo tempo!" : `Saída de bola do ${this.sim.sides[kt].club.name}`;
       this.kicks++;
       this.halfKick = false;
       this.say(label, kt, 1);
     });
-    return tk + 0.1 * B;
+    return tk + 0.06 * B;
   }
 
   halfTime(e: MatchEvent) {

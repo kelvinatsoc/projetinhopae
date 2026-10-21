@@ -92,15 +92,28 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
     const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis";
     if (isMorumbi || st.track) {
       const trackCol = isMorumbi ? "#a83c2e" : st.track!;
-      g.strokeStyle = trackCol;
-      g.lineWidth = 9 * S;
-      g.strokeRect(X(-HALF_L - 7.5), Y(-HALF_W - 7.5), (PITCH_LEN + 15) * S, (PITCH_WID + 15) * S);
-      // raias brancas da pista de atletismo
-      g.strokeStyle = "rgba(255,255,255,0.45)";
-      g.lineWidth = Math.max(1, 0.08 * S);
-      for (let r = 1; r <= 6; r++) {
-        const off = 3.6 + r * 1.25;
-        g.strokeRect(X(-HALF_L - off), Y(-HALF_W - off), (PITCH_LEN + 2 * off) * S, (PITCH_WID + 2 * off) * S);
+      // Pista de atletismo com retas laterais e curvas semicirculares atrás dos gols
+      const drawTrackPath = (offset: number, lw: number, strokeStyle: string) => {
+        g.strokeStyle = strokeStyle;
+        g.lineWidth = lw;
+        const R = (HALF_W + 5 + offset) * S;
+        const xStraight = 28;
+        const cxR = X(xStraight), cxL = X(-xStraight), cy = Y(0);
+        g.beginPath();
+        g.moveTo(cxL, cy - R);
+        g.lineTo(cxR, cy - R);
+        g.arc(cxR, cy, R, -Math.PI / 2, Math.PI / 2);
+        g.lineTo(cxL, cy + R);
+        g.arc(cxL, cy, R, Math.PI / 2, (3 * Math.PI) / 2);
+        g.closePath();
+        g.stroke();
+      };
+      // Base de tartã da pista (largura total)
+      drawTrackPath(0, 9.5 * S, trackCol);
+      // Raias brancas da pista de atletismo (6 raias)
+      for (let r = 0; r <= 6; r++) {
+        const off = -4.2 + r * 1.4;
+        drawTrackPath(off, Math.max(1, 0.09 * S), "rgba(255,255,255,0.48)");
       }
     }
     if (isMorumbi) {
@@ -307,6 +320,42 @@ function bannerTexture(colors: readonly string[], txt: string): THREE.CanvasText
   });
 }
 
+/** Telão LED do MorumBIS (placar, relógio, nome do estádio e escudo). */
+function scoreboardTexture(homeAbbr: string, awayAbbr: string): THREE.CanvasTexture {
+  return canvasTex(512, 256, (g) => {
+    g.fillStyle = "#0a0e14";
+    g.fillRect(0, 0, 512, 256);
+    g.fillStyle = "rgba(255,255,255,0.035)";
+    for (let y = 0; y < 256; y += 4) g.fillRect(0, y, 512, 2);
+    // Topo neon vermelho: MORUMBIS
+    g.fillStyle = "#c4122f";
+    g.fillRect(0, 0, 512, 56);
+    g.font = `italic 900 42px "Barlow Condensed", Arial, sans-serif`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = "#ffffff";
+    g.fillText("MORUMBIS", 256, 28);
+    // Placar central
+    g.font = `900 52px "Barlow Condensed", Arial, sans-serif`;
+    g.fillStyle = "#ffffff";
+    g.textAlign = "right";
+    g.fillText(homeAbbr || "SPFC", 195, 124);
+    g.textAlign = "left";
+    g.fillText(awayAbbr || "ADV", 317, 124);
+    // Dígitos do placar
+    g.font = `900 68px "Barlow Condensed", Arial, monospace`;
+    g.textAlign = "center";
+    g.fillStyle = "#ffe14a";
+    g.fillText("0 × 0", 256, 124);
+    // Faixa inferior com mensagem tricolor
+    g.fillStyle = "#161e2b";
+    g.fillRect(0, 184, 512, 72);
+    g.font = `800 30px "Barlow Condensed", Arial, sans-serif`;
+    g.fillStyle = "#3df58a";
+    g.fillText("SÃO PAULO FUTEBOL CLUBE", 256, 220);
+  });
+}
+
 interface StandDef { len: number; rot: number; x: number; z: number; rows: number; h0: number; roof: boolean; end: 0 | 1 | -1 }
 
 export class Stadium {
@@ -448,6 +497,7 @@ export class Stadium {
   }
 
   private buildBoards() {
+    const isMorumbi = this.o.style.landmarks.includes("morumbi-ring") || this.o.style.key === "morumbis" || this.o.home.abbr === "SPFC";
     const t = boardTexture(this.o);
     this.boards = t;
     this.disposables.push(t);
@@ -465,6 +515,14 @@ export class Stadium {
       bm.position.set(x - Math.sin(rot) * 0.17, H / 2, z - Math.cos(rot) * 0.17);
       bm.rotation.y = rot;
     };
+    if (isMorumbi) {
+      mk(PITCH_LEN + 14, 0, -HALF_W - 4.5, 0);
+      mk(PITCH_LEN + 14, 0, HALF_W + 4.5, Math.PI);
+      for (const sx of [-1, 1]) {
+        mk(PITCH_WID + 8, sx * (HALF_L + 5.5), 0, (-sx * Math.PI) / 2);
+      }
+      return;
+    }
     mk(PITCH_LEN + 8, 0, -HALF_W - 4.5, 0);
     for (const sx of [-1, 1]) {
       mk(24, sx * (HALF_L + 5), -15, (-sx * Math.PI) / 2);
@@ -481,9 +539,336 @@ export class Stadium {
     }
   }
 
+  /**
+   * Constrói o MorumBIS fiel à arquitetura real: 3 anéis elípticos concêntricos,
+   * camarotes corporativos envidraçados, mosaico gigante SÃO PAULO FC nas cadeiras,
+   * fachada brutalista em balanço de Vilanova Artigas, 2 telões LED e faixas da Independente.
+   */
+  private buildMorumbi(_isSPFC: boolean): StandDef[] {
+    const o = this.o;
+    const concrete = new THREE.MeshStandardMaterial({ color: "#aba69d", roughness: 0.92 });
+    const seatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: "#162330", roughness: 0.08, metalness: 0.85, transparent: true, opacity: 0.82 });
+    const steel = new THREE.MeshStandardMaterial({ color: "#9ca1a6", roughness: 0.38, metalness: 0.82 });
+    const ribbon = boardTexture(o);
+    this.disposables.push(concrete, seatMat, glass, steel, ribbon);
+    const ribbonMat = new THREE.MeshStandardMaterial({ map: ribbon, emissive: "#ffffff", emissiveMap: ribbon, emissiveIntensity: 1.15 });
+    this.disposables.push(ribbonMat);
+
+    // Mosaico oficial "SÃO PAULO FC" desenhado nas cadeiras do Anel Superior
+    const mosC = document.createElement("canvas");
+    mosC.width = 384;
+    mosC.height = 64;
+    const mg = mosC.getContext("2d")!;
+    mg.fillStyle = "#c4122f";
+    mg.fillRect(0, 0, 384, 64);
+    mg.fillStyle = "#ffffff";
+    mg.fillRect(0, 16, 384, 32);
+    mg.font = `900 28px "Barlow Condensed", Arial, sans-serif`;
+    mg.textAlign = "center";
+    mg.textBaseline = "middle";
+    mg.fillStyle = "#121212";
+    mg.fillText("SÃO PAULO FC", 192, 32);
+    const mosData = mg.getImageData(0, 0, 384, 64).data;
+    const getMosaicColor = (u: number, v: number): THREE.Color => {
+      const x = Math.min(383, Math.max(0, Math.floor(u * 384)));
+      const y = Math.min(63, Math.max(0, Math.floor((1 - v) * 64)));
+      const idx = (y * 384 + x) * 4;
+      return new THREE.Color().setRGB(mosData[idx] / 255, mosData[idx + 1] / 255, mosData[idx + 2] / 255, THREE.SRGBColorSpace);
+    };
+
+    const fans: FanSpot[] = [];
+    const r = prng(41);
+    const fill = Math.min(1, o.style.fill * 1.15);
+    const crowdCol = (team: 0 | 1) => {
+      const k = r();
+      if (team === 0) {
+        return new THREE.Color(k < 0.45 ? "#f5f5f5" : k < 0.78 ? "#c4122f" : k < 0.94 ? "#181818" : "#d82432");
+      }
+      const cs = o.away.colors;
+      return new THREE.Color(k < 0.6 ? cs[0] : cs[1] ?? "#ffffff");
+    };
+
+    const N_SEG = 84;
+    const n = 2.1;
+    const getPt = (A: number, B: number, theta: number): [number, number] => {
+      const cosT = Math.cos(theta), sinT = Math.sin(theta);
+      const x = A * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / n);
+      const z = B * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / n);
+      return [x, z];
+    };
+
+    const pos: number[] = [], nor: number[] = [], col: number[] = [];
+    const quad = (a: number[], b: number[], c: number[], d: number[], nVec: number[], cc: THREE.Color) => {
+      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+      for (let k = 0; k < 6; k++) {
+        nor.push(...nVec);
+        col.push(cc.r, cc.g, cc.b);
+      }
+    };
+
+    // Gera os degraus de um anel elíptico contínuo
+    const addTier = (A0: number, B0: number, Y0: number, A1: number, B1: number, Y1: number, steps: number, colorFn: (s: number, theta: number, u: number, v: number) => THREE.Color) => {
+      for (let s = 0; s < steps; s++) {
+        const u0 = s / steps, u1 = (s + 1) / steps;
+        const ya = Y0 + u0 * (Y1 - Y0);
+        const yb = Y0 + u1 * (Y1 - Y0);
+        const a_in = A0 + u0 * (A1 - A0), b_in = B0 + u0 * (B1 - B0);
+        const a_out = A0 + u1 * (A1 - A0), b_out = B0 + u1 * (B1 - B0);
+
+        for (let i = 0; i < N_SEG; i++) {
+          const t0 = (i / N_SEG) * Math.PI * 2;
+          const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+          const midT = (t0 + t1) / 2;
+          const c = colorFn(s, midT, (i + 0.5) / N_SEG, (s + 0.5) / steps);
+
+          const [x00, z00] = getPt(a_in, b_in, t0);
+          const [x01, z01] = getPt(a_in, b_in, t1);
+          const [x10, z10] = getPt(a_out, b_out, t0);
+          const [x11, z11] = getPt(a_out, b_out, t1);
+
+          // Piso horizontal do degrau com as cadeiras
+          quad([x00, yb, z00], [x10, yb, z10], [x11, yb, z11], [x01, yb, z01], [0, 1, 0], c);
+          // Espelho vertical do degrau
+          const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
+          quad([x00, ya, z00], [x01, ya, z01], [x01, yb, z01], [x00, yb, z00], [nx, 0, nz], c.clone().multiplyScalar(0.72));
+
+          // Torcedores distribuídos na arquibancada
+          if (r() < fill) {
+            const team: 0 | 1 = (!o.neutral && Math.cos(midT) > 0.65 && Math.sin(midT) > 0.4) ? 1 : 0;
+            const midA = (a_in + a_out) / 2, midB = (b_in + b_out) / 2;
+            const [fx, fz] = getPt(midA, midB, midT + (r() - 0.5) * 0.02);
+            const rot = Math.atan2(-fx, -fz);
+            fans.push({
+              x: fx, y: yb, z: fz, rot, team, shirt: crowdCol(team),
+              rank: Math.min(0.999, r() * 0.8), scale: 0.92 + r() * 0.16,
+            });
+          }
+        }
+      }
+    };
+
+    // ANEL 1 (Térreo / Inferior): 10 degraus, todo vermelho Morumbi rente à pista
+    addTier(70, 47, 1.0, 83, 57, 6.2, 10, (_s, _theta) => new THREE.Color("#c4122f"));
+
+    // ANEL 2 (Intermediário / Cadeiras Cativas & Especiais): 12 degraus em setores tricolores
+    addTier(81, 55, 10.5, 95, 68, 18.5, 12, (s, theta) => {
+      const deg = ((theta * 180) / Math.PI + 360) % 360;
+      const sector = Math.floor(deg / 45) % 3;
+      const baseCol = sector === 0 ? "#c4122f" : sector === 1 ? "#f0f0f0" : "#181818";
+      return new THREE.Color(baseCol).multiplyScalar(s % 2 ? 0.9 : 1);
+    });
+
+    // ANEL 3 (Superior / A Gigantesca Arquibancada Monumental): 20 degraus, setores e mosaico SÃO PAULO FC
+    addTier(89, 64, 22.5, 120, 92, 42.0, 20, (s, theta, _u, v) => {
+      const cosT = Math.cos(theta), sinT = Math.sin(theta);
+      // Mosaico na lateral voltada para a câmera (z < 0)
+      if (sinT < -0.45 && Math.abs(cosT) < 0.65) {
+        const mu = (cosT + 0.65) / 1.3;
+        return getMosaicColor(mu, v);
+      }
+      // Setores do MorumBIS (Vermelha, Laranja, Azul, Amarela)
+      const deg = ((theta * 180) / Math.PI + 360) % 360;
+      if (deg >= 45 && deg < 135) return new THREE.Color(s % 2 ? "#b80f28" : "#c4122f"); // Vermelha
+      if (deg >= 135 && deg < 225) return new THREE.Color(s % 2 ? "#d65e1b" : "#e66a25"); // Laranja
+      if (deg >= 225 && deg < 315) return new THREE.Color(s % 2 ? "#1f4370" : "#265187"); // Azul
+      return new THREE.Color(s % 2 ? "#d9a10d" : "#ebb41a"); // Amarela
+    });
+
+    const gSeats = new THREE.BufferGeometry();
+    gSeats.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    gSeats.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+    gSeats.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    this.add(gSeats, seatMat, true, true);
+
+    // Paredão de camarotes corporativos envidraçados e fita de LED (entre Anel 1 e Anel 2)
+    const camarotePos: number[] = [], camaroteNor: number[] = [];
+    const ribbonPos: number[] = [], ribbonNor: number[] = [], ribbonUv: number[] = [];
+    for (let i = 0; i < N_SEG; i++) {
+      const t0 = (i / N_SEG) * Math.PI * 2;
+      const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+      const [x0, z0] = getPt(83, 57, t0);
+      const [x1, z1] = getPt(83, 57, t1);
+      const midT = (t0 + t1) / 2;
+      const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
+
+      // Fita de LED inferior (6.2 a 8.0)
+      ribbonPos.push(x0, 6.2, z0,  x1, 6.2, z1,  x1, 8.0, z1,  x0, 6.2, z0,  x1, 8.0, z1,  x0, 8.0, z0);
+      for (let k = 0; k < 6; k++) ribbonNor.push(nx, 0, nz);
+      const uA = (i / N_SEG) * 12, uB = ((i + 1) / N_SEG) * 12;
+      ribbonUv.push(uA, 0,  uB, 0,  uB, 1,  uA, 0,  uB, 1,  uA, 1);
+
+      // Vidro dos camarotes (8.0 a 10.5)
+      camarotePos.push(x0, 8.0, z0,  x1, 8.0, z1,  x1, 10.5, z1,  x0, 8.0, z0,  x1, 10.5, z1,  x0, 10.5, z0);
+      for (let k = 0; k < 6; k++) camaroteNor.push(nx, 0, nz);
+    }
+    const gRibbon = new THREE.BufferGeometry();
+    gRibbon.setAttribute("position", new THREE.Float32BufferAttribute(ribbonPos, 3));
+    gRibbon.setAttribute("normal", new THREE.Float32BufferAttribute(ribbonNor, 3));
+    gRibbon.setAttribute("uv", new THREE.Float32BufferAttribute(ribbonUv, 2));
+    this.add(gRibbon, ribbonMat, false, false);
+
+    const gGlass = new THREE.BufferGeometry();
+    gGlass.setAttribute("position", new THREE.Float32BufferAttribute(camarotePos, 3));
+    gGlass.setAttribute("normal", new THREE.Float32BufferAttribute(camaroteNor, 3));
+    this.add(gGlass, glass, false, false);
+
+    // Muro de balanço de concreto sob o Anel 3
+    const corbelPos: number[] = [], corbelNor: number[] = [];
+    for (let i = 0; i < N_SEG; i++) {
+      const t0 = (i / N_SEG) * Math.PI * 2;
+      const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+      const [x0, z0] = getPt(95, 68, t0);
+      const [x1, z1] = getPt(95, 68, t1);
+      const midT = (t0 + t1) / 2;
+      const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
+      corbelPos.push(x0, 18.5, z0,  x1, 18.5, z1,  x1, 22.5, z1,  x0, 18.5, z0,  x1, 22.5, z1,  x0, 22.5, z0);
+      for (let k = 0; k < 6; k++) corbelNor.push(nx, 0, nz);
+    }
+    const gCorbel = new THREE.BufferGeometry();
+    gCorbel.setAttribute("position", new THREE.Float32BufferAttribute(corbelPos, 3));
+    gCorbel.setAttribute("normal", new THREE.Float32BufferAttribute(corbelNor, 3));
+    this.add(gCorbel, concrete, true, true);
+
+    // Muro frontal do Anel 1 com faixas da Torcida Tricolor Independente e Dragões da Real
+    const wallPos: number[] = [], wallNor: number[] = [];
+    for (let i = 0; i < N_SEG; i++) {
+      const t0 = (i / N_SEG) * Math.PI * 2;
+      const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+      const [x0, z0] = getPt(70, 47, t0);
+      const [x1, z1] = getPt(70, 47, t1);
+      const midT = (t0 + t1) / 2;
+      const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
+      wallPos.push(x0, 0, z0,  x1, 0, z1,  x1, 1.0, z1,  x0, 0, z0,  x1, 1.0, z1,  x0, 1.0, z0);
+      for (let k = 0; k < 6; k++) wallNor.push(nx, 0, nz);
+    }
+    const gWall = new THREE.BufferGeometry();
+    gWall.setAttribute("position", new THREE.Float32BufferAttribute(wallPos, 3));
+    gWall.setAttribute("normal", new THREE.Float32BufferAttribute(wallNor, 3));
+    this.add(gWall, concrete, true, true);
+
+    // 12 Faixas Oficiais da Torcida Tricolor Independente e Dragões da Real
+    const spfcBanners = [
+      "TORCIDA TRICOLOR INDEPENDENTE",
+      "DRAGÕES DA REAL",
+      "COMO EU TE AMO TRICOLOR",
+      "O MAIS QUERIDO",
+      "MORUMBIS - O MAIOR DO BRASIL",
+      "AVANTE MEU TRICOLOR",
+      "INDEPENDENTE 1972",
+      "SOBERANO",
+      "TRICOLOR DESDE 1930",
+      "AQUI É SÃO PAULO",
+      "INDEPENDENTE - O TERROR VESTE BRANCO",
+      "DRAGÕES DA REAL 1984",
+    ];
+    for (let b = 0; b < 12; b++) {
+      const theta = (b / 12) * Math.PI * 2;
+      const [bx, bz] = getPt(69.8, 46.8, theta);
+      const angle = Math.atan2(
+        getPt(70, 47, theta + 0.05)[1] - getPt(70, 47, theta - 0.05)[1],
+        getPt(70, 47, theta + 0.05)[0] - getPt(70, 47, theta - 0.05)[0]
+      );
+      const cols = b % 3 === 0 ? ["#ffffff", "#c4122f"] : b % 3 === 1 ? ["#c4122f", "#ffffff"] : ["#121212", "#ffffff"];
+      const t = bannerTexture(cols, spfcBanners[b]);
+      this.disposables.push(t);
+      const bg = new THREE.PlaneGeometry(9.5, 1.0);
+      const bm = this.add(bg, new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }), false, false);
+      bm.position.set(bx, 0.52, bz);
+      bm.rotation.y = -angle + Math.PI;
+    }
+
+    // Fachada Brutalista Externa (Vilanova Artigas): 36 pilares inclinados em V
+    for (let p = 0; p < 36; p++) {
+      const theta = (p / 36) * Math.PI * 2;
+      const [px, pz] = getPt(114, 86, theta);
+      const rotY = Math.atan2(-px, -pz);
+      const pilarGeo = new THREE.BoxGeometry(1.4, 40, 1.4);
+      const m1 = this.add(pilarGeo, concrete, true, false);
+      m1.position.set(px, 20, pz);
+      m1.rotation.y = rotY;
+      m1.rotation.z = 0.12;
+    }
+
+    // Dois Telões Monumentais de LED do MorumBIS (atrás dos gols)
+    const scoreTex = scoreboardTexture(o.home.abbr, o.away.abbr);
+    this.disposables.push(scoreTex);
+    const scoreMat = new THREE.MeshStandardMaterial({ map: scoreTex, emissive: "#ffffff", emissiveMap: scoreTex, emissiveIntensity: 1.25, roughness: 0.3 });
+    this.disposables.push(scoreMat);
+    for (const sx of [-1, 1]) {
+      const tx = sx * 115, tz = 0, ty = 46;
+      // Painel do telão
+      const sg = new THREE.PlaneGeometry(24, 12);
+      const sm = this.add(sg, scoreMat, false, false);
+      sm.position.set(tx, ty, tz);
+      sm.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2;
+      // Estrutura traseira de aço
+      const frame = new THREE.BoxGeometry(0.8, 12.6, 24.6);
+      const fm = this.add(frame, steel, true, false);
+      fm.position.set(tx + sx * 0.45, ty, tz);
+      // Letreiro Neon MORUMBIS no topo do telão
+      const topGeo = new THREE.BoxGeometry(1.2, 2.2, 24);
+      const neonMat = new THREE.MeshStandardMaterial({ color: "#c4122f", emissive: "#ff1838", emissiveIntensity: 2.2 });
+      this.disposables.push(neonMat);
+      this.add(topGeo, neonMat, false, false).position.set(tx, ty + 6.8, tz);
+    }
+
+    // Túnel dos Jogadores com Toldo Tricolor do SPFC na lateral do campo
+    const tunnelGroup = new THREE.Group();
+    const tunnelRoof = new THREE.CylinderGeometry(3.5, 3.5, 12, 16, 1, false, 0, Math.PI);
+    tunnelRoof.rotateZ(Math.PI / 2);
+    const tunnelMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.5 });
+    this.disposables.push(tunnelMat);
+    const tMesh = this.add(tunnelRoof, tunnelMat, true, false, tunnelGroup);
+    tMesh.position.set(0, 1.8, 44);
+    this.group.add(tunnelGroup);
+
+    // Bancos de reserva rente à pista
+    const seatDugout = new THREE.MeshStandardMaterial({ color: "#18202d", roughness: 0.5 });
+    const glassDugout = new THREE.MeshPhysicalMaterial({ color: "#8ea4b8", transparent: true, opacity: 0.4, roughness: 0.1 });
+    this.disposables.push(seatDugout, glassDugout);
+    for (const sx of [-1, 1]) {
+      const g = new THREE.BoxGeometry(13, 2.4, 2.4);
+      this.add(g, glassDugout, false, false).position.set(sx * 14, 1.2, 38);
+      const s = new THREE.BoxGeometry(12.4, 0.6, 1.1);
+      this.add(s, seatDugout, true, true).position.set(sx * 14, 0.48, 38.6);
+    }
+
+    if (fans.length) {
+      this.crowd = new FanCrowd(fans);
+      this.crowd.uniforms.uLeaveTeam.value = o.crowdSide;
+      this.group.add(this.crowd.mesh);
+    }
+    if (o.festa > 0) {
+      const front: [number, number, number, number][] = [];
+      for (let k = 0; k < 28; k++) {
+        const theta = (k / 28) * Math.PI * 2;
+        const [fx, fz] = getPt(72, 49, theta);
+        front.push([fx, 1.6, fz, Math.atan2(-fx, -fz)]);
+      }
+      this.festa = new Festa(
+        { colors: ["#c4122f", "#ffffff", "#181818"], abbr: "SPFC", level: o.festa, reduced: o.reduced, front },
+        { cx: 0, cz: -54, w: 70, d: 24 }
+      );
+      this.group.add(this.festa.group);
+    }
+
+    return [
+      { len: 140, rot: 0, x: 0, z: -74, rows: 34, h0: 1.4, roof: false, end: -1 },
+      { len: 140, rot: Math.PI, x: 0, z: 74, rows: 34, h0: 1.4, roof: false, end: -1 },
+      { len: 96, rot: Math.PI / 2, x: -95, z: 0, rows: 28, h0: 1.4, roof: false, end: 0 },
+      { len: 96, rot: -Math.PI / 2, x: 95, z: 0, rows: 28, h0: 1.4, roof: false, end: 1 },
+    ];
+  }
+
   /** Arquibancadas em degraus, torcida instanciada, faixas e a festa. */
   private buildStands(): StandDef[] {
     const o = this.o, st = o.style;
+    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis" || o.home.abbr === "SPFC" || o.home.name.toLowerCase().includes("são paulo") || o.home.name.toLowerCase().includes("sao paulo");
+    const isSPFC = isMorumbi || o.crowdSide === 0;
+    if (isMorumbi) {
+      return this.buildMorumbi(isSPFC);
+    }
     const big = st.shape === "bowl" || st.shape === "track" || st.shape === "bombonera";
     const small = st.shape === "small";
     const back = st.shape === "track" ? 13 : 8;
@@ -539,8 +924,6 @@ export class Stadium {
       return new THREE.Color().setRGB(mos[i] / 255, mos[i + 1] / 255, mos[i + 2] / 255, THREE.SRGBColorSpace);
     };
     const front: [number, number, number, number][] = [];
-    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis" || o.home.abbr === "SPFC";
-    const isSPFC = isMorumbi || mc.abbr === "SPFC" || mc.name.toLowerCase().includes("são paulo") || mc.name.toLowerCase().includes("sao paulo");
     const banners = isSPFC
       ? [
           "TORCIDA TRICOLOR INDEPENDENTE",
@@ -697,11 +1080,27 @@ export class Stadium {
 
   private buildLights(stands: StandDef[]) {
     const st = this.o.style;
+    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis" || this.o.home.abbr === "SPFC";
     const pole = new THREE.MeshStandardMaterial({ color: "#8a9196", roughness: 0.4, metalness: 0.7 });
     const lamp = new THREE.MeshStandardMaterial({ color: "#ffffff", emissive: "#fff6dd", emissiveIntensity: 6 });
     this.disposables.push(pole, lamp);
     const panels: [number, number, number, number][] = [];
-    if (st.lights === "towers") {
+    if (isMorumbi) {
+      const getPt = (A: number, B: number, theta: number): [number, number] => {
+        const cosT = Math.cos(theta), sinT = Math.sin(theta);
+        const x = A * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / 2.1);
+        const z = B * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / 2.1);
+        return [x, z];
+      };
+      const lightAngles = [
+        Math.PI * 0.18, Math.PI * 0.42, Math.PI * 0.58, Math.PI * 0.82,
+        Math.PI * 1.18, Math.PI * 1.42, Math.PI * 1.58, Math.PI * 1.82,
+      ];
+      for (const theta of lightAngles) {
+        const [lx, lz] = getPt(119, 91, theta);
+        panels.push([lx, 46, lz, Math.atan2(-lx, -lz)]);
+      }
+    } else if (st.lights === "towers") {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         const x = sx * (HALF_L + 26), z = sz * (HALF_W + 30), h = 52;
         const g = new THREE.CylinderGeometry(0.7, 1.3, h, 10);
