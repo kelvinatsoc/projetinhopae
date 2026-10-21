@@ -89,7 +89,7 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
     g.fillRect(0, Y(HALF_W + 2), W, H);
     g.fillRect(0, 0, X(-HALF_L - 2), H);
     g.fillRect(X(HALF_L + 2), 0, W, H);
-    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis";
+    const isMorumbi = st.landmarks.includes("morumbi-ring") || st.key === "morumbis" || st.name.toLowerCase().includes("morumbi");
     if (isMorumbi || st.track) {
       const trackCol = isMorumbi ? "#a83c2e" : st.track!;
       // Pista de atletismo com retas laterais e curvas semicirculares atrás dos gols
@@ -547,11 +547,13 @@ export class Stadium {
   private buildMorumbi(_isSPFC: boolean): StandDef[] {
     const o = this.o;
     const concrete = new THREE.MeshStandardMaterial({ color: "#aba69d", roughness: 0.92 });
+    const darkConcrete = new THREE.MeshStandardMaterial({ color: "#54524e", roughness: 0.95 });
     const seatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62 });
     const glass = new THREE.MeshPhysicalMaterial({ color: "#162330", roughness: 0.08, metalness: 0.85, transparent: true, opacity: 0.82 });
     const steel = new THREE.MeshStandardMaterial({ color: "#9ca1a6", roughness: 0.38, metalness: 0.82 });
+    const railMat = new THREE.MeshStandardMaterial({ color: "#3a3f47", roughness: 0.4, metalness: 0.8 });
     const ribbon = boardTexture(o);
-    this.disposables.push(concrete, seatMat, glass, steel, ribbon);
+    this.disposables.push(concrete, darkConcrete, seatMat, glass, steel, railMat, ribbon);
     const ribbonMat = new THREE.MeshStandardMaterial({ map: ribbon, emissive: "#ffffff", emissiveMap: ribbon, emissiveIntensity: 1.15 });
     this.disposables.push(ribbonMat);
 
@@ -560,7 +562,7 @@ export class Stadium {
     mosC.width = 384;
     mosC.height = 64;
     const mg = mosC.getContext("2d")!;
-    mg.fillStyle = "#c4122f";
+    mg.fillStyle = "#1f4370"; // Fundo azul da Arquibancada Leste
     mg.fillRect(0, 0, 384, 64);
     mg.fillStyle = "#ffffff";
     mg.fillRect(0, 16, 384, 32);
@@ -607,6 +609,58 @@ export class Stadium {
       }
     };
 
+    // -------------------------------------------------------------
+    // O HISTÓRICO FOSSO DO MORUMBI (360° entre a pista e a arquibancada)
+    // -------------------------------------------------------------
+    const moatFloorPos: number[] = [], moatFloorNor: number[] = [];
+    const moatWallPos: number[] = [], moatWallNor: number[] = [];
+    for (let i = 0; i < N_SEG; i++) {
+      const t0 = (i / N_SEG) * Math.PI * 2;
+      const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+      const midT = (t0 + t1) / 2;
+      const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
+
+      const [xIn0, zIn0] = getPt(65.5, 43.5, t0);
+      const [xIn1, zIn1] = getPt(65.5, 43.5, t1);
+      const [xOut0, zOut0] = getPt(69.8, 46.8, t0);
+      const [xOut1, zOut1] = getPt(69.8, 46.8, t1);
+
+      // Piso rebaixado do fosso (Y = -1.6m)
+      moatFloorPos.push(xIn0, -1.6, zIn0,  xOut0, -1.6, zOut0,  xOut1, -1.6, zOut1,
+                        xIn0, -1.6, zIn0,  xOut1, -1.6, zOut1,  xIn1, -1.6, zIn1);
+      for (let k = 0; k < 6; k++) moatFloorNor.push(0, 1, 0);
+
+      // Parede interna do fosso (desce de 0.0 para -1.6m)
+      moatWallPos.push(xIn0, 0.0, zIn0,  xIn1, 0.0, zIn1,  xIn1, -1.6, zIn1,
+                       xIn0, 0.0, zIn0,  xIn1, -1.6, zIn1,  xIn0, -1.6, zIn0);
+      for (let k = 0; k < 6; k++) moatWallNor.push(-nx, 0, -nz);
+
+      // Parede externa do fosso (sobe de -1.6m para 1.0m, encontrando o Anel 1)
+      moatWallPos.push(xOut0, -1.6, zOut0,  xOut1, -1.6, zOut1,  xOut1, 1.0, zOut1,
+                       xOut0, -1.6, zOut0,  xOut1, 1.0, zOut1,  xOut0, 1.0, zOut0);
+      for (let k = 0; k < 6; k++) moatWallNor.push(nx, 0, nz);
+    }
+    const gMoatFloor = new THREE.BufferGeometry();
+    gMoatFloor.setAttribute("position", new THREE.Float32BufferAttribute(moatFloorPos, 3));
+    gMoatFloor.setAttribute("normal", new THREE.Float32BufferAttribute(moatFloorNor, 3));
+    this.add(gMoatFloor, darkConcrete, true, false);
+
+    const gMoatWall = new THREE.BufferGeometry();
+    gMoatWall.setAttribute("position", new THREE.Float32BufferAttribute(moatWallPos, 3));
+    gMoatWall.setAttribute("normal", new THREE.Float32BufferAttribute(moatWallNor, 3));
+    this.add(gMoatWall, concrete, true, false);
+
+    // Mureta de proteção com guarda-corpo metálico ao longo do fosso
+    const fenceGroup = new THREE.Group();
+    for (let i = 0; i < N_SEG; i += 2) {
+      const theta = (i / N_SEG) * Math.PI * 2;
+      const [fx, fz] = getPt(65.4, 43.4, theta);
+      const post = new THREE.BoxGeometry(0.08, 0.9, 0.08);
+      const pm = this.add(post, railMat, true, false, fenceGroup);
+      pm.position.set(fx, 0.45, fz);
+    }
+    this.group.add(fenceGroup);
+
     // Gera os degraus de um anel elíptico contínuo
     const addTier = (A0: number, B0: number, Y0: number, A1: number, B1: number, Y1: number, steps: number, colorFn: (s: number, theta: number, u: number, v: number) => THREE.Color) => {
       for (let s = 0; s < steps; s++) {
@@ -620,7 +674,11 @@ export class Stadium {
           const t0 = (i / N_SEG) * Math.PI * 2;
           const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
           const midT = (t0 + t1) / 2;
-          const c = colorFn(s, midT, (i + 0.5) / N_SEG, (s + 0.5) / steps);
+
+          // Corredores brancos de circulação a cada 30 graus
+          const degNorm = ((midT * 180) / Math.PI + 360) % 360;
+          const isAisle = degNorm % 30 < 2.0;
+          const c = isAisle ? new THREE.Color("#d5d8db") : colorFn(s, midT, (i + 0.5) / N_SEG, (s + 0.5) / steps);
 
           const [x00, z00] = getPt(a_in, b_in, t0);
           const [x01, z01] = getPt(a_in, b_in, t1);
@@ -633,8 +691,8 @@ export class Stadium {
           const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
           quad([x00, ya, z00], [x01, ya, z01], [x01, yb, z01], [x00, yb, z00], [nx, 0, nz], c.clone().multiplyScalar(0.72));
 
-          // Torcedores distribuídos na arquibancada
-          if (r() < fill) {
+          // Torcedores distribuídos na arquibancada (fora dos corredores)
+          if (!isAisle && r() < fill) {
             const team: 0 | 1 = (!o.neutral && Math.cos(midT) > 0.65 && Math.sin(midT) > 0.4) ? 1 : 0;
             const midA = (a_in + a_out) / 2, midB = (b_in + b_out) / 2;
             const [fx, fz] = getPt(midA, midB, midT + (r() - 0.5) * 0.02);
@@ -648,31 +706,26 @@ export class Stadium {
       }
     };
 
-    // ANEL 1 (Térreo / Inferior): 10 degraus, todo vermelho Morumbi rente à pista
+    // ANEL 1 (Térreo / Inferior): 10 degraus, todo vermelho Morumbi rente ao fosso
     addTier(70, 47, 1.0, 83, 57, 6.2, 10, (_s, _theta) => new THREE.Color("#c4122f"));
 
-    // ANEL 2 (Intermediário / Cadeiras Cativas & Especiais): 12 degraus em setores tricolores
-    addTier(81, 55, 10.5, 95, 68, 18.5, 12, (s, theta) => {
-      const deg = ((theta * 180) / Math.PI + 360) % 360;
-      const sector = Math.floor(deg / 45) % 3;
-      const baseCol = sector === 0 ? "#c4122f" : sector === 1 ? "#f0f0f0" : "#181818";
-      return new THREE.Color(baseCol).multiplyScalar(s % 2 ? 0.9 : 1);
-    });
+    // ANEL 2 (Intermediário / Cadeiras Especiais & Tribuna): 12 degraus em vermelho Morumbi
+    addTier(81, 55, 10.5, 95, 68, 18.5, 12, (_s, _theta) => new THREE.Color("#b80f28"));
 
-    // ANEL 3 (Superior / A Gigantesca Arquibancada Monumental): 20 degraus, setores e mosaico SÃO PAULO FC
-    addTier(89, 64, 22.5, 120, 92, 42.0, 20, (s, theta, _u, v) => {
+    // ANEL 3 (Superior / A Monumental Arquibancada de 3 Cores): 22 degraus, setores oficiais e mosaico
+    addTier(89, 64, 22.5, 122, 94, 43.5, 22, (s, theta, _u, v) => {
       const cosT = Math.cos(theta), sinT = Math.sin(theta);
-      // Mosaico na lateral voltada para a câmera (z < 0)
-      if (sinT < -0.45 && Math.abs(cosT) < 0.65) {
-        const mu = (cosT + 0.65) / 1.3;
+      // Mosaico oficial "SÃO PAULO FC" na Arquibancada Leste voltada para a câmera (z < 0)
+      if (sinT < -0.42 && Math.abs(cosT) < 0.68) {
+        const mu = (cosT + 0.68) / 1.36;
         return getMosaicColor(mu, v);
       }
-      // Setores do MorumBIS (Vermelha, Laranja, Azul, Amarela)
+      // Setores oficiais do MorumBIS (Vermelha, Laranja, Azul, Amarela)
       const deg = ((theta * 180) / Math.PI + 360) % 360;
-      if (deg >= 45 && deg < 135) return new THREE.Color(s % 2 ? "#b80f28" : "#c4122f"); // Vermelha
-      if (deg >= 135 && deg < 225) return new THREE.Color(s % 2 ? "#d65e1b" : "#e66a25"); // Laranja
-      if (deg >= 225 && deg < 315) return new THREE.Color(s % 2 ? "#1f4370" : "#265187"); // Azul
-      return new THREE.Color(s % 2 ? "#d9a10d" : "#ebb41a"); // Amarela
+      if (deg >= 45 && deg < 135) return new THREE.Color(s % 2 ? "#b80f28" : "#c4122f"); // Setor Sul / Vermelha (Independente)
+      if (deg >= 135 && deg < 225) return new THREE.Color(s % 2 ? "#d65e1b" : "#e66a25"); // Setor Norte / Laranja
+      if (deg >= 225 && deg < 315) return new THREE.Color(s % 2 ? "#1a3d6e" : "#224e8c"); // Setor Leste / Azul
+      return new THREE.Color(s % 2 ? "#d9a10d" : "#ebb41a"); // Setor Oeste / Amarela
     });
 
     const gSeats = new THREE.BufferGeometry();
@@ -730,24 +783,25 @@ export class Stadium {
     gCorbel.setAttribute("normal", new THREE.Float32BufferAttribute(corbelNor, 3));
     this.add(gCorbel, concrete, true, true);
 
-    // Muro frontal do Anel 1 com faixas da Torcida Tricolor Independente e Dragões da Real
-    const wallPos: number[] = [], wallNor: number[] = [];
+    // Marquise superior de concreto (viseira de cobertura no topo do Anel 3)
+    const roofPos: number[] = [], roofNor: number[] = [];
     for (let i = 0; i < N_SEG; i++) {
       const t0 = (i / N_SEG) * Math.PI * 2;
       const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
-      const [x0, z0] = getPt(70, 47, t0);
-      const [x1, z1] = getPt(70, 47, t1);
-      const midT = (t0 + t1) / 2;
-      const [nx, nz] = [-Math.cos(midT), -Math.sin(midT)];
-      wallPos.push(x0, 0, z0,  x1, 0, z1,  x1, 1.0, z1,  x0, 0, z0,  x1, 1.0, z1,  x0, 1.0, z0);
-      for (let k = 0; k < 6; k++) wallNor.push(nx, 0, nz);
+      const [xOut0, zOut0] = getPt(123, 95, t0);
+      const [xOut1, zOut1] = getPt(123, 95, t1);
+      const [xIn0, zIn0] = getPt(116, 88, t0);
+      const [xIn1, zIn1] = getPt(116, 88, t1);
+      roofPos.push(xOut0, 44.2, zOut0,  xIn0, 44.0, zIn0,  xIn1, 44.0, zIn1,
+                   xOut0, 44.2, zOut0,  xIn1, 44.0, zIn1,  xOut1, 44.2, zOut1);
+      for (let k = 0; k < 6; k++) roofNor.push(0, -1, 0);
     }
-    const gWall = new THREE.BufferGeometry();
-    gWall.setAttribute("position", new THREE.Float32BufferAttribute(wallPos, 3));
-    gWall.setAttribute("normal", new THREE.Float32BufferAttribute(wallNor, 3));
-    this.add(gWall, concrete, true, true);
+    const gRoof = new THREE.BufferGeometry();
+    gRoof.setAttribute("position", new THREE.Float32BufferAttribute(roofPos, 3));
+    gRoof.setAttribute("normal", new THREE.Float32BufferAttribute(roofNor, 3));
+    this.add(gRoof, concrete, true, true);
 
-    // 12 Faixas Oficiais da Torcida Tricolor Independente e Dragões da Real
+    // 12 Faixas Oficiais da Torcida Tricolor Independente e Dragões da Real montadas no parapeito
     const spfcBanners = [
       "TORCIDA TRICOLOR INDEPENDENTE",
       "DRAGÕES DA REAL",
@@ -764,7 +818,7 @@ export class Stadium {
     ];
     for (let b = 0; b < 12; b++) {
       const theta = (b / 12) * Math.PI * 2;
-      const [bx, bz] = getPt(69.8, 46.8, theta);
+      const [bx, bz] = getPt(69.6, 46.6, theta);
       const angle = Math.atan2(
         getPt(70, 47, theta + 0.05)[1] - getPt(70, 47, theta - 0.05)[1],
         getPt(70, 47, theta + 0.05)[0] - getPt(70, 47, theta - 0.05)[0]
@@ -772,22 +826,28 @@ export class Stadium {
       const cols = b % 3 === 0 ? ["#ffffff", "#c4122f"] : b % 3 === 1 ? ["#c4122f", "#ffffff"] : ["#121212", "#ffffff"];
       const t = bannerTexture(cols, spfcBanners[b]);
       this.disposables.push(t);
-      const bg = new THREE.PlaneGeometry(9.5, 1.0);
+      const bg = new THREE.PlaneGeometry(9.5, 1.2);
       const bm = this.add(bg, new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }), false, false);
-      bm.position.set(bx, 0.52, bz);
+      bm.position.set(bx, 0.6, bz);
       bm.rotation.y = -angle + Math.PI;
     }
 
-    // Fachada Brutalista Externa (Vilanova Artigas): 36 pilares inclinados em V
+    // Fachada Brutalista Externa (Vilanova Artigas): 36 pilares inclinados em V duplo
     for (let p = 0; p < 36; p++) {
       const theta = (p / 36) * Math.PI * 2;
-      const [px, pz] = getPt(114, 86, theta);
+      const [px, pz] = getPt(116, 88, theta);
       const rotY = Math.atan2(-px, -pz);
-      const pilarGeo = new THREE.BoxGeometry(1.4, 40, 1.4);
+      // Perna 1 do V
+      const pilarGeo = new THREE.BoxGeometry(1.6, 42, 1.6);
       const m1 = this.add(pilarGeo, concrete, true, false);
-      m1.position.set(px, 20, pz);
+      m1.position.set(px, 21, pz);
       m1.rotation.y = rotY;
-      m1.rotation.z = 0.12;
+      m1.rotation.z = 0.14;
+      // Perna 2 do V
+      const m2 = this.add(pilarGeo, concrete, true, false);
+      m2.position.set(px, 21, pz);
+      m2.rotation.y = rotY;
+      m2.rotation.z = -0.14;
     }
 
     // Dois Telões Monumentais de LED do MorumBIS (atrás dos gols)
@@ -796,28 +856,31 @@ export class Stadium {
     const scoreMat = new THREE.MeshStandardMaterial({ map: scoreTex, emissive: "#ffffff", emissiveMap: scoreTex, emissiveIntensity: 1.25, roughness: 0.3 });
     this.disposables.push(scoreMat);
     for (const sx of [-1, 1]) {
-      const tx = sx * 115, tz = 0, ty = 46;
+      const tx = sx * 118, tz = 0, ty = 48;
+      // Torre base de concreto
+      const towerBase = new THREE.BoxGeometry(6, 44, 18);
+      this.add(towerBase, concrete, true, false).position.set(tx + sx * 4, 22, tz);
       // Painel do telão
-      const sg = new THREE.PlaneGeometry(24, 12);
+      const sg = new THREE.PlaneGeometry(26, 13);
       const sm = this.add(sg, scoreMat, false, false);
       sm.position.set(tx, ty, tz);
       sm.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2;
       // Estrutura traseira de aço
-      const frame = new THREE.BoxGeometry(0.8, 12.6, 24.6);
+      const frame = new THREE.BoxGeometry(1.0, 13.6, 26.6);
       const fm = this.add(frame, steel, true, false);
-      fm.position.set(tx + sx * 0.45, ty, tz);
+      fm.position.set(tx + sx * 0.55, ty, tz);
       // Letreiro Neon MORUMBIS no topo do telão
-      const topGeo = new THREE.BoxGeometry(1.2, 2.2, 24);
+      const topGeo = new THREE.BoxGeometry(1.4, 2.6, 26);
       const neonMat = new THREE.MeshStandardMaterial({ color: "#c4122f", emissive: "#ff1838", emissiveIntensity: 2.2 });
       this.disposables.push(neonMat);
-      this.add(topGeo, neonMat, false, false).position.set(tx, ty + 6.8, tz);
+      this.add(topGeo, neonMat, false, false).position.set(tx, ty + 7.5, tz);
     }
 
     // Túnel dos Jogadores com Toldo Tricolor do SPFC na lateral do campo
     const tunnelGroup = new THREE.Group();
-    const tunnelRoof = new THREE.CylinderGeometry(3.5, 3.5, 12, 16, 1, false, 0, Math.PI);
+    const tunnelRoof = new THREE.CylinderGeometry(3.8, 3.8, 14, 16, 1, false, 0, Math.PI);
     tunnelRoof.rotateZ(Math.PI / 2);
-    const tunnelMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.5 });
+    const tunnelMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.45 });
     this.disposables.push(tunnelMat);
     const tMesh = this.add(tunnelRoof, tunnelMat, true, false, tunnelGroup);
     tMesh.position.set(0, 1.8, 44);
@@ -828,18 +891,51 @@ export class Stadium {
     const glassDugout = new THREE.MeshPhysicalMaterial({ color: "#8ea4b8", transparent: true, opacity: 0.4, roughness: 0.1 });
     this.disposables.push(seatDugout, glassDugout);
     for (const sx of [-1, 1]) {
-      const g = new THREE.BoxGeometry(13, 2.4, 2.4);
-      this.add(g, glassDugout, false, false).position.set(sx * 14, 1.2, 38);
-      const s = new THREE.BoxGeometry(12.4, 0.6, 1.1);
-      this.add(s, seatDugout, true, true).position.set(sx * 14, 0.48, 38.6);
+      const dg = new THREE.BoxGeometry(10, 2.4, 3.2);
+      const dm = this.add(dg, glassDugout, false, false);
+      dm.position.set(sx * 16, 1.2, 38.5);
+      const bench = new THREE.BoxGeometry(9.2, 0.45, 1.2);
+      this.add(bench, seatDugout, true, false).position.set(sx * 16, 0.5, 38.5);
     }
 
-    if (fans.length) {
+    // Bandeirinhas de escanteio tricolores nos 4 cantos
+    const flagPoleMat = new THREE.MeshStandardMaterial({ color: "#e8eaed", metalness: 0.8, roughness: 0.2 });
+    const flagMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.6 });
+    this.disposables.push(flagPoleMat, flagMat);
+    for (const cx of [-HALF_L, HALF_L]) {
+      for (const cz of [-HALF_W, HALF_W]) {
+        const pole = new THREE.CylinderGeometry(0.04, 0.04, 1.6, 8);
+        const pMesh = this.add(pole, flagPoleMat, false, false);
+        pMesh.position.set(cx, 0.8, cz);
+        const flag = new THREE.PlaneGeometry(0.45, 0.35);
+        const fMesh = this.add(flag, flagMat, false, false);
+        fMesh.position.set(cx + (cx < 0 ? 0.22 : -0.22), 1.45, cz);
+      }
+    }
+
+    // Instancia os milhares de torcedores 3D nos 3 anéis
+    if (fans.length && o.quality !== "baixa") {
       this.crowd = new FanCrowd(fans);
       this.crowd.uniforms.uLeaveTeam.value = o.crowdSide;
       this.group.add(this.crowd.mesh);
     }
-    if (o.festa > 0) {
+
+    // Iluminação por holofotes monumentais no topo do Anel 3
+    for (let p = 0; p < 8; p++) {
+      const theta = (p / 8) * Math.PI * 2;
+      const [lx, lz] = getPt(122, 94, theta);
+      const lightTower = new THREE.Group();
+      const mastGeo = new THREE.BoxGeometry(1.2, 6, 1.2);
+      this.add(mastGeo, steel, true, false, lightTower).position.set(0, 3, 0);
+      const rackGeo = new THREE.BoxGeometry(6, 2.5, 1.2);
+      this.add(rackGeo, steel, true, false, lightTower).position.set(0, 6.5, 0);
+      lightTower.position.set(lx, 43.5, lz);
+      lightTower.rotation.y = Math.atan2(-lx, -lz);
+      this.group.add(lightTower);
+    }
+
+    // Festa da Torcida Independente na Arquibancada Sul
+    if (o.festa && o.quality !== "baixa") {
       const front: [number, number, number, number][] = [];
       for (let k = 0; k < 28; k++) {
         const theta = (k / 28) * Math.PI * 2;

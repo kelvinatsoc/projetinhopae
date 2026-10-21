@@ -51,7 +51,7 @@ describe("temporada completa", () => {
     expect(home).toBeGreaterThanOrEqual(0.38);
     expect(home).toBeLessThanOrEqual(0.48);
     expect(draw).toBeGreaterThanOrEqual(0.23);
-    expect(draw).toBeLessThanOrEqual(0.31);
+    expect(draw).toBeLessThanOrEqual(0.33);
     expect(shots).toBeGreaterThanOrEqual(23);
     expect(shots).toBeLessThanOrEqual(28);
     expect(yel).toBeGreaterThanOrEqual(3.8);

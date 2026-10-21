@@ -1,13 +1,13 @@
 :root {
-  --bg: #0c1712;
-  --bg2: #12211a;
-  --card: #172a21;
-  --card2: #1e3529;
-  --line: #2a4335;
-  --text: #ecf5ef;
-  --muted: #94aa9d;
-  --accent: #34d27b;
-  --accent2: #1fa35c;
+  --bg: #090a0f;
+  --bg2: #0e1118;
+  --card: #131722;
+  --card2: #181d2b;
+  --line: rgba(255, 255, 255, 0.07);
+  --text: #f8fafc;
+  --muted: #7c8ba1;
+  --accent: #c8f43c;
+  --accent2: #9fcc1e;
   --gold: #f5c542;
   --danger: #ef5350;
   --warn: #f5a524;

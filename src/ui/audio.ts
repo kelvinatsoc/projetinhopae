@@ -128,7 +128,7 @@ function out(c: AudioContext): AudioNode {
 }
 
 function ac(): AudioContext | null {
-  if (!enabled) return null;
+  if (typeof window === "undefined" || !enabled) return null;
   if (!ctx) {
     const C = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;
@@ -770,6 +770,200 @@ export function ooh() {
 }
 
 /** Som metálico de bola na trave (CLANG!) seguido do 'uhhh' da torcida. */
+
+/** Som de toque sutil na bola / passe curto ('toc'). */
+export function ballPass() {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(190, t0);
+  osc.frequency.exponentialRampToValueAtTime(55, t0 + 0.048);
+  g.gain.setValueAtTime(0.38, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+  osc.connect(g);
+  g.connect(out(c));
+  osc.start(t0);
+  osc.stop(t0 + 0.052);
+
+  try {
+    const len = Math.floor(c.sampleRate * 0.015);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.setValueAtTime(950, t0);
+    f.Q.setValueAtTime(2.5, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.22, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.015);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+}
+
+/** Chute potente / finalização / lançamento ('thump'). */
+export function ballKick(power = 1.0) {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+  const p = Math.max(0.4, Math.min(1.4, power));
+
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(230, t0);
+  osc.frequency.exponentialRampToValueAtTime(42, t0 + 0.11);
+  g.gain.setValueAtTime(0.72 * p, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+  osc.connect(g);
+  g.connect(out(c));
+  osc.start(t0);
+  osc.stop(t0 + 0.13);
+
+  try {
+    const len = Math.floor(c.sampleRate * 0.028);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.5);
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.setValueAtTime(520, t0);
+    f.Q.setValueAtTime(1.8, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.45 * p, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.028);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+}
+
+/** Farfalhar de bola na rede (estufar e balançar de malhas de nylon). */
+export function netRipple() {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+
+  const osc = c.createOscillator();
+  const og = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(110, t0);
+  osc.frequency.exponentialRampToValueAtTime(38, t0 + 0.12);
+  og.gain.setValueAtTime(0.45, t0);
+  og.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+  osc.connect(og);
+  og.connect(out(c));
+  osc.start(t0);
+  osc.stop(t0 + 0.15);
+
+  try {
+    const dur = 0.32;
+    const len = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const t = i / c.sampleRate;
+      const mod = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 * 35);
+      const env = Math.exp(-t * 11);
+      d[i] = (Math.random() * 2 - 1) * mod * env;
+    }
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.setValueAtTime(2200, t0);
+    f.frequency.exponentialRampToValueAtTime(1400, t0 + dur);
+    f.Q.setValueAtTime(2.2, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.55, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+}
+
+/** Defesa do goleiro espalmando / segurando com as luvas. */
+export function savePunch() {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(145, t0);
+  osc.frequency.exponentialRampToValueAtTime(48, t0 + 0.08);
+  g.gain.setValueAtTime(0.52, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09);
+  osc.connect(g);
+  g.connect(out(c));
+  osc.start(t0);
+  osc.stop(t0 + 0.095);
+
+  try {
+    const len = Math.floor(c.sampleRate * 0.035);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.setValueAtTime(700, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.35, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.035);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+}
+
+/** Carrinho / desarme / bloqueio no chão. */
+export function tackle() {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+  try {
+    const dur = 0.16;
+    const len = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const t = i / c.sampleRate;
+      d[i] = (Math.random() * 2 - 1) * Math.sin((t / dur) * Math.PI) * (1 - t / dur);
+    }
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.setValueAtTime(800, t0);
+    f.frequency.exponentialRampToValueAtTime(450, t0 + dur);
+    f.Q.setValueAtTime(1.5, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.38, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+}
+
 export function postClang() {
   const c = ac();
   if (c && enabled) {

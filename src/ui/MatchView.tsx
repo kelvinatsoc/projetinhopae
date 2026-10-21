@@ -28,6 +28,7 @@ import { ballHeight, hudAbbr, hudName, toWorld, type MatchSnapshot, type Quality
 import type { MatchRenderer } from "./match3d/MatchRenderer";
 import { pickSpecial, SPECIALS, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
+import { ballPass, ballKick, netRipple, savePunch, tackle } from "./audio";
 import { Festa2D } from "./torcida2d";
 import { isLite } from "./perf";
 
@@ -970,6 +971,7 @@ class PitchAnim {
 
   /** Passe: o recebedor corre para o ponto onde a bola vai chegar com dinâmica de jogo ágil. */
   pass(to: Dude, lob = false) {
+    ballPass();
     if (to.hidden || to.leaving) return;
     const b = this.ball;
     if (b.holder) {
@@ -1148,6 +1150,7 @@ class PitchAnim {
         if (td.hidden || td.leaving) return;
         const dur = 260 / this.spd();
         if (this.rich) setPose(td, "slide", this.now, 520 / this.spd());
+        tackle();
         this.poss = td.side as 0 | 1;
         this.fly(td.x + fwd(td.side as 0 | 1) * 2, td.y, dur, 0, td);
         if (Math.random() < 0.45) this.say(`${this.name(td)} desarma ${this.name(victim)}`, td.side as 0 | 1);
@@ -1287,6 +1290,7 @@ class PitchAnim {
       this.nextFx = { ...this.nextFx, curve: (fromY < CY ? 1 : -1) * (2.4 + Math.random() * 2.2) };
     }
     const dur = ballTime(dist, this.nextFx?.power ? BALL_MPS.power : BALL_MPS.shot, 240) / sp * (hold ? 1.15 : 1);
+    ballKick(sh.xg > 0.35 ? 1.05 : 0.85);
     this.flashUntil = this.now + dur + 300;
     const kY = keeper ? keeper.y : CY;
     if (this.rich) this.shotFx(shooter, sh, keeper);
@@ -1421,6 +1425,7 @@ class PitchAnim {
 
   /** Bola na rede (ou gol anulado pelo VAR). */
   scored(sh: NonNullable<MinutePhase["shot"]> | { side: 0 | 1; result: "goal" }, e: MatchEvent | null, scorer: Dude | null, hold: boolean) {
+    netRipple();
     const atk = sh.side;
     this.netShake = { side: atk, until: this.now + 450 };
     if (sh.result === "var") {
@@ -1545,6 +1550,7 @@ class PitchAnim {
           this.cb.beat(missE);
           this.say(missE.text, atk, 1);
         }
+        if (saved) savePunch();
         if (saved && keeper) this.setHolder(keeper);
       });
     });

@@ -125,7 +125,7 @@ export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
  */
 export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club | null; season: number; size?: number }) {
   const [broken, setBroken] = useState<string[]>([]);
-  const cands = p.photo ? [p.photo] : [sportsdbUrl(p), mediaUrlOrNull(playerImagePath(p))];
+  const cands = p.photo ? [p.photo] : [mediaUrlOrNull(playerImagePath(p)), sportsdbUrl(p)];
   const src = cands.find((u): u is string => !!u && !broken.includes(u));
   const cls = `avatar${p.legend ? " legend" : ""}${src && src === sportsdbUrl(p) ? " ext" : ""}`;
   if (src) {

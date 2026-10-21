@@ -251,7 +251,7 @@ export function migrateWorld(w: World, db: Database, world?: WorldData): { repai
   const photos = new Map<string, string>();
   const portraits = new Map<string, string>();
   for (const dp of db.players) {
-    if (dp.img && dp.q) photos.set(`${dp.n}|${dp.b}`, dp.q);
+    if (dp.q) photos.set(`${dp.n}|${dp.b}`, dp.q);
     if (dp.pi) portraits.set(`${dp.n}|${dp.b}`, dp.pi);
   }
   for (const p of Object.values(w.players)) {
