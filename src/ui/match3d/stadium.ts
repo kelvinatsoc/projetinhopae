@@ -48,7 +48,7 @@ function pitchTexture(st: StadiumStyle, q: Quality): THREE.CanvasTexture {
   const t = canvasTex(W, H, (g) => {
     const X = (m: number) => (m + AREA_L / 2) * S;
     const Y = (m: number) => (m + AREA_W / 2) * S;
-    const A = "#3b8c35", B = "#2f7a2b";
+    const A = "#33852d", B = "#286b24";
     g.fillStyle = A;
     g.fillRect(0, 0, W, H);
     g.fillStyle = B;
@@ -258,9 +258,9 @@ export class Stadium {
     this.group.add(this.sky);
     this.disposables.push(this.sky.geometry, this.sky.material);
 
-    const hemi = new THREE.HemisphereLight("#bcd4ff", "#3b5a2a", 1.15);
+    const hemi = new THREE.HemisphereLight("#cfe1ff", "#2a4d20", 1.25);
     this.group.add(hemi);
-    this.sun = new THREE.DirectionalLight("#ffd9a8", 2.6);
+    this.sun = new THREE.DirectionalLight("#ffe2b8", 2.9);
     this.sun.position.copy(sunDir).multiplyScalar(150);
     this.sun.position.y = Math.max(this.sun.position.y, 55);
     this.sun.castShadow = q !== "baixa";
@@ -272,9 +272,9 @@ export class Stadium {
     this.sun.shadow.normalBias = 0.04;
     this.sun.shadow.radius = 3;
     this.group.add(this.sun, this.sun.target);
-    // luz dos refletores: duas luzes frias de preenchimento (sem sombra)
-    for (const [x, z, i] of [[-70, -60, 0.9], [70, 55, 0.7]] as const) {
-      const f = new THREE.DirectionalLight("#eef3ff", i);
+    // luz dos refletores: duas luzes claras de estádio
+    for (const [x, z, i] of [[-70, -60, 1.15], [70, 55, 0.95]] as const) {
+      const f = new THREE.DirectionalLight("#f0f4ff", i);
       f.position.set(x, 60, z);
       this.group.add(f);
     }

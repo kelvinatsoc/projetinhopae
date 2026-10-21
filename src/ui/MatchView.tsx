@@ -1120,7 +1120,14 @@ class PitchAnim {
       const from = cur;
       const tt = t1 + gap * i + gap * 0.25;
       this.at(tt, () => this.pass(nx));
-      if (first || Math.random() < 0.5) this.at(tt, () => this.say(`${this.name(from)} toca para ${this.name(nx)}`, atk));
+      if (first || Math.random() < 0.5) {
+        const passText = (from.grp >= 2 && nx.grp >= 2 && Math.random() < 0.35)
+          ? `${this.name(from)} tabela bonito com ${this.name(nx)}`
+          : (from.grp === 1 && nx.grp === 2)
+          ? `${this.name(from)} acha ${this.name(nx)} livre`
+          : `${this.name(from)} toca para ${this.name(nx)}`;
+        this.at(tt, () => this.say(passText, atk));
+      }
       first = false;
       prev = cur;
       cur = nx;
@@ -1272,7 +1279,10 @@ class PitchAnim {
     this.ball.h = 0;
     const fromX = this.ball.x, fromY = this.ball.y;
     const dist = Math.abs(gx - fromX);
-    const dur = ballTime(dist, this.nextFx?.power ? BALL_MPS.power : BALL_MPS.shot, 380) / sp * (hold ? 1.25 : 1);
+    if (!this.nextFx?.curve && (sh.kind === "long" || sh.kind === "freekick")) {
+      this.nextFx = { ...this.nextFx, curve: (fromY < CY ? 1 : -1) * (2.4 + Math.random() * 2.2) };
+    }
+    const dur = ballTime(dist, this.nextFx?.power ? BALL_MPS.power : BALL_MPS.shot, 240) / sp * (hold ? 1.15 : 1);
     this.flashUntil = this.now + dur + 300;
     const kY = keeper ? keeper.y : CY;
     if (this.rich) this.shotFx(shooter, sh, keeper);
@@ -1760,7 +1770,7 @@ class PitchAnim {
         if (v > 0.012 && h.grp !== 0) {
           const period = 520 / Math.max(0.5, sp);
           const u = ((this.now - this.carryStart) % period) / period;
-          const ahead = 1.1 + 2.0 * (1 - u) * (1 - u); // px (1 px ≈ 0,66 m)
+          const ahead = 0.8 + 1.2 * (1 - u) * (1 - u); // px (condução ágil e colada na chuteira)
           ox = (h.vx / v) * ahead;
           oy = (h.vy / v) * ahead;
         }
@@ -2284,7 +2294,9 @@ export function MatchView(props: MatchViewProps) {
     anim.draw(g);
     start();
 
-    const h3d = (w: number) => landscape() ? Math.max(200, window.innerHeight - 118) : Math.min(w * (sim.finished ? 0.62 : 1.0), Math.max(200, window.innerHeight * 0.5));
+    const h3d = (w: number) => landscape()
+      ? Math.max(180, window.innerHeight - 118)
+      : Math.min(Math.round(w * (9 / 16)), Math.max(180, window.innerHeight * 0.44));
     const resize = () => {
       if (r3d) {
         const w = wrap.clientWidth;
@@ -2301,7 +2313,7 @@ export function MatchView(props: MatchViewProps) {
       canvas.style.visibility = "";
       const dpr = window.devicePixelRatio || 1;
       const avail = wrap.clientWidth;
-      const maxH = Math.max(170, landscape() ? window.innerHeight - 118 : window.innerHeight * 0.36);
+      const maxH = Math.max(170, landscape() ? window.innerHeight - 118 : Math.min(Math.round(avail * (9 / 16)), window.innerHeight * 0.44));
       let k = Math.max(1, Math.floor((avail * dpr) / W));
       while (k > 1 && (H * k) / dpr > maxH) k--;
       canvas.style.width = `${(W * k) / dpr}px`;
