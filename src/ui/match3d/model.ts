@@ -217,7 +217,8 @@ export type Quality = "alta" | "media" | "baixa";
 
 /** Resolução de renderização: escala de pixels por nível (alta = até 2x, teto de 2000 px de largura). */
 export function renderRes(cssW: number, cssH: number, dpr: number, q: Quality, dyn = 1): { w: number; h: number; ratio: number } {
-  const cap = q === "alta" ? 2 : q === "media" ? 1.5 : 1;
+  const isMobile = typeof window !== "undefined" && (window.innerWidth <= 768 || "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0));
+  const cap = isMobile ? (q === "alta" ? 1.25 : 1.0) : (q === "alta" ? 2 : q === "media" ? 1.5 : 1);
   let ratio = Math.max(0.5, Math.min(dpr, cap) * dyn);
   if (cssW * ratio > 2000) ratio = 2000 / cssW;
   return { w: Math.round(cssW * ratio), h: Math.round(cssH * ratio), ratio };

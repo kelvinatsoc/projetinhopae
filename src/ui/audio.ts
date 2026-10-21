@@ -459,7 +459,7 @@ let atmos: Atmos | null = null;
 const BR_LEVEL = { bed: 0.36, chant: 0.42, boo: 0.5, goal: 0.95, goalAway: 0.3, ooh: 0.6, ole: 0.55 };
 
 function brPaths(p: CrowdProfile): string[] {
-  return [p.bed, p.chant, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, ...p.goal];
+  return [p.bed, p.chant, BR_SOUNDS.boo, BR_SOUNDS.ooh, BR_SOUNDS.ole, BR_SOUNDS.goalShout, ...p.goal];
 }
 
 function loopLayer(c: AudioContext, bus: AudioNode, path: string, fallback: string | null, me: () => boolean, synth?: (c: AudioContext, out: GainNode) => AudioBufferSourceNode): Layer {
@@ -661,6 +661,7 @@ function atmosphereGoal(forCrowd: boolean): boolean {
   const c = ctx;
   if (!a || !c) return false;
   if (forCrowd) {
+    if (BR_SOUNDS.goalShout) playBr(BR_SOUNDS.goalShout, 0.95);
     const path = a.p.goal[Math.floor(Math.random() * a.p.goal.length)];
     playBr(path, BR_LEVEL.goal * (0.75 + 0.25 * a.p.size), {}, () => goalRoarGeneric(true));
     a.festaUntil = c.currentTime + 14;
@@ -712,6 +713,7 @@ export function goalRoar(home: boolean, side?: 0 | 1) {
 }
 
 function goalRoarGeneric(home: boolean) {
+  if (home && BR_SOUNDS.goalShout) playBr(BR_SOUNDS.goalShout, 0.92);
   // sorteia entre as gravações de gol já carregadas
   const alt = ready.get(SAMPLE.goal2);
   const path = home && alt && Math.random() < 0.4 ? SAMPLE.goal2 : SAMPLE.goal;

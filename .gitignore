@@ -4,8 +4,9 @@ dist/
 *.log
 .DS_Store
 __pycache__/
-# APK gerado (baixe pela página de Releases; nunca suba APK para o git)
+# APK gerado
 *.apk
+!lendas-da-base.apk
 *.aab
 # chaves de assinatura e senhas ficam fora do repositório (veja ANDROID.md)
 *.jks

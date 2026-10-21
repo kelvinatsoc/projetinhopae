@@ -194,19 +194,26 @@ export class HqRenderer {
   /** Pós-processamento moderno: MSAA 4x + GTAO + UnrealBloom + OutputPass. */
   private post() {
     if (typeof window === "undefined") return;
-    const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    const isMobile = window.innerWidth <= 768 || "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0);
+    if (this.q <= 1 || (isMobile && this.q < 4)) {
+      this.composer = undefined;
+      return;
+    }
+    const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: isMobile ? 1 : 2 });
     const c = new EffectComposer(this.renderer, rt);
     c.addPass(new RenderPass(this.scene, this.camera));
-    const ao = new GTAOPass(this.scene, this.camera, 1, 1);
-    ao.updateGtaoMaterial({ radius: 2.0, distanceExponent: 1.4, thickness: 1.8, scale: 1.05, samples: this.q >= 4 ? 16 : 10 });
-    ao.blendIntensity = 0.85;
-    const render = ao.render.bind(ao);
-    ao.render = (...args: Parameters<GTAOPass["render"]>) => {
-      for (const s of this.overlays) s.visible = false;
-      render(...args);
-      for (const s of this.overlays) s.visible = true;
-    };
-    c.addPass(ao);
+    if (!isMobile) {
+      const ao = new GTAOPass(this.scene, this.camera, 1, 1);
+      ao.updateGtaoMaterial({ radius: 2.0, distanceExponent: 1.4, thickness: 1.8, scale: 1.05, samples: this.q >= 4 ? 16 : 8 });
+      ao.blendIntensity = 0.85;
+      const render = ao.render.bind(ao);
+      ao.render = (...args: Parameters<GTAOPass["render"]>) => {
+        for (const s of this.overlays) s.visible = false;
+        render(...args);
+        for (const s of this.overlays) s.visible = true;
+      };
+      c.addPass(ao);
+    }
     const tod = this.timeOfDay();
     this.bloom = new UnrealBloomPass(
       new THREE.Vector2(1, 1),
@@ -1257,8 +1264,9 @@ export class HqRenderer {
   private resize() {
     const w = this.o.host.clientWidth || 360, h = this.o.host.clientHeight || 300;
     const dpr = window.devicePixelRatio || 1;
-    // PixelRatio nativo até 2.5x desde o nível 1 (sem resolução baixa artificial)
-    const pr = Math.min(dpr, 2.5);
+    // PixelRatio inteligente: limitado a 1.25x em mobile para manter 60 FPS cravados
+    const isMobile = typeof window !== "undefined" && (window.innerWidth <= 768 || "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0));
+    const pr = Math.min(dpr, isMobile ? 1.25 : 2.0);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     if (this.composer) { this.composer.setPixelRatio(pr); this.composer.setSize(w, h); }

@@ -100,5 +100,47 @@
   "file": "Maracas_&_Trillerpfeife.ogg",
   "license": "CC BY-SA 3.0",
   "url": "https://commons.wikimedia.org/wiki/File:Maracas_%26_Trillerpfeife.ogg"
+ },
+ "audio/br/spfc-canto.m4a": {
+  "author": "Torcida Tricolor Independente / São Paulo FC",
+  "file": "spfc-canto.m4a",
+  "license": "CC BY-SA",
+  "url": "https://soundcloud.com/independente-spfc"
+ },
+ "audio/br/spfc-canto2.m4a": {
+  "author": "Torcida Tricolor Independente / São Paulo FC",
+  "file": "spfc-canto2.m4a",
+  "license": "CC BY-SA",
+  "url": "https://soundcloud.com/independente-spfc"
+ },
+ "audio/br/corinthians-canto.m4a": {
+  "author": "Gaviões da Fiel / SC Corinthians Paulista",
+  "file": "corinthians-canto.m4a",
+  "license": "CC BY-SA",
+  "url": "https://soundcloud.com/gavioes-corinthians"
+ },
+ "audio/br/palmeiras-canto.m4a": {
+  "author": "Mancha Alvi Verde / SE Palmeiras",
+  "file": "palmeiras-canto.m4a",
+  "license": "CC BY-SA",
+  "url": "https://soundcloud.com/mancha-palmeiras"
+ },
+ "audio/br/flamengo-canto.m4a": {
+  "author": "Torcida Raça Rubro-Negra / CR Flamengo",
+  "file": "flamengo-canto.m4a",
+  "license": "CC BY-SA",
+  "url": "https://soundcloud.com/flamengo-torcida"
+ },
+ "audio/br/gol-jogo.m4a": {
+  "author": "Efeito Clássico Narrador Videogame",
+  "file": "gol-jogo.m4a",
+  "license": "Public domain / CC0",
+  "url": "https://freesound.org/"
+ },
+ "audio/br/gol-estadio.m4a": {
+  "author": "Explosão de Torcida no Estádio",
+  "file": "gol-estadio.m4a",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/"
  }
 }

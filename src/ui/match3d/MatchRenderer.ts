@@ -197,11 +197,16 @@ export class MatchRenderer {
 
   private buildComposer() {
     const q = this.o.quality;
-    const rt = new THREE.WebGLRenderTarget(16, 16, { type: THREE.HalfFloatType, samples: q === "alta" ? 4 : 2 });
+    const isMobile = typeof window !== "undefined" && (window.innerWidth <= 768 || "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0));
+    if (isMobile && q !== "alta") {
+      this.composer = null;
+      return;
+    }
+    const rt = new THREE.WebGLRenderTarget(16, 16, { type: THREE.HalfFloatType, samples: isMobile ? 1 : (q === "alta" ? 4 : 2) });
     const c = new EffectComposer(this.renderer, rt);
     this.renderPass = new RenderPass(this.scene, this.camera);
     c.addPass(this.renderPass);
-    if (q === "alta") {
+    if (q === "alta" && !isMobile) {
       this.gtao = new GTAOPass(this.scene, this.camera, 16, 16);
       this.gtao.blendIntensity = 0.8;
       try {
@@ -211,7 +216,7 @@ export class MatchRenderer {
       }
       c.addPass(this.gtao);
     }
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(16, 16), 0.38, 0.5, 0.93);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(16, 16), isMobile ? 0.2 : 0.38, 0.5, 0.93);
     c.addPass(this.bloom);
     c.addPass(new OutputPass());
     this.grade = new ShaderPass(GRADE);

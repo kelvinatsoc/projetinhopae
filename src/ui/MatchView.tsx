@@ -968,9 +968,14 @@ class PitchAnim {
   pass(to: Dude, lob = false) {
     if (to.hidden || to.leaving) return;
     const b = this.ball;
+    if (b.holder) {
+      const [hx, hy] = this.holdOffset(b.holder);
+      b.x = b.holder.x + hx;
+      b.y = b.holder.y + hy;
+    }
     const dist0 = Math.hypot(to.tx - b.x, to.ty - b.y);
-    const dur = Math.min(2400, ballTime(dist0, lob || dist0 > 48 ? BALL_MPS.long : BALL_MPS.pass, 380)) / this.spd();
-    if (!this.reduced && this.rich && b.holder && b.holder.side !== 2) setPose(b.holder, "pass", this.now, Math.max(140, 380 / this.spd()));
+    const dur = Math.min(2000, ballTime(dist0, lob || dist0 > 48 ? BALL_MPS.long : 18, 180)) / this.spd();
+    if (!this.reduced && this.rich && b.holder && b.holder.side !== 2) setPose(b.holder, "pass", this.now, Math.max(140, 340 / this.spd()));
     const reach = (RUN_PX_S * this.spd() * to.speed * dur) / 1000;
     const dx = to.tx - to.x, dy = to.ty - to.y;
     const dd = Math.hypot(dx, dy) || 1;
@@ -1107,15 +1112,17 @@ class PitchAnim {
     const end = tackler ? 0.72 * B : 0.9 * B;
     const gap = Math.max(0, end - t1) / n;
     let cur = start;
+    let prev: Dude | null = null;
     let first = true;
     for (let i = 0; i < n; i++) {
-      const nx = this.pickNext(cur, atk);
+      const nx = this.pickNext(cur, atk, prev);
       if (!nx) break;
       const from = cur;
       const tt = t1 + gap * i + gap * 0.25;
       this.at(tt, () => this.pass(nx));
       if (first || Math.random() < 0.5) this.at(tt, () => this.say(`${this.name(from)} toca para ${this.name(nx)}`, atk));
       first = false;
+      prev = cur;
       cur = nx;
     }
     if (tackler && tackler.side !== atk) {
@@ -1259,6 +1266,10 @@ class PitchAnim {
     const f = fwd(atk);
     const keeper = this.gk(def);
     const sp = this.spd();
+    const [ox, oy] = this.holdOffset(shooter);
+    this.ball.x = shooter.x + ox;
+    this.ball.y = shooter.y + oy;
+    this.ball.h = 0;
     const fromX = this.ball.x, fromY = this.ball.y;
     const dist = Math.abs(gx - fromX);
     const dur = ballTime(dist, this.nextFx?.power ? BALL_MPS.power : BALL_MPS.shot, 380) / sp * (hold ? 1.25 : 1);
@@ -1706,6 +1717,11 @@ class PitchAnim {
     const b = this.ball;
     if (b.fl) {
       const fl = b.fl;
+      if (fl.to && !fl.to.hidden && !fl.to.leaving) {
+        const [ox, oy] = this.holdOffset(fl.to);
+        fl.x1 = fl.to.x + ox;
+        fl.y1 = fl.to.y + oy;
+      }
       const s = clamp((this.now - fl.t0) / fl.dur, 0, 1);
       // rasteira: sai rápida e perde velocidade com o atrito do gramado; pelo alto: parábola até
       // ~80% do tempo, depois um quique baixo e a bola rolando até o destino
@@ -1717,7 +1733,7 @@ class PitchAnim {
         const v = (s - air) / (1 - air);
         b.h = s < air ? fl.peak * 4 * u * (1 - u) : fl.peak * 0.18 * 4 * v * (1 - v) * (v < 0.6 ? 1 : 0.4);
       } else {
-        k = 1 - (1 - s) * (1 - s);
+        k = s * (1.32 - 0.32 * s);
         b.h = 0;
       }
       b.x = fl.x0 + (fl.x1 - fl.x0) * k;

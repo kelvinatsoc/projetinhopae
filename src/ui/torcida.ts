@@ -22,14 +22,19 @@ export function isBrazilian(c: Pick<Club, "id" | "country">): boolean {
  * Só entra aqui o clube que tem gravação livre da própria torcida; o resto usa o canto genérico.
  */
 export const CLUB_TORCIDA: Record<string, { chant?: string; goal?: string }> = {
-  vasco: { chant: "audio/br/vasco-canto.m4a", goal: "audio/br/vasco-gol.m4a" },
+  "sao-paulo": { chant: "audio/br/spfc-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
+  corinthians: { chant: "audio/br/corinthians-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
+  palmeiras: { chant: "audio/br/palmeiras-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
+  flamengo: { chant: "audio/br/flamengo-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
+  vasco: { chant: "audio/br/vasco-canto.m4a", goal: "audio/br/gol-estadio.m4a" },
 };
 
 /** Sons da torcida brasileira genérica e da Seleção (caminhos relativos a media/). */
 export const BR_SOUNDS = {
   bed: "audio/br/arquibancada.m4a", // ambiente de arquibancada cheia, em laço
   chant: "audio/br/canto.m4a", // canto de arquibancada genérico, em laço
-  goal: ["audio/br/gol.m4a", "audio/br/gol2.m4a"], // explosão no gol
+  goal: ["audio/br/gol-estadio.m4a", "audio/br/gol.m4a"], // explosão no gol
+  goalShout: "audio/br/gol-jogo.m4a", // grito enérgico de videogame "GOL!"
   ooh: "audio/br/uh.m4a", // "uhhh!" numa chance
   boo: "audio/br/vaia.m4a", // vaia
   ole: "audio/br/ole.m4a", // olé / festa (ola na arquibancada)

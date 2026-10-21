@@ -5,6 +5,7 @@ import type { Club } from "../src/engine/types";
 const club = (id: string, country: string, rep: number, capacity: number) => ({ id, country, rep, capacity, colors: ["#f00", "#000", "#fff"] }) as unknown as Club;
 const fla = club("flamengo", "BRA", 100, 78838);
 const vasco = club("vasco", "BRA", 85, 21880);
+const spfc = club("sao-paulo", "BRA", 90, 66795);
 const small = club("tombense", "BRA", 30, 3000);
 const boca = club("boca", "ARG", 95, 54000);
 const selecao = club("nt-BRA", "BRA", 100, 78000);
@@ -27,8 +28,10 @@ describe("torcida brasileira", () => {
     const s = crowdProfile(selecao, boca, false)!;
     expect(s.selecao).toBe(true);
     expect(s.bed).not.toBe(crowdProfile(fla, boca, false)!.bed);
+    expect(crowdProfile(spfc, boca, false)!.clubSpecific).toBe(true);
     expect(crowdProfile(vasco, fla, false)!.clubSpecific).toBe(true);
-    expect(crowdProfile(fla, vasco, false)!.clubSpecific).toBe(false);
+    expect(crowdProfile(fla, vasco, false)!.clubSpecific).toBe(true);
+    expect(crowdProfile(small, fla, false)!.clubSpecific).toBe(false);
   });
 
   it("torcida grande faz mais barulho", () => {
