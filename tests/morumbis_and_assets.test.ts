@@ -28,6 +28,7 @@ if (typeof document === "undefined") {
 import { ballPass, ballKick, netRipple, savePunch, tackle } from "../src/ui/audio";
 import { Stadium, type StadiumOpts } from "../src/ui/match3d/stadium";
 import { handStyle } from "../src/data/stadiumStyles";
+import { stadiumArt } from "../src/ui/stadiumArt";
 
 describe("Ativos e dados fiéis (Remo, MorumBIS, Jogadores)", () => {
   it("escudo do Clube do Remo existe e é um arquivo de imagem válido", () => {
@@ -86,7 +87,23 @@ describe("Ativos e dados fiéis (Remo, MorumBIS, Jogadores)", () => {
     expect(() => tackle()).not.toThrow();
   });
 
-  it("modelo 3D do MorumBIS constrói estrutura completa com fosso, setores e placares", () => {
+  it("estádio 2D (stadiumArt) define pista vermelha e setores oficiais para o MorumBIS", () => {
+    const style = handStyle("morumbis")!;
+    expect(style.track).toBe("#a83c2e");
+    const art = stadiumArt({
+      home: { id: "sao-paulo", stadium: "MorumBIS", capacity: 66795, colors: ["#ffffff", "#c4122f", "#111111"], rep: 92, abbr: "SAO" },
+      away: { id: "palmeiras", rep: 92, colors: ["#006437", "#ffffff", "#006437"] },
+      neutral: false,
+      stage: "league",
+    });
+    // Setor Sul deve ter vermelho Independente
+    expect(art.seatAt(40, 60)).toBe("#c4122f");
+    // Setor Leste deve ter azul fora do mosaico e branco no mosaico
+    expect(art.seatAt(65, 10)).toBe("#1a3d6e");
+    expect(art.seatAt(100, 10)).toBe("#ffffff");
+  });
+
+  it("modelo 3D do MorumBIS constrói estrutura completa com rampas helicoidais, fosso e setores", () => {
     const scene = new THREE.Scene();
     const style = handStyle("morumbis");
     expect(style).not.toBeNull();
@@ -102,23 +119,31 @@ describe("Ativos e dados fiéis (Remo, MorumBIS, Jogadores)", () => {
     };
     const stadium = new Stadium(opts, scene);
     expect(stadium).toBeDefined();
-    expect(stadium.group.children.length).toBeGreaterThan(50);
+    expect(stadium.group.children.length).toBeGreaterThan(80);
 
-    // Verifica que existe geometria com profundidade do fosso (Y = -1.6m)
+    // Verifica que existe geometria com profundidade do fosso (Y = -1.6m) e topo do Anel 3 (Y >= 40m)
     let foundMoatDepth = false;
     let foundHighTiers = false;
+    let foundRampTowers = 0;
     stadium.group.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (mesh.isMesh && mesh.geometry && mesh.geometry.attributes.position) {
         const pos = mesh.geometry.attributes.position.array;
         for (let i = 1; i < pos.length; i += 3) {
           if (pos[i] <= -1.5) foundMoatDepth = true;
-          if (pos[i] >= 20.0) foundHighTiers = true;
+          if (pos[i] >= 38.0) foundHighTiers = true;
+        }
+      }
+      if (mesh.geometry instanceof THREE.CylinderGeometry) {
+        const params = mesh.geometry.parameters;
+        if (params && params.radiusTop >= 9.5 && params.height >= 35) {
+          foundRampTowers++;
         }
       }
     });
 
     expect(foundMoatDepth).toBe(true);
     expect(foundHighTiers).toBe(true);
+    expect(foundRampTowers).toBe(4); // 4 rampas helicoidais monumentais
   });
 });

@@ -74,7 +74,23 @@ export function stadiumArt(c: Ctx): StadiumArt {
     return false;
   };
   const seatCols = style.seats.map((cl) => shade(cl, 0.62));
+  const isMorumbi = style.landmarks.includes("morumbi-ring") || style.key === "morumbis";
   const seatAt = (x: number, y: number): string => {
+    if (isMorumbi) {
+      const d = depth(x, y);
+      if (d % 3 === 0) return "#d5d8db"; // Escadarias brancas de circulação
+      if (x < 54) return "#c4122f"; // Setor Sul / Vermelha (Independente)
+      if (x > 142) return "#d65e1b"; // Setor Norte / Laranja
+      if (y < ST) {
+        // Arquibancada Leste (Azul com mosaico branco SÃO PAULO)
+        if (d >= 2 && d <= 5 && x >= 74 && x <= 122) {
+          const ltr = Math.floor((x - 74) / 5) % 2;
+          return ltr ? "#ffffff" : "#1a3d6e";
+        }
+        return "#1a3d6e"; // Setor Leste / Azul
+      }
+      return "#d9a10d"; // Setor Oeste / Amarela
+    }
     if (seatCols.length === 1) return seatCols[0];
     const d = depth(x, y);
     // anéis por profundidade e setores ao longo da arquibancada
@@ -106,6 +122,18 @@ export function paintPitch(g: G, art: StadiumArt, a: string, b: string) {
     }
   }
   if (art.style.track) paintTrack(g, art.style.track);
+  if (art.style.landmarks.includes("morumbi-ring") || art.style.key === "morumbis") {
+    // Escudos oficiais do SPFC no gramado sintético atrás de cada baliza
+    for (const cx of [GX0 + 2, GX1 - 2]) {
+      const cy = Math.round((GY0 + GY1) / 2);
+      g.fillStyle = "#ffffff";
+      g.fillRect(cx - 3, cy - 4, 7, 8);
+      g.fillStyle = "#c4122f";
+      g.fillRect(cx - 2, cy - 3, 2, 6);
+      g.fillStyle = "#121212";
+      g.fillRect(cx + 1, cy - 3, 2, 6);
+    }
+  }
 }
 
 function paintTrack(g: G, col: string) {
@@ -243,9 +271,45 @@ function outerRing(g: G, col: string, inset: number, every = 0, alt?: string) {
 
 const LANDMARKS: Record<string, LM> = {
   "morumbi-ring": (g) => {
-    // o anel de concreto do Morumbi com os pilares
-    outerRing(g, "#c7c9c4", 0, 4, "#80837f");
-    outerRing(g, "#9da09b", 1);
+    // 1. O anel monumental de concreto de Vilanova Artigas com friso vermelho
+    outerRing(g, "#c4122f", 0); // Friso vermelho perimetral
+    outerRing(g, "#c7c9c4", 1, 4, "#80837f"); // Concreto aparente com pilares
+    outerRing(g, "#9da09b", 2);
+
+    // 2. As 4 famosas rampas helicoidais cilíndricas nos 4 cantos do Morumbi
+    const ramps = [
+      [SL - 5, ST - 5],
+      [SR + 5, ST - 5],
+      [SL - 5, SB + 5],
+      [SR + 5, SB + 5],
+    ];
+    for (const [rx, ry] of ramps) {
+      g.fillStyle = "#aba69d";
+      g.fillRect(rx - 3, ry - 3, 7, 7);
+      g.fillStyle = "#54524e";
+      g.fillRect(rx - 4, ry - 2, 1, 5);
+      g.fillRect(rx + 4, ry - 3, 1, 5);
+      g.fillStyle = "#c4122f";
+      g.fillRect(rx - 3, ry - 4, 7, 1);
+      g.fillRect(rx - 3, ry + 4, 7, 1);
+      g.fillStyle = "#8a8780";
+      const dx = rx < SL ? 2 : -2;
+      const dy = ry < ST ? 2 : -2;
+      g.fillRect(rx + dx, ry + dy, 2, 2);
+    }
+
+    // 3. Os 2 telões monumentais de LED nas cabeceiras (atrás dos gols)
+    const cy = Math.round((GY0 + GY1) / 2);
+    for (const tx of [2, W - 8]) {
+      g.fillStyle = "#54524e";
+      g.fillRect(tx, cy - 8, 6, 16);
+      g.fillStyle = "#0c1017";
+      g.fillRect(tx + 1, cy - 7, 4, 14);
+      g.fillStyle = "#ff1838";
+      g.fillRect(tx + 1, cy - 7, 4, 2);
+      g.fillStyle = "#38bdf8";
+      g.fillRect(tx + 1, cy - 4, 4, 8);
+    }
   },
   "maracana-roof": (g) => {
     // cobertura branca contínua com a borda interna e os cabos

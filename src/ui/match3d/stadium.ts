@@ -850,6 +850,117 @@ export class Stadium {
       m2.rotation.z = -0.14;
     }
 
+    // -------------------------------------------------------------
+    // AS 4 MONUMENTAIS RAMPAS HELICOIDAIS EXTERNAS (Vilanova Artigas)
+    // -------------------------------------------------------------
+    const rampTex = canvasTex(256, 256, (ctx) => {
+      ctx.fillStyle = "#aba69d";
+      ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = "#484d54";
+      ctx.lineWidth = 14;
+      for (let i = -4; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * 48);
+        ctx.lineTo(256, i * 48 + 64);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#c4122f";
+      ctx.lineWidth = 4;
+      for (let i = -4; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * 48 + 7);
+        ctx.lineTo(256, i * 48 + 71);
+        ctx.stroke();
+      }
+    }, true);
+    this.disposables.push(rampTex);
+    const rampMat = new THREE.MeshStandardMaterial({
+      map: rampTex,
+      roughness: 0.85,
+      side: THREE.DoubleSide,
+    });
+    this.disposables.push(rampMat);
+
+    const rampAngles = [
+      Math.PI / 4,
+      (3 * Math.PI) / 4,
+      (5 * Math.PI) / 4,
+      (7 * Math.PI) / 4,
+    ];
+    for (let k = 0; k < 4; k++) {
+      const theta = rampAngles[k];
+      const [rx, rz] = getPt(128, 100, theta);
+      const [wallX, wallZ] = getPt(116, 88, theta);
+      const rh = 36;
+
+      // Cilindro monumental da rampa espiral externa
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, rh, 32, 1, true), rampMat);
+      cyl.position.set(rx, rh / 2, rz);
+      cyl.castShadow = true;
+      cyl.receiveShadow = true;
+      this.group.add(cyl);
+
+      // Cúpula superior de cobertura
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(10.8, 10.8, 1.4, 32), concrete);
+      cap.position.set(rx, rh + 0.7, rz);
+      cap.castShadow = true;
+      this.group.add(cap);
+
+      // Passarela de ligação para a arquibancada superior do Anel 3
+      const bridgeLen = Math.hypot(rx - wallX, rz - wallZ);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(5.6, 2.2, bridgeLen), concrete);
+      bridge.position.set((rx + wallX) / 2, rh * 0.84, (rz + wallZ) / 2);
+      bridge.lookAt(wallX, rh * 0.84, wallZ);
+      bridge.castShadow = true;
+      this.group.add(bridge);
+    }
+
+    // Friso Vermelho Contínuo no topo do Anel 3 (perímetro externo de 360°)
+    const friezeGeo = new THREE.BufferGeometry();
+    const friezePos: number[] = [], friezeNor: number[] = [];
+    for (let i = 0; i < N_SEG; i++) {
+      const t0 = (i / N_SEG) * Math.PI * 2;
+      const t1 = ((i + 1) / N_SEG) * Math.PI * 2;
+      const [x0, z0] = getPt(122.8, 94.8, t0);
+      const [x1, z1] = getPt(122.8, 94.8, t1);
+      const midT = (t0 + t1) / 2;
+      const [nx, nz] = [Math.cos(midT), Math.sin(midT)];
+      friezePos.push(x0, 42.5, z0,  x1, 42.5, z1,  x1, 44.2, z1,
+                    x0, 42.5, z0,  x1, 44.2, z1,  x0, 44.2, z0);
+      for (let k = 0; k < 6; k++) friezeNor.push(nx, 0, nz);
+    }
+    friezeGeo.setAttribute("position", new THREE.Float32BufferAttribute(friezePos, 3));
+    friezeGeo.setAttribute("normal", new THREE.Float32BufferAttribute(friezeNor, 3));
+    const redFriezeMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.5 });
+    this.disposables.push(redFriezeMat);
+    this.add(friezeGeo, redFriezeMat, true, false);
+
+    // Letreiro iluminado MorumBIS na fachada nobre (Praça Roberto Gomes Pedrosa)
+    const signTex = canvasTex(512, 128, (ctx) => {
+      ctx.fillStyle = "#0c1017";
+      ctx.fillRect(0, 0, 512, 128);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `900 68px "Barlow Condensed", Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("MorumBIS", 256, 64);
+      ctx.strokeStyle = "#c4122f";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(8, 8, 496, 112);
+    });
+    this.disposables.push(signTex);
+    const signMat = new THREE.MeshStandardMaterial({
+      map: signTex,
+      emissive: "#ffffff",
+      emissiveMap: signTex,
+      emissiveIntensity: 1.25,
+      roughness: 0.25,
+    });
+    this.disposables.push(signMat);
+    const signPlane = new THREE.PlaneGeometry(28, 7);
+    const signMesh = this.add(signPlane, signMat, false, false);
+    signMesh.position.set(0, 34, 96);
+
     // Dois Telões Monumentais de LED do MorumBIS (atrás dos gols)
     const scoreTex = scoreboardTexture(o.home.abbr, o.away.abbr);
     this.disposables.push(scoreTex);
@@ -865,7 +976,7 @@ export class Stadium {
       const sm = this.add(sg, scoreMat, false, false);
       sm.position.set(tx, ty, tz);
       sm.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2;
-      // Estrutura traseira de aço
+      // Estrutura traseira de aço com treliça
       const frame = new THREE.BoxGeometry(1.0, 13.6, 26.6);
       const fm = this.add(frame, steel, true, false);
       fm.position.set(tx + sx * 0.55, ty, tz);
@@ -876,26 +987,66 @@ export class Stadium {
       this.add(topGeo, neonMat, false, false).position.set(tx, ty + 7.5, tz);
     }
 
-    // Túnel dos Jogadores com Toldo Tricolor do SPFC na lateral do campo
+    // Túnel dos Jogadores sanfonado tricolor com carpete vermelho
     const tunnelGroup = new THREE.Group();
-    const tunnelRoof = new THREE.CylinderGeometry(3.8, 3.8, 14, 16, 1, false, 0, Math.PI);
-    tunnelRoof.rotateZ(Math.PI / 2);
-    const tunnelMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.45 });
-    this.disposables.push(tunnelMat);
-    const tMesh = this.add(tunnelRoof, tunnelMat, true, false, tunnelGroup);
-    tMesh.position.set(0, 1.8, 44);
+    const carpetGeo = new THREE.PlaneGeometry(6, 15);
+    const carpetMat = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.9 });
+    this.disposables.push(carpetMat);
+    const carpet = this.add(carpetGeo, carpetMat, false, true, tunnelGroup);
+    carpet.rotation.x = -Math.PI / 2;
+    carpet.position.set(0, 0.02, 42);
+
+    const hoodMatRed = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.45 });
+    const hoodMatWhite = new THREE.MeshStandardMaterial({ color: "#f5f5f5", roughness: 0.45 });
+    const hoodMatBlack = new THREE.MeshStandardMaterial({ color: "#181818", roughness: 0.45 });
+    this.disposables.push(hoodMatRed, hoodMatWhite, hoodMatBlack);
+    const hoodColors = [hoodMatRed, hoodMatWhite, hoodMatBlack];
+    for (let rib = 0; rib < 12; rib++) {
+      const ribMat = hoodColors[rib % 3];
+      const ribGeo = new THREE.CylinderGeometry(3.6, 3.6, 1.1, 16, 1, false, 0, Math.PI);
+      ribGeo.rotateZ(Math.PI / 2);
+      const ribMesh = this.add(ribGeo, ribMat, true, false, tunnelGroup);
+      ribMesh.position.set(0, 1.8, 36 + rib * 1.05);
+    }
     this.group.add(tunnelGroup);
 
-    // Bancos de reserva rente à pista
-    const seatDugout = new THREE.MeshStandardMaterial({ color: "#18202d", roughness: 0.5 });
-    const glassDugout = new THREE.MeshPhysicalMaterial({ color: "#8ea4b8", transparent: true, opacity: 0.4, roughness: 0.1 });
-    this.disposables.push(seatDugout, glassDugout);
+    // Bancos de reserva rebaixados com poltronas esportivas individuais vermelhas
+    const dugoutCanopy = new THREE.MeshPhysicalMaterial({
+      color: "#a4b8c8",
+      transparent: true,
+      opacity: 0.45,
+      roughness: 0.05,
+      metalness: 0.1,
+    });
+    const seatLeather = new THREE.MeshStandardMaterial({ color: "#c4122f", roughness: 0.35 });
+    const seatFrame = new THREE.MeshStandardMaterial({ color: "#181818", roughness: 0.6 });
+    this.disposables.push(dugoutCanopy, seatLeather, seatFrame);
+
     for (const sx of [-1, 1]) {
-      const dg = new THREE.BoxGeometry(10, 2.4, 3.2);
-      const dm = this.add(dg, glassDugout, false, false);
-      dm.position.set(sx * 16, 1.2, 38.5);
-      const bench = new THREE.BoxGeometry(9.2, 0.45, 1.2);
-      this.add(bench, seatDugout, true, false).position.set(sx * 16, 0.5, 38.5);
+      const dgGroup = new THREE.Group();
+      // Cobertura curva de policarbonato
+      const canopyGeo = new THREE.CylinderGeometry(2.8, 2.8, 13.5, 24, 1, false, 0, Math.PI);
+      canopyGeo.rotateZ(Math.PI / 2);
+      const cMesh = this.add(canopyGeo, dugoutCanopy, false, false, dgGroup);
+      cMesh.position.set(0, 1.4, 0);
+
+      // Mureta de apoio em concreto
+      const baseGeo = new THREE.BoxGeometry(13.6, 0.6, 2.6);
+      this.add(baseGeo, concrete, true, false, dgGroup).position.set(0, 0.3, 0);
+
+      // 12 Assentos esportivos individuais vermelhos e pretos (estilo Recaro)
+      for (let s = 0; s < 12; s++) {
+        const xOffset = -5.4 + s * 0.98;
+        const seatBottom = new THREE.BoxGeometry(0.72, 0.22, 0.72);
+        this.add(seatBottom, seatLeather, true, false, dgGroup).position.set(xOffset, 0.65, 0.2);
+        const seatBack = new THREE.BoxGeometry(0.72, 0.85, 0.18);
+        this.add(seatBack, seatLeather, true, false, dgGroup).position.set(xOffset, 1.15, 0.55);
+        const headRest = new THREE.BoxGeometry(0.5, 0.32, 0.16);
+        this.add(headRest, seatFrame, false, false, dgGroup).position.set(xOffset, 1.7, 0.56);
+      }
+
+      dgGroup.position.set(sx * 18, 0, 39.5);
+      this.group.add(dgGroup);
     }
 
     // Bandeirinhas de escanteio tricolores nos 4 cantos
