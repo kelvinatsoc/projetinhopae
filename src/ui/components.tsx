@@ -5,7 +5,6 @@ import { playerImagePath, sportsdbUrl } from "../engine/media";
 import { age } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
 import type { Club, Player, Pos } from "../engine/types";
-import { getWorld } from "../store";
 import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
@@ -46,8 +45,8 @@ function starPath(cx: number, cy: number, r: number) {
 
 export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
   const [broken, setBroken] = useState<string | null>(null);
-  const logo = mediaUrlOrNull(club.logo && !club.customCrest ? `crests/${club.id}.webp` : null);
-  const src = club.customCrest ?? logo;
+  const logo = club.customCrest ?? mediaUrlOrNull(club.id ? `crests/${club.id}.webp` : null);
+  const src = logo;
   if (src && broken !== src) {
     return (
       <span className="crest" style={{ width: size, height: size * 1.15 }}>
@@ -135,13 +134,7 @@ export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club 
       </div>
     );
   }
-  if (p.real && !p.legend && !getWorld()?.settings.cartoonFaces) {
-    return (
-      <div className={cls} style={{ width: size, height: size }}>
-        <Silhouette club={club} />
-      </div>
-    );
-  }
+
   const svg = faceSvg(p, club, season);
   return (
     <div className={cls} style={{ width: size, height: size }}>

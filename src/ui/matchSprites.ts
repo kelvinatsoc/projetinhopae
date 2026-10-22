@@ -62,9 +62,48 @@ export function playStyle(p: Player | undefined): PlayStyle {
   return "normal";
 }
 
+const STAR_LOOKS: Record<string, Partial<Look>> = {
+  "Jonathan Calleri": { skin: "#f0c49a", hair: "#2a1f18", hairStyle: "short", beard: true, tall: 0, broad: true },
+  "Calleri": { skin: "#f0c49a", hair: "#2a1f18", hairStyle: "short", beard: true, tall: 0, broad: true },
+  "Lucas Moura": { skin: "#b57a4a", hair: "#101010", hairStyle: "buzz", beard: true, tall: 0, broad: false },
+  "Robert Arboleda": { skin: "#61391f", hair: "#101010", hairStyle: "buzz", beard: true, tall: 1, broad: true },
+  "Arboleda": { skin: "#61391f", hair: "#101010", hairStyle: "buzz", beard: true, tall: 1, broad: true },
+  "Rafael": { skin: "#f4cfa6", hair: "#1d140c", hairStyle: "short", beard: false, tall: 1, broad: true },
+  "Luciano": { skin: "#e8b98d", hair: "#101010", hairStyle: "short", beard: true, tall: 0, broad: false },
+  "Ferreira": { skin: "#c98d5b", hair: "#101010", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "Damián Bobadilla": { skin: "#f0c49a", hair: "#2a1f18", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "Marcos Antônio": { skin: "#7c4c2b", hair: "#101010", hairStyle: "buzz", beard: false, tall: -1, broad: false },
+  "Wendell": { skin: "#61391f", hair: "#101010", hairStyle: "short", beard: true, tall: 0, broad: false },
+  "Alan Franco": { skin: "#f0c49a", hair: "#2a1f18", hairStyle: "short", beard: false, tall: 0, broad: true },
+  "Sabino": { skin: "#61391f", hair: "#101010", hairStyle: "buzz", beard: true, tall: 1, broad: true },
+  "Pablo Maia": { skin: "#e8b98d", hair: "#2a1f18", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "André Silva": { skin: "#7c4c2b", hair: "#101010", hairStyle: "short", beard: true, tall: 0, broad: true },
+  "Luiz Gustavo": { skin: "#61391f", hair: "#101010", hairStyle: "short", beard: true, tall: 1, broad: true },
+  "Alisson": { skin: "#e8b98d", hair: "#1d140c", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "Wellington Rato": { skin: "#c98d5b", hair: "#101010", hairStyle: "buzz", beard: true, tall: 0, broad: false },
+  "Rodrigo Nestor": { skin: "#f0c49a", hair: "#2a1f18", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "Igor Vinícius": { skin: "#f0c49a", hair: "#1d140c", hairStyle: "short", beard: false, tall: 0, broad: false },
+  "Jandrei": { skin: "#f4cfa6", hair: "#2a1f18", hairStyle: "short", beard: true, tall: 1, broad: false },
+};
+
 /** Visual do jogador no campinho e nas cenas de lance decisivo. */
 export function lookOf(p: Player | undefined): Look {
   if (!p) return { skin: "#d9a777", hair: "#222", hairStyle: "short", tall: 0, broad: false, style: "normal", num: 0, beard: false };
+
+  const star = STAR_LOOKS[p.name] ?? (p.real ? Object.entries(STAR_LOOKS).find(([k]) => p.name.includes(k))?.[1] : undefined);
+  if (star) {
+    return {
+      skin: star.skin ?? "#c98d5b",
+      hair: star.hair ?? "#1d140c",
+      hairStyle: star.hairStyle ?? "short",
+      tall: star.tall ?? heightBucket(p.height),
+      broad: star.broad ?? (p.attrs.fis >= 78),
+      style: playStyle(p),
+      num: p.shirt ?? ((hash(p.id) % 30) + 1),
+      beard: star.beard ?? false,
+    };
+  }
+
   // as duas primeiras sorteadas na mesma ordem do visual antigo (mesma pele/cabelo de antes)
   const r = makeRng(p.face.s ^ 0x5bd1e995);
   const tones = SKIN[p.face.r] ?? SKIN.brown;

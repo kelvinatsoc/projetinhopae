@@ -28,7 +28,7 @@ import { ballHeight, hudAbbr, hudName, toWorld, type MatchSnapshot, type Quality
 import type { MatchRenderer } from "./match3d/MatchRenderer";
 import { pickSpecial, SPECIALS, specialsEnabled, type SpecialDef } from "./specials";
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
-import { ballPass, ballKick, netRipple, savePunch, tackle } from "./audio";
+import { ballPass, ballKick, netRipple, savePunch, tackle, postHit } from "./audio";
 import { Festa2D } from "./torcida2d";
 import { isLite } from "./perf";
 
@@ -971,7 +971,8 @@ class PitchAnim {
 
   /** Passe: o recebedor corre para o ponto onde a bola vai chegar com dinâmica de jogo ágil. */
   pass(to: Dude, lob = false) {
-    ballPass();
+    if (lob) ballKick(0.75);
+    else ballPass();
     if (to.hidden || to.leaving) return;
     const b = this.ball;
     if (b.holder) {
@@ -1065,15 +1066,46 @@ class PitchAnim {
   pickNext(cur: Dude, side: 0 | 1, exclude?: Dude | null): Dude | null {
     const mates = this.team(side).filter((d) => d !== cur && d !== exclude && d.grp !== 0);
     if (!mates.length) return null;
+
+    const attackDir = fwd(side);
+    const curAdv = (cur.x - CX) * attackDir; // > 0 se já passou da linha do meio-campo
+
     const ws = mates.map((d) => {
       const dg = d.grp - cur.grp;
-      let w = dg === 1 ? 3 : dg === 0 ? 1.4 : dg === 2 ? 0.9 : dg < 0 ? 0.55 : 0.4;
-      if (cur.grp === 3 && d.grp === 3) w = 1.6;
+      const dx = (d.x - cur.x) * attackDir; // > 0 se companheiro está à frente em direção ao gol rival
+
+      // Atacante perto da área ou jogador avançado no terço final NUNCA recua para zagueiro!
+      if ((cur.grp === 3 || curAdv > 16) && d.grp === 1) {
+        return 0.0001;
+      }
+      // Se estiver muito à frente, proibir recuos longos para trás
+      if (curAdv > 12 && dx < -18) {
+        return 0.001;
+      }
+
+      let w = 1.0;
+      if (cur.grp === 1) {
+        // Zagueiro saindo jogando: busca meias à frente
+        w = dg === 1 ? 3.8 : dg === 2 ? 2.0 : 0.5;
+      } else if (cur.grp === 2) {
+        // Meia armando: busca atacantes ou outro meia próximo
+        w = dg === 1 ? 4.2 : dg === 0 ? 1.8 : 0.25;
+      } else {
+        // Atacante: tabela com outro atacante ou serve meia infiltrando na área
+        w = dg === 0 ? 3.5 : dg === -1 ? 1.6 : 0.001;
+      }
+
+      // Passe progressivo em direção ao gol rival ganha bônus de peso
+      if (dx > 2) w *= 1.45;
+
       const dist = Math.hypot(d.x - cur.x, d.y - cur.y);
-      w *= Math.exp(-Math.abs(dist - 32) / 26);
-      return w;
+      w *= Math.exp(-Math.abs(dist - 28) / 24);
+      return Math.max(0.001, w);
     });
-    let r = Math.random() * ws.reduce((s, x) => s + x, 0);
+
+    const sum = ws.reduce((s, x) => s + x, 0);
+    if (sum <= 0) return mates[0];
+    let r = Math.random() * sum;
     for (let i = 0; i < mates.length; i++) {
       r -= ws[i];
       if (r <= 0) return mates[i];
@@ -1329,6 +1361,7 @@ class PitchAnim {
         const ty = kY + rnd(-5, 5);
         dive(ty, true);
         this.fly(gx - f * 2, clamp(ty, CY - POST, CY + POST), dur, rnd(0, 3), null, () => {
+          savePunch();
           if (e) this.cb.beat(e);
           if (e) this.say(e.text, atk, 1);
           if (this.rich) this.pfx.burst(this.ball.x, this.ball.y - this.ball.h, ["#ffffff", "#bfe8ff"], 8, 0.7);
@@ -1344,6 +1377,7 @@ class PitchAnim {
         const py = CY + (Math.random() < 0.5 ? -POST : POST);
         dive(py, false);
         this.fly(gx, py, dur, rnd(0, 3), null, () => {
+          postHit();
           if (e) this.cb.beat(e);
           if (e) this.say(e.text, atk, 1);
           if (this.rich) this.pfx.burst(gx, py - 2, ["#fff6b0", "#ffd83a", "#ffffff"], 18, 1.2);
@@ -2477,6 +2511,20 @@ export function MatchView(props: MatchViewProps) {
             <span className="mv-special-who">{special.who}</span>
             <b className="mv-special-name">{special.name}!</b>
           </div>
+        )}
+        {intro && (
+          <button
+            type="button"
+            className="mv-skip-btn"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              props.onSkipIntro?.();
+            }}
+            title="Pular apresentação e ir para o pontapé inicial"
+            aria-label="Pular apresentação"
+          >
+            Pular ❯❯
+          </button>
         )}
         {flat && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
         {flat && (

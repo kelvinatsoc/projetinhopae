@@ -124,21 +124,59 @@ export class Arrival {
       const h = new THREE.SphereGeometry(0.35, 12, 8);
       add(h, lampM, false).position.set(x, 7.1, sz * 6.5);
     }
-    // fachada do estádio no fim da rua (nas cores do clube, com o nome)
+    const isMorumbis = o.abbr === "SAO" || o.name.toLowerCase().includes("são paulo") || o.stadium.toLowerCase().includes("morumb");
+
+    // fachada do estádio no fim da rua (MorumBIS oficial ou cores do clube)
     const fac = canvasTex(1024, 256, (g) => {
-      g.fillStyle = o.colors[0];
-      g.fillRect(0, 0, 1024, 256);
-      g.fillStyle = o.colors[1] ?? "#ffffff";
-      for (let x = 0; x < 1024; x += 64) g.fillRect(x, 0, 6, 256);
-      g.fillStyle = "rgba(0,0,0,0.35)";
-      g.fillRect(0, 150, 1024, 106);
-      g.font = `900 92px "Barlow Condensed", "Arial Narrow", Arial, sans-serif`;
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillStyle = "#ffffff";
-      g.fillText(o.stadium.toUpperCase(), 512, 80, 980);
-      g.font = `800 64px "Barlow Condensed", Arial, sans-serif`;
-      g.fillText(o.name.toUpperCase(), 512, 200, 900);
+      if (isMorumbis) {
+        // Fachada Brutalista Monumental do MorumBIS na Praça Roberto Gomes Pedrosa
+        g.fillStyle = "#1e2229";
+        g.fillRect(0, 0, 1024, 256);
+        // Friso contínuo tricolor superior (vermelho, branco, preto)
+        g.fillStyle = "#c4122f";
+        g.fillRect(0, 0, 1024, 18);
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 18, 1024, 18);
+        g.fillStyle = "#111111";
+        g.fillRect(0, 36, 1024, 18);
+
+        // Painel central escurecido para o letreiro
+        g.fillStyle = "#0c0e14";
+        g.fillRect(120, 65, 784, 115);
+        g.strokeStyle = "rgba(196, 18, 47, 0.6)";
+        g.lineWidth = 4;
+        g.strokeRect(120, 65, 784, 115);
+
+        // Letreiro oficial MorumBIS em neon
+        g.font = `900 84px "Barlow Condensed", Arial, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#ffffff";
+        g.fillText("Morum", 440, 120);
+        g.fillStyle = "#ff1744"; // Vermelho vibrante BIS
+        g.fillText("BIS", 585, 120);
+
+        // Faixa inferior: Praça Roberto Gomes Pedrosa / São Paulo FC
+        g.fillStyle = "#c4122f";
+        g.fillRect(0, 195, 1024, 61);
+        g.font = `800 36px "Barlow Condensed", Arial, sans-serif`;
+        g.fillStyle = "#ffffff";
+        g.fillText("SÃO PAULO FUTEBOL CLUBE · PRAÇA ROBERTO GOMES PEDROSA", 512, 226, 960);
+      } else {
+        g.fillStyle = o.colors[0];
+        g.fillRect(0, 0, 1024, 256);
+        g.fillStyle = o.colors[1] ?? "#ffffff";
+        for (let x = 0; x < 1024; x += 64) g.fillRect(x, 0, 6, 256);
+        g.fillStyle = "rgba(0,0,0,0.35)";
+        g.fillRect(0, 150, 1024, 106);
+        g.font = `900 92px "Barlow Condensed", "Arial Narrow", Arial, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#ffffff";
+        g.fillText(o.stadium.toUpperCase(), 512, 80, 980);
+        g.font = `800 64px "Barlow Condensed", Arial, sans-serif`;
+        g.fillText(o.name.toUpperCase(), 512, 200, 900);
+      }
     });
     this.disposables.push(fac);
     const fg = new THREE.CylinderGeometry(90, 90, 34, 64, 1, true, -Math.PI / 2 - 0.55, 1.1);
@@ -147,21 +185,49 @@ export class Arrival {
     const gate = new THREE.BoxGeometry(1, 7, 14);
     add(gate, mat("#151515", 0.4, 0.6)).position.set(ROAD1 - 5.5, 3.5, 0);
 
-    // ônibus nas cores do clube
+    // ônibus do clube (tricolor oficial para o São Paulo)
     const side = canvasTex(1024, 256, (g) => {
-      g.fillStyle = o.colors[0];
-      g.fillRect(0, 0, 1024, 256);
-      g.fillStyle = o.colors[1] ?? "#ffffff";
-      g.beginPath();
-      g.moveTo(0, 200); g.lineTo(1024, 120); g.lineTo(1024, 170); g.lineTo(0, 256);
-      g.fill();
-      g.fillStyle = "#0d1117";
-      g.fillRect(40, 30, 944, 90);
-      g.font = `italic 900 70px "Barlow Condensed", Arial, sans-serif`;
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillStyle = o.colors[1] && o.colors[1] !== o.colors[0] ? o.colors[1] : "#ffffff";
-      g.fillText(o.name.toUpperCase(), 512, 175, 900);
+      if (isMorumbis) {
+        g.fillStyle = "#fdfdfd"; // Branco oficial do ônibus do SPFC
+        g.fillRect(0, 0, 1024, 256);
+        // Faixa tricolor horizontal larga
+        g.fillStyle = "#c4122f";
+        g.fillRect(0, 140, 1024, 30);
+        g.fillStyle = "#111111";
+        g.fillRect(0, 170, 1024, 30);
+
+        // Janelas panorâmicas escuras
+        g.fillStyle = "#0a0e14";
+        g.fillRect(40, 25, 944, 95);
+
+        // Texto do clube e patrocinadores
+        g.font = `italic 900 52px "Barlow Condensed", Arial, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#111111";
+        g.fillText("SÃO PAULO FUTEBOL CLUBE", 460, 222);
+
+        // Superbet / BIS
+        g.font = `900 36px "Barlow Condensed", Arial, sans-serif`;
+        g.fillStyle = "#c4122f";
+        g.fillText("SUPERBET", 850, 222);
+        g.fillStyle = "#0055ff";
+        g.fillText("BIS", 120, 222);
+      } else {
+        g.fillStyle = o.colors[0];
+        g.fillRect(0, 0, 1024, 256);
+        g.fillStyle = o.colors[1] ?? "#ffffff";
+        g.beginPath();
+        g.moveTo(0, 200); g.lineTo(1024, 120); g.lineTo(1024, 170); g.lineTo(0, 256);
+        g.fill();
+        g.fillStyle = "#0d1117";
+        g.fillRect(40, 30, 944, 90);
+        g.font = `italic 900 70px "Barlow Condensed", Arial, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = o.colors[1] && o.colors[1] !== o.colors[0] ? o.colors[1] : "#ffffff";
+        g.fillText(o.name.toUpperCase(), 512, 175, 900);
+      }
     });
     this.disposables.push(side);
     const bodyG = new RoundedBoxGeometry(13, 3.5, 2.6, 4, 0.35);

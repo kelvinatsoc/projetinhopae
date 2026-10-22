@@ -20,7 +20,7 @@ import "./uniforms.css";
 /** Caminho do escudo para a camisa (escudo próprio do jogador, arquivo real ou nenhum). */
 export function crestFor(c: Club): string | null {
   if (c.customCrest) return c.customCrest;
-  return c.logo ? `crests/${c.id}.webp` : null;
+  return `crests/${c.id}.webp`;
 }
 
 /** Camisa desenhada (frente ou costas) em alta resolução. */

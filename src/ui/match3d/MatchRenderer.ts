@@ -232,26 +232,35 @@ export class MatchRenderer {
       const g = c.getContext("2d")!;
       g.fillStyle = "#f6f6f2";
       g.fillRect(0, 0, 512, 256);
-      const cols = [this.o.home.colors[0], "#1b2a6b", "#f5c542"];
-      for (let i = 0; i < 6; i++) {
-        g.strokeStyle = cols[i % 3];
-        g.lineWidth = 16;
-        g.beginPath();
-        const x0 = (i * 512) / 6;
-        g.moveTo(x0, 30);
-        g.bezierCurveTo(x0 + 70, 90, x0 + 10, 170, x0 + 80, 228);
-        g.stroke();
+      // Gomos pentagonais clássicos de alta visibilidade (visível de qualquer câmera)
+      g.fillStyle = "#ffffff";
+      g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "#11161d";
+      // pentágonos pretos recortados
+      for (let x = 42; x < 512; x += 85) {
+        for (let y = 35; y < 256; y += 95) {
+          g.beginPath();
+          for (let a = 0; a < 5; a++) {
+            const rad = (a * 2 * Math.PI) / 5 - Math.PI / 2;
+            const px = x + 24 * Math.cos(rad);
+            const py = y + 24 * Math.sin(rad);
+            if (a === 0) g.moveTo(px, py);
+            else g.lineTo(px, py);
+          }
+          g.closePath();
+          g.fill();
+        }
       }
-      g.strokeStyle = "rgba(0,0,0,0.25)";
-      g.lineWidth = 2;
-      for (let x = 0; x < 512; x += 64) {
-        g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 32, 256); g.stroke();
+      g.strokeStyle = "#252b36";
+      g.lineWidth = 3;
+      for (let x = 0; x < 512; x += 42) {
+        g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 21, 256); g.stroke();
       }
       return c;
     })());
     tex.colorSpace = THREE.SRGBColorSpace;
-    const g = new THREE.SphereGeometry(0.17, 32, 20);
-    this.ball = new THREE.Mesh(g, new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2 }));
+    const g = new THREE.SphereGeometry(0.23, 32, 20);
+    this.ball = new THREE.Mesh(g, new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.25, clearcoat: 0.9, clearcoatRoughness: 0.15 }));
     this.ball.castShadow = this.o.quality !== "baixa";
     this.scene.add(this.ball);
     const sg = new THREE.PlaneGeometry(0.7, 0.7);
@@ -490,15 +499,29 @@ export class MatchRenderer {
     this.syncPlayers(snap, dt, walk >= 0 && walk < 1 ? walk : -1);
     const b = snap.ball;
     if (walk >= 0 && walk < 1) {
-      this.ball.position.set(0, 0.17, 0);
+      const ref = snap.players.find((p) => p.side === 2 && Math.abs(p.x) < 0.9) ?? snap.players.find((p) => p.side === 2);
+      if (ref && walk < 0.78) {
+        // Árbitro carregando a bola oficial nas mãos à frente do peito
+        this.ball.position.set(ref.x, 0.96, ref.z - 0.28);
+      } else if (ref && walk < 0.90) {
+        // Árbitro abaixa e posiciona a bola na marca da cal do círculo central
+        const u = (walk - 0.78) / 0.12;
+        const x = ref.x * (1 - u);
+        const z = (ref.z - 0.28) * (1 - u);
+        const y = 0.96 * (1 - u) + 0.23 * u;
+        this.ball.position.set(x, y, z);
+      } else {
+        // Pousada perfeitamente no centro do campo para o pontapé inicial
+        this.ball.position.set(0, 0.23, 0);
+      }
     } else {
-      this.ball.position.set(b.x, 0.17 + b.h, b.z);
+      this.ball.position.set(b.x, 0.23 + b.h, b.z);
       // a bola gira conforme anda (rolando sem deslizar)
       const dx = b.x - this.ballPrev.x, dz = b.z - this.ballPrev.z;
       const dist = Math.hypot(dx, dz);
       if (dist > 1e-4 && dist < 8) {
         this.rollAxis.set(dz, 0, -dx).normalize();
-        this.rollQ.setFromAxisAngle(this.rollAxis, dist / 0.17);
+        this.rollQ.setFromAxisAngle(this.rollAxis, dist / 0.23);
         this.ball.quaternion.premultiply(this.rollQ);
       }
       this.ballPrev.set(b.x, 0, b.z);
@@ -654,7 +677,8 @@ export class MatchRenderer {
       z = line.z;
     }
     const moving = vx !== 0 || vz !== 0;
-    const pp = { ...p, x, z, vx: moving ? vx * 0.5 : 0, vz: moving ? vz * 0.5 : 0.0001, walk: moving ? now / 110 : 0, pose: null, arms: false, sad: false, dive: -1, down: false };
+    const isRefWithBall = p.side === 2 && idx === 1 && k < 0.78;
+    const pp = { ...p, x, z, vx: moving ? vx * 0.5 : 0, vz: moving ? vz * 0.5 : 0.0001, walk: moving ? now / 110 : 0, pose: isRefWithBall ? ("carryBall" as any) : null, arms: false, sad: false, dive: -1, down: false };
     // no fim, vai para a posição do jogo
     const blend = Math.max(0, (k - 0.85) / 0.15);
     if (blend > 0) {
@@ -741,7 +765,7 @@ export class MatchRenderer {
     g.textBaseline = "middle";
     if (this.intro) {
       // legenda da abertura e "toque para pular"
-      const cap = this.intro.arrival ? this.introCaption : "Os times entram em campo";
+      const cap = this.intro.arrival ? this.introCaption : "Os times entram em campo com a arbitragem";
       g.fillStyle = "rgba(0,0,0,0.45)";
       g.fillRect(0, H - 46, W, 46);
       g.font = font(800, 19);

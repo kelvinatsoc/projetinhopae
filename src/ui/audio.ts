@@ -770,6 +770,49 @@ export function ooh() {
 }
 
 /** Som metálico de bola na trave (CLANG!) seguido do 'uhhh' da torcida. */
+export function postHit() {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime;
+
+  const freqs = [840, 1260, 2150];
+  const decays = [0.28, 0.22, 0.14];
+  const gains = [0.65, 0.42, 0.28];
+
+  for (let i = 0; i < freqs.length; i++) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freqs[i], t0);
+    g.gain.setValueAtTime(gains[i], t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + decays[i]);
+    osc.connect(g);
+    g.connect(out(c));
+    osc.start(t0);
+    osc.stop(t0 + decays[i] + 0.02);
+  }
+
+  try {
+    const len = Math.floor(c.sampleRate * 0.035);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const n = c.createBufferSource();
+    n.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = "highpass";
+    f.frequency.setValueAtTime(1200, t0);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.5, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.035);
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(out(c));
+    n.start(t0);
+  } catch { /* ignore */ }
+
+  ooh();
+}
 
 /** Som de toque sutil na bola / passe curto ('toc'). */
 export function ballPass() {

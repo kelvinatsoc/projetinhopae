@@ -194,9 +194,9 @@ function readFeedOpen(): boolean {
 }
 const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda na velocidade 1x
 const INTRO_MS = 800;
-/** Abertura no 3D: entrada rápida dos times e pontapé inicial imediato. */
-function introTimes(importance: number): { arrival: number; walk: number } {
-  return { arrival: 0, walk: Math.round(900 + importance * 300) };
+/** Abertura no 3D: chegada da torcida ao estádio e entrada cerimonial dos times. Pulável a qualquer momento. */
+function introTimes(_importance: number): { arrival: number; walk: number } {
+  return { arrival: 4500, walk: 6500 };
 }
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 

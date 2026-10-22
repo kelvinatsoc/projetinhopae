@@ -150,3 +150,36 @@
 
 /* campo da partida (3D ou o campinho 2D de reserva) */
 .mv-cam { position: relative; transform-origin: 50% 50%; will-change: transform; }
+
+/* Botão elegante e acessível para pular a abertura cerimonial do estádio */
+.mv-skip-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 45;
+  background: rgba(12, 16, 26, 0.85);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 18px;
+  border-radius: 24px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.mv-skip-btn:hover {
+  background: rgba(26, 35, 52, 0.95);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.mv-skip-btn:active {
+  transform: scale(0.95);
+}

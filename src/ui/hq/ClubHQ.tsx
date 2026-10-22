@@ -100,7 +100,7 @@ export function ClubHQ({ club, matchToday, fallback }: { club: Club; matchToday:
         setGeo(g);
         r = new m.HqRenderer({
           host: host.current, colors: [c1, c2], clubId: club.id, stadiumName: club.stadium,
-          crestUrl: club.customCrest ?? mediaUrlOrNull(club.logo ? `crests/${club.id}.webp` : null), stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
+          crestUrl: club.customCrest ?? mediaUrlOrNull(`crests/${club.id}.webp`), stadiumLv: levels[0], trainLv: levels[1], youthLv: levels[2], medicalLv: levels[3],
           matchDay: matchToday, night, timeOfDay, reduced, geo: g, labels: labels.current, stadiumCustom: club.look ?? null,
           onPick: (b) => { haptic("tap"); setSel(b); },
         });
