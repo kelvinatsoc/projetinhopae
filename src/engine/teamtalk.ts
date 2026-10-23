@@ -19,12 +19,12 @@ export interface TalkCtx {
   lid?: boolean; // o capitão é Líder
 }
 
-export const TONES: Record<Tone, { emoji: string; label: string; bubble: string }> = {
-  motivar: { emoji: "🔥", label: "Vamos pra cima!", bubble: "Levanta o grupo!" },
-  calma: { emoji: "😌", label: "Joguem sem pressão", bubble: "Somos zebra hoje, tira a pressão deles." },
-  exigir: { emoji: "😤", label: "Quero vitória!", bubble: "Somos favoritos: cobra o time!" },
-  confiar: { emoji: "🤝", label: "Confio em vocês", bubble: "Jogo equilibrado, mostra confiança." },
-  elogiar: { emoji: "👏", label: "Muito bem, continuem", bubble: "Estão jogando bem, só elogia." },
+export const TONES: Record<Tone, { emoji: string; icon: string; label: string; bubble: string }> = {
+  motivar: { emoji: "🔥", icon: "flameTactical", label: "Vamos pra cima!", bubble: "Levanta o grupo!" },
+  calma: { emoji: "😌", icon: "calm", label: "Joguem sem pressão", bubble: "Somos zebra hoje, tira a pressão deles." },
+  exigir: { emoji: "😤", icon: "bullhorn", label: "Quero vitória!", bubble: "Somos favoritos: cobra o time!" },
+  confiar: { emoji: "🤝", icon: "handshake", label: "Confio em vocês", bubble: "Jogo equilibrado, mostra confiança." },
+  elogiar: { emoji: "👏", icon: "medal", label: "Muito bem, continuem", bubble: "Estão jogando bem, só elogia." },
 };
 
 export const PRE_TONES: Tone[] = ["motivar", "calma", "exigir", "confiar"];

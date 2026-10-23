@@ -822,29 +822,30 @@ export function ballPass() {
   const osc = c.createOscillator();
   const g = c.createGain();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(190, t0);
-  osc.frequency.exponentialRampToValueAtTime(55, t0 + 0.048);
-  g.gain.setValueAtTime(0.38, t0);
-  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+  osc.frequency.setValueAtTime(220, t0);
+  osc.frequency.exponentialRampToValueAtTime(60, t0 + 0.055);
+  g.gain.setValueAtTime(0.62, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.058);
   osc.connect(g);
   g.connect(out(c));
   osc.start(t0);
-  osc.stop(t0 + 0.052);
+  osc.stop(t0 + 0.06);
 
   try {
-    const len = Math.floor(c.sampleRate * 0.015);
+    // Estalo nítido de chuteira em bola de couro
+    const len = Math.floor(c.sampleRate * 0.022);
     const buf = c.createBuffer(1, len, c.sampleRate);
     const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.2);
     const n = c.createBufferSource();
     n.buffer = buf;
     const f = c.createBiquadFilter();
     f.type = "bandpass";
-    f.frequency.setValueAtTime(950, t0);
-    f.Q.setValueAtTime(2.5, t0);
+    f.frequency.setValueAtTime(1100, t0);
+    f.Q.setValueAtTime(2.8, t0);
     const ng = c.createGain();
-    ng.gain.setValueAtTime(0.22, t0);
-    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.015);
+    ng.gain.setValueAtTime(0.38, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.022);
     n.connect(f);
     f.connect(ng);
     ng.connect(out(c));
@@ -1182,4 +1183,16 @@ export async function loadMedia(key: string): Promise<string | null> {
     r.onsuccess = () => resolve((r.result as string) ?? null);
     r.onerror = () => resolve(null);
   });
+}
+
+
+/** Pré-aquece o subsistema de áudio no carregamento para evitar micro-stutters no primeiro lance. */
+export async function warmUpAudio(): Promise<void> {
+  const c = ac();
+  if (!c) return;
+  if (c.state === "suspended") {
+    c.resume().catch(() => undefined);
+  }
+  // Pré-carrega buffers de apito e sons principais
+  await Promise.all([sample(SAMPLE.whistle), sample(SAMPLE.whistleLong)]);
 }

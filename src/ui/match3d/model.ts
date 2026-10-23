@@ -147,14 +147,16 @@ export function broadcastCam(ballX: number, ballZ: number, aspect: number): CamP
   const half = PITCH_LEN / 2;
   const lim = half - (aspect > 1.5 ? 14 : 10);
   const fx = Math.max(-lim, Math.min(lim, ballX));
-  const nearGoal = Math.max(0, (Math.abs(ballX) - 30) / (half - 30));
-  const zoom = 1 - 0.14 * nearGoal;
-  const dist = (aspect < 1.5 ? 58 : 47) * zoom;
-  const fz = Math.max(-12, Math.min(14, ballZ * 0.45));
+  const nearGoal = Math.max(0, (Math.abs(ballX) - 26) / (half - 26));
+  const zoom = 1 - 0.22 * nearGoal; // zoom dinâmico na finalização
+  // Câmera mais próxima estilo FIFA/FM: no celular vertical (aspect < 1.5), dist reduzida de 58m para 36m
+  // permitindo ver os toques, chuteiras e jogadas com nitidez total
+  const dist = (aspect < 1.5 ? 36 : 43) * zoom;
+  const fz = Math.max(-10, Math.min(12, ballZ * 0.4));
   return {
-    pos: [fx, dist * 0.47, fz + dist],
-    look: [fx, 0, fz - 2],
-    fov: aspect < 1.5 ? 34 : 30,
+    pos: [fx, dist * 0.52, fz + dist],
+    look: [fx, 0.4, fz - 1.5],
+    fov: aspect < 1.5 ? 38 : 31,
   };
 }
 

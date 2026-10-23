@@ -13,7 +13,7 @@ import { askingPrice, canAfford, evaluateUserBid, playerWillingness, releasePlay
 import type { Attrs, Player, World } from "../../engine/types";
 import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, cardTier, Crest, Flag, FormDots, PosBadge, Sheet, Stars, TrendArrow } from "../components";
+import { Avatar, Bar, cardTier, Crest, Flag, FormDots, Ic, PosBadge, Sheet, Stars, TrendArrow } from "../components";
 import { bestPartners } from "../../engine/chemistry";
 import { awardsOf, expectedRating, formResidual, injuryProne, pendingRequest, streakOf } from "../../engine/form";
 import { roleStars, rolesFor } from "../../engine/tactics";
@@ -517,12 +517,12 @@ function FormCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
         <b className="kbd" style={{ textAlign: "right" }}>{Math.round(p.morale)}</b>
       </div>
       <div className="row gap8 wrap mt8 small">
-        {streak === "hot" && <span className="tag good">🔥 Em alta: confiança lá em cima</span>}
-        {streak === "cold" && <span className="tag danger">🧊 Em baixa: precisa de confiança</span>}
+        {streak === "hot" && <span className="tag good"><Ic n="flameTactical" size={13} /> Em alta: confiança lá em cima</span>}
+        {streak === "cold" && <span className="tag danger"><Ic n="coldForm" size={13} /> Em baixa: precisa de confiança</span>}
         {!streak && p.form.length >= 3 && <span className="tag">{res >= 0.25 ? "Acima do esperado" : res <= -0.25 ? "Abaixo do esperado" : "Dentro do esperado"}</span>}
-        {p.fav && <span className="tag legend">❤️ Ídolo da torcida</span>}
-        {injuryProne(p) && <span className="tag danger">🩹 Propenso a lesões</span>}
-        {(p.hm ?? 0) >= 2 && mine && <span className="tag good">📈 {p.hm} meses em alta</span>}
+        {p.fav && <span className="tag legend"><Ic n="heartIdol" size={13} /> Ídolo da torcida</span>}
+        {injuryProne(p) && <span className="tag danger"><Ic n="crossMedical" size={13} /> Propenso a lesões</span>}
+        {(p.hm ?? 0) >= 2 && mine && <span className="tag good"><Ic n="trend" size={13} /> {p.hm} meses em alta</span>}
       </div>
       {awards.length > 0 && (
         <div className="row gap8 wrap mt8 small">

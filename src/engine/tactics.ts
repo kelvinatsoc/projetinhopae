@@ -174,15 +174,15 @@ export function onFormationChange(club: Club, formation: string) {
 }
 
 // ---------------------------------------------------------------- modelos prontos
-export interface Preset { id: string; label: string; emoji: string; desc: string; formation: string; mentality: number; pressing: number; ti: TeamInstr; roles: Partial<Record<Pos, RoleId>> }
+export interface Preset { id: string; label: string; icon: string; emoji: string; desc: string; formation: string; mentality: number; pressing: number; ti: TeamInstr; roles: Partial<Record<Pos, RoleId>> }
 export const PRESETS: Preset[] = [
-  { id: "tiki", label: "Toque de bola", emoji: "🎼", desc: "Posse, toque curto e paciência.", formation: "4-3-3", mentality: 1, pressing: 2,
+  { id: "tiki", label: "Toque de bola", icon: "possession", emoji: "🎼", desc: "Posse, toque curto e paciência.", formation: "4-3-3", mentality: 1, pressing: 2,
     ti: { line: 2, width: 1, tempo: 0, direct: 0, cpress: true, waste: false }, roles: { GOL: "lib", ZAG: "cons", VOL: "reg", MC: "arm", PD: "inv", PE: "inv", ATA: "fin", LD: "lat_ap", LE: "lat_ap" } },
-  { id: "gegen", label: "Pressão alta", emoji: "⚡", desc: "Pressão sufocante e ataque vertical.", formation: "4-2-3-1", mentality: 1, pressing: 2,
+  { id: "gegen", label: "Pressão alta", icon: "flameTactical", emoji: "⚡", desc: "Pressão sufocante e ataque vertical.", formation: "4-2-3-1", mentality: 1, pressing: 2,
     ti: { line: 2, width: 1, tempo: 2, direct: 1, cpress: true, waste: false }, roles: { VOL: "box", MEI: "mat", PD: "inv", PE: "inv", ATA: "fin", LD: "lat_ap", LE: "lat_ap" } },
-  { id: "retranca", label: "Retranca e contra-ataque", emoji: "🛡️", desc: "Bloco baixo e saída rápida.", formation: "5-3-2", mentality: -1, pressing: 0,
+  { id: "retranca", label: "Retranca e contra-ataque", icon: "wall", emoji: "🛡️", desc: "Bloco baixo e saída rápida.", formation: "5-3-2", mentality: -1, pressing: 0,
     ti: { line: 0, width: 0, tempo: 2, direct: 2, cpress: false, waste: true }, roles: { ZAG: "zag", VOL: "destr", MC: "box", LD: "lat_def", LE: "lat_def", ATA: "fin" } },
-  { id: "direto", label: "Ligação direta", emoji: "🎯", desc: "Bola longa no pivô e segunda bola.", formation: "4-4-2", mentality: 0, pressing: 1,
+  { id: "direto", label: "Ligação direta", icon: "rocket", emoji: "🎯", desc: "Bola longa no pivô e segunda bola.", formation: "4-4-2", mentality: 0, pressing: 1,
     ti: { line: 1, width: 2, tempo: 2, direct: 2, cpress: false, waste: false }, roles: { ZAG: "zag", MC: "box", PD: "ponta", PE: "ponta", ATA: "piv" } },
 ];
 

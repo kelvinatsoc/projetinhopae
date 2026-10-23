@@ -13,7 +13,7 @@ import type { Club, Lineup, Player, TeamInstr, World } from "../../engine/types"
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { TacticsAdvice } from "../Assistant";
-import { Avatar, Bar, DeltaTag, Ovr, PosBadge, Sheet, Stars, Ic } from "../components";
+import { Avatar, Bar, DeltaTag, Ovr, PosBadge, Sheet, Stars, Ic, Icon } from "../components";
 import "../tactics.css";
 
 /** Reencaixa os mesmos 11 jogadores numa nova formação. */
@@ -130,15 +130,15 @@ export function TacticsScreen() {
       {/* Barra rápida de seletores táticos no topo */}
       <div className="tac-top-strip">
         <select className="chip-select active" value={club.tactic.formation} onChange={(e) => setFormation(e.target.value)} aria-label="Formação">
-          {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>📐 {f}</option>)}
+          {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
         <select className="chip-select" value={club.tactic.mentality} onChange={(e) => { update(() => { club.tactic.mentality = Number(e.target.value); delete club.tactic.preset; }); autosave(); }} aria-label="Mentalidade">
-          {[-2, -1, 0, 1, 2].map((m) => <option key={m} value={m}>🔥 {MENTALITY_NAMES[m].split(" ")[0]}</option>)}
+          {[-2, -1, 0, 1, 2].map((m) => <option key={m} value={m}>{MENTALITY_NAMES[m]}</option>)}
         </select>
         <select className="chip-select" value={club.tactic.pressing} onChange={(e) => { update(() => { club.tactic.pressing = Number(e.target.value); delete club.tactic.preset; }); autosave(); }} aria-label="Pressão">
-          {[0, 1, 2].map((m) => <option key={m} value={m}>⚡ Pressão {PRESSING_NAMES[m].replace("Marcação ", "")}</option>)}
+          {[0, 1, 2].map((m) => <option key={m} value={m}>Pressão {PRESSING_NAMES[m].replace("Marcação ", "")}</option>)}
         </select>
-        <button className="chip" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}>✨ Escalar</button>
+        <button className="chip" onClick={() => { save(autoLineup(w, club, undefined, club.tactic.formation, true)); setSel(null); toast("Time escalado automaticamente"); }}><Ic n="sparkle" size={13} /> Escalar</button>
         <button className={`chip${showLinks ? " active" : ""}`} onClick={() => setShowLinks((x) => !x)}><Ic n="link" size={13} /> Linhas ({Math.round(links)})</button>
         <button className="chip" onClick={() => push({ name: "setpieces" })}><Ic n="target" size={13} /> Bola parada</button>
         {sel !== null && <button className="chip active" onClick={() => setRoleSheet(sel)}><Ic n="role" size={13} /> Função</button>}
@@ -148,9 +148,9 @@ export function TacticsScreen() {
       <TacticsPitch w={w} club={club} lineup={lineup} sel={sel} showLinks={showLinks} onTap={tapSlot} onSwap={(a, b) => { swap(a, b); setSel(null); }} />
 
       <div className="tac-status-line">
-        <span>📘 Familiaridade <b>{Math.round(fam)}%</b></span>
-        <span>🤝 Ligações <b>{Math.round(links)}</b><DeltaTag d={dynDelta(w, "links", links)} /></span>
-        <span>⚡ Força XI <b>{Math.round(lineupStrength(w, club, lineup))}</b></span>
+        <span><Ic n="book" size={13} /> Familiaridade <b>{Math.round(fam)}%</b></span>
+        <span><Ic n="handshake" size={13} /> Ligações <b>{Math.round(links)}</b><DeltaTag d={dynDelta(w, "links", links)} /></span>
+        <span><Ic n="bolt" size={13} /> Força XI <b>{Math.round(lineupStrength(w, club, lineup))}</b></span>
       </div>
       <div className="tiny muted" style={{ marginTop: -4 }}>
         {sel !== null
@@ -176,7 +176,7 @@ export function TacticsScreen() {
                   <span className="bc-ovr num">{posOvr}</span>
                 </div>
                 <span className="bc-name">{shortName(p.name)}</span>
-                <span className="bc-cond" style={{ color: p.cond >= 80 ? "#34d27b" : p.cond >= 65 ? "#f5a524" : "#ef5350" }}>⚡ {Math.round(p.cond)}%</span>
+                <span className="bc-cond" style={{ color: p.cond >= 80 ? "#34d27b" : p.cond >= 65 ? "#f5a524" : "#ef5350" }}><Ic n="bolt" size={12} /> {Math.round(p.cond)}%</span>
               </button>
             );
           })}
@@ -190,7 +190,7 @@ export function TacticsScreen() {
             <b className="small">Modelos prontos</b>
             <div className="chips mt8">
               {PRESETS.map((pr) => (
-                <button key={pr.id} className={`chip${club.tactic.preset === pr.id ? " active" : ""}`} title={pr.desc} onClick={() => pickPreset(pr.id)}>{pr.emoji} {pr.label}</button>
+                <button key={pr.id} className={`chip${club.tactic.preset === pr.id ? " active" : ""}`} title={pr.desc} onClick={() => pickPreset(pr.id)}><Icon name={pr.icon ?? "board"} size={13} /> {pr.label}</button>
               ))}
             </div>
             {(Object.keys(TI_INFO) as (keyof typeof TI_INFO)[]).map((k) => (
@@ -206,7 +206,7 @@ export function TacticsScreen() {
             ))}
             <div className="chips mt12">
               <button className={`chip${ti.cpress ? " active" : ""}`} onClick={() => setTi({ cpress: !ti.cpress })}><Ic n="bolt" size={14} /> Contrapressão</button>
-              <button className={`chip${ti.waste ? " active" : ""}`} onClick={() => setTi({ waste: !ti.waste })}>⏳ Fazer cera (vencendo)</button>
+              <button className={`chip${ti.waste ? " active" : ""}`} onClick={() => setTi({ waste: !ti.waste })}><Ic n="stopwatch" size={14} /> Fazer cera (vencendo)</button>
             </div>
           </div>
 

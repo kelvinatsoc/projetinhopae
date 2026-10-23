@@ -70,12 +70,12 @@ function TalkCard({ w, f }: { w: World; f: Fixture }) {
       <div className="tk-grid">
         {PRE_TONES.map((t) => (
           <button key={t} className={`btn tk-btn${tone === t ? " active" : ""}`} aria-pressed={tone === t} onClick={() => choose(t)}>
-            <span className="tk-ico" aria-hidden="true">{TONES[t].emoji}</span>{TONES[t].label}
+            <span className="tk-ico" aria-hidden="true"><Icon name={TONES[t].icon} size={16} fill /></span>{TONES[t].label}
           </button>
         ))}
       </div>
       {rs ? <ReactionRow w={w} rs={rs} /> : (
-        <div className="tiny muted">{tone ? `Combinado: “${TONES[tone].label}”.` : `Se não escolher, vale a sugestão do auxiliar (${TONES[pre.tone].emoji} ${TONES[pre.tone].label}).`}</div>
+        <div className="tiny muted">{tone ? `Combinado: “${TONES[tone].label}”.` : `Se não escolher, vale a sugestão do auxiliar (${TONES[pre.tone].label}).`}</div>
       )}
     </div>
   );
@@ -196,7 +196,8 @@ const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda n
 const INTRO_MS = 800;
 /** Abertura no 3D: chegada da torcida ao estádio e entrada cerimonial dos times. Pulável a qualquer momento. */
 function introTimes(_importance: number): { arrival: number; walk: number } {
-  return { arrival: 2800, walk: 4200 };
+  // Abertura dinâmica e ágil (não trava o início da partida)
+  return { arrival: 900, walk: 1300 };
 }
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 
@@ -759,11 +760,11 @@ function HalftimeSheet({ sim, side, w, onClose, onSubs }: { sim: MatchSim; side:
         </>
       ) : (
         <>
-          <div className="as-talk small mt8"><Ic n="bulb" /> Auxiliar sugere: <b>{TONES[tip].emoji} {TONES[tip].label}</b></div>
+          <div className="as-talk small mt8"><Ic n="bulb" /> Auxiliar sugere: <b><Ic n={TONES[tip].icon} size={15} /> {TONES[tip].label}</b></div>
           <div className="tk-grid mt8">
             {tones.map((t) => (
               <button key={t} className="btn tk-btn" onClick={() => choose(t)}>
-                <span className="tk-ico" aria-hidden="true">{TONES[t].emoji}</span>{TONES[t].label}
+                <span className="tk-ico" aria-hidden="true"><Icon name={TONES[t].icon} size={16} fill /></span>{TONES[t].label}
               </button>
             ))}
           </div>

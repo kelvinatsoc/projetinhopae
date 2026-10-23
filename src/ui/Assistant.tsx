@@ -246,7 +246,7 @@ function TalkTip({ w, f }: { w: World; f: Fixture }) {
   return (
     <div className="as-section">
       <div className="as-title">Preleção</div>
-      <div className="as-talk small"><Ic n="bulb" /> “{t.bubble}” <span className="muted">Eu diria:</span> <b>{t.emoji} {t.label}</b></div>
+      <div className="as-talk small"><Ic n="bulb" /> “{t.bubble}” <span className="muted">Eu diria:</span> <b><Ic n={t.icon} size={15} /> {t.label}</b></div>
     </div>
   );
 }

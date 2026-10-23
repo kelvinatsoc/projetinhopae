@@ -1,3 +1,4 @@
+import { GamePreloader, isGamePreloaded } from "./GamePreloader";
 import { SponsorsScreen } from "./Sponsors";
 import { UniformsScreen } from "./Uniforms";
 import { PowersScreen } from "./screens/Powers";
@@ -141,6 +142,12 @@ export function App() {
     }, 350);
     return () => window.clearTimeout(t);
   }, [pending, toastBusy]);
+
+  const [preloaded, setPreloaded] = useState(() => isGamePreloaded());
+
+  if (!preloaded) {
+    return <GamePreloader onComplete={() => setPreloaded(true)} />;
+  }
 
   if (!w) return <StartScreen />;
 

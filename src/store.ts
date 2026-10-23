@@ -146,8 +146,9 @@ export function resetNav() {
   emitNav();
 }
 
-window.addEventListener("popstate", () => {
-  if (nav.stack.length) {
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", () => {
+    if (nav.stack.length) {
     const top = nav.stack[nav.stack.length - 1];
     // partida ao vivo não fecha com o botão voltar do celular
     if (!forcePop && (top.name === "match" || top.name === "seasonEnd" || top.name === "fired")) {
@@ -159,6 +160,7 @@ window.addEventListener("popstate", () => {
   }
   forcePop = false;
 });
+}
 
 let toastTimer: number | undefined;
 const toastQueue: string[] = [];

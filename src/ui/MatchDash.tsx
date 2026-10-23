@@ -8,7 +8,7 @@ import { shortName } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
 import { SHOUTS, shoutDef } from "../engine/shouts";
 import type { World } from "../engine/types";
-import { visibleColor } from "./components";
+import { visibleColor, Icon } from "./components";
 import { haptic } from "./haptics";
 import "./matchDash.css";
 
@@ -296,14 +296,15 @@ export function ShoutBar({ sim, side, onChange, inSheet }: { sim: MatchSim; side
           const idle = d.id === "cera" && !(lead > 0 && sim.minute >= 70);
           return (
             <button key={d.id} className={`md-shout${on ? " on" : ""}${idle ? " idle" : ""}`} aria-pressed={on} title={d.hint} onClick={() => set(on ? null : d.id)}>
-              <span aria-hidden="true">{d.emoji}</span>{d.label}
+              <span className="md-shout-ic" aria-hidden="true"><Icon name={d.icon} size={15} /></span>
+              <span>{d.label}</span>
             </button>
           );
         })}
       </div>
       <div className="tiny muted md-shout-hint">
         {cur ? <>{shoutDef(cur)!.hint} <button className="md-link" onClick={() => set(null)}>Voltar ao plano</button></> : "Toque numa instrução: vale só nesta partida."}
-        {S.mark != null && <> · 🛡️ marcando {sim.name(S.mark)} <button className="md-link" onClick={() => { sim.setMark(side, null); force((x) => x + 1); onChange?.(); }}>desfazer</button></>}
+        {S.mark != null && <> · <Icon name="shield" size={12} /> marcando {sim.name(S.mark)} <button className="md-link" onClick={() => { sim.setMark(side, null); force((x) => x + 1); onChange?.(); }}>desfazer</button></>}
       </div>
     </div>
   );

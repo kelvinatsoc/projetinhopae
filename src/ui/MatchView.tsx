@@ -1075,15 +1075,16 @@ class PitchAnim {
       const dx = (d.x - cur.x) * attackDir; // > 0 se companheiro está à frente em direção ao gol rival
 
       // REGRA DO FUTEBOL REAL: Quem está no campo de ataque NUNCA recua para a defesa ou goleiro!
-      if (curAdv > 4) {
-        if (d.grp === 1) return 0.00001; // Proibido recuar para zagueiro no ataque
-        if (dx < -8) return 0.00001;     // Proibido recuos longos para trás no terço final
+      if (curAdv > 0) {
+        if (d.grp === 1 && dx < 0) return 0.000001; // Proibido recuar para zagueiro no campo de ataque
+        if (dx < -6) return 0.000001;               // Proibido recuos longos para trás
       }
 
-      // Atacante perto da área: busca tabelas na área, ponta oposto ou meia infiltrando perto
-      if (cur.grp === 3 || curAdv > 14) {
-        if (d.grp === 1) return 0.00001;
-        if (dx < -6) return 0.00001;
+      // Atacante ou jogador no terço final: busca gol, tabelas curtas e pontas
+      if (cur.grp === 3 || curAdv > 10) {
+        if (d.grp === 1) return 0.000001;          // Zero chance de passar para zagueiro
+        if (d.grp === 0) return 0.000001;          // Zero chance de passar para goleiro
+        if (dx < -3) return 0.000001;              // Não volta a bola para trás
       }
 
       let w = 1.0;
@@ -1701,9 +1702,15 @@ class PitchAnim {
     this.ball.fl = null;
     this.placeBallAt(CX, CY);
 
-    // O cobrador do pontapé inicial já fica colado na bola com a posse
+    // O cobrador do pontapé inicial já inicia posicionado no círculo central com a posse
     const starter = this.team(kt).filter((x) => x.grp !== 0).sort((a, b) => b.bx - a.bx || a.bv - b.bv)[0] ?? null;
     if (starter) {
+      starter.x = CX - fwd(kt) * 1.5;
+      starter.y = CY;
+      starter.tx = starter.x;
+      starter.ty = starter.y;
+      this.ball.x = CX;
+      this.ball.y = CY;
       this.ball.holder = starter;
       this.poss = kt;
     }

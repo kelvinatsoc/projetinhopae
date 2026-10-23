@@ -217,12 +217,12 @@ export function PlayerCard({ p, club, season, starter, onClick, delay = 0, mood 
       <div className="pc-rate"><span className="pc-ovr">{p.ovr}</span><span className="pc-pos">{p.pos}</span></div>
       {starter && <span className="pc-xi">XI</span>}
       <div className="pc-flags">
-        {injured && <span title="Lesionado">🚑</span>}
-        {banned && <span title="Suspenso">🟥</span>}
-        {p.listed && <span title="À venda">💲</span>}
-        {streakOf(p) === "hot" && <span title="Em alta">🔥</span>}
-        {streakOf(p) === "cold" && <span title="Em baixa">🧊</span>}
-        {p.fav && <span title="Ídolo da torcida">❤️</span>}
+        {injured && <span title="Lesionado" className="pc-flag-badge danger"><Icon name="crossMedical" size={12} fill /></span>}
+        {banned && <span title="Suspenso" className="pc-flag-badge danger"><Icon name="cardRed" size={12} fill /></span>}
+        {p.listed && <span title="À venda" className="pc-flag-badge gold"><Icon name="priceTag" size={12} /></span>}
+        {streakOf(p) === "hot" && <span title="Em alta" className="pc-flag-badge hot"><Icon name="flameTactical" size={12} fill /></span>}
+        {streakOf(p) === "cold" && <span title="Em baixa" className="pc-flag-badge cold"><Icon name="coldForm" size={12} /></span>}
+        {p.fav && <span title="Ídolo da torcida" className="pc-flag-badge fav"><Icon name="heartIdol" size={12} fill /></span>}
         {mood && <span className="pc-mood">{mood}</span>}
       </div>
       <div className="pc-foot">
@@ -331,9 +331,9 @@ export function PlayerRow({ p, club, season, right, onClick, showClub, starter, 
           <b className="ellipsis" style={{ fontSize: 14.5 }}>{p.name}</b>
           {starter && <span className="xi-pill">XI</span>}
           {p.legend && <span className="tag legend">★ LENDA</span>}
-          {injured && <span className="tag danger">🚑 {p.injury}d</span>}
-          {banned && <span className="tag danger">🟥</span>}
-          {p.listed && <span className="tag">🏷️</span>}
+          {injured && <span className="tag danger"><Icon name="crossMedical" size={12} fill /> {p.injury}d</span>}
+          {banned && <span className="tag danger"><Icon name="cardRed" size={12} fill /></span>}
+          {p.listed && <span className="tag"><Icon name="priceTag" size={12} /></span>}
         </div>
         <div className="row gap6 small muted" style={{ whiteSpace: "nowrap", minWidth: 0, fontSize: 11.5 }}>
           <span style={{ flex: "none" }}><Flag code={p.nat} /> {age(p, season)}a</span>
@@ -420,6 +420,22 @@ const PATHS: Record<string, string> = {
   user: "M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0",
   shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   scout: "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm10 16-5.5-5.5M10 7v6M7 10h6",
+  flameTactical: "M12 2c-.5 2.5-2.5 4.5-4 6.5C6.5 10.5 5 13 5 15.5a7 7 0 0 0 14 0c0-3.5-2-6-4.5-8-1 2-2 3-2.5 3.5C12 9 12 5 12 2z",
+  wall: "M3 6.5h18v12H3zM3 10.5h18M3 14.5h18M9 6.5v4M15 6.5v4M6 10.5v4M12 10.5v4M18 10.5v4M9 14.5v4M15 14.5v4",
+  counter: "M13 2.5L4 13.5h7l-2 8 11-11.5h-7l2-7.5z",
+  possession: "M20.5 12a8.5 8.5 0 0 0-14.5-6L3 9M3 3.5v5.5h5.5M3.5 12a8.5 8.5 0 0 0 14.5 6l3-3M21 20.5V15h-5.5M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
+  wings: "M7.5 6L2 12l5.5 6M16.5 6l5.5 6-5.5 6M2 12h8M14 12h8M12 4.5v15",
+  rocket: "M12 2.5c3 3.5 4.5 7.5 4.5 11.5l2 2v2l-3-1-1.5 2.5h-4L8.5 17l-3 1v-2l2-2C7.5 10 9 6 12 2.5zM12 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
+  stopwatch: "M12 2v2M9.5 2h5M12 5a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 3.5v4.5l3 2M19 6.5l1.5-1.5",
+  crossMedical: "M9 3.5h6v5h5v6h-5v6H9v-6H4v-5h5v-6z",
+  cardRed: "M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z",
+  cardYellow: "M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z",
+  priceTag: "M12.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v7.5l9 9a1.5 1.5 0 0 0 2.1 0l6.4-6.4a1.5 1.5 0 0 0 0-2.1l-9-9zM7.5 7.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z",
+  coldForm: "M12 2v20M2 12h20M4.9 4.9l14.2 14.2M4.9 19.1L19.1 4.9M12 6l2-2M12 6l-2-2M12 18l2 2M12 18l-2 2M6 12l-2 2M6 12l-2-2M18 12l2 2M18 12l2-2",
+  heartIdol: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+  doorExit: "M14 3.5v17M4.5 3.5h9.5v17H4.5a1.5 1.5 0 0 1-1.5-1.5V5a1.5 1.5 0 0 1 1.5-1.5zm12 8.5h4.5m-2-2l2 2-2 2",
+  bullhorn: "M3.5 11v2a2 2 0 0 0 2 2h2.5l6.5 4.5V4.5L8 9H5.5a2 2 0 0 0-2 2zm13-3a5 5 0 0 1 0 8m3-11a9 9 0 0 1 0 14",
+  whistleReferee: "M4 13a5 5 0 1 0 10 0l7-4V6h-9.5A5 5 0 0 0 4 13zM13 6V4M9 13h.01",
 };
 
 /** Ícone alinhado ao texto (substitui emojis em rótulos). */
