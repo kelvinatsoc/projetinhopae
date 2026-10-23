@@ -10,7 +10,7 @@ export interface TrophySpec {
   name: string;
   metal: "gold" | "silver" | "bronze";
   accent?: "gold" | "silver" | "bronze";
-  shape: "ears" | "vase" | "slim" | "bowl" | "tall" | "wc" | "dish" | "hex" | "ring";
+  shape: "ears" | "vase" | "slim" | "bowl" | "tall" | "wc" | "dish" | "hex" | "ring" | "brasileirao" | "copaBR" | "paulistao" | "cwc";
   handles?: "none" | "ears" | "loops" | "small";
   base?: "plinth" | "wood" | "green" | "star";
   top?: "none" | "globe" | "ball" | "figure" | "crown" | "lid";
@@ -19,22 +19,22 @@ export interface TrophySpec {
 const S = (key: string, name: string, o: Omit<TrophySpec, "key" | "name">): TrophySpec => ({ key, name, ...o });
 
 const SPECS: Record<string, TrophySpec> = {
-  serieA: S("serieA", "Taça do Brasileirão", { metal: "gold", accent: "silver", shape: "bowl", handles: "loops", base: "star", top: "ball" }),
-  serieB: S("serieB", "Taça da Série B", { metal: "silver", accent: "gold", shape: "bowl", handles: "loops", base: "star", top: "ball" }),
+  serieA: S("serieA", "Taça do Brasileirão", { metal: "gold", accent: "silver", shape: "brasileirao", base: "plinth", top: "globe" }),
+  serieB: S("serieB", "Taça da Série B", { metal: "silver", accent: "gold", shape: "brasileirao", base: "plinth", top: "globe" }),
   serieC: S("serieC", "Taça da Série C", { metal: "silver", accent: "bronze", shape: "bowl", handles: "small", base: "star" }),
   serieD: S("serieD", "Taça da Série D", { metal: "bronze", accent: "silver", shape: "bowl", handles: "small", base: "star" }),
-  copaBR: S("copaBR", "Taça da Copa do Brasil", { metal: "silver", accent: "gold", shape: "tall", handles: "loops", base: "plinth", top: "lid" }),
+  copaBR: S("copaBR", "Taça da Copa do Brasil", { metal: "gold", accent: "silver", shape: "copaBR", base: "plinth", top: "lid" }),
   supercopa: S("supercopa", "Taça da Supercopa", { metal: "gold", shape: "slim", handles: "small", base: "plinth" }),
   liberta: S("liberta", "Taça Libertadores", { metal: "silver", accent: "gold", shape: "bowl", handles: "loops", base: "wood", top: "figure" }),
   sula: S("sula", "Taça Sul-Americana", { metal: "silver", accent: "gold", shape: "tall", handles: "small", base: "wood" }),
   recopa: S("recopa", "Taça da Recopa", { metal: "silver", shape: "bowl", handles: "small", base: "wood" }),
-  ucl: S("ucl", "Orelhuda", { metal: "silver", shape: "ears", handles: "ears", base: "plinth" }),
+  ucl: S("ucl", "Orelhuda da Champions", { metal: "silver", shape: "ears", handles: "ears", base: "plinth" }),
   uel: S("uel", "Taça da Europa League", { metal: "silver", shape: "vase", handles: "none", base: "plinth" }),
   uecl: S("uecl", "Taça da Conference League", { metal: "silver", shape: "slim", handles: "none", base: "plinth" }),
   wc: S("wc", "Taça da Copa do Mundo", { metal: "gold", shape: "wc", base: "green", top: "globe" }),
   euro: S("euro", "Troféu Henri Delaunay", { metal: "silver", shape: "vase", handles: "small", base: "plinth" }),
   ca: S("ca", "Taça da Copa América", { metal: "silver", accent: "gold", shape: "tall", handles: "loops", base: "wood", top: "lid" }),
-  cwc: S("cwc", "Troféu do Mundial de Clubes", { metal: "gold", shape: "ring", base: "plinth" }),
+  cwc: S("cwc", "Troféu do Mundial de Clubes", { metal: "gold", accent: "silver", shape: "cwc", base: "plinth", top: "globe" }),
   intercontinental: S("intercontinental", "Taça Intercontinental", { metal: "gold", accent: "silver", shape: "slim", base: "plinth", top: "globe" }),
   acle: S("acle", "Taça da Champions da Ásia", { metal: "silver", accent: "gold", shape: "vase", handles: "loops", base: "plinth" }),
   eng1: S("eng1", "Troféu da Premier League", { metal: "silver", accent: "gold", shape: "bowl", handles: "loops", base: "plinth", top: "crown" }),
@@ -54,7 +54,7 @@ const SPECS: Record<string, TrophySpec> = {
 
 /** Estaduais: cada um com a sua taça (formatos variados, todas douradas ou prateadas). */
 const ESTADUAL_SPECS: Record<string, Omit<TrophySpec, "key" | "name">> = {
-  "est-SP": { metal: "gold", accent: "silver", shape: "tall", handles: "loops", base: "plinth", top: "lid" },
+  "est-SP": { metal: "gold", accent: "silver", shape: "paulistao", base: "plinth" },
   "est-RJ": { metal: "silver", accent: "gold", shape: "bowl", handles: "loops", base: "plinth" },
   "est-MG": { metal: "gold", shape: "bowl", handles: "small", base: "wood" },
   "est-RS": { metal: "silver", accent: "gold", shape: "vase", handles: "small", base: "plinth" },

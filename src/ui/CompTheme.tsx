@@ -1,5 +1,5 @@
 /** Peças de UI com a identidade da competição: faixa de cabeçalho, vinheta e festa do título. */
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { COMP_META } from "../engine/competitions";
 import type { Club } from "../engine/types";
 import { CompLogo, Crest } from "./components";
@@ -137,11 +137,44 @@ function Celebrant({ c1, c2, skin, x, scale, delay, lift }: { c1: string; c2: st
  * Festa do título: a logo do campeonato entra com brilho e partículas, confete e fogos nas cores
  * do clube, os jogadores levantam a taça real da competição e a torcida explode (audio.ts).
  */
+/** Visualização 3D da cerimônia no estádio com troféu oficial e invasão de campo. */
+function StadiumCelebrationCanvas({ id, club, season }: { id: string; club: Club; season: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    let stop: (() => void) | null = null;
+    let alive = true;
+    void import("./match3d/StadiumCelebration").then((m) => {
+      if (alive && ref.current) {
+        stop = m.mountStadiumCelebration(ref.current, {
+          club: { id: club.id, name: club.name, colors: club.colors, abbr: club.abbr },
+          comp: id,
+          season,
+          reduced: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        });
+      }
+    }).catch(() => undefined);
+    return () => { alive = false; stop?.(); };
+  }, [id, club, season]);
+
+  return <canvas ref={ref} className="stadium-ceremony-canvas" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 1 }} />;
+}
+
 export function TitleCelebration({ id, club, season, onClose }: { id: string; club: Club; season: number; onClose: () => void }) {
   const meta = COMP_META[id];
   const t = compTheme(id, meta?.color);
-  const clubCols = [...new Set([...club.colors, t.accent, "#ffffff"])];
-  const cols = [...clubCols, ...confettiColors(t).slice(0, 1)];
+  const [mode3d, setMode3d] = useState(true);
+
+  useEffect(() => {
+    haptic("success");
+    const stop = championParty();
+    return stop;
+  }, []);
+
+  const trophyName = trophySpec(id).name;
+  const clubCols = useMemo(() => [...new Set([...club.colors, t.accent, "#ffffff"])], [club.colors, t.accent]);
+  const cols = useMemo(() => [...clubCols, ...confettiColors(t).slice(0, 1)], [clubCols, t]);
   const bits = useMemo(() => Array.from({ length: CONF_N }, (_, i) => ({
     left: Math.random() * 100,
     delay: 1 + Math.random() * 2.4,
@@ -149,54 +182,92 @@ export function TitleCelebration({ id, club, season, onClose }: { id: string; cl
     rot: Math.random() * 360,
     c: cols[i % cols.length],
     w: 6 + Math.random() * 6,
-  })), [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  })), [id, cols]);
   const sparks = useMemo(() => Array.from({ length: 24 }, (_, i) => ({ a: (i / 24) * 360, d: 90 + Math.random() * 70, s: 3 + Math.random() * 4 })), []);
-  useEffect(() => {
-    haptic("success");
-    const stop = championParty();
-    return stop;
-  }, []);
   const c1 = club.colors[0] ?? "#22c55e";
   const c2 = club.colors[1] ?? "#ffffff";
   const skins = ["#8d5524", "#c68642", "#e0ac69", "#5c3a1e", "#f1c27d"];
-  const trophyName = trophySpec(id).name;
+
   return (
     <div className={`ct-title-won ${themeClass(t)}`} style={themeVars(t)} role="dialog" aria-label={`Campeão: ${meta?.name ?? id}`}>
-      <div className="ct-tw-bg" />
-      <div className="ct-tw-flash" aria-hidden="true" />
-      <Fireworks colors={clubCols} />
-      <div className="ct-confetti" aria-hidden="true">
-        {bits.map((b, i) => (
-          <i key={i} style={{ left: `${b.left}%`, animationDelay: `${b.delay}s`, animationDuration: `${b.dur}s`, background: b.c, width: b.w, height: b.w * 0.45, transform: `rotate(${b.rot}deg)` }} />
-        ))}
-      </div>
-      <div className="ct-tw-body">
-        <div className="ct-tw-logo">
-          <span className="ct-tw-glow" aria-hidden="true" />
-          <span className="ct-tw-sparks" aria-hidden="true">
-            {sparks.map((s, i) => <i key={i} style={{ "--a": `${s.a}deg`, "--d": `${s.d}px`, width: s.s, height: s.s } as React.CSSProperties} />)}
-          </span>
-          <CompLogo id={id} size={92} fallback={<TrophyImg comp={id} size={92} />} />
-        </div>
-        <div className="ct-tw-kicker">{t.motto || "Campeão!"}</div>
-        <b className="ct-title ct-tw-name">{meta?.name ?? id} {season}</b>
-        <div className="ct-tw-stage">
-          <div className="ct-tw-trophy3d"><TrophyLive comp={id} size={150} /></div>
-          <div className="ct-tw-squad">
-            <Celebrant c1={c1} c2={c2} skin={skins[0]} x={4} scale={0.62} delay={1.9} />
-            <Celebrant c1={c1} c2={c2} skin={skins[1]} x={20} scale={0.74} delay={1.75} />
-            <Celebrant c1={c1} c2={c2} skin={skins[3]} x={60} scale={0.74} delay={1.8} />
-            <Celebrant c1={c1} c2={c2} skin={skins[4]} x={76} scale={0.62} delay={1.95} />
-            <Celebrant c1={c1} c2={c2} skin={skins[2]} x={40} scale={0.9} delay={1.6} lift />
+      {mode3d ? (
+        <div style={{ position: "absolute", inset: 0, zIndex: 2, overflow: "hidden" }}>
+          <StadiumCelebrationCanvas id={id} club={club} season={season} />
+          <div style={{
+            position: "absolute", top: "calc(env(safe-area-inset-top) + 14px)", left: "50%", transform: "translateX(-50%)",
+            background: "rgba(9, 13, 22, 0.88)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+            border: "1px solid rgba(255, 255, 255, 0.16)", borderRadius: "22px", padding: "8px 18px",
+            display: "flex", alignItems: "center", gap: "12px", zIndex: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.6)"
+          }}>
+            <CompLogo id={id} size={36} fallback={<Crest club={club} size={36} />} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 0 }}>
+              <b style={{ color: "#ffd54f", fontFamily: "var(--display)", fontSize: "17px", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1.1 }}>É CAMPEÃO!</b>
+              <small style={{ color: "#ffffff", fontSize: "12px", fontWeight: 700, opacity: 0.9 }}>{trophyName} · {season}</small>
+            </div>
+            <Crest club={club} size={32} />
+          </div>
+
+          <div style={{
+            position: "absolute", bottom: "calc(env(safe-area-inset-bottom) + 20px)", left: "16px", right: "16px",
+            display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10, gap: "10px"
+          }}>
+            <button
+              onClick={() => setMode3d(false)}
+              style={{
+                background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)", padding: "8px 14px", borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.15)", color: "#cbd5e1", fontSize: "12px", fontWeight: 700, cursor: "pointer"
+              }}
+            >
+              🔄 Modo 2D
+            </button>
+            <button className="btn primary" onClick={onClose} style={{
+              minWidth: "140px", height: "46px", borderRadius: "999px", fontSize: "14.5px", fontWeight: 900,
+              boxShadow: "0 6px 24px rgba(200, 244, 60, 0.35)"
+            }}>
+              Continuar ❯❯
+            </button>
           </div>
         </div>
-        <div className="ct-tw-club"><Crest club={club} size={48} /><span>{club.name}</span></div>
-        <div className="ct-tw-champ">É CAMPEÃO!</div>
-        <div className="ct-tw-cup tiny">{trophyName}</div>
-      </div>
-      <div className="sticky-cta ct-tw-cta">
-        <button className="btn primary block lg" onClick={onClose}>Continuar</button>
-      </div>
+      ) : (
+        <>
+          <div className="ct-tw-bg" />
+          <div className="ct-tw-flash" aria-hidden="true" />
+          <Fireworks colors={clubCols} />
+          <div className="ct-confetti" aria-hidden="true">
+            {bits.map((b, i) => (
+              <i key={i} style={{ left: `${b.left}%`, animationDelay: `${b.delay}s`, animationDuration: `${b.dur}s`, background: b.c, width: b.w, height: b.w * 0.45, transform: `rotate(${b.rot}deg)` }} />
+            ))}
+          </div>
+          <div className="ct-tw-body">
+            <div className="ct-tw-logo">
+              <span className="ct-tw-glow" aria-hidden="true" />
+              <span className="ct-tw-sparks" aria-hidden="true">
+                {sparks.map((s, i) => <i key={i} style={{ "--a": `${s.a}deg`, "--d": `${s.d}px`, width: s.s, height: s.s } as React.CSSProperties} />)}
+              </span>
+              <CompLogo id={id} size={92} fallback={<TrophyImg comp={id} size={92} />} />
+            </div>
+            <div className="ct-tw-kicker">{t.motto || "Campeão!"}</div>
+            <b className="ct-title ct-tw-name">{meta?.name ?? id} {season}</b>
+            <div className="ct-tw-stage">
+              <div className="ct-tw-trophy3d"><TrophyLive comp={id} size={150} /></div>
+              <div className="ct-tw-squad">
+                <Celebrant c1={c1} c2={c2} skin={skins[0]} x={4} scale={0.62} delay={1.9} />
+                <Celebrant c1={c1} c2={c2} skin={skins[1]} x={20} scale={0.74} delay={1.75} />
+                <Celebrant c1={c1} c2={c2} skin={skins[3]} x={60} scale={0.74} delay={1.8} />
+                <Celebrant c1={c1} c2={c2} skin={skins[4]} x={76} scale={0.62} delay={1.95} />
+                <Celebrant c1={c1} c2={c2} skin={skins[2]} x={40} scale={0.9} delay={1.6} lift />
+              </div>
+            </div>
+            <div className="ct-tw-club"><Crest club={club} size={48} /><span>{club.name}</span></div>
+            <div className="ct-tw-champ">É CAMPEÃO!</div>
+            <div className="ct-tw-cup tiny">{trophyName}</div>
+          </div>
+          <div className="sticky-cta ct-tw-cta" style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            <button className="btn ghost" onClick={() => setMode3d(true)}>🏟️ Ver Estádio 3D</button>
+            <button className="btn primary block lg" onClick={onClose}>Continuar</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

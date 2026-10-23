@@ -196,7 +196,7 @@ const HIGHLIGHT_MS = REAL_MS_PER_MIN; // nos melhores momentos cada lance roda n
 const INTRO_MS = 800;
 /** Abertura no 3D: chegada da torcida ao estádio e entrada cerimonial dos times. Pulável a qualquer momento. */
 function introTimes(_importance: number): { arrival: number; walk: number } {
-  return { arrival: 4500, walk: 6500 };
+  return { arrival: 2800, walk: 4200 };
 }
 const isGoal = (e: MatchEvent) => e.type === "goal" || e.type === "pen-goal" || e.type === "owngoal";
 

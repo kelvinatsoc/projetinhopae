@@ -638,7 +638,7 @@ h3 { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spac
 .pcard.legend { --t1: #e9c24a; --t2: #3a1d5a; --tb: #fff1a8; box-shadow: 0 0 0 1px #ffd75a, 0 0 22px rgba(255,207,63,0.45); }
 .pcard .pc-photo { position: absolute; inset: 0 0 26% 0; z-index: 0; }
 .pcard .pc-photo .avatar { width: 100% !important; height: 100% !important; border-radius: 0; background: transparent !important; margin: 0; }
-.pcard .pc-photo .avatar img { object-fit: cover; object-position: 50% 10%; background: transparent; }
+.pcard .pc-photo .avatar img { object-fit: cover; object-position: 50% 14%; background: transparent; }
 .pcard .pc-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, var(--t2) 100%); }
 .pcard .pc-rate {
   position: absolute; z-index: 3; top: 6px; left: 6px; display: flex; flex-direction: column; align-items: center;

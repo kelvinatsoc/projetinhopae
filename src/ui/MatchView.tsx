@@ -1062,7 +1062,7 @@ class PitchAnim {
     return best;
   }
 
-  /** Próximo da troca de passes: de trás para a frente, preferindo quem está a uma distância boa. */
+  /** Próximo da troca de passes: de trás para a frente, estilo FIFA/FM, priorizando progressão ofensiva. */
   pickNext(cur: Dude, side: 0 | 1, exclude?: Dude | null): Dude | null {
     const mates = this.team(side).filter((d) => d !== cur && d !== exclude && d.grp !== 0);
     if (!mates.length) return null;
@@ -1074,33 +1074,37 @@ class PitchAnim {
       const dg = d.grp - cur.grp;
       const dx = (d.x - cur.x) * attackDir; // > 0 se companheiro está à frente em direção ao gol rival
 
-      // Atacante perto da área ou jogador avançado no terço final NUNCA recua para zagueiro!
-      if ((cur.grp === 3 || curAdv > 16) && d.grp === 1) {
-        return 0.0001;
+      // REGRA DO FUTEBOL REAL: Quem está no campo de ataque NUNCA recua para a defesa ou goleiro!
+      if (curAdv > 4) {
+        if (d.grp === 1) return 0.00001; // Proibido recuar para zagueiro no ataque
+        if (dx < -8) return 0.00001;     // Proibido recuos longos para trás no terço final
       }
-      // Se estiver muito à frente, proibir recuos longos para trás
-      if (curAdv > 12 && dx < -18) {
-        return 0.001;
+
+      // Atacante perto da área: busca tabelas na área, ponta oposto ou meia infiltrando perto
+      if (cur.grp === 3 || curAdv > 14) {
+        if (d.grp === 1) return 0.00001;
+        if (dx < -6) return 0.00001;
       }
 
       let w = 1.0;
       if (cur.grp === 1) {
         // Zagueiro saindo jogando: busca meias à frente
-        w = dg === 1 ? 3.8 : dg === 2 ? 2.0 : 0.5;
+        w = dg === 1 ? 4.5 : dg === 2 ? 2.2 : 0.2;
       } else if (cur.grp === 2) {
-        // Meia armando: busca atacantes ou outro meia próximo
-        w = dg === 1 ? 4.2 : dg === 0 ? 1.8 : 0.25;
+        // Meia armando: busca atacantes à frente ou meias infiltrando
+        w = dg === 1 ? 5.5 : dg === 0 ? (dx > 0 ? 2.5 : 1.2) : 0.05;
       } else {
-        // Atacante: tabela com outro atacante ou serve meia infiltrando na área
-        w = dg === 0 ? 3.5 : dg === -1 ? 1.6 : 0.001;
+        // Atacante: finalização/tabela com companheiro de frente ou servindo ponta
+        w = dg === 0 ? (dx >= -2 ? 4.5 : 1.5) : (dx >= -4 ? 2.0 : 0.00001);
       }
 
-      // Passe progressivo em direção ao gol rival ganha bônus de peso
-      if (dx > 2) w *= 1.45;
+      // Passe progressivo em direção à baliza rival ganha bônus maciço
+      if (dx > 4) w *= 2.2;
+      else if (dx > 0) w *= 1.4;
 
       const dist = Math.hypot(d.x - cur.x, d.y - cur.y);
-      w *= Math.exp(-Math.abs(dist - 28) / 24);
-      return Math.max(0.001, w);
+      w *= Math.exp(-Math.abs(dist - 26) / 22);
+      return Math.max(0.00001, w);
     });
 
     const sum = ws.reduce((s, x) => s + x, 0);
@@ -1695,11 +1699,18 @@ class PitchAnim {
     const kt = this.kickTeam;
     this.mode = "kickoff";
     this.ball.fl = null;
-    this.ball.holder = null;
     this.placeBallAt(CX, CY);
-    const tk = 0.04 * B;
+
+    // O cobrador do pontapé inicial já fica colado na bola com a posse
+    const starter = this.team(kt).filter((x) => x.grp !== 0).sort((a, b) => b.bx - a.bx || a.bv - b.bv)[0] ?? null;
+    if (starter) {
+      this.ball.holder = starter;
+      this.poss = kt;
+    }
+
+    const tk = 0.015 * B;
     this.at(tk, () => {
-      const mate = this.team(kt).filter((d) => d.grp === 2).sort((a, b) => Math.abs(a.y - CY) - Math.abs(b.y - CY))[0] ?? this.team(kt).find((d) => d.grp !== 0) ?? null;
+      const mate = this.team(kt).filter((d) => d.grp === 2).sort((a, b) => Math.abs(a.y - CY) - Math.abs(b.y - CY))[0] ?? this.team(kt).find((d) => d.grp !== 0 && d !== starter) ?? null;
       this.mode = "play";
       this.kickoffPending = false;
       this.poss = kt;
@@ -1709,7 +1720,7 @@ class PitchAnim {
       this.halfKick = false;
       this.say(label, kt, 1);
     });
-    return tk + 0.06 * B;
+    return tk + 0.04 * B;
   }
 
   halfTime(e: MatchEvent) {

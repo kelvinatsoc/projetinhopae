@@ -73,15 +73,15 @@ function radiusAt(shape: TrophySpec["shape"], y: number): number {
 function addBase(g: THREE.Group, spec: TrophySpec, m: ReturnType<typeof mats>) {
   const kind = spec.base ?? "plinth";
   if (kind === "wood") {
-    const b = new THREE.Mesh(lathe([[0, 0], [0.42, 0], [0.42, 0.03], [0.36, 0.06], [0.34, 0.3], [0.3, 0.32], [0, 0.32]], 8), m.wood);
+    const b = new THREE.Mesh(lathe([[0, 0], [0.42, 0], [0.42, 0.03], [0.36, 0.06], [0.34, 0.34], [0.3, 0.36], [0, 0.36]], 16), m.wood);
     g.add(b);
-    // plaquinhas dos campeões
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.01), m.accent);
-      for (let row = 0; row < 3; row++) {
+    // plaquinhas dos campeões da Libertadores
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + Math.PI / 10;
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.045, 0.01), m.accent);
+      for (let row = 0; row < 4; row++) {
         const q = p.clone();
-        q.position.set(Math.sin(a) * 0.335, 0.1 + row * 0.07, Math.cos(a) * 0.335);
+        q.position.set(Math.sin(a) * 0.335, 0.08 + row * 0.065, Math.cos(a) * 0.335);
         q.rotation.y = a;
         g.add(q);
       }
@@ -232,6 +232,148 @@ export function buildTrophy(spec: TrophySpec): THREE.Group {
     addBase(g, spec, m);
     return g;
   }
+  if (spec.shape === "brasileirao") { // Taça do Brasileirão (CBF): pedestal facetado, 4 lâminas curvas e globo central
+    const baseGeo = new THREE.CylinderGeometry(0.42, 0.46, 0.28, 8);
+    const baseMesh = new THREE.Mesh(baseGeo, m.dark);
+    baseMesh.position.y = 0.14;
+    g.add(baseMesh);
+
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.1, 0.02), m.main);
+    plate.position.set(0, 0.14, 0.44);
+    g.add(plate);
+
+    const ring0 = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.03, 12, 48), m.main);
+    ring0.rotation.x = Math.PI / 2;
+    ring0.position.y = 0.28;
+    g.add(ring0);
+
+    const stem = new THREE.Mesh(lathe([[0, 0.28], [0.24, 0.28], [0.14, 0.55], [0.18, 0.85], [0, 0.85]]), m.main);
+    g.add(stem);
+
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const pts = [
+        new THREE.Vector3(Math.cos(a) * 0.18, 0.45, Math.sin(a) * 0.18),
+        new THREE.Vector3(Math.cos(a) * 0.38, 0.75, Math.sin(a) * 0.38),
+        new THREE.Vector3(Math.cos(a) * 0.46, 1.25, Math.sin(a) * 0.46),
+        new THREE.Vector3(Math.cos(a) * 0.38, 1.68, Math.sin(a) * 0.38),
+        new THREE.Vector3(Math.cos(a) * 0.22, 1.88, Math.sin(a) * 0.22),
+      ];
+      g.add(new THREE.Mesh(tube(pts, 0.042), m.main));
+    }
+
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.36, 48, 32), m.main);
+    globe.position.y = 1.25;
+    g.add(globe);
+
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.368, 0.022, 12, 64), m.green);
+    band.rotation.x = Math.PI * 0.42;
+    band.rotation.y = Math.PI * 0.18;
+    band.position.y = 1.25;
+    g.add(band);
+
+    const topRing = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 10, 48), m.accent);
+    topRing.rotation.x = Math.PI / 2;
+    topRing.position.y = 1.86;
+    g.add(topRing);
+    return g;
+  }
+
+  if (spec.shape === "copaBR") { // Taça da Copa do Brasil: coroa barroca de 4 arcos e cálice com medalhão
+    const bGeo = lathe([[0, 0], [0.44, 0], [0.44, 0.06], [0.38, 0.12], [0.36, 0.26], [0.32, 0.3], [0, 0.3]]);
+    g.add(new THREE.Mesh(bGeo, m.dark));
+
+    const bRing = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.025, 8, 48), m.accent);
+    bRing.rotation.x = Math.PI / 2;
+    bRing.position.y = 0.28;
+    g.add(bRing);
+
+    const cupGeo = lathe([
+      [0, 0.3], [0.18, 0.3], [0.12, 0.55], [0.18, 0.85],
+      [0.32, 1.25], [0.36, 1.55], [0.34, 1.68], [0, 1.68]
+    ]);
+    g.add(new THREE.Mesh(cupGeo, m.main));
+
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const pts = [
+        new THREE.Vector3(Math.cos(a) * 0.22, 0.32, Math.sin(a) * 0.22),
+        new THREE.Vector3(Math.cos(a) * 0.44, 0.72, Math.sin(a) * 0.44),
+        new THREE.Vector3(Math.cos(a) * 0.48, 1.22, Math.sin(a) * 0.48),
+        new THREE.Vector3(Math.cos(a) * 0.38, 1.62, Math.sin(a) * 0.38),
+        new THREE.Vector3(Math.cos(a) * 0.16, 1.76, Math.sin(a) * 0.16),
+      ];
+      g.add(new THREE.Mesh(tube(pts, 0.038), m.accent));
+    }
+
+    const medal = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 24), m.accent);
+    medal.rotation.x = Math.PI / 2;
+    medal.position.set(0, 1.0, 0.38);
+    g.add(medal);
+
+    const lid = new THREE.Mesh(lathe([
+      [0, 1.68], [0.34, 1.68], [0.24, 1.78], [0.1, 1.86], [0.04, 1.95], [0, 1.95]
+    ]), m.main);
+    g.add(lid);
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), m.accent);
+    finial.position.y = 1.98;
+    g.add(finial);
+    return g;
+  }
+
+  if (spec.shape === "paulistao") { // Troféu do Paulistão (FPF): asas douradas e bola central
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.24, 8), m.dark);
+    base.position.y = 0.12;
+    g.add(base);
+
+    for (const side of [-1, 1]) {
+      const pts = [
+        new THREE.Vector3(side * 0.12, 0.24, 0),
+        new THREE.Vector3(side * 0.38, 0.65, 0),
+        new THREE.Vector3(side * 0.46, 1.25, 0),
+        new THREE.Vector3(side * 0.36, 1.75, 0),
+        new THREE.Vector3(side * 0.14, 1.92, 0),
+      ];
+      g.add(new THREE.Mesh(tube(pts, 0.045), m.main));
+    }
+
+    const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 2), m.accent);
+    ball.position.y = 1.15;
+    g.add(ball);
+
+    const cradle = new THREE.Mesh(lathe([[0, 0.24], [0.18, 0.24], [0.12, 0.65], [0.22, 0.9], [0, 0.9]]), m.main);
+    g.add(cradle);
+    return g;
+  }
+
+  if (spec.shape === "cwc") { // Mundial de Clubes FIFA: 6 colunas espirais e globo dourado
+    const base = new THREE.Mesh(lathe([[0, 0], [0.42, 0], [0.4, 0.08], [0.34, 0.18], [0.28, 0.25], [0, 0.25]]), m.main);
+    g.add(base);
+
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const pts = [
+        new THREE.Vector3(Math.cos(a) * 0.26, 0.25, Math.sin(a) * 0.26),
+        new THREE.Vector3(Math.cos(a + 0.2) * 0.34, 0.7, Math.sin(a + 0.2) * 0.34),
+        new THREE.Vector3(Math.cos(a + 0.35) * 0.36, 1.15, Math.sin(a + 0.35) * 0.36),
+        new THREE.Vector3(Math.cos(a + 0.4) * 0.24, 1.5, Math.sin(a + 0.4) * 0.24),
+      ];
+      g.add(new THREE.Mesh(tube(pts, 0.034), m.main));
+    }
+
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.34, 32, 24), m.main);
+    globe.position.y = 1.45;
+    g.add(globe);
+
+    for (let i = 0; i < 4; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.342, 0.008, 6, 48), m.accent);
+      ring.rotation.y = (i / 4) * Math.PI;
+      ring.position.y = 1.45;
+      g.add(ring);
+    }
+    return g;
+  }
+
   if (spec.shape === "ring") { // Mundial de Clubes (2025): anel dourado gravado sobre base
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 24, 96), m.main);
     ring.position.y = 1.05;

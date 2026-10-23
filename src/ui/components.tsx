@@ -126,7 +126,8 @@ export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club 
   const [broken, setBroken] = useState<string[]>([]);
   const cands = p.photo ? [p.photo] : [mediaUrlOrNull(playerImagePath(p)), sportsdbUrl(p)];
   const src = cands.find((u): u is string => !!u && !broken.includes(u));
-  const cls = `avatar${p.legend ? " legend" : ""}${src && src === sportsdbUrl(p) ? " ext" : ""}`;
+  const star = p.ovr >= 80;
+  const cls = `avatar${p.legend ? " legend" : star ? " star" : ""}${src && src === sportsdbUrl(p) ? " ext" : ""}`;
   if (src) {
     return (
       <div className={cls} style={{ width: size, height: size }}>
@@ -145,14 +146,21 @@ export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club 
 
 /** Silhueta neutra vestindo a cor principal do clube. */
 export function Silhouette({ club }: { club?: Club | null }) {
-  const shirt = club?.colors[0] ?? "#5a6b62";
-  const trim = club ? (luminance(club.colors[1]) !== luminance(shirt) ? club.colors[1] : club.colors[2]) : "#d9e2dc";
+  const shirt = club?.colors[0] ?? "#1e293b";
+  const trim = club ? (luminance(club.colors[1]) !== luminance(shirt) ? club.colors[1] : club.colors[2]) : "#cbd5e1";
   return (
-    <svg viewBox="0 0 100 100" aria-hidden="true">
-      <rect x="43" y="46" width="14" height="14" rx="5" fill="#8f9c95" />
-      <ellipse cx="50" cy="36" rx="16" ry="18.5" fill="#a7b3ad" />
-      <path d="M50 57C29 57 15 66 11 83L8 100H92L89 83C85 66 71 57 50 57Z" fill={shirt} stroke="#0005" strokeWidth="1.2" />
-      <path d="M41 58L50 68L59 58" fill="none" stroke={trim} strokeWidth="4" strokeLinejoin="round" />
+    <svg viewBox="0 0 100 100" aria-hidden="true" style={{ width: "100%", height: "100%", display: "block" }}>
+      <defs>
+        <radialGradient id="sil-glow" cx="50%" cy="32%" r="65%">
+          <stop offset="0%" stopColor="#334155" />
+          <stop offset="100%" stopColor="#090d16" />
+        </radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="48" fill="url(#sil-glow)" />
+      <rect x="43" y="46" width="14" height="14" rx="5" fill="#64748b" />
+      <ellipse cx="50" cy="34" rx="16" ry="18" fill="#94a3b8" />
+      <path d="M50 56C28 56 14 66 11 84L8 100H92L89 84C86 66 72 56 50 56Z" fill={shirt} stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" />
+      <path d="M41 57L50 67L59 57" fill="none" stroke={trim} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
