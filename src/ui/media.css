@@ -9,4 +9,4 @@
 .comp-logo { flex: none; object-fit: contain; display: inline-block; vertical-align: middle; opacity: 1; filter: none; image-rendering: auto;
   background: #fff; border-radius: 22%; padding: 7%; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
 .ct-logo .comp-logo, .pb-logo .comp-logo, .ct-tw-logo .comp-logo, .ct-bumper-band .comp-logo { background: transparent; box-shadow: none; padding: 0; }
-.avatar img { background: #1b2e24; }
+.avatar img { background: transparent; }
