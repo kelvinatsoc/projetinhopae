@@ -1,5 +1,7 @@
 # ⚽ Lendas da Base
 
+[![Download APK](https://img.shields.io/badge/Download-APK%20Android%20(v0.2.0)-brightgreen?style=for-the-badge&logo=android)](https://github.com/kelvinatsoc/projetinhopae/releases/download/apk-latest/LendasDaBase.apk)
+
 Manager de futebol **casual, feito para o celular**, inspirado no Football Manager, mas enxuto e 100% brasileiro:
 
 - **Elencos reais de 2026**: Séries A, B e C do Brasileirão e 78 clubes sul-americanos. São 156 clubes e cerca de 4.700 jogadores, com nome, posição, idade e nacionalidade.
