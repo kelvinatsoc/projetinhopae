@@ -43,7 +43,7 @@ export function useVersion(): number {
 }
 
 // ---------------------------------------------------------------- navegação
-export type Tab = "home" | "squad" | "comps" | "market" | "club";
+export type Tab = "home" | "inbox" | "squad" | "tactics" | "more" | "comps" | "market" | "club";
 
 export type Route =
   | { name: "tab" }

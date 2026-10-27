@@ -1,10 +1,92 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeftRight,
+  Award,
+  Bell,
+  Binoculars,
+  BookOpen,
+  Briefcase,
+  BriefcaseMedical,
+  Building2,
+  CalendarDays,
+  Camera,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  CircleDot,
+  ClipboardList,
+  Clock,
+  Coins,
+  Compass,
+  Cone,
+  DoorOpen,
+  Download,
+  Dumbbell,
+  FastForward,
+  Feather,
+  FileText,
+  Film,
+  Flame,
+  Grid2x2,
+  Hammer,
+  Handshake,
+  Heart,
+  Home,
+  Landmark,
+  LayoutList,
+  Lightbulb,
+  Link2,
+  Lock,
+  Luggage,
+  Mail,
+  Medal,
+  Megaphone,
+  Menu,
+  MessageSquare,
+  Mic,
+  Newspaper,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Rocket,
+  Save,
+  ScrollText,
+  Search,
+  Settings,
+  Shield,
+  Shirt,
+  SlidersHorizontal,
+  Snowflake,
+  Sparkles,
+  Sprout,
+  Square,
+  Star,
+  Tag,
+  Target,
+  Trash2,
+  TrendingUp,
+  Trophy,
+  Tv,
+  User,
+  UserCheck,
+  Users,
+  Wind,
+  Wrench,
+  X,
+  Zap,
+} from "lucide-react";
 import { formatMoney } from "../engine/finance";
 import { ratingColor, streakOf, trendOf } from "../engine/form";
 import { playerImagePath, sportsdbUrl } from "../engine/media";
-import { age } from "../engine/player";
+import { age, playerValue } from "../engine/player";
 import { POS_GROUP } from "../engine/positions";
-import type { Club, Player, Pos } from "../engine/types";
+import { roleAt, type RoleDef } from "../engine/tactics";
+import type { Club, Player, Pos, World } from "../engine/types";
 import { faceSvg } from "./faces";
 import { flag } from "./flags";
 import "./media.css";
@@ -438,12 +520,123 @@ const PATHS: Record<string, string> = {
   whistleReferee: "M4 13a5 5 0 1 0 10 0l7-4V6h-9.5A5 5 0 0 0 4 13zM13 6V4M9 13h.01",
 };
 
-/** Ícone alinhado ao texto (substitui emojis em rótulos). */
+const LUCIDE_MAP: Record<string, ComponentType<{ size?: number; strokeWidth?: number; fill?: string; className?: string }>> = {
+  home: Home,
+  squad: LayoutList,
+  trophy: Trophy,
+  market: Tag,
+  club: Shield,
+  back: ChevronLeft,
+  chev: ChevronRight,
+  chevLeft: ChevronLeft,
+  chevRight: ChevronRight,
+  chevUpDown: ChevronsUpDown,
+  play: Play,
+  bell: Bell,
+  gear: Settings,
+  star: Star,
+  pause: Pause,
+  ff: FastForward,
+  swap: ArrowLeftRight,
+  search: Search,
+  edit: Pencil,
+  camera: Camera,
+  board: ClipboardList,
+  tactics: ClipboardList,
+  dumbbell: Dumbbell,
+  cone: Cone,
+  mail: Mail,
+  inbox: Mail,
+  sprout: Sprout,
+  shirt: Shirt,
+  coins: Coins,
+  briefcase: Briefcase,
+  calendar: CalendarDays,
+  stadium: Building2,
+  tv: Tv,
+  bank: Landmark,
+  crane: Hammer,
+  handshake: Handshake,
+  chat: MessageSquare,
+  medal: Medal,
+  compass: Compass,
+  scroll: ScrollText,
+  wrench: Wrench,
+  mic: Mic,
+  refresh: RefreshCw,
+  alert: AlertTriangle,
+  target: Target,
+  sparkle: Sparkles,
+  link: Link2,
+  role: UserCheck,
+  bolt: Zap,
+  trend: TrendingUp,
+  lock: Lock,
+  trash: Trash2,
+  check: Check,
+  close: X,
+  news: Newspaper,
+  flame: Flame,
+  ball: CircleDot,
+  film: Film,
+  feather: Feather,
+  list: LayoutList,
+  users: Users,
+  book: BookOpen,
+  bulb: Lightbulb,
+  luggage: Luggage,
+  pitch: ClipboardList,
+  calm: Activity,
+  megaphone: Megaphone,
+  save: Save,
+  door: DoorOpen,
+  user: User,
+  shield: Shield,
+  scout: Binoculars,
+  binoculars: Binoculars,
+  flameTactical: Flame,
+  wall: Shield,
+  counter: Zap,
+  possession: RefreshCw,
+  wings: Wind,
+  rocket: Rocket,
+  stopwatch: Clock,
+  crossMedical: BriefcaseMedical,
+  medical: BriefcaseMedical,
+  cardRed: Square,
+  cardYellow: Square,
+  priceTag: Tag,
+  coldForm: Snowflake,
+  heartIdol: Heart,
+  heart: Heart,
+  doorExit: DoorOpen,
+  bullhorn: Megaphone,
+  whistleReferee: Award,
+  plus: Plus,
+  download: Download,
+  doc: FileText,
+  filter: SlidersHorizontal,
+  more: Grid2x2,
+  menu: Menu,
+};
+
+/** Ícone alinhado ao texto (usa pacote Lucide React estilo Opção 1). */
 export function Ic({ n, size = 16 }: { n: string; size?: number }) {
   return <span className="ic-inline" aria-hidden="true"><Icon name={n} size={size} /></span>;
 }
 
 export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PATHS | string; size?: number; fill?: boolean }) {
+  const LucideComp = LUCIDE_MAP[name];
+  if (LucideComp) {
+    return (
+      <LucideComp
+        className="ico"
+        size={size}
+        strokeWidth={2}
+        fill={fill ? "currentColor" : "none"}
+      />
+    );
+  }
   const duo = DUO[name];
   if (fill) {
     return (
@@ -460,7 +653,192 @@ export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PAT
   );
 }
 
-/** Ícone substituível por imagem (public/media/icons/<slug>.png), com o SVG duotom de reserva. */
+/** Ícone substituível por imagem (public/media/icons/<slug>.png), com o SVG Lucide/duotom de reserva. */
 export function GIcon({ slug, size = 22 }: { slug: IconSlug; size?: number }) {
   return <GameIcon slug={slug} size={size} svg={(n, sz) => <Icon name={n} size={sz} />} />;
+}
+
+// =====================================================================
+// Componentes da Opção 1 (Piotr Kosmala FM Modern Dark em PT-BR)
+// =====================================================================
+
+/** Cor da barra vertical por setor da posição (Op. 1: verde, amarelo, vermelho). */
+export function sectorColor(pos: Pos): string {
+  const g = POS_GROUP[pos];
+  if (g === "GK" || g === "DEF") return "#10b981";
+  if (g === "MID") return "#f59e0b";
+  return "#ef4444";
+}
+
+/** Retorna sigla da Função + Dever em PT-BR e classe de cor do dever (Op. 1). */
+export function roleDutyDisplay(pos: Pos, role?: RoleDef | null): { code: string; duty: string; dutyShort: string; shortCode: string; dutyClass: "at" | "ap" | "def" | "au" } {
+  const code = role?.short ?? pos;
+  const pack = (c: string, duty: string, dutyShort: string, dutyClass: "at" | "ap" | "def" | "au") => ({
+    code: c,
+    duty,
+    dutyShort,
+    shortCode: `${c} - ${dutyShort}`,
+    dutyClass,
+  });
+  if (role) {
+    if (role.id === "gk" || role.id === "zag" || role.id === "lat_def" || role.id === "destr") {
+      return pack(code, "Defender", "Def", "def");
+    }
+    if (role.id === "lat_ap") {
+      return pack(code, "Automático", "Au", "au");
+    }
+    if (role.id === "mat" || role.id === "ponta" || role.id === "inv" || role.id === "fin") {
+      return pack(code, "Atacar", "At", "at");
+    }
+    return pack(code, "Apoiar", "Ap", "ap");
+  }
+  if (pos === "GOL") return pack("GOL-L", "Atacar", "At", "at");
+  if (pos === "ZAG") return pack("ZAG-C", "Defender", "Def", "def");
+  if (pos === "LD" || pos === "LE") return pack(pos, "Automático", "Au", "au");
+  if (pos === "VOL") return pack("VOL", "Defender", "Def", "def");
+  if (pos === "MC") return pack("MC-AA", "Apoiar", "Ap", "ap");
+  if (pos === "MEI") return pack("MEI", "Apoiar", "Ap", "ap");
+  if (pos === "PD") return pack("PTD", "Atacar", "At", "at");
+  if (pos === "PE") return pack("PTE", "Atacar", "At", "at");
+  return pack("CA", "Atacar", "At", "at");
+}
+
+/** Camisa vetorial do clube estilo Opção 1 (ao lado da foto no campo tático). */
+export function KitIcon({ club, gk = false, size = 24 }: { club?: Club | null; gk?: boolean; size?: number }) {
+  const c0 = gk ? "#84cc16" : (club?.colors[0] ?? "#5842f4");
+  const c1 = gk ? "#bef264" : (club?.colors[1] ?? "#ffffff");
+  const c2 = gk ? "#365314" : (club?.colors[2] ?? "#111827");
+  return (
+    <svg width={size} height={Math.round(size * 0.92)} viewBox="0 0 28 26" fill="none" className="k-kit-svg" aria-hidden="true">
+      <path d="M8 2L2 6L5 12L8 10V24H20V10L23 12L26 6L20 2L17 4H11L8 2Z" fill={c0} stroke={c1} strokeWidth="1.3" />
+      {!gk && <rect x="8" y="11" width="12" height="2.3" fill={c1} opacity="0.9" />}
+      {!gk && <rect x="8" y="14" width="12" height="2.2" fill={c2} opacity="0.85" />}
+    </svg>
+  );
+}
+
+/** Indicador de Condição Física e Ritmo de Jogo (Coração + Barra + Círculo) da Opção 1. */
+export function ConditionPill({ cond, showSharp = true }: { cond: number; showSharp?: boolean }) {
+  const c = Math.max(0, Math.min(100, Math.round(cond)));
+  const color = c >= 80 ? "#10b981" : c >= 62 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="k-cond-pill" title={`Condição física: ${c}%`}>
+      <span className="k-heart-ic" style={{ color }}>
+        <Heart size={12} fill={color} strokeWidth={2} />
+      </span>
+      <span className="k-cond-track">
+        <i style={{ width: `${c}%`, background: color }} />
+      </span>
+      {showSharp && (
+        <span className="k-cond-ok" style={{ background: color }}>
+          <Check size={8} strokeWidth={3} color="#062016" />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Linha densa de jogador no padrão exato da Opção 1 (Piotr Kosmala) em PT-BR. */
+export function KosmalaPlayerRow({
+  w,
+  p,
+  club,
+  season,
+  slotPos,
+  slotIdx,
+  role,
+  starter,
+  subLabel,
+  selected,
+  onClick,
+  onRoleClick,
+  extended = false,
+  rightSlot,
+}: {
+  w?: World;
+  p: Player;
+  club?: Club | null;
+  season?: number;
+  slotPos?: Pos;
+  slotIdx?: number;
+  role?: RoleDef | null;
+  starter?: boolean;
+  subLabel?: string;
+  selected?: boolean;
+  onClick?: () => void;
+  onRoleClick?: () => void;
+  extended?: boolean;
+  rightSlot?: ReactNode;
+}) {
+  const effSeason = season ?? w?.season ?? 2026;
+  const effPos = slotPos ?? p.pos;
+  const effRole = role !== undefined ? role : (club && slotIdx != null ? roleAt(club.tactic, slotIdx, effPos) : null);
+  const rd = roleDutyDisplay(effPos, effRole);
+  const stars = Math.max(1, Math.min(5, Math.round((p.ovr - 50) / 7)));
+  const injured = p.injury > 0;
+  const banned = Object.values(p.bans).some((b) => b > 0);
+  const moralLabel = p.morale >= 85 ? "Perfeita" : p.morale >= 72 ? "Excelente" : p.morale >= 58 ? "Muito Boa" : p.morale >= 45 ? "Regular" : "Baixa";
+  const moralColor = p.morale >= 70 ? "#10b981" : p.morale >= 50 ? "#f59e0b" : "#ef4444";
+
+  return (
+    <div
+      data-player
+      className={`k-tr${starter ? " is-starter" : ""}${selected ? " is-selected" : ""}${p.legend ? " is-legend" : ""}`}
+      onClick={onClick}
+    >
+      <span className="k-tr-bar" style={{ background: sectorColor(effPos) }} />
+      <span className="k-tr-pos" style={{ color: sectorColor(effPos) }}>{subLabel ?? effPos}</span>
+      <span
+        className="k-tr-inf"
+        onClick={(e) => {
+          if (onRoleClick) {
+            e.stopPropagation();
+            onRoleClick();
+          }
+        }}
+        title="Função e ficha do atleta"
+      >
+        <span className="k-inf-ic"><FileText size={11} /></span>
+        <span className="k-inf-ic"><User size={11} /></span>
+        {injured && <span className="k-inf-badge inj">DM</span>}
+        {banned && <span className="k-inf-badge ban">SUS</span>}
+        {p.listed && <span className="k-inf-badge lst">VEN</span>}
+      </span>
+      <div
+        className="k-tr-role"
+        onClick={(e) => {
+          if (onRoleClick) {
+            e.stopPropagation();
+            onRoleClick();
+          }
+        }}
+      >
+        <b>{rd.code}</b> <em className={`duty-${rd.dutyClass}`}>({rd.duty})</em>
+      </div>
+      <span className="k-tr-flag"><Flag code={p.nat} /></span>
+      <div className="k-tr-stars">
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i} style={{ color: i < stars ? "#f59e0b" : "#323644" }}>★</span>
+        ))}
+      </div>
+      <div className="k-tr-player">
+        <Avatar p={p} club={club} season={effSeason} size={22} />
+        <span className="k-tr-name ellipsis">{p.name}</span>
+      </div>
+      {extended && (
+        <>
+          <span className="k-tr-age num">{age(p, effSeason)}a</span>
+          <span className="k-tr-morale" style={{ color: moralColor }}>↗ {moralLabel}</span>
+        </>
+      )}
+      <ConditionPill cond={p.cond} />
+      {extended && (
+        <>
+          <span className="k-tr-wage num">{formatMoney(p.wage)}/m</span>
+          <span className="k-tr-val num">{formatMoney(playerValue(p, effSeason))}</span>
+        </>
+      )}
+      {rightSlot}
+    </div>
+  );
 }
