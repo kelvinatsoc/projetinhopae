@@ -4,11 +4,11 @@ import { withWorldRng } from "../../engine/common";
 import { ROLE_LABEL, ROLE_LIST, ROLE_SHARE, ROLE_SHORT, roleOf } from "../../engine/contracts";
 import { chemOf, dynDelta, leadersOf, moodEmoji, moraleDelta, shareOf, squadMood, talkOptions, talkTo, talkWait, unhappyCount, type TalkId, type TalkResult } from "../../engine/dressing";
 import { squadOf } from "../../engine/lineup";
-import { loanStats, loanUntilLabel } from "../../engine/loans";
+import { loanStats } from "../../engine/loans";
 import type { Player, SquadRole } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Crest, DeltaTag, Ovr, Sheet } from "../components";
+import { Avatar, DeltaTag, Ovr, Sheet } from "../components";
 import "../market.css";
 
 export function DressingScreen() {
@@ -28,89 +28,96 @@ export function DressingScreen() {
   const moodColor = mood >= 65 ? "var(--accent)" : mood >= 45 ? "var(--warn)" : "var(--danger)";
 
   return (
-    <div className="page">
-      <div className="card">
-        <div className="row"><b className="grow">🤝 Entrosamento {chem}%<DeltaTag d={dynDelta(w, "chem", chem)} /></b></div>
-        <div className="agent-bar"><i style={{ width: `${chem}%`, background: chemColor }} /></div>
-        <div className="row mt8"><b className="grow">🙂 Clima do grupo {mood}<DeltaTag d={dynDelta(w, "mood", mood)} /></b></div>
-        <div className="agent-bar"><i style={{ width: `${mood}%`, background: moodColor }} /></div>
-        <div className="small muted mt8">Entrosamento sobe quando a mesma base joga junta, com vitórias, boas atuações e treino (o foco Tático ajuda); cai com muitas trocas na escalação, reforços novos e derrotas. O clima é a moral média: vitórias e minutos animam, banco e promessas quebradas pesam. ▲▼ = variação desde o último jogo.</div>
-      </div>
-
-      {leaders.length > 0 && (
-        <div className="card">
-          <h3>🧭 Líderes do vestiário</h3>
-          <div className="leaders mt8">
-            {leaders.map((p) => (
-              <div key={p.id} onClick={() => push({ name: "player", id: p.id })}>
-                <Avatar p={p} club={club} season={w.season} size={48} />
-                <b className="small ellipsis" style={{ maxWidth: "100%" }}>{p.name.split(" ").slice(-1)[0]}</b>
-                <span style={{ fontSize: 20 }}>{moodEmoji(p)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="tiny muted mt8">Se um líder fica insatisfeito, o grupo inteiro sente.</div>
-        </div>
-      )}
-
-      <div className="card">
-        <h3>Elenco</h3>
-        <div className="tiny muted">Barra = jogos em que entrou · traço = o esperado para o papel. Toque em 💬 para conversar.</div>
-        <div className="mt8">
-          {squad.map((p) => {
-            const role = roleOf(w, p);
-            const share = shareOf(p);
-            const exp = ROLE_SHARE[role];
-            const low = share != null && share < exp - 0.25;
-            return (
-              <div key={p.id} className="dr-row" onClick={() => push({ name: "player", id: p.id })}>
-                <Avatar p={p} club={club} season={w.season} size={42} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="row gap4" style={{ minWidth: 0 }}>
-                    <b className="ellipsis">{p.name}</b>
-                    {p.promise && <span title="Promessa de minutos">⏱️</span>}
-                    {p.loan && <span className="tag">📥</span>}
-                  </div>
-                  <div className="row gap8 mt4" style={{ minWidth: 0 }}>
-                    <span className="role-chip">{ROLE_SHORT[role]}</span>
-                    <div className="pt-bar grow" title={share != null ? `${p.pt![0]} de ${p.pt![1]} jogos` : "Sem jogos ainda"}>
-                      <i style={{ width: `${Math.round((share ?? 0) * 100)}%`, background: low ? "var(--danger)" : "var(--accent)" }} />
-                      <s style={{ left: `${Math.round(exp * 100)}%` }} />
-                    </div>
-                    <span className="tiny muted" style={{ flex: "none", width: 34, textAlign: "right" }}>{share != null ? `${Math.round(share * 100)}%` : "-"}</span>
-                  </div>
-                </div>
-                <div className="row gap4">
-                  <span style={{ fontSize: 20 }} title={`Moral ${p.morale}`}>{moodEmoji(p)}</span><DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" />
-                  <button className="btn sm" style={{ minWidth: 40, minHeight: 40 }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>💬</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>📤 Emprestados</h3>
-        {!loaned.length && <div className="small muted mt8">Nenhum jogador emprestado. No perfil de um jogador seu, toque em “📤 Emprestar” para ele ganhar minutos em outro clube.</div>}
-        {loaned.map((p) => {
-          const c = p.clubId ? w.clubs[p.clubId] : null;
-          const st = loanStats(p);
-          return (
-            <div key={p.id} className="dr-row" onClick={() => push({ name: "player", id: p.id })}>
-              <Avatar p={p} club={c} season={w.season} size={42} />
-              <div style={{ minWidth: 0 }}>
-                <b className="ellipsis" style={{ display: "block" }}>{p.name}</b>
-                <div className="row gap4 small muted" style={{ minWidth: 0 }}>
-                  {c && <Crest club={c} size={16} />}
-                  <span className="ellipsis">{c?.name} · até {loanUntilLabel(p)}</span>
-                </div>
-                <div className="tiny muted">{st.apps} jogos{st.avg != null ? ` · nota ${st.avg.toFixed(1).replace(".", ",")}` : ""}</div>
-              </div>
-              <Ovr v={p.ovr} />
+    <div className="page k-dressing-page">
+      <div className="k-dressing-grid">
+        <aside className="k-dressing-aside">
+          <div className="card">
+            <div className="row"><b className="grow">🤝 Entrosamento {chem}%<DeltaTag d={dynDelta(w, "chem", chem)} /></b></div>
+            <div className="agent-bar"><i style={{ width: `${chem}%`, background: chemColor }} /></div>
+            <div className="row mt8"><b className="grow">🙂 Clima do Grupo {mood}<DeltaTag d={dynDelta(w, "mood", mood)} /></b></div>
+            <div className="agent-bar"><i style={{ width: `${mood}%`, background: moodColor }} /></div>
+            <div className="tiny muted mt8">
+              A mesma base jogando junta sobe o entrosamento. Clima = média da moral dos atletas.
             </div>
-          );
-        })}
+          </div>
+
+          {leaders.length > 0 && (
+            <div className="card">
+              <h3>🧭 Líderes do Vestiário</h3>
+              <div className="leaders mt6">
+                {leaders.map((p) => (
+                  <div key={p.id} className="tap" onClick={() => push({ name: "player", id: p.id })}>
+                    <Avatar p={p} club={club} season={w.season} size={40} />
+                    <b className="tiny ellipsis" style={{ maxWidth: "100%" }}>{p.name.split(" ").slice(-1)[0]}</b>
+                    <span style={{ fontSize: 16 }}>{moodEmoji(p)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="tiny muted mt6">Líderes insatisfeitos abalam todo o elenco.</div>
+            </div>
+          )}
+
+          <div className="card">
+            <h3>📤 Emprestados ({loaned.length})</h3>
+            {!loaned.length && <div className="tiny muted mt4">Nenhum jogador emprestado. Use “📤 Emprestar” no perfil do jogador.</div>}
+            {loaned.map((p) => {
+              const c = p.clubId ? w.clubs[p.clubId] : null;
+              const st = loanStats(p);
+              return (
+                <div key={p.id} className="dr-row tap" onClick={() => push({ name: "player", id: p.id })}>
+                  <Avatar p={p} club={c} season={w.season} size={34} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <b className="small ellipsis" style={{ display: "block" }}>{p.name}</b>
+                    <div className="tiny muted ellipsis">{c?.name} · {st.apps}j{st.avg != null ? ` (${st.avg.toFixed(1)})` : ""}</div>
+                  </div>
+                  <Ovr v={p.ovr} />
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        <main className="k-dressing-main">
+          <div className="card">
+            <div className="card-title">
+              <h3>Hierarquia & Minutos do Elenco</h3>
+              <span className="tiny muted">Barra = minutos · traço = esperado</span>
+            </div>
+            <div className="k-dressing-list mt6">
+              {squad.map((p) => {
+                const role = roleOf(w, p);
+                const share = shareOf(p);
+                const exp = ROLE_SHARE[role];
+                const low = share != null && share < exp - 0.25;
+                return (
+                  <div key={p.id} className="dr-row tap" onClick={() => push({ name: "player", id: p.id })}>
+                    <Avatar p={p} club={club} season={w.season} size={36} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="row gap4" style={{ minWidth: 0 }}>
+                        <b className="small ellipsis">{p.name}</b>
+                        {p.promise && <span title="Promessa de minutos">⏱️</span>}
+                        {p.loan && <span className="tag">📥</span>}
+                      </div>
+                      <div className="row gap6 mt2" style={{ minWidth: 0 }}>
+                        <span className="role-chip">{ROLE_SHORT[role]}</span>
+                        <div className="pt-bar grow" title={share != null ? `${p.pt![0]} de ${p.pt![1]} jogos` : "Sem jogos"}>
+                          <i style={{ width: `${Math.round((share ?? 0) * 100)}%`, background: low ? "var(--danger)" : "var(--accent)" }} />
+                          <s style={{ left: `${Math.round(exp * 100)}%` }} />
+                        </div>
+                        <span className="tiny muted" style={{ flex: "none", width: 28, textAlign: "right" }}>{share != null ? `${Math.round(share * 100)}%` : "-"}</span>
+                      </div>
+                    </div>
+                    <div className="row gap4" style={{ alignItems: "center" }}>
+                      <span style={{ fontSize: 18 }} title={`Moral ${p.morale}`}>{moodEmoji(p)}</span>
+                      <DeltaTag d={moraleDelta(w, p)} />
+                      <button className="btn sm" style={{ minWidth: 32, minHeight: 28, padding: "2px 6px" }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>💬</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </main>
       </div>
       <div style={{ height: 30 }} />
       {talk && <TalkSheet p={talk} onClose={() => setTalk(null)} />}

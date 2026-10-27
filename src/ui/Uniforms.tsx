@@ -105,19 +105,22 @@ export function UniformsScreen({ id }: { id: string }) {
   const real = kitsOf(c.id);
   const kits = real.length ? real : [plainKit(c.colors), plainKit([c.colors[1] ?? "#FFFFFF", c.colors[0]], "Reserva")];
   return (
-    <div className="page">
-      <div className="card row gap8">
+    <div className="page k-uniforms-page">
+      <div className="card row gap8 k-uniforms-banner">
         <Crest club={c} size={36} />
         <div className="grow">
-          <h3 style={{ margin: 0 }}>Uniformes {w.season}</h3>
+          <h3 style={{ margin: 0 }}>Uniformes Oficiais • Temporada {w.season}</h3>
           <div className="tiny muted">
-            {real.length ? "Desenho dos uniformes da Wikipedia; marcas e escudos são dos seus donos (uso pessoal)." : "Este clube ainda não tem uniformes reais: liso nas cores do clube."}
-            {" "}Em jogo, o visitante troca para o uniforme 2 quando as camisas se confundem.
+            {real.length ? "Desenho dos uniformes oficiais da Wikipedia (uso pessoal)." : "Cores oficiais do clube."}
+            {" "}Em jogo, o visitante troca para o uniforme 2 em caso de conflito de cores.
           </div>
         </div>
       </div>
-      {kits.slice(0, 3).map((k, i) => <KitCard key={i} w={w} c={c} kit={k} which={i as KitWhich} photoIdx={kits.slice(0, i).filter((x) => !x.custom).length} />)}
+      <div className="k-uniforms-grid">
+        {kits.slice(0, 3).map((k, i) => <KitCard key={i} w={w} c={c} kit={k} which={i as KitWhich} photoIdx={kits.slice(0, i).filter((x) => !x.custom).length} />)}
+      </div>
       {c.id === w.userClubId && <CustomKitCard w={w} c={c} />}
+      <div style={{ height: 20 }} />
     </div>
   );
 }

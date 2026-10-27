@@ -28,35 +28,41 @@ export function PowersScreen() {
   };
 
   return (
-    <div className="page">
-      <div className="card">
-        <h3>Loja de Poderes</h3>
-        <div className="small muted">
-          Poderes especiais para os seus craques, estilo fliperama. Cada um vale a temporada inteira e enche um medidor durante o jogo:
-          cheio, aparece o botão para ATIVAR na hora certa. O efeito é real, mas moderado.
-        </div>
-        <div className="row mt8 small"><b className="grow">Vagas: {owned.length}/{POWER_SLOTS}</b><span>Saldo: <b>{formatMoney(c.balance)}</b></span></div>
-      </div>
+    <div className="page k-powers-page">
+      <div className="k-powers-grid">
+        <aside className="k-powers-aside">
+          <div className="card">
+            <h3>Loja de Poderes</h3>
+            <p className="tiny muted mt4">Habilidades especiais estilo arcade. Enchem um medidor no jogo e podem ser ativadas no momento chave.</p>
+            <div className="mt6 col gap4">
+              <div className="row small"><span className="muted grow">Vagas</span><b>{owned.length} / {POWER_SLOTS}</b></div>
+              <div className="row small"><span className="muted grow">Saldo</span><b style={{ color: "#34d27b" }}>{formatMoney(c.balance)}</b></div>
+            </div>
+          </div>
 
-      {owned.length > 0 && (
-        <div className="card">
-          <h3>Equipados em {w.season}</h3>
-          {owned.map((o) => {
-            const d = powerDef(o.id)!;
-            const p = w.players[o.pid];
-            return (
-              <div key={o.pid} className="row gap8 mt8">
-                <span style={{ fontSize: 22 }} aria-hidden="true">{d.emoji}</span>
-                <div className="grow"><b>{d.name}</b><div className="tiny muted">{p?.name}</div></div>
-                <button className="btn sm" onClick={() => { update((x) => removePower(x, x.clubs[x.userClubId], o.pid)); autosave(); }}>Tirar</button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+          <div className="card">
+            <h3>Equipados em {w.season} ({owned.length})</h3>
+            {!owned.length && <div className="tiny muted mt4">Nenhum poder equipado. Escolha um poder ao lado para atribuir a um jogador.</div>}
+            {owned.map((o) => {
+              const d = powerDef(o.id)!;
+              const p = w.players[o.pid];
+              return (
+                <div key={o.pid} className="row gap8 mt6" style={{ alignItems: "center" }}>
+                  <span style={{ fontSize: 20 }}>{d.emoji}</span>
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <b className="small ellipsis">{d.name}</b>
+                    <div className="tiny muted ellipsis">{p?.name}</div>
+                  </div>
+                  <button className="btn sm" onClick={() => { update((x) => removePower(x, x.clubs[x.userClubId], o.pid)); autosave(); }}>Tirar</button>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
 
-      <div className="col gap8">
-        {POWERS.map((d) => (
+        <main className="k-powers-main">
+          <div className="k-powers-cards-grid">
+            {POWERS.map((d) => (
           <div key={d.id} className="card">
             <div className="row gap8">
               <span style={{ fontSize: 30 }} aria-hidden="true">{d.emoji}</span>
@@ -82,7 +88,10 @@ export function PowersScreen() {
             )}
           </div>
         ))}
+          </div>
+        </main>
       </div>
+      <div style={{ height: 20 }} />
     </div>
   );
 }

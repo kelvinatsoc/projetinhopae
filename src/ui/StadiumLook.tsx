@@ -59,30 +59,36 @@ export function StadiumLookScreen() {
       : { extraTier: true };
   const works = lookWorks(c);
   return (
-    <div className="page">
-      <div className="card">
-        <div className="card-title"><h3>🏟️ {stadiumName(w, c)}</h3><b>{formatMoney(c.balance)}</b></div>
-        <div className="small">{c.capacity.toLocaleString("pt-BR")} lugares. As reformas são pagas na hora e mudam o estádio no mapa da sede e nas partidas quando ficam prontas.</div>
-      </div>
-      <div className="card">
-        <div className="card-title"><h3>🏷️ Nome do estádio (naming rights)</h3></div>
-        {naming ? (
-          <div className="small">Contrato com <b>{naming.brand}</b>: {formatMoney(naming.annual)}/ano{naming.until ? `, até ${naming.until}` : ""}. Quando acabar, o estádio volta a se chamar {c.stadium}.</div>
-        ) : <div className="small">Sem contrato: o estádio se chama {c.stadium}. Venda o nome na tela de patrocínios.</div>}
-        <button className="btn sm mt8" onClick={() => push({ name: "sponsors" })}>Patrocínios ›</button>
-      </div>
-      {works.length > 0 && (
-        <div className="card">
-          <div className="card-title"><h3>🏗️ Reformas em andamento</h3></div>
-          {works.map((x) => (
-            <div key={x.kind} className="mt8">
-              <div className="row small"><span className="grow">{WORK_INFO[x.kind].emoji} {WORK_INFO[x.kind].label}</span><span className="muted">{workPct(w, x)}%</span></div>
-              <Bar v={workPct(w, x)} color="var(--accent)" />
+    <div className="page k-stadium-page">
+      <div className="k-stadium-grid">
+        <aside className="k-stadium-aside">
+          <div className="card">
+            <div className="card-title"><h3>🏟️ {stadiumName(w, c)}</h3><b style={{ color: "#34d27b" }}>{formatMoney(c.balance)}</b></div>
+            <div className="small mt4">{c.capacity.toLocaleString("pt-BR")} lugares. Reformas alteram a sede 3D e as partidas.</div>
+          </div>
+          <div className="card">
+            <div className="card-title"><h3>🏷️ Naming Rights</h3></div>
+            {naming ? (
+              <div className="tiny">Contrato com <b>{naming.brand}</b>: {formatMoney(naming.annual)}/ano{naming.until ? ` até ${naming.until}` : ""}.</div>
+            ) : <div className="tiny muted">Sem contrato: chama-se {c.stadium}. Venda em patrocínios.</div>}
+            <button className="btn sm mt6 block" onClick={() => push({ name: "sponsors" })}>Patrocínios ›</button>
+          </div>
+          {works.length > 0 && (
+            <div className="card">
+              <div className="card-title"><h3>🏗️ Em Andamento</h3></div>
+              {works.map((x) => (
+                <div key={x.kind} className="mt6">
+                  <div className="row tiny"><span className="grow">{WORK_INFO[x.kind].emoji} {WORK_INFO[x.kind].label}</span><span className="muted">{workPct(w, x)}%</span></div>
+                  <Bar v={workPct(w, x)} color="var(--accent)" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-      {WORK_KINDS.map((k) => {
+          )}
+        </aside>
+
+        <main className="k-stadium-main">
+          <div className="k-stadium-cards-grid">
+            {WORK_KINDS.map((k) => {
         const info = WORK_INFO[k];
         const why = canStartWork(c, k);
         return (
@@ -120,6 +126,9 @@ export function StadiumLookScreen() {
           </div>
         );
       })}
+          </div>
+        </main>
+      </div>
       {ask && (
         <Sheet title={`Reforma: ${WORK_INFO[ask].label}`} onClose={() => setAsk(null)}>
           <p className="small">Custo: {formatMoney(workCost(c, ask))} (saldo: {formatMoney(c.balance)}). Fica pronto em {WORK_INFO[ask].weeks} semanas.</p>

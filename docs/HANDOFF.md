@@ -149,6 +149,23 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
     - Campeonatos (`Comps.tsx`): Grid de 2 colunas para Tabela de Classificação e Jogos da Rodada lado a lado.
     - Prancheta Tática (`theme.css`): Gramado com altura flexível (`flex: 1`), eliminando os 20px de overflow vertical em telas 800x360.
     - Tela Inicial (`StartScreen.tsx`): Botões compactos de modo de jogo e vitrine oficial do São Paulo FC calibrada para proporções horizontais.
-  - **Build Android Release (`LendasDaBase.apk`):** Compilação bem-sucedida do APK release em Gradle 8.14 com Java/Kotlin 17 (`app-release.apk`, 56.5 MB), copiado para a raiz como `LendasDaBase.apk` e pronto para disparo automático na release `apk-latest` via GitHub Actions no push.
+  - **Build Android Release (`LendasDaBase.apk`):** Compilação bem-sucedida do APK release em Gradle 8.14 com Java/Kotlin 17 (`app-release.apk`, 56.58 MB), copiado para a raiz como `LendasDaBase.apk` e `lendas-da-base.apk`.
+  - **Redesign Widescreen Completo de Todas as Telas Secundárias (`src/ui/`, `src/ui/screens/`, `src/ui/theme.css`):**
+    - `Staff.tsx` (Comissão Técnica): Layout 2 colunas (`.k-staff-grid`) com resumo da folha, média de estrelas e explicativo à esquerda, grade de cargos à direita.
+    - `Board.tsx` (Diretoria): Layout 2 colunas (`.k-board-grid`) com status de confiança, objetivos da temporada à esquerda e solicitações de verba à direita.
+    - `Dressing.tsx` (Vestiário): Layout 2 colunas (`.k-dressing-grid`) com entrosamento, clima e líderes à esquerda; elenco com minutos, moral e botão de conversa rápida à direita.
+    - `Academy.tsx` (Base & Peneira): Layout 2 colunas (`.k-academy-grid`) com instalações de base e vagas à esquerda; grade de 4 colunas de candidatos na peneira (`.pn-grid`) à direita.
+    - `Facilities.tsx` (Instalações): Grid 2×2 compacta com banner no topo (`.k-fac-grid`).
+    - `Sponsors.tsx` (Patrocínios): Grid 2 colunas (`.k-sponsors-grid`) com espaços Master, Mangas, Costas e Shorts.
+    - `TrophyRoom.tsx` (Sala de Troféus): Layout 2 colunas (`.k-trophy-grid`) com estante 3D e troféu selecionado à esquerda; galeria e recordes à direita.
+    - `Career.tsx` (Carreira): Layout 2 colunas (`.k-career-grid`) com reputação e títulos à esquerda; histórico e ofertas de outros clubes à direita.
+    - `Uniforms.tsx` (Uniformes): Grade 3 colunas (`.k-uniforms-grid`) com kits Home, Away e 3rd Kit lado a lado.
+    - `StadiumLook.tsx` (Meu Estádio): Layout 2 colunas (`.k-stadium-grid`) com capacidade e naming rights à esquerda; reformas em grade 2 colunas à direita.
+    - `Powers.tsx` (Loja de Poderes): Layout 2 colunas (`.k-powers-grid`) com poderes equipados à esquerda e catálogo 2 colunas à direita.
+    - `Club.tsx` (Configurações, Informações do Clube, Histórico de Campeões): Redesenhados em 2 colunas (`.k-settings-grid`, `.k-clubinfo-grid`, `.k-history-grid`).
+    - `Match.tsx` (Pré-Jogo): Grid 2 colunas (`.k-prematch-grid`) com hero, coletiva e vestiário à esquerda; prancheta escalada e ações imediatas à direita.
+    - `Home.tsx` (Notícias): Feed em grade 2 colunas (`.k-news-grid`).
+  - **Auditoria Visual Automatizada (Playwright 800×360):** 16 telas capturadas com sucesso em `audit/` sem overflow vertical ou horizontal.
+
 
 

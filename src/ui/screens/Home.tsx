@@ -529,26 +529,29 @@ const ICON: Record<string, string> = { legend: "⭐", youth: "🌱", transfer: "
 export function NewsScreen() {
   const w = useWorld();
   return (
-    <div className="page">
-      <div className="row">
-        <h2 className="grow">Notícias da Imprensa</h2>
+    <div className="page k-news-page">
+      <div className="row" style={{ alignItems: "center", marginBottom: 8 }}>
+        <h2 className="grow" style={{ margin: 0, fontSize: 16 }}>Notícias da Imprensa</h2>
         <button className="btn sm" onClick={() => update((x) => x.news.forEach((n) => (n.read = true)))}>Marcar todas como lidas</button>
       </div>
-      {w.news.map((n) => (
-        <div key={n.id} className="card" style={{ borderColor: n.kind === "legend" ? "#8a6a00" : undefined }} onClick={() => update(() => { n.read = true; })}>
-          <div className="row">
-            <span style={{ fontSize: 22 }}>{ICON[n.kind] ?? "📣"}</span>
-            <div className="grow">
-              <b>{n.title}</b>
-              <div className="tiny muted">{newsSource(w, n) ? `📰 ${newsSource(w, n)} · ` : ""}{formatDate(n.season, n.day)} {n.season}</div>
+      <div className="k-news-grid">
+        {w.news.map((n) => (
+          <div key={n.id} className="card k-news-card" style={{ borderColor: n.kind === "legend" ? "#8a6a00" : undefined }} onClick={() => update(() => { n.read = true; })}>
+            <div className="row">
+              <span style={{ fontSize: 20 }}>{ICON[n.kind] ?? "📣"}</span>
+              <div className="grow" style={{ minWidth: 0 }}>
+                <b className="ellipsis" style={{ display: "block" }}>{n.title}</b>
+                <div className="tiny muted">{newsSource(w, n) ? `📰 ${newsSource(w, n)} · ` : ""}{formatDate(n.season, n.day)} {n.season}</div>
+              </div>
+              {!n.read && <span className="tag good">novo</span>}
             </div>
-            {!n.read && <span className="tag good">novo</span>}
+            {n.body && <p className="tiny mt4" style={{ whiteSpace: "pre-line", marginBottom: 0 }}>{n.body}</p>}
+            {n.pid && w.players[n.pid] && <button className="btn sm mt6" onClick={(e) => { e.stopPropagation(); push({ name: "player", id: n.pid! }); }}>Ver jogador</button>}
           </div>
-          {n.body && <p className="small" style={{ whiteSpace: "pre-line", marginBottom: 0 }}>{n.body}</p>}
-          {n.pid && w.players[n.pid] && <button className="btn sm mt8" onClick={(e) => { e.stopPropagation(); push({ name: "player", id: n.pid! }); }}>Ver jogador</button>}
-        </div>
-      ))}
+        ))}
+      </div>
       {!w.news.length && <div className="empty">Nenhuma notícia ainda.</div>}
+      <div style={{ height: 20 }} />
     </div>
   );
 }

@@ -32,62 +32,74 @@ export function AcademyScreen() {
   const pending = w.peneira?.kids.length ?? 0;
 
   return (
-    <div className="page">
-      <div className="card">
-        <h3>🌱 Categorias de base</h3>
-        <div className="mt8">
-          <Rating icon="🔍" name="Captação" n={rec} text="mais garotos e mais joias" />
-          <Rating icon="🏫" name="Instalações" n={fac} text={`garotos chegam mais prontos · até ${cap} na base`} />
-          <Rating icon="🎓" name="Treinadores" n={coach} text="garotos evoluem mais rápido e safras melhores" />
-        </div>
-        <button className="btn sm ghost mt8" style={{ minHeight: 40 }} onClick={() => push({ name: "facilities" })}>Melhorar em Estrutura ›</button>
-      </div>
+    <div className="page k-academy-page">
+      <div className="k-academy-grid">
+        <aside className="k-academy-aside">
+          <div className="card">
+            <h3>🌱 Categorias de Base</h3>
+            <div className="mt6">
+              <Rating icon="🔍" name="Captação" n={rec} text="mais garotos e joias" />
+              <Rating icon="🏫" name="Instalações" n={fac} text={`até ${cap} na base`} />
+              <Rating icon="🎓" name="Treinadores" n={coach} text="evolução acelerada" />
+            </div>
+            <button className="btn sm ghost mt8 block" onClick={() => push({ name: "facilities" })}>Obras em Estrutura ›</button>
+          </div>
 
-      {pending > 0 ? (
-        <div className="card tap" onClick={() => push({ name: "peneira" })} style={{ borderColor: "var(--gold)", background: "linear-gradient(135deg, #3b2e05, #172a21)" }}>
-          <b>🌱 Dia da peneira!</b>
-          <div className="small mt8">{pending} garoto{pending === 1 ? "" : "s"} esperando sua avaliação.</div>
-          <button className="btn gold block mt8" style={{ minHeight: 44 }}>🌱 Avaliar a peneira</button>
-        </div>
-      ) : (
-        <div className="card flat small">
-          {preview ? (
-            <>Próxima safra: <span style={{ color: "var(--gold)" }}>{stars(Q_STARS[preview.shown])}</span> <b>{Q_LABEL[preview.shown]}</b> <span className="muted">(relatório de 1/nov)</span>
-              {(preview.shown === "boa" || preview.shown === "dourada") && <div className="muted mt8">Destaque esperado: um {POS_NAME[preview.pos].toLowerCase()}.</div>}
-            </>
+          {pending > 0 ? (
+            <div className="card tap" onClick={() => push({ name: "peneira" })} style={{ borderColor: "var(--gold)", background: "linear-gradient(135deg, #3b2e05, #172a21)" }}>
+              <b>🌱 Dia da Peneira!</b>
+              <div className="tiny mt4">{pending} garoto{pending === 1 ? "" : "s"} aguardando teste.</div>
+              <button className="btn gold sm block mt6">🌱 Avaliar Peneira</button>
+            </div>
           ) : (
-            <>🔎 Os olheiros da base ainda estão avaliando… O relatório da próxima safra sai em 1º de novembro; os garotos chegam no fim de janeiro.</>
+            <div className="card flat small">
+              {preview ? (
+                <>Próxima safra: <span style={{ color: "var(--gold)" }}>{stars(Q_STARS[preview.shown])}</span> <b>{Q_LABEL[preview.shown]}</b>
+                  {(preview.shown === "boa" || preview.shown === "dourada") && <div className="muted mt4 tiny">Destaque: um {POS_NAME[preview.pos].toLowerCase()}.</div>}
+                </>
+              ) : (
+                <div className="tiny muted">🔎 Olheiros avaliando a safra. Relatório em 1/nov; chegada em janeiro.</div>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      <div className="row small muted" style={{ justifyContent: "space-between", padding: "0 4px" }}>
-        <span>Vagas na base: <b>{youthCount(w, club)}</b> de {cap}</span>
-        <span>Lendas podem renascer aqui! ⭐</span>
-      </div>
-      <div className="card flat" style={{ padding: "2px 10px" }}>
-        <div className="list">
-          {youth.map(({ p, s }) => {
-            const ready = p.ovr >= level - 6;
-            const loan = !ready && age(p, w.season) >= 18 && p.ovr < level - 10;
-            return (
-              <div key={p.id}>
-                <PlayerRow p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-                  right={<span className="tiny" style={{ color: "var(--gold)", whiteSpace: "nowrap" }}>{stars(s)}</span>} />
-                {(ready || loan) && (
-                  <div style={{ margin: "-4px 0 6px 56px" }}>
-                    {ready && <span className="tag good">✅ Pronto para o profissional</span>}
-                    {loan && <span className="tag">📤 Empréstimo recomendado</span>}
+          <div className="card small">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span>Ocupação:</span><b>{youthCount(w, club)} de {cap} vagas</b>
+            </div>
+            <div className="tiny muted mt4">Lendas do futebol mundial podem renascer aqui! ⭐</div>
+          </div>
+        </aside>
+
+        <main className="k-academy-main">
+          <div className="card flat">
+            <div className="card-title">
+              <h3>Promessas & Joias Sub-20 ({youth.length})</h3>
+              <span className="tiny muted">Estrelas = potencial relativo</span>
+            </div>
+            <div className="list mt6">
+              {youth.map(({ p, s }) => {
+                const ready = p.ovr >= level - 6;
+                const loan = !ready && age(p, w.season) >= 18 && p.ovr < level - 10;
+                return (
+                  <div key={p.id}>
+                    <PlayerRow p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
+                      right={<span className="tiny" style={{ color: "var(--gold)", whiteSpace: "nowrap" }}>{stars(s)}</span>} />
+                    {(ready || loan) && (
+                      <div style={{ margin: "-4px 0 6px 56px" }}>
+                        {ready && <span className="tag good">✅ Pronto para o profissional</span>}
+                        {loan && <span className="tag">📤 Empréstimo recomendado</span>}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {!youth.length && <div className="empty">Nenhum jogador nas categorias de base.</div>}
+                );
+              })}
+            </div>
+            {!youth.length && <div className="empty">Nenhum jogador nas categorias de base.</div>}
+          </div>
+        </main>
       </div>
-      <div className="tiny muted center">Estrelas = potencial em relação ao seu time. Promova quem estiver pronto no perfil do jogador.</div>
-      <div style={{ height: 40 }} />
+      <div style={{ height: 20 }} />
     </div>
   );
 }

@@ -63,53 +63,62 @@ export function CareerScreen() {
   const titles = w.managerHistory.reduce((s, h) => s + h.titles.length, 0);
   const clubs = new Set([...w.managerHistory.map((h) => h.clubId), w.userClubId]).size;
   return (
-    <div className="page">
-      <NtJobCard />
-      <div className="card">
-        <div className="card-title"><h3><Ic n="briefcase" /> {w.managerName}</h3><span className="tag">{repLabel(car.rep)}</span></div>
-        <div className="row small"><span className="grow muted">Reputação</span><b>{car.rep}/100</b></div>
-        <div className="rep-meter mt8"><div style={{ width: `${car.rep}%` }} /></div>
-        <div className="grid3 mt12">
-          <div className="stat-box"><b>{titles}</b><span>títulos</span></div>
-          <div className="stat-box"><b>{clubs}</b><span>clubes</span></div>
-          <div className="stat-box"><b>{car.sackings}</b><span>demissões</span></div>
-        </div>
-      </div>
-
-      {sc && scDef && (
-        <div className="card">
-          <div className="card-title"><h3>{scDef.emoji} Desafio</h3><span className="tag" style={{ color: sc.status === "won" ? "var(--accent)" : sc.status === "lost" ? "#ef4444" : "var(--gold)" }}>{sc.status === "active" ? "em andamento" : sc.status === "won" ? "vencido" : "perdido"}</span></div>
-          <b className="small">{scDef.title}</b>
-          <div className="small muted mt8"><Ic n="target" /> {scDef.goal}</div>
-        </div>
-      )}
-
-      <div className="card">
-        <div className="card-title"><h3>Propostas</h3><span className="small muted">{activeOffers(w).length}</span></div>
-        <OfferList w={w} onAccepted={() => { forceBack(); setTab("home"); }} />
-        <div className="tiny muted mt8">Propostas chegam no fim da temporada (valem até o início de março) ou quando você é demitido.</div>
-      </div>
-
-      <div className="card">
-        <div className="card-title"><h3>Trajetória</h3></div>
-        {w.managerHistory.length === 0 && <div className="small muted">Complete uma temporada para ver sua trajetória.</div>}
-        {w.managerHistory.slice().reverse().map((h, i) => (
-          <div key={i} className="row small" style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
-            <b style={{ width: 44 }}>{h.season}</b>
-            <Crest club={w.clubs[h.clubId]} size={18} />
-            <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div}{h.pos ? ` · ${h.pos}º` : ""}</span>
-            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={18} /></span>)}
+    <div className="page k-career-page">
+      <div className="k-career-grid">
+        <aside className="k-career-aside">
+          <div className="card">
+            <div className="card-title"><h3><Ic n="briefcase" /> {w.managerName}</h3><span className="tag">{repLabel(car.rep)}</span></div>
+            <div className="row small"><span className="grow muted">Reputação</span><b>{car.rep}/100</b></div>
+            <div className="rep-meter mt6"><div style={{ width: `${car.rep}%` }} /></div>
+            <div className="grid3 mt8">
+              <div className="stat-box"><b>{titles}</b><span>títulos</span></div>
+              <div className="stat-box"><b>{clubs}</b><span>clubes</span></div>
+              <div className="stat-box"><b>{car.sackings}</b><span>demissões</span></div>
+            </div>
           </div>
-        ))}
-        {car.moves.length > 0 && (
-          <div className="tiny muted mt8">
-            {car.moves.slice().reverse().map((m, i) => (
-              <div key={i}><Ic n="luggage" /> {m.season}: {w.clubs[m.from]?.name ?? m.from} → {w.clubs[m.to]?.name ?? m.to}{m.fired ? " (após demissão)" : ""}</div>
-            ))}
+
+          <NtJobCard />
+
+          {sc && scDef && (
+            <div className="card">
+              <div className="card-title"><h3>{scDef.emoji} Desafio</h3><span className="tag" style={{ color: sc.status === "won" ? "var(--accent)" : sc.status === "lost" ? "#ef4444" : "var(--gold)" }}>{sc.status === "active" ? "em andamento" : sc.status === "won" ? "vencido" : "perdido"}</span></div>
+              <b className="small">{scDef.title}</b>
+              <div className="tiny muted mt6"><Ic n="target" /> {scDef.goal}</div>
+            </div>
+          )}
+        </aside>
+
+        <main className="k-career-main">
+          <div className="card">
+            <div className="card-title"><h3>Propostas de Emprego</h3><span className="small muted">{activeOffers(w).length}</span></div>
+            <OfferList w={w} onAccepted={() => { forceBack(); setTab("home"); }} />
+            <div className="tiny muted mt6">Propostas chegam na virada de temporada ou após demissão.</div>
           </div>
-        )}
+
+          <div className="card">
+            <div className="card-title"><h3>Trajetória nos Clubes</h3></div>
+            {w.managerHistory.length === 0 && <div className="small muted">Complete uma temporada para ver seu histórico.</div>}
+            <div className="col gap2 mt4">
+              {w.managerHistory.slice().reverse().map((h, i) => (
+                <div key={i} className="row small" style={{ padding: "4px 0", borderBottom: "1px solid var(--line)" }}>
+                  <b style={{ width: 44 }}>{h.season}</b>
+                  <Crest club={w.clubs[h.clubId]} size={18} />
+                  <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div}{h.pos ? ` · ${h.pos}º` : ""}</span>
+                  {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={16} /></span>)}
+                </div>
+              ))}
+            </div>
+            {car.moves.length > 0 && (
+              <div className="tiny muted mt6">
+                {car.moves.slice().reverse().map((m, i) => (
+                  <div key={i}><Ic n="luggage" /> {m.season}: {w.clubs[m.from]?.name ?? m.from} → {w.clubs[m.to]?.name ?? m.to}{m.fired ? " (após demissão)" : ""}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
-      <div style={{ height: 30 }} />
+      <div style={{ height: 20 }} />
     </div>
   );
 }

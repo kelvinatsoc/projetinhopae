@@ -188,53 +188,67 @@ export function ClubInfoScreen({ id }: { id: string }) {
   const squad = squadOf(w, c).sort((a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos] || b.ovr - a.ovr);
   const youth = c.players.map((pid) => w.players[pid]).filter((p) => p?.youth);
   return (
-    <div className="page">
-      <div className="hero" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
-        <div className="row">
-          <Crest club={c} size={58} />
-          <div className="grow">
-            <h2>{c.name}</h2>
-            <div className="small" style={{ opacity: 0.9 }}>{c.full}</div>
-            <div className="small">{c.country === "BRA" ? `${c.city}/${c.region}` : `${flag(c.country)} ${c.city || c.country}`} · {c.div === "F" ? "Exterior" : `Série ${c.div}`}</div>
+    <div className="page k-clubinfo-page">
+      <div className="k-clubinfo-grid">
+        <aside className="k-clubinfo-aside">
+          <div className="hero" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
+            <div className="row">
+              <Crest club={c} size={48} />
+              <div className="grow" style={{ minWidth: 0 }}>
+                <h2 className="ellipsis">{c.name}</h2>
+                <div className="tiny" style={{ opacity: 0.9 }}>{c.full}</div>
+                <div className="tiny">{c.country === "BRA" ? `${c.city}/${c.region}` : `${flag(c.country)} ${c.city || c.country}`} · {c.div === "F" ? "Exterior" : `Série ${c.div}`}</div>
+              </div>
+            </div>
+            <div className="tiny mt8"><Ic n="stadium" /> {stadiumName(w, c)} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
           </div>
-        </div>
-        <div className="small mt12"><Ic n="stadium" /> {stadiumName(w, c)} ({c.capacity.toLocaleString("pt-BR")}) {c.founded ? `· fundado em ${c.founded}` : ""}</div>
-      </div>
-      <StadiumPhoto club={c} />
-      {(kitSupplier(w, c) || shirtSponsor(w, c)) && (
-        <div className="card club-brands">
-          {kitSupplier(w, c) && <div><span className="tiny muted">Material esportivo</span><BrandLogo brand={kitSupplier(w, c)} size={26} withName /></div>}
-          {shirtSponsor(w, c) && <div><span className="tiny muted">Patrocínio master</span><BrandLogo brand={shirtSponsor(w, c)} size={26} withName /></div>}
-        </div>
-      )}
-      <div className="card tap row gap8" onClick={() => push({ name: "kits", id: c.id })}>
-        <KitShirt clubId={c.id} which={0} width={46} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
-        <KitShirt clubId={c.id} which={1} width={46} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
-        <div className="grow"><b>Uniformes</b><div className="tiny muted">Titular, reserva e terceiro · fornecedor e patrocínio</div></div>
-        <span className="muted">›</span>
-      </div>
-      <div className="grid3">
-        <div className="stat-box"><b>{Math.round(clubStrength(w, c))}</b><span>força</span></div>
-        <div className="stat-box"><b>{squad.length}</b><span>jogadores</span></div>
-        <div className="stat-box"><b>{c.trophies.length}</b><span>títulos (jogo)</span></div>
-      </div>
-      {c.trophies.length > 0 && (
-        <div className="card small">{estadualTitles(c) > 0 && <div>🏅 Estaduais: {estadualTitles(c)}</div>}🏆 {c.trophies.slice(-8).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}</div>
-      )}
-      <div className="card flat" style={{ padding: "2px 10px" }}>
-        <div className="list">
-          {squad.map((p) => <PlayerRow key={p.id} p={p} club={c} season={w.season} onClick={() => push({ name: "player", id: p.id })} />)}
-        </div>
-      </div>
-      {youth.length > 0 && (
-        <>
-          <h3>Base</h3>
-          <div className="card flat" style={{ padding: "2px 10px" }}>
-            <div className="list">{youth.map((p) => <PlayerRow key={p.id} p={p} club={c} season={w.season} onClick={() => push({ name: "player", id: p.id })} />)}</div>
+
+          <StadiumPhoto club={c} />
+
+          {(kitSupplier(w, c) || shirtSponsor(w, c)) && (
+            <div className="card club-brands">
+              {kitSupplier(w, c) && <div><span className="tiny muted">Fornecedor</span><BrandLogo brand={kitSupplier(w, c)} size={22} withName /></div>}
+              {shirtSponsor(w, c) && <div><span className="tiny muted">Patrocínio Master</span><BrandLogo brand={shirtSponsor(w, c)} size={22} withName /></div>}
+            </div>
+          )}
+
+          <div className="card tap row gap8" onClick={() => push({ name: "kits", id: c.id })}>
+            <KitShirt clubId={c.id} which={0} width={40} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
+            <KitShirt clubId={c.id} which={1} width={40} supplier={kitSupplier(w, c) ?? null} sponsor={shirtSponsor(w, c) ?? null} crest={crestFor(c)} colors={c.colors} />
+            <div className="grow"><b>Uniformes Oficiais</b><div className="tiny muted">Titular, reserva e 3º kit</div></div>
+            <span className="muted">›</span>
           </div>
-        </>
-      )}
-      <div style={{ height: 30 }} />
+
+          <div className="grid3">
+            <div className="stat-box"><b>{Math.round(clubStrength(w, c))}</b><span>força</span></div>
+            <div className="stat-box"><b>{squad.length}</b><span>atletas</span></div>
+            <div className="stat-box"><b>{c.trophies.length}</b><span>títulos</span></div>
+          </div>
+          {c.trophies.length > 0 && (
+            <div className="card small">{estadualTitles(c) > 0 && <div>🏅 Estaduais: {estadualTitles(c)}</div>}🏆 {c.trophies.slice(-6).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}</div>
+          )}
+        </aside>
+
+        <main className="k-clubinfo-main">
+          <div className="card flat" style={{ padding: "6px 10px" }}>
+            <div className="card-title">
+              <h3>Elenco Profissional ({squad.length})</h3>
+            </div>
+            <div className="list mt4">
+              {squad.map((p) => <PlayerRow key={p.id} p={p} club={c} season={w.season} onClick={() => push({ name: "player", id: p.id })} />)}
+            </div>
+          </div>
+          {youth.length > 0 && (
+            <div className="card flat mt8" style={{ padding: "6px 10px" }}>
+              <div className="card-title">
+                <h3>Categorias de Base ({youth.length})</h3>
+              </div>
+              <div className="list mt4">{youth.map((p) => <PlayerRow key={p.id} p={p} club={c} season={w.season} onClick={() => push({ name: "player", id: p.id })} />)}</div>
+            </div>
+          )}
+        </main>
+      </div>
+      <div style={{ height: 20 }} />
     </div>
   );
 }
@@ -310,31 +324,50 @@ function Line({ l, v, bold }: { l: string; v: number; bold?: boolean }) {
 export function HistoryScreen() {
   const w = useWorld();
   return (
-    <div className="page">
-      <div className="card">
-        <h3>Sua carreira</h3>
-        {w.managerHistory.length === 0 && <div className="empty-state center mt8"><b>Sua história começa agora</b><div className="small muted">Complete a primeira temporada e cada campanha ficará registrada aqui.</div></div>}
-        {w.managerHistory.slice().reverse().map((h, i) => (
-          <div key={i} className="row small" style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
-            <b style={{ width: 44 }}>{h.season}</b>
-            <Crest club={w.clubs[h.clubId]} size={18} />
-            <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div} · {h.pos ?? "-"}º</span>
-            {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={16} /></span>)}
-            {h.admin && <span title="Temporada com edições do administrador">🛠️</span>}
+    <div className="page k-history-page">
+      <div className="k-history-grid">
+        <aside className="k-history-aside">
+          <div className="card">
+            <h3>Sua Carreira</h3>
+            {w.managerHistory.length === 0 && <div className="empty-state center mt6"><b>Sua história começa agora</b><div className="tiny muted">Complete a primeira temporada para ver as campanhas aqui.</div></div>}
+            <div className="col gap2 mt4">
+              {w.managerHistory.slice().reverse().map((h, i) => (
+                <div key={i} className="row small" style={{ padding: "4px 0", borderBottom: "1px solid var(--line)" }}>
+                  <b style={{ width: 44 }}>{h.season}</b>
+                  <Crest club={w.clubs[h.clubId]} size={18} />
+                  <span className="grow">{w.clubs[h.clubId]?.name} · Série {h.div} · {h.pos ?? "-"}º</span>
+                  {h.titles.map((t) => <span key={t} title={COMP_META[t]?.name}><Icon name="trophy" size={15} /></span>)}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        </aside>
+
+        <main className="k-history-main">
+          <div className="card">
+            <h3>Histórico de Campeões das Temporadas</h3>
+            <div className="k-history-seasons-grid mt6">
+              {w.history.slice().reverse().map((s) => (
+                <div key={s.season} className="card small k-history-season-card">
+                  <b style={{ color: "var(--gold)" }}>Temporada {s.season}</b>
+                  <div className="col gap4 mt4">
+                    {Object.entries(s.champions).map(([comp, club]) => (
+                      <div key={comp} className="row gap6 tiny" style={{ alignItems: "center" }}>
+                        <span className="muted" style={{ width: 80 }}>{COMP_META[comp]?.short ?? comp}</span>
+                        {w.clubs[club] && <Crest club={w.clubs[club]} size={14} />}
+                        <span className="ellipsis">{w.clubs[club]?.name ?? w.formerClubs?.[club] ?? club}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {s.topScorer && <div className="tiny mt4">⚽ Artilheiro: {s.topScorer.name} ({s.topScorer.goals})</div>}
+                  {s.bestPlayer && <div className="tiny">🏅 Craque: {s.bestPlayer.name} ({s.bestPlayer.rating})</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
-      {w.history.slice().reverse().map((s) => (
-        <div key={s.season} className="card small">
-          <b>{s.season}</b>
-          {Object.entries(s.champions).map(([comp, club]) => (
-            <div key={comp} className="row gap8 mt8"><span className="muted" style={{ width: 110 }}>{COMP_META[comp]?.short}</span>{w.clubs[club] && <Crest club={w.clubs[club]} size={16} />}{w.clubs[club]?.name ?? w.formerClubs?.[club] ?? club}</div>
-          ))}
-          {s.topScorer && <div className="mt8">⚽ Artilheiro da Série A: {s.topScorer.name} ({s.topScorer.goals})</div>}
-          {s.bestPlayer && <div>🏅 Craque da Série A: {s.bestPlayer.name} (nota {s.bestPlayer.rating})</div>}
-          {s.revelation && <div>🌟 Revelação: {s.revelation.name}, {s.revelation.age} anos (nota {s.revelation.rating})</div>}
-        </div>
-      ))}
+      <div style={{ height: 20 }} />
     </div>
   );
 }
@@ -414,89 +447,97 @@ export function SettingsScreen() {
   useEffect(() => { loadMedia(`goal:${c.id}`).then((d) => setHasGoal(!!d)).catch(() => undefined); }, [c.id]);
 
   return (
-    <div className="page">
-      <AdminSettingsCard />
-      <PerfCard />
-      <div className="card">
-        <h3>Jogo</h3>
-        <div className="switch"><div><b>Modo casual</b><div className="small muted">Sem demissão por maus resultados.</div></div>
-          <input type="checkbox" checked={w.settings.casual} onChange={(e) => { update((x) => { x.settings.casual = e.target.checked; }); autosave(); }} /></div>
-        <div className="switch"><div><b>Salvar automaticamente</b><div className="small muted">Salva depois de cada jogo.</div></div>
-          <input type="checkbox" checked={w.settings.autoSave} onChange={(e) => { update((x) => { x.settings.autoSave = e.target.checked; }); }} /></div>
-        <div className="switch"><div><b>Sons da partida</b><div className="small muted">Torcida, apito e gol (gravações reais; nos jogos no Brasil, a torcida brasileira canta, vaia e grita olé).</div></div>
-          <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); setSoundEnabled(e.target.checked); }} /></div>
-        {sound && (
-          <label className="col gap8" style={{ paddingTop: 10 }}>
-            <span className="row"><b className="grow">Volume da torcida</b><span className="small muted">{vol}%</span></span>
-            <input type="range" min={0} max={100} step={5} value={vol} aria-label="Volume da torcida" onChange={(e) => { const v = Number(e.target.value); setVol(v); setCrowdVolume(v / 100); }} />
-          </label>
-        )}
-        <div className="switch"><div><b>Golpes especiais</b><div className="small muted">Chute Trovão, Folha Seca, Bicicleta, Voo do Gato… câmera lenta e o nome do golpe na tela nos lances decisivos (só visual, não muda o resultado).</div></div>
-          <input type="checkbox" checked={specials} onChange={(e) => { setSpecials(e.target.checked); setSpecialsEnabled(e.target.checked); }} /></div>
-        <div className="switch"><div><b>Rostos ilustrados</b><div className="small muted">Para jogadores reais sem foto livre (em vez da silhueta).</div></div>
-          <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
-        <div className="switch"><div><b>Tema claro</b></div>
-          <input type="checkbox" checked={w.settings.theme === "light"} onChange={(e) => { update((x) => { x.settings.theme = e.target.checked ? "light" : "dark"; }); autosave(); }} /></div>
-        <div className="col gap8" style={{ paddingTop: 10 }}>
-          <b>Frequência de lendas</b>
-          <div className="seg">
-            {(["Desligado", "Baixa", "Média", "Alta"] as const).map((l, i) => (
-              <button key={l} className={w.settings.legendFreq === i ? "active" : ""} onClick={() => { update((x) => { x.settings.legendFreq = i as 0 | 1 | 2 | 3; }); autosave(); }}>{l}</button>
-            ))}
+    <div className="page k-settings-page">
+      <div className="k-settings-grid">
+        <div className="k-settings-col">
+          <AdminSettingsCard />
+          <PerfCard />
+
+          <div className="card">
+            <h3>Opções de Jogo</h3>
+            <div className="switch"><div><b>Modo casual</b><div className="tiny muted">Sem demissão por maus resultados.</div></div>
+              <input type="checkbox" checked={w.settings.casual} onChange={(e) => { update((x) => { x.settings.casual = e.target.checked; }); autosave(); }} /></div>
+            <div className="switch"><div><b>Salvar automaticamente</b><div className="tiny muted">Salva após cada partida.</div></div>
+              <input type="checkbox" checked={w.settings.autoSave} onChange={(e) => { update((x) => { x.settings.autoSave = e.target.checked; }); }} /></div>
+            <div className="switch"><div><b>Sons da partida</b><div className="tiny muted">Torcida real, cantos e gols.</div></div>
+              <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); setSoundEnabled(e.target.checked); }} /></div>
+            {sound && (
+              <label className="col gap4" style={{ paddingTop: 6 }}>
+                <span className="row"><b className="grow small">Volume torcida</b><span className="tiny muted">{vol}%</span></span>
+                <input type="range" min={0} max={100} step={5} value={vol} aria-label="Volume da torcida" onChange={(e) => { const v = Number(e.target.value); setVol(v); setCrowdVolume(v / 100); }} />
+              </label>
+            )}
+            <div className="switch"><div><b>Golpes especiais</b><div className="tiny muted">Efeitos visuais em lances decisivos.</div></div>
+              <input type="checkbox" checked={specials} onChange={(e) => { setSpecials(e.target.checked); setSpecialsEnabled(e.target.checked); }} /></div>
+            <div className="switch"><div><b>Rostos ilustrados</b><div className="tiny muted">Para quem não tem foto livre.</div></div>
+              <input type="checkbox" checked={!!w.settings.cartoonFaces} onChange={(e) => { update((x) => { x.settings.cartoonFaces = e.target.checked; }); autosave(); }} /></div>
+            <div className="switch"><div><b>Tema claro</b></div>
+              <input type="checkbox" checked={w.settings.theme === "light"} onChange={(e) => { update((x) => { x.settings.theme = e.target.checked ? "light" : "dark"; }); autosave(); }} /></div>
+            <div className="col gap4" style={{ paddingTop: 6 }}>
+              <b className="small">Frequência de lendas</b>
+              <div className="seg">
+                {(["Desligado", "Baixa", "Média", "Alta"] as const).map((l, i) => (
+                  <button key={l} className={w.settings.legendFreq === i ? "active" : ""} onClick={() => { update((x) => { x.settings.legendFreq = i as 0 | 1 | 2 | 3; }); autosave(); }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="k-settings-col">
+          <div className="card">
+            <h3>Personalizar {c.name}</h3>
+            <p className="tiny muted">Imagens e áudios locais (salvos no seu aparelho).</p>
+            <div className="row mt6" style={{ alignItems: "center" }}>
+              <Crest club={c} size={38} />
+              <label className="btn sm grow">
+                Trocar escudo
+                <input type="file" accept="image/*" hidden onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const data = await resizeImage(f, 160);
+                  update(() => { c.customCrest = data; });
+                  autosave();
+                }} />
+              </label>
+              {c.customCrest && <button className="btn sm" onClick={() => { update(() => { c.customCrest = undefined; }); autosave(); }}>Padrão</button>}
+            </div>
+            <div className="row mt8" style={{ alignItems: "center" }}>
+              <span className="big-ic" style={{ fontSize: 20 }}><Icon name="megaphone" size={20} /></span>
+              <label className="btn sm grow">
+                {hasGoal ? "Trocar áudio do gol" : "Áudio do gol (hino/canto)"}
+                <input type="file" accept="audio/*" hidden onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  if (f.size > 4_000_000) { toast("Arquivo muito grande (máx. 4 MB)."); return; }
+                  const reader = new FileReader();
+                  reader.onload = async () => { await saveMedia(`goal:${c.id}`, reader.result as string); setHasGoal(true); toast("Áudio salvo!"); };
+                  reader.readAsDataURL(f);
+                }} />
+              </label>
+              {hasGoal && <button className="btn sm" onClick={async () => { await saveMedia(`goal:${c.id}`, null); setHasGoal(false); }}>Remover</button>}
+            </div>
+            <ColorEditor c={c} />
+          </div>
+
+          <div className="card">
+            <h3>Backup & Dados</h3>
+            <div className="grid2 mt6">
+              <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
+              <button className="btn sm" onClick={saveNow}><Ic n="save" /> Salvar agora</button>
+            </div>
+            <button className="btn sm block mt6" onClick={() => {
+              let n = 0;
+              update((x) => { n = repairWorld(x); });
+              if (n) autosave();
+              toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
+            }}><Ic n="check" /> Verificar integridade</button>
+            <p className="tiny muted mt6">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}).</p>
+            <button className="btn sm block mt6" onClick={() => push({ name: "credits" })}><Ic n="scroll" /> Créditos de fotos e sons</button>
           </div>
         </div>
       </div>
-
-      <div className="card">
-        <h3>Personalizar o {c.name}</h3>
-        <p className="small muted">Use imagens e áudios seus (ficam só neste aparelho).</p>
-        <div className="row">
-          <Crest club={c} size={44} />
-          <label className="btn sm grow">
-            Trocar escudo
-            <input type="file" accept="image/*" hidden onChange={async (e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              const data = await resizeImage(f, 160);
-              update(() => { c.customCrest = data; });
-              autosave();
-            }} />
-          </label>
-          {c.customCrest && <button className="btn sm" onClick={() => { update(() => { c.customCrest = undefined; }); autosave(); }}>Padrão</button>}
-        </div>
-        <div className="row mt12">
-          <span className="big-ic"><Icon name="megaphone" size={24} /></span>
-          <label className="btn sm grow">
-            {hasGoal ? "Trocar áudio do gol (canto/hino)" : "Áudio do gol (canto/hino)"}
-            <input type="file" accept="audio/*" hidden onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              if (f.size > 4_000_000) { toast("Arquivo muito grande (máx. 4 MB)."); return; }
-              const reader = new FileReader();
-              reader.onload = async () => { await saveMedia(`goal:${c.id}`, reader.result as string); setHasGoal(true); toast("Áudio salvo! Toca nos gols do seu time."); };
-              reader.readAsDataURL(f);
-            }} />
-          </label>
-          {hasGoal && <button className="btn sm" onClick={async () => { await saveMedia(`goal:${c.id}`, null); setHasGoal(false); }}>Remover</button>}
-        </div>
-        <ColorEditor c={c} />
-      </div>
-
-      <div className="card">
-        <h3>Backup</h3>
-        <div className="grid2 mt8">
-          <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
-          <button className="btn sm" onClick={saveNow}><Ic n="save" /> Salvar agora</button>
-        </div>
-        <button className="btn sm block mt8" onClick={() => {
-          let n = 0;
-          update((x) => { n = repairWorld(x); });
-          if (n) autosave();
-          toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
-        }}><Ic n="check" /> Verificar save</button>
-        <p className="tiny muted mt8">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}). Notas estimadas pelo jogo — edite no perfil do jogador.</p>
-        <button className="btn sm block mt8" onClick={() => push({ name: "credits" })}><Ic n="scroll" /> Créditos das fotos, escudos e sons</button>
-      </div>
+      <div style={{ height: 20 }} />
     </div>
   );
 }

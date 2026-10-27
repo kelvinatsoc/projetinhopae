@@ -45,34 +45,53 @@ export function StaffScreen() {
   useEffect(() => { if (!w.staff || STAFF_ROLES.some((r) => !w.staff?.[r])) update((x) => { ensureStaff(x); }); }, [w.staff]);
   if (!w.staff) return <div className="page"><div className="empty">Montando a comissão…</div></div>;
   const total = STAFF_ROLES.reduce((s, r) => s + (w.staff?.[r]?.wage ?? 0), 0);
+  const avgStars = (STAFF_ROLES.reduce((s, r) => s + (w.staff?.[r]?.stars ?? 0), 0) / STAFF_ROLES.length).toFixed(1);
+
   return (
-    <div className="page">
-      <div className="card small">
-        👔 Sua comissão técnica trabalha nos bastidores: mais estrelas, mais efeito. Toque num cargo para trocar o profissional.
-        <div className="mt8">Folha da comissão: <b>{formatMoney(total)}/mês</b></div>
-      </div>
-      {STAFF_ROLES.map((r) => {
-        const s = w.staff?.[r];
-        if (!s) return null;
-        return (
-          <div key={r} className="card tap" onClick={() => setOpen(r)}>
-            <div className="row">
-              <StaffAvatar s={s} club={club} />
-              <div className="grow" style={{ minWidth: 0 }}>
-                <div className="small muted">{STAFF_INFO[r].emoji} {STAFF_INFO[r].label}</div>
-                <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
-                <div className="small muted">{flag(s.nat)} {w.season - s.born} anos · <Stars n={s.stars} /></div>
-              </div>
-              <span className="muted">›</span>
+    <div className="page k-staff-page">
+      <div className="k-staff-grid">
+        <aside className="k-staff-aside">
+          <div className="card">
+            <h3>👔 Comissão Técnica</h3>
+            <p className="tiny muted mt4">Profissionais de apoio: treinos, recuperação física, olheiros e base.</p>
+            <div className="mt8 col gap4">
+              <div className="row small"><span className="muted grow">Folha da comissão</span><b>{formatMoney(total)}/mês</b></div>
+              <div className="row small"><span className="muted grow">Qualidade média</span><b style={{ color: "var(--gold)" }}>⭐ {avgStars} / 5.0</b></div>
+              <div className="row small"><span className="muted grow">Cargos preenchidos</span><b>{STAFF_ROLES.length} de {STAFF_ROLES.length}</b></div>
             </div>
-            <div className="small mt8">{formatMoney(s.wage)}/mês · contrato até {s.until}</div>
-            <div className="staff-effect">{staffEffect(r, s.stars)}</div>
+            <div className="tiny muted mt10" style={{ borderTop: "1px solid var(--line)", paddingTop: 8 }}>
+              💡 Toque num cargo ao lado para ver o efeito e contratar substitutos. Renovação anual automática (+10%).
+            </div>
           </div>
-        );
-      })}
-      <div className="tiny muted center">Contratos renovam sozinhos (+10%) no fim do ano.</div>
+        </aside>
+
+        <main className="k-staff-main">
+          <div className="k-staff-cards-grid">
+            {STAFF_ROLES.map((r) => {
+              const s = w.staff?.[r];
+              if (!s) return null;
+              return (
+                <div key={r} className="card tap k-staff-card" onClick={() => setOpen(r)}>
+                  <div className="row">
+                    <StaffAvatar s={s} club={club} />
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="small muted">{STAFF_INFO[r].emoji} {STAFF_INFO[r].label}</div>
+                      <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
+                      <div className="small muted">{flag(s.nat)} {w.season - s.born} anos · <Stars n={s.stars} /></div>
+                    </div>
+                    <span className="muted">›</span>
+                  </div>
+                  <div className="small mt4">{formatMoney(s.wage)}/mês · contrato até {s.until}</div>
+                  <div className="staff-effect">{staffEffect(r, s.stars)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </main>
+      </div>
+
       {open && <StaffSheet w={w} role={open} onClose={() => setOpen(null)} />}
-      <div style={{ height: 30 }} />
+      <div style={{ height: 20 }} />
     </div>
   );
 }

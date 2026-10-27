@@ -4943,3 +4943,235 @@ html.lite img { content-visibility: auto; }
   padding: 4px 8px !important;
   font-size: 9px !important;
 }
+
+
+/* ==========================================================================
+   10. Modos Widescreen FM Mobile para TODAS as Telas (800x360+ / Landscape)
+   ========================================================================== */
+
+/* 10.1 Comissão Técnica */
+.k-staff-grid {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-staff-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.k-staff-card {
+  padding: 8px 10px !important;
+}
+
+/* 10.2 Diretoria */
+.k-board-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* 10.3 Vestiário & Dinâmica */
+.k-dressing-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-dressing-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* 10.4 Categorias de Base & Peneira */
+.k-academy-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.page .pn-grid, .k-page .pn-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+.pn-inner {
+  height: 156px !important;
+}
+.pn-face {
+  padding: 6px 4px !important;
+  gap: 2px !important;
+  border-radius: 8px !important;
+}
+.pn-face .avatar {
+  width: 40px !important;
+  height: 40px !important;
+}
+.pn-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+}
+.pn-actions .btn {
+  min-height: 24px !important;
+  height: 24px !important;
+  font-size: 9.5px !important;
+  padding: 2px 4px !important;
+}
+
+/* 10.5 Complexo & Estrutura */
+.k-fac-banner {
+  padding: 6px 10px !important;
+  margin-bottom: 8px !important;
+}
+.k-fac-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.k-fac-card {
+  padding: 8px 10px !important;
+}
+
+/* 10.6 Patrocínios */
+.k-sponsors-banner {
+  padding: 6px 10px !important;
+  margin-bottom: 8px !important;
+}
+.k-sponsors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 10.7 Sala de Troféus */
+.k-trophy-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-trophy-shelf-card .cabinet {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+/* 10.8 Carreira */
+.k-career-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* 10.9 Uniformes */
+.k-uniforms-banner {
+  padding: 6px 10px !important;
+  margin-bottom: 8px !important;
+}
+.k-uniforms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+/* 10.10 Meu Estádio & Reformas */
+.k-stadium-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-stadium-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 10.11 Loja de Poderes */
+.k-powers-grid {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-powers-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 10.12 Ajustes & Configurações */
+.k-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* 10.13 Pré-Jogo FM */
+.k-prematch-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-prematch-pitch-card {
+  padding: 6px 10px !important;
+}
+.k-prematch-pitch-wrap {
+  height: 240px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.k-prematch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+.k-prematch-actions .btn {
+  height: 32px !important;
+  min-height: 32px !important;
+  font-size: 11.5px !important;
+}
+
+/* 10.14 Ficha de Outro Clube */
+.k-clubinfo-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* 10.15 Histórico de Campeões */
+.k-history-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-history-seasons-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.k-history-season-card {
+  padding: 6px 8px !important;
+}
+
+/* 10.16 Notícias da Imprensa */
+.k-news-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.k-news-card {
+  padding: 6px 10px !important;
+}

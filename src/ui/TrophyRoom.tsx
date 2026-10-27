@@ -3,7 +3,7 @@ import { useState } from "react";
 import { COMP_META } from "../engine/competitions";
 import type { ClubSeasonLog, World } from "../engine/types";
 import { push, useWorld } from "../store";
-import { CompLogo, Crest } from "./components";
+import { CompLogo } from "./components";
 import "./progression.css";
 import { TrophyImg } from "./Trophy";
 import { trophySpec } from "./trophies";
@@ -54,51 +54,50 @@ export function TrophyRoomScreen() {
   const timeline = c.history.slice().reverse();
 
   return (
-    <div className="page">
-      <div className="hero" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
-        <div className="row">
-          <Crest club={c} size={56} />
-          <div className="grow">
-            <h2>Sala de troféus</h2>
-            <div className="small" style={{ opacity: 0.9 }}>{c.full} · {c.trophies.length} título{c.trophies.length === 1 ? "" : "s"} no jogo</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-title"><h3>Estante</h3><span className="small muted">toque para ver os anos</span></div>
-        <div className="cabinet">
-          {comps.map((id) => {
-            const n = counts[id]?.length ?? 0;
-            return (
-              <div key={id} className={`cabinet-item${n ? "" : " empty"}`} onClick={() => setOpen(open === id ? null : id)} role="button" aria-label={COMP_META[id]?.name ?? id}>
-                {n > 0 && <span className="count">×{n}</span>}
-                <TrophyIcon comp={id} />
-                <b className="tiny">{COMP_META[id]?.short ?? id}</b>
+    <div className="page k-trophy-page">
+      <div className="k-trophy-grid">
+        <aside className="k-trophy-aside">
+          <div className="card k-trophy-shelf-card">
+            <div className="card-title">
+              <h3>🏆 Galeria de Conquistas</h3>
+              <b style={{ color: "var(--gold)" }}>{c.trophies.length} taças</b>
+            </div>
+            <div className="cabinet mt6">
+              {comps.map((id) => {
+                const n = counts[id]?.length ?? 0;
+                return (
+                  <div key={id} className={`cabinet-item${n ? "" : " empty"}${open === id ? " active" : ""}`} onClick={() => setOpen(open === id ? null : id)} role="button" aria-label={COMP_META[id]?.name ?? id}>
+                    {n > 0 && <span className="count">×{n}</span>}
+                    <TrophyIcon comp={id} />
+                    <b className="tiny">{COMP_META[id]?.short ?? id}</b>
+                  </div>
+                );
+              })}
+            </div>
+            {open && (
+              <div className="small mt8 cabinet-open">
+                <TrophyImg comp={open} size={84} />
+                <b>{COMP_META[open]?.name ?? open}</b>
+                <div className="tiny muted">{trophySpec(open).name}</div>
+                <div className="tiny mt4">{counts[open]?.length ? `Anos: ${counts[open].slice().sort((a, b) => b - a).join(", ")}` : "Ainda não conquistado."}</div>
               </div>
-            );
-          })}
-        </div>
-        {open && (
-          <div className="small mt8 cabinet-open">
-            <TrophyImg comp={open} size={120} />
-            <b>{COMP_META[open]?.name ?? open}:</b>{" "}
-            <div className="tiny muted">{trophySpec(open).name}</div>
-            {counts[open]?.length ? counts[open].slice().sort((a, b) => b - a).join(", ") : "ainda não conquistado."}
+            )}
           </div>
-        )}
-      </div>
+        </aside>
 
-      <div className="card">
-        <div className="card-title"><h3>Recordes do clube</h3></div>
-        {clubRecords(w, c.id).map((r) => (
-          <div key={r.label} className="row small" style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
-            <span style={{ width: 26, fontSize: 18 }}>{r.icon}</span>
-            <div className="grow">{r.label}{r.sub && <div className="tiny muted">{r.sub}</div>}</div>
-            <b>{r.value}</b>
+        <main className="k-trophy-main">
+          <div className="card">
+            <div className="card-title"><h3>📜 Recordes & Marcas Históricas</h3></div>
+            <div className="mt4 col gap2">
+              {clubRecords(w, c.id).map((r) => (
+                <div key={r.label} className="row small" style={{ padding: "4px 0", borderBottom: "1px solid var(--line)" }}>
+                  <span style={{ width: 24, fontSize: 16 }}>{r.icon}</span>
+                  <div className="grow">{r.label}{r.sub && <div className="tiny muted">{r.sub}</div>}</div>
+                  <b>{r.value}</b>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
 
       <div className="card">
         <div className="card-title"><h3>Linha do tempo</h3></div>
@@ -132,7 +131,9 @@ export function TrophyRoomScreen() {
           })}
         </div>
       </div>
-      <div style={{ height: 30 }} />
+        </main>
+      </div>
+      <div style={{ height: 20 }} />
     </div>
   );
 }

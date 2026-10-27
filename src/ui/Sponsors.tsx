@@ -15,12 +15,17 @@ export function SponsorsScreen() {
   const [pick, setPick] = useState<SponsorDeal | null>(null);
   const offers = currentOffers(w, c);
   return (
-    <div className="page">
-      <div className="card">
-        <div className="card-title"><h3>🤝 Receita de patrocínio</h3><b>{formatMoney(sponsorAnnual(w, c))}/ano</b></div>
-        <div className="tiny muted">Marcas e logos reais (marcas registradas dos seus donos). Espaço vazio rende só {Math.round(EMPTY_SLOT_PCT * 100)}% com anunciantes avulsos. Bônus são pagos no início da temporada seguinte.</div>
+    <div className="page k-sponsors-page">
+      <div className="card k-sponsors-banner">
+        <div className="card-title">
+          <h3>🤝 Gestão de Patrocínios & Marcas</h3>
+          <span>Receita Total: <b style={{ color: "#34d27b" }}>{formatMoney(sponsorAnnual(w, c))}/ano</b></span>
+        </div>
+        <div className="tiny muted">Marcas oficiais registradas. Espaços vazios rendem {Math.round(EMPTY_SLOT_PCT * 100)}% com anúncios genéricos. Bônus por títulos pagos na virada de ano.</div>
       </div>
-      {SLOTS.map((slot) => {
+
+      <div className="k-sponsors-grid">
+        {SLOTS.map((slot) => {
         const info = SLOT_INFO[slot];
         const deal = activeDeal(w, c, slot);
         const list = offers.filter((o) => o.slot === slot);
@@ -69,6 +74,7 @@ export function SponsorsScreen() {
           </div>
         );
       })}
+      </div>
       {pick && (
         <Sheet title={`Assinar com ${pick.brand}?`} onClose={() => setPick(null)}>
           <p className="small">{SLOT_INFO[pick.slot].label}: {formatMoney(pick.annual)} por ano durante {pick.years} {pick.years > 1 ? "temporadas" : "temporada"}, a partir de {sponsorWindow(w, c, pick.slot).from}. Depois de assinado, a troca só abre de novo no último ano do contrato.</p>

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
 import { formatDate } from "../../engine/calendar";
 import { COMP_META, fixtureById, tieAggregate } from "../../engine/competitions";
 import { finishUserMatch, loadRng, saveRng } from "../../engine/game";
@@ -103,58 +102,69 @@ export function PreMatchScreen() {
   const agg = tie && f.leg === 2 ? tieAggregate(w, tie) : null;
 
   return (
-    <div className="page">
+    <div className="page k-prematch-page">
       <CompHeader id={f.comp} title={COMP_META[f.comp]?.short} sub={`${stageLabel(w, f)}${theme.motto ? ` · ${theme.motto}` : ""}`} />
       <PhaseBanner w={w} f={f} />
-      <div className={`hero ct-hero ${themeClass(theme)}`} style={themeVars(theme)}>
-        <div className="row" style={{ justifyContent: "space-around", margin: "12px 0" }}>
-          {[f.home, f.away].map((id) => (
-            <div key={id} className="col center" style={{ alignItems: "center", width: 130 }}>
-              <Crest club={w.clubs[id]} size={60} />
-              <b>{w.clubs[id].name}</b>
-              <span className="small">força {id === user.id ? mine : theirs}</span>
+
+      <div className="k-prematch-grid">
+        <div className="k-prematch-col-left">
+          <div className={`hero ct-hero ${themeClass(theme)}`} style={themeVars(theme)}>
+            <div className="row" style={{ justifyContent: "space-around", margin: "6px 0" }}>
+              {[f.home, f.away].map((id) => (
+                <div key={id} className="col center" style={{ alignItems: "center", width: 110 }}>
+                  <Crest club={w.clubs[id]} size={48} />
+                  <b className="small ellipsis">{w.clubs[id].name}</b>
+                  <span className="tiny">força {id === user.id ? mine : theirs}</span>
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="tiny center"><Ic n="calendar" /> {formatDate(w.season, f.day)} · <Ic n="stadium" /> {f.neutral ? "Campo neutro" : w.clubs[f.home].stadium}</div>
+            {agg && tie && <div className="tiny mt4 center">Jogo de ida: {w.clubs[tie.a].name} {agg.a} × {agg.b} {w.clubs[tie.b].name}</div>}
+          </div>
+
+          <DerbyBanner home={f.home} away={f.away} />
+          <PreMatchAdvice fixtureId={f.id} />
+
+          {out.length > 0 && (
+            <div className="card flat small" style={{ borderColor: "var(--warn)", padding: "6px 10px" }}>
+              <Ic n="alert" /> Desfalques: {out.map((p) => `${shortName(p.name)} (${p.injury > 0 ? "lesionado" : "suspenso"})`).join(", ")}
+            </div>
+          )}
+
+          <div className="card" style={{ padding: "8px 10px" }}>
+            <h3>Provável time do {opp.name} ({opp.tactic.formation})</h3>
+            <div className="row wrap gap4 mt4 tiny">
+              {oppLineup.starters.filter((x): x is number => x != null).map((id) => {
+                const p = w.players[id];
+                return <span key={id} className="tag">{p.pos} {shortName(p.name)} <b>{p.ovr}</b></span>;
+              })}
+            </div>
+          </div>
+
+          <TalkCard w={w} f={f} />
+
+          {!pressDone(w, f.id, "pre") && (
+            <button className="btn block sm mt6" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}><GIcon slug="coletiva" size={16} /> Coletiva pré-jogo</button>
+          )}
         </div>
-        <div className="small"><Ic n="calendar" /> {formatDate(w.season, f.day)} · <Ic n="stadium" /> {f.neutral ? "Campo neutro" : w.clubs[f.home].stadium}</div>
-        {agg && tie && <div className="small mt8">Jogo de ida: {w.clubs[tie.a].name} {agg.a} × {agg.b} {w.clubs[tie.b].name}{tie.advantage ? ` · ${w.clubs[tie.advantage].name} joga pelo empate no agregado` : " · empate no agregado vai para os pênaltis"}</div>}
-      </div>
 
-      <DerbyBanner home={f.home} away={f.away} />
-      <PreMatchAdvice fixtureId={f.id} />
+        <div className="k-prematch-col-right">
+          <div className="card k-prematch-pitch-card">
+            <div className="row" style={{ alignItems: "center" }}>
+              <h3 className="grow">Seu time · {user.tactic.formation} · {MENTALITY_NAMES[user.tactic.mentality]}</h3>
+              <button className="btn sm" onClick={() => push({ name: "tactics" })}>Ajustar</button>
+            </div>
+            <div className="k-prematch-pitch-wrap">
+              <Pitch w={w} club={user} lineup={myLineup} sel={null} />
+            </div>
+          </div>
 
-      {out.length > 0 && (
-        <div className="card flat small" style={{ borderColor: "var(--warn)" }}>
-          <Ic n="alert" /> Desfalques: {out.map((p) => `${p.name} (${p.injury > 0 ? "lesionado" : "suspenso"})`).join(", ")}
-        </div>
-      )}
-
-      <div className="row">
-        <h3 className="grow">Seu time · {user.tactic.formation} · {MENTALITY_NAMES[user.tactic.mentality]}</h3>
-        <button className="btn sm" onClick={() => push({ name: "tactics" })}>Ajustar</button>
-      </div>
-      <Pitch w={w} club={user} lineup={myLineup} sel={null} />
-
-      <div className="card">
-        <h3>Provável time do {opp.name} ({opp.tactic.formation})</h3>
-        <div className="row wrap gap8 mt8 small">
-          {oppLineup.starters.filter((x): x is number => x != null).map((id) => {
-            const p = w.players[id];
-            return <span key={id} className="tag">{p.pos} {shortName(p.name)} <b>{p.ovr}</b></span>;
-          })}
+          <div className="k-prematch-actions">
+            <button className="btn lg" onClick={() => { haptic("tap"); goToMatch(true); }}><GIcon slug="modo-rapido" size={20} /> Modo rápido</button>
+            <button className="btn primary lg" onClick={() => { haptic("success"); goToMatch(false); }}><GIcon slug="jogar" size={22} /> Jogar Partida</button>
+          </div>
         </div>
       </div>
-
-      <TalkCard w={w} f={f} />
-
-      {!pressDone(w, f.id, "pre") && (
-        <button className="btn block" onClick={() => push({ name: "press", fid: f.id, phase: "pre" })}><GIcon slug="coletiva" size={20} /> Coletiva pré-jogo (opcional)</button>
-      )}
-
-      {createPortal(<div className="pm-dock" role="toolbar" aria-label="Começar a partida">
-        <button className="btn lg" onClick={() => { haptic("tap"); goToMatch(true); }}><GIcon slug="modo-rapido" size={22} /> Modo rápido</button>
-        <button className="btn primary lg" onClick={() => { haptic("success"); goToMatch(false); }}><GIcon slug="jogar" size={24} /> Jogar</button>
-      </div>, document.body)}
     </div>
   );
 }

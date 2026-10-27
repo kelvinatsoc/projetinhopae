@@ -14,35 +14,48 @@ export function BoardScreen() {
   const [answer, setAnswer] = useState<{ ok: boolean; msg: string } | null>(null);
 
   return (
-    <div className="page">
-      <div className="card">
-        <div className="card-title"><h3>🏛️ Confiança da diretoria</h3><b>{Math.round(w.board.confidence)}%</b></div>
-        <Bar v={w.board.confidence} />
-        <div className="small mt8">🎯 {w.board.objective}</div>
-        {w.board.estadual?.season === w.season && <div className="small mt8">🏅 {w.board.estadual.text}</div>}
-        <div className="tiny muted mt8">Vencer aumenta a confiança. Com mais confiança, a diretoria libera mais verba.</div>
-      </div>
-
-      <div className="card tap small" onClick={() => push({ name: "facilities" })}>
-        🏗️ Obras de estádio, CT e base ficam em <b>Estrutura</b> ›
-      </div>
-
-      <div className="card">
-        <h3>📋 Fazer um pedido</h3>
-        {REQUESTS.map((r) => {
-          const can = canRequest(w, r.kind);
-          const cost = requestCost(w, r.kind);
-          return (
-            <div key={r.kind} className="req-row">
-              <div className="grow">
-                <b className="small" style={{ display: "block" }}>{requestTitle(w, r.kind)}</b>
-                <div className="tiny muted">Recebe {formatMoney(cost)} · 1 vez por temporada · confiança ≥ {r.conf}%</div>
-                {!can.ok && <div className="tiny" style={{ color: "var(--warn)" }}>{can.reason}</div>}
-              </div>
-              <button className="btn sm primary" disabled={!can.ok} onClick={() => { setAnswer(null); setAsk(r.kind); }}>Pedir</button>
+    <div className="page k-board-page">
+      <div className="k-board-grid">
+        <aside className="k-board-aside">
+          <div className="card">
+            <div className="card-title"><h3>🏛️ Diretoria</h3><b>{Math.round(w.board.confidence)}%</b></div>
+            <Bar v={w.board.confidence} />
+            <div className="mt8 col gap4">
+              <div className="small">🎯 <b>Objetivo Liga:</b> {w.board.objective}</div>
+              {w.board.estadual?.season === w.season && <div className="small">🏅 <b>Estadual:</b> {w.board.estadual.text}</div>}
             </div>
-          );
-        })}
+            <div className="tiny muted mt8" style={{ borderTop: "1px solid var(--line)", paddingTop: 6 }}>
+              Vencer partidas e cumprir metas eleva a confiança. Confiança alta destrava verbas maiores.
+            </div>
+          </div>
+
+          <div className="card tap small" onClick={() => push({ name: "facilities" })}>
+            🏗️ <b>Estrutura do Clube:</b> Obras de estádio, CT e categorias de base ›
+          </div>
+        </aside>
+
+        <main className="k-board-main">
+          <div className="card">
+            <h3>📋 Solicitações & Verbas Extras</h3>
+            <p className="tiny muted mt4">Reuniões com o presidente para liberar orçamento suplementar.</p>
+            <div className="mt8 col gap8">
+              {REQUESTS.map((r) => {
+                const can = canRequest(w, r.kind);
+                const cost = requestCost(w, r.kind);
+                return (
+                  <div key={r.kind} className="req-row">
+                    <div className="grow">
+                      <b className="small" style={{ display: "block" }}>{requestTitle(w, r.kind)}</b>
+                      <div className="tiny muted">Liberação de {formatMoney(cost)} · 1x por temporada · exige confiança ≥ {r.conf}%</div>
+                      {!can.ok && <div className="tiny" style={{ color: "var(--warn)" }}>{can.reason}</div>}
+                    </div>
+                    <button className="btn sm primary" disabled={!can.ok} onClick={() => { setAnswer(null); setAsk(r.kind); }}>Pedir</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </main>
       </div>
 
       {ask && (
