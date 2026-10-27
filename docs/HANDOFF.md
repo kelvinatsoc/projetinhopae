@@ -167,5 +167,51 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
     - `Home.tsx` (Notícias): Feed em grade 2 colunas (`.k-news-grid`).
   - **Auditoria Visual Automatizada (Playwright 800×360):** 16 telas capturadas com sucesso em `audit/` sem overflow vertical ou horizontal.
 
+## 10. Passagem de bastão para o Claude Code (Antigravity, 27/10/2026)
+
+### 📌 Resumo do Estado Atual
+- **Branch Ativa:** `claude/ecstatic-tesla-mamls5` (sincronizada com `origin/claude/ecstatic-tesla-mamls5`).
+- **Último Commit:** `02a7c16` (*feat: complete FM widescreen mobile redesign across all remaining game screens*).
+- **Orientação:** 100% horizontal / paisagem obrigatória (`sensorLandscape` no manifesto Android e `lockOrientation("landscape")` no web).
+- **Fullscreen Imersivo:** Barra de status (bateria, relógio, notificações) e barra de navegação ocultadas permanentemente via `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` em `MainActivity.java` e `styles.xml`.
+- **Layouts:** 100% das telas principais e secundárias migradas para grids multi-coluna (2 a 4 colunas) pensadas para viewports móveis de 800×360 a 915×412 px (estilo FM Mobile).
+- **Build & APK:** APK release de produção gerado com sucesso pelo Gradle (`BUILD SUCCESSFUL`), disponível na raiz como `LendasDaBase.apk` e `lendas-da-base.apk` (56,58 MB).
+
+### 🛠️ Comandos Chave (Atenção ao Windows PowerShell)
+No PowerShell do Windows, os scripts `.ps1` do npm/npx podem ser bloqueados pela política de execução. Utilize as seguintes formas seguras:
+- **Checagem de Tipos:** `cmd.exe /c "npm run typecheck"` ou `npx.cmd tsc --noEmit -p .`
+- **Testes Unitários:** `npx.cmd vitest run`
+- **Build de Produção Web:** `cmd.exe /c "npm run build"`
+- **Sincronização com Android:** `cmd.exe /c "npx cap sync android"`
+- **Compilação do APK Release:** `cmd.exe /c "cd android && gradlew.bat assembleRelease"`
+- **Servidor Local de Teste:** `npx.cmd vite --port 5199 --strictPort --host 127.0.0.1`
+
+### 📱 Estrutura das Telas Reformuladas
+- `src/ui/screens/Player.tsx`: Perfil FM em 2 colunas com card lateral compacto e abas técnicas/mentais/físicas.
+- `src/ui/screens/Club.tsx`: Finanças (4 KPIs + 3 colunas), Configurações (2 colunas), Clube Info (2 colunas) e Histórico (2 colunas).
+- `src/ui/screens/Training.tsx`: Foco da Equipe vs. Treino Individual lado a lado.
+- `src/ui/screens/Comps.tsx`: Tabela de Classificação e Rodada lado a lado.
+- `src/ui/screens/Staff.tsx`: Resumo da comissão técnica e grade 2 colunas de cargos.
+- `src/ui/screens/Board.tsx`: Confiança e objetivos da diretoria vs. solicitações de verba.
+- `src/ui/screens/Dressing.tsx`: Clima e entrosamento vs. elenco com moral e conversa rápida.
+- `src/ui/screens/Academy.tsx`: Instalações de Cotia vs. peneira em 4 colunas.
+- `src/ui/Facilities.tsx`: Grade 2×2 das instalações do clube.
+- `src/ui/Sponsors.tsx`: Grade 2 colunas com contratos Master, Mangas, Costas e Calção.
+- `src/ui/TrophyRoom.tsx`: Estante 3D à esquerda e galeria/recordes à direita.
+- `src/ui/Career.tsx`: Reputação do treinador à esquerda e histórico/ofertas à direita.
+- `src/ui/Uniforms.tsx`: Grade 3 colunas com uniformes 1, 2 e 3.
+- `src/ui/StadiumLook.tsx`: MorumBIS à esquerda e catálogo de reformas à direita.
+- `src/ui/screens/Powers.tsx`: Poderes equipados à esquerda e loja à direita.
+- `src/ui/screens/Match.tsx`: Pré-jogo em 2 colunas (hero + coletiva à esquerda, prancheta + botão jogar à direita).
+- `src/ui/screens/Home.tsx`: Feed de notícias em 2 colunas.
+- `src/ui/theme.css`: Seção 10 contém todas as classes de grid, cards e proporções widescreen.
+
+### 🧪 Como Rodar e Testar Novas Alterações
+1. Sempre manter proporções pensadas para telas horizontais (800×360 px / proporção 20:9 e 16:9).
+2. Não reintroduzir elementos com alturas fixas excessivas (`> 300px`) que causem overflow desnecessário.
+3. Não quebrar o determinismo do motor em `src/engine/` (nunca usar `Math.random` — usar sempre `this.xr` ou `rng.ts`).
+4. Ao rodar `git push`, a release `apk-latest` no GitHub Actions é disparada automaticamente.
+
+
 
 
