@@ -140,4 +140,15 @@ Este documento é para quem vai continuar o desenvolvimento do jogo: uma pessoa 
     - **C.8**: Avaliação e harmonização econômica do valor de mercado das superestrelas com a liquidez orçamentária dos clubes compradores em `src/engine/worldMoney.ts` e `src/engine/player.ts`.
     - **C.9**: Confiança da diretoria livre de travamento em 100 durante sequências vitoriosas através de curva assintótica e teto dinâmico em `src/engine/season.ts`.
     - **C.10**: Otimização do pipeline de salvamento no modo leve (passagem de dados por JSON string e pack colunar pré-alocado em `src/savePack.ts`, `src/save.ts` e `src/saveWorker.ts`, com deferência de salvamento durante a partida em `src/ui/actions.ts`), eliminando travamentos de 19 FPS.
+- **27/10/2026 (Antigravity):**
+  - **Orientação 100% Horizontal & Immersive Sticky Fullscreen (`android/`, `src/native.ts`):** Ocultação completa e permanente da barra de status (bateria, relógio, notificações) e barra de navegação no Android (`WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`, `layoutInDisplayCutoutMode = SHORT_EDGES`, `android:windowFullscreen="true"` e `SystemBars.hide()`). Bloqueio da escala de fonte do sistema no WebView (`textZoom = 100`).
+  - **Ajuste Proporcional FM Widescreen (`src/ui/screens/`, `src/ui/theme.css`):**
+    - Perfil do Jogador (`Player.tsx`): Reestruturado de layout vertical de 320px para grid 2 colunas estilo FM (`.k-player-grid`), com card lateral compacto (`.k-fm-card`, foto 76px, OVR 26px, 6 atributos-chave) e coluna principal com abas de radar, atributos técnicos/físicos/mentais, funções ideais, estatísticas e carreira sem rolagem excessiva.
+    - Finanças (`Club.tsx`): Banner com 4 KPIs horizontais (`.k-fin-kpis`) e grid de 3 colunas (`Receitas`, `Despesas`, `Previsão/Ingressos`) substituindo listas verticais desproporcionais.
+    - Treinos (`Training.tsx`): Grid de 2 colunas (`Foco da Equipe` à esquerda, `Treino Individual & Destaques` à direita).
+    - Campeonatos (`Comps.tsx`): Grid de 2 colunas para Tabela de Classificação e Jogos da Rodada lado a lado.
+    - Prancheta Tática (`theme.css`): Gramado com altura flexível (`flex: 1`), eliminando os 20px de overflow vertical em telas 800x360.
+    - Tela Inicial (`StartScreen.tsx`): Botões compactos de modo de jogo e vitrine oficial do São Paulo FC calibrada para proporções horizontais.
+  - **Build Android Release (`LendasDaBase.apk`):** Compilação bem-sucedida do APK release em Gradle 8.14 com Java/Kotlin 17 (`app-release.apk`, 56.5 MB), copiado para a raiz como `LendasDaBase.apk` e pronto para disparo automático na release `apk-latest` via GitHub Actions no push.
+
 

@@ -43,59 +43,66 @@ export function TrainingTab() {
 
   return (
     <>
-      <div className="card">
-        <h3><Ic n="dumbbell" /> Foco do treino</h3>
-        <div className="chips" style={{ flexWrap: "wrap", overflow: "visible", marginTop: 8 }}>
-          {FOCUS_ORDER.map((f) => (
-            <button key={f} className={`chip${t.focus === f ? " active" : ""}`} style={BTN40} onClick={() => setTrain({ focus: f })}>
-              <Ic n={FOCUS_ICON[f]} /> {FOCUS_INFO[f].label}
-            </button>
-          ))}
+      <div className="k-training-grid">
+      <div className="k-training-col">
+        <div className="card">
+          <h3><Ic n="dumbbell" /> Foco coletivo</h3>
+          <div className="chips" style={{ flexWrap: "wrap", overflow: "visible", marginTop: 6 }}>
+            {FOCUS_ORDER.map((f) => (
+              <button key={f} className={`chip${t.focus === f ? " active" : ""}`} onClick={() => setTrain({ focus: f })}>
+                <Ic n={FOCUS_ICON[f]} /> {FOCUS_INFO[f].label}
+              </button>
+            ))}
+          </div>
+          <div className="small mt6">{FOCUS_INFO[t.focus].effect}</div>
         </div>
-        <div className="small mt8">{FOCUS_INFO[t.focus].effect}</div>
+
+        <div className="card">
+          <h3>Intensidade da Carga</h3>
+          <div className="seg mt6">
+            {INTENSITY_LABELS.map((l, i) => (
+              <button key={l} className={t.int === i ? "active" : ""} onClick={() => setTrain({ int: i as 0 | 1 | 2 })}>{l}</button>
+            ))}
+          </div>
+          <div className="small muted mt6">
+            {t.int === 2 ? "Puxado: +12% evolução, maior desgaste e risco de lesão."
+              : t.int === 0 ? "Leve: recupera físico rápido, -10% evolução."
+              : "Normal: equilíbrio entre evolução e descanso."}
+          </div>
+          <div className="tiny muted mt4">Comissão técnica: {"★".repeat(tre)}{"☆".repeat(5 - tre)} · evolução no dia 1º de cada mês.</div>
+        </div>
       </div>
 
-      <div className="card">
-        <h3>Intensidade</h3>
-        <div className="seg mt8">
-          {INTENSITY_LABELS.map((l, i) => (
-            <button key={l} className={t.int === i ? "active" : ""} style={BTN40} onClick={() => setTrain({ int: i as 0 | 1 | 2 })}>{l}</button>
-          ))}
+      <div className="k-training-col">
+        <div className="card">
+          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <h3><Ic n="target" /> Treino individual ({withTf.length})</h3>
+            <button className="btn sm primary" onClick={() => setPicker(true)}>+ Adicionar</button>
+          </div>
+          {withTf.length === 0 && <div className="small muted mt6">Nenhum jogador em treino individual. Escolha um para treinar posição ou traço!</div>}
+          <div className="list mt6">
+            {withTf.map((p) => (
+              <TfRow key={p.id} p={p} onOpen={() => setSheetFor(p.id)} onClear={() => { update(() => { delete p.tf; }); autosave(); }} />
+            ))}
+          </div>
         </div>
-        <div className="small muted mt8">
-          {t.int === 2 ? "Puxado: evoluem 12% mais rápido, mas cansam mais e podem se machucar no treino."
-            : t.int === 0 ? "Leve: recuperam o físico mais rápido, mas evoluem 10% mais devagar."
-            : "Normal: o equilíbrio entre evolução e descanso."}
-        </div>
-        <div className="tiny muted mt8">Treinador {"★".repeat(tre)}{"☆".repeat(5 - tre)} · a evolução acontece todo dia 1º do mês.</div>
-      </div>
 
-      <div className="card">
-        <h3><Ic n="target" /> Treino individual</h3>
-        {withTf.length === 0 && <div className="small muted mt8">Ninguém com treino individual. Ensine uma posição nova ou uma jogada especial!</div>}
-        <div className="list mt8">
-          {withTf.map((p) => (
-            <TfRow key={p.id} p={p} onOpen={() => setSheetFor(p.id)} onClear={() => { update(() => { delete p.tf; }); autosave(); }} />
-          ))}
-        </div>
-        <button className="btn block mt8" style={BTN40} onClick={() => setPicker(true)}>+ Definir treino individual</button>
-      </div>
-
-      <div className="card">
-        <h3><Ic n="trend" /> Destaques do mês</h3>
-        {highlights.length === 0 && <div className="small muted mt8">As setas ▲▼ aparecem depois do próximo treino mensal (dia 1º).</div>}
-        <div className="list mt8">
-          {highlights.map((p) => (
-            <div key={p.id} className="list-item" style={{ minHeight: 44 }} onClick={() => push({ name: "player", id: p.id })}>
-              <Avatar p={p} club={club} season={w.season} size={36} />
-              <div className="grow"><b className="ellipsis">{p.name}</b><div className="tiny muted">{POS_NAME[p.pos]} · {age(p, w.season)} anos</div></div>
-              <b className="kbd" style={{ color: p.trend! > 0 ? "var(--accent)" : "var(--danger)" }}>{p.trend! > 0 ? "▲" : "▼"}{Math.abs(p.trend!)}</b>
-              <Ovr v={p.ovr} />
-            </div>
-          ))}
+        <div className="card">
+          <h3><Ic n="trend" /> Destaques do mês</h3>
+          {highlights.length === 0 && <div className="small muted mt6">As setas ▲▼ aparecem após o próximo treino mensal (dia 1º).</div>}
+          <div className="list mt6">
+            {highlights.map((p) => (
+              <div key={p.id} className="list-item" onClick={() => push({ name: "player", id: p.id })}>
+                <Avatar p={p} club={club} season={w.season} size={28} />
+                <div className="grow"><b className="ellipsis">{p.name}</b><div className="tiny muted">{POS_NAME[p.pos]} · {age(p, w.season)}a</div></div>
+                <b className="kbd" style={{ color: p.trend! > 0 ? "var(--accent)" : "var(--danger)" }}>{p.trend! > 0 ? "▲" : "▼"}{Math.abs(p.trend!)}</b>
+                <Ovr v={p.ovr} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      <div style={{ height: 30 }} />
+    </div>
 
       {picker && (
         <Sheet title="Quem vai treinar?" onClose={() => setPicker(false)}>

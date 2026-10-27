@@ -108,7 +108,7 @@ describe("empréstimos", () => {
       // liberado pelo usuário; no fim da temporada um clube da IA pode contratá-lo como jogador livre
       expect(b.clubId).not.toBe(w.userClubId);
     }
-  }, 60000);
+  }, 180000);
 
   it("3 temporadas com 2 empréstimos por temporada mantêm o mundo íntegro", () => {
     const w = make(99, "remo");

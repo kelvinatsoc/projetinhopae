@@ -4472,3 +4472,474 @@ html.lite img { content-visibility: auto; }
   color: #94a3b8;
   line-height: 1.35;
 }
+
+/* ============================================================================
+   AJUSTES GLOBAIS DE ESCALA E PROPORÇÕES PARA TELAS HORIZONTAIS (FM MOBILE)
+   Evita qualquer elemento "comendo" a tela verticalmente (800x360 / 915x412).
+   ============================================================================ */
+
+/* 1. Reset e compactação geral de elementos legados dentro do shell horizontal */
+.k-shell .page {
+  padding: 6px 10px !important;
+  gap: 6px !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.k-shell h1 { font-size: 16px !important; }
+.k-shell h2 { font-size: 14px !important; }
+.k-shell h3 { font-size: 11px !important; font-weight: 800 !important; letter-spacing: 0.05em !important; text-transform: uppercase !important; }
+
+.k-shell .card {
+  padding: 6px 9px !important;
+  border-radius: 8px !important;
+  gap: 4px !important;
+}
+.k-shell .card.flat {
+  padding: 3px 8px !important;
+}
+
+.k-shell .btn {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+.k-shell .btn.sm {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 6px !important;
+  font-size: 9.5px !important;
+  border-radius: 5px !important;
+}
+.k-shell .btn.lg {
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 11.5px !important;
+}
+
+.k-shell .chip {
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 7px !important;
+  font-size: 10px !important;
+  border-radius: 5px !important;
+}
+.k-shell .chips {
+  gap: 4px !important;
+}
+.k-shell .seg {
+  height: 25px !important;
+  min-height: 25px !important;
+  padding: 2px !important;
+  border-radius: 6px !important;
+}
+.k-shell .seg button {
+  height: 21px !important;
+  min-height: 21px !important;
+  padding: 0 7px !important;
+  font-size: 10px !important;
+}
+
+.k-shell .stat-box {
+  padding: 3px 6px !important;
+  min-height: 36px !important;
+  border-radius: 6px !important;
+}
+.k-shell .stat-box b {
+  font-size: 12px !important;
+}
+.k-shell .stat-box span {
+  font-size: 8px !important;
+}
+
+.k-shell table.tbl th {
+  padding: 2px 5px !important;
+  font-size: 8px !important;
+}
+.k-shell table.tbl td {
+  padding: 2px 5px !important;
+  font-size: 9.5px !important;
+  height: 23px !important;
+}
+
+.k-shell .list-item {
+  min-height: 26px !important;
+  padding: 2px 6px !important;
+  gap: 6px !important;
+}
+.k-shell .banner {
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  border-radius: 6px !important;
+  margin: 2px 0 !important;
+}
+
+/* 2. Campo tático flexível sem corte vertical */
+.pitch.tac-pitch.k-dark-pitch {
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+}
+.k-pitch-col {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* 3. Tela de Jogador Widescreen (PlayerScreen) */
+.k-player-page {
+  padding: 6px 10px !important;
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.k-player-grid {
+  display: grid;
+  grid-template-columns: 242px minmax(0, 1fr);
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.k-player-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.k-player-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  min-height: 0;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+.pcard.fut.k-fm-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 6px 8px 5px !important;
+  border-radius: 10px !important;
+  border-width: 1.5px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+}
+.pcard.fut.k-fm-card .fut-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 2px;
+}
+.pcard.fut.k-fm-card .fut-ovr {
+  position: static !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.pcard.fut.k-fm-card .fut-ovr .pc-ovr {
+  font-size: 26px !important;
+  line-height: 0.9;
+  font-weight: 900;
+}
+.pcard.fut.k-fm-card .fut-ovr .pc-pos {
+  font-size: 12px !important;
+  font-weight: 800;
+}
+.pcard.fut.k-fm-card .avatar {
+  margin: 0 !important;
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 50%;
+}
+.pcard.fut.k-fm-card .fut-name {
+  font-size: 13.5px !important;
+  margin: 2px 0 3px !important;
+  padding-bottom: 2px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  text-align: center;
+}
+.pcard.fut.k-fm-card .fut-attrs {
+  font-size: 10.5px !important;
+  gap: 1px 8px !important;
+  padding: 0 2px !important;
+}
+.pcard.fut.k-fm-card .fut-attrs b {
+  font-size: 11px !important;
+  min-width: 16px !important;
+}
+.pcard.fut.k-fm-card .fut-foot {
+  font-size: 9px !important;
+  margin: 3px 0 0 !important;
+  opacity: 0.88;
+  text-align: center;
+}
+.k-player-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 2px 6px;
+  background: #141720;
+  border: 1px solid var(--k-border);
+  border-radius: 6px;
+}
+.k-player-club-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  text-align: center;
+}
+.k-player-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.k-player-actions-grid .btn {
+  height: 24px !important;
+  min-height: 24px !important;
+  font-size: 9.5px !important;
+  padding: 0 4px !important;
+}
+.k-player-actions-grid .btn.block {
+  grid-column: span 2;
+}
+
+/* 4. Tela de Finanças Widescreen (FinancesScreen) */
+.k-fin-page {
+  padding: 6px 10px !important;
+  gap: 6px !important;
+}
+.fin-hero.k-fin-banner {
+  min-height: 48px !important;
+  padding: 5px 12px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.k-fin-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.k-fin-kpi {
+  display: flex;
+  flex-direction: column;
+}
+.k-fin-kpi small {
+  font-size: 9px;
+  color: #94a3b8;
+}
+.k-fin-kpi b {
+  font-size: 14px;
+  font-family: var(--num);
+}
+.k-fin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-fin-col {
+  padding: 6px 9px !important;
+  gap: 3px !important;
+}
+
+/* 5. Tela do Clube (ClubScreen) */
+.k-shell .club-hero {
+  min-height: 60px !important;
+  height: 60px !important;
+  padding: 5px 10px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+.k-shell .club-hero > .row {
+  flex: 1 !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+.k-shell .club-hero .crest {
+  width: 36px !important;
+  height: 36px !important;
+}
+.k-shell .club-hero h2 {
+  font-size: 14.5px !important;
+  margin: 0 !important;
+}
+.k-shell .club-hero .small {
+  font-size: 9.5px !important;
+}
+.k-shell .club-hero .tiny {
+  font-size: 8.5px !important;
+}
+.k-shell .club-hero-kpis {
+  display: flex !important;
+  gap: 5px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+.k-shell .club-hero-kpis .chk-item {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+}
+.k-shell .club-hero-kpis .chk-item b {
+  font-size: 10.5px !important;
+}
+.k-shell .club-hero-kpis .chk-item span {
+  font-size: 7.5px !important;
+}
+
+.k-shell .tiles {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 5px !important;
+}
+.k-shell .tile {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+.k-shell .tile .ti {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 12px !important;
+  border-radius: 5px !important;
+}
+.k-shell .tile b {
+  font-size: 10px !important;
+}
+.k-shell .tile small {
+  font-size: 8px !important;
+}
+
+.k-shell .club-grid3 {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 5px !important;
+}
+.k-shell .cg-tile {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  gap: 5px !important;
+}
+.k-shell .cg-tile .cg-ic {
+  width: 22px !important;
+  height: 22px !important;
+}
+.k-shell .cg-tile b {
+  font-size: 10px !important;
+}
+.k-shell .cg-tile small {
+  font-size: 8px !important;
+}
+
+/* 6. Tela de Treinos Widescreen (TrainingScreen) */
+.k-training-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.k-training-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 7. Tela de Competições Widescreen (CompsScreen) */
+.k-comps-league-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+/* 8. Mercado Widescreen (MarketScreen) */
+.window-banner {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 10px !important;
+  font-size: 10px !important;
+  border-radius: 6px !important;
+}
+.search-bar {
+  gap: 6px !important;
+}
+.search-input-wrap {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+}
+.filter-drawer-btn {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+}
+
+/* 9. Tela Inicial em 800x360 Compacta */
+.k-start-mode-btn {
+  padding: 5px 9px !important;
+  gap: 8px !important;
+  border-radius: 8px !important;
+}
+.k-start-mode-ico {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 7px !important;
+}
+.k-start-mode-title {
+  font-size: 12px !important;
+}
+.k-start-mode-desc {
+  font-size: 9.5px !important;
+}
+.k-start-spfc-banner {
+  min-height: 90px !important;
+  padding: 8px 10px !important;
+}
+.k-start-spfc-title {
+  font-size: 17px !important;
+}
+.k-start-spfc-body {
+  padding: 6px 10px !important;
+  gap: 4px !important;
+}
+.k-start-foot-note {
+  padding: 4px 8px !important;
+  font-size: 9px !important;
+}

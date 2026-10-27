@@ -146,25 +146,27 @@ function LeagueView({ w, comp }: { w: World; comp: Competition }) {
   if (w.wl?.leagues[comp.id]) legend[comp.id] = [["lib", "Zona de Champions"], ["sula", "Zona de Europa League"]];
   if (comp.id.startsWith("est-")) legend[comp.id] = [["up", "Semifinal (jogo único) e final em ida e volta"]];
   return (
-    <>
+    <div className="k-comps-league-grid">
       <div className="card" style={{ padding: 6 }}>
         <Table w={w} rows={comp.table} compId={comp.id} qualify={comp.id.startsWith("est-") ? 4 : undefined} />
         <div className="row wrap gap8 tiny muted" style={{ padding: 6 }}>
           {legend[comp.id]?.map(([z, l]) => <span key={z} className="row gap4"><i className={`zone ${z}`} style={{ width: 10, height: 10, display: "inline-block", borderRadius: 2 }} />{l}</span>)}
         </div>
       </div>
-      {comp.ties.length > 0 && <TieList w={w} comp={comp} />}
-      <div className="card flat">
-        <div className="row">
-          <button className="btn sm" disabled={round <= 1} onClick={() => setRound(round - 1)}>‹</button>
-          <b className="grow center">Rodada {round}</b>
-          <button className="btn sm" disabled={round >= maxRound} onClick={() => setRound(round + 1)}>›</button>
-        </div>
-        <div className="list mt8">
-          {fx.map((f) => <FixtureLine key={f.id} w={w} f={f} />)}
+      <div className="col gap8">
+        {comp.ties.length > 0 && <TieList w={w} comp={comp} />}
+        <div className="card flat">
+          <div className="row">
+            <button className="btn sm" disabled={round <= 1} onClick={() => setRound(round - 1)}>‹</button>
+            <b className="grow center">Rodada {round}</b>
+            <button className="btn sm" disabled={round >= maxRound} onClick={() => setRound(round + 1)}>›</button>
+          </div>
+          <div className="list mt8">
+            {fx.map((f) => <FixtureLine key={f.id} w={w} f={f} />)}
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

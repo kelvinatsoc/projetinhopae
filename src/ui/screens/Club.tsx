@@ -246,38 +246,52 @@ export function FinancesScreen() {
   const totalIn = Object.values(inc).reduce((s, v) => s + v, 0);
   const totalOut = Object.values(exp).reduce((s, v) => s + v, 0);
   return (
-    <div className="page">
-      <div className="fin-hero">
-        <span className="fin-ic"><Icon name="coins" size={22} /></span>
-        <small>Saldo atual</small>
-        <b className="big-num">{formatMoney(c.balance)}</b>
-        <div className="fin-split">
-          <span>Receitas <b className="big-num">{formatMoney(totalIn)}</b></span>
-          <span>Despesas <b className="big-num">{formatMoney(totalOut)}</b></span>
-          <span className={totalIn - totalOut >= 0 ? "pos" : "neg"}>Resultado <b className="big-num">{formatMoney(totalIn - totalOut)}</b></span>
+    <div className="page k-fin-page">
+      <div className="fin-hero k-fin-banner">
+        <div className="k-fin-kpis">
+          <div className="k-fin-kpi">
+            <small>Saldo em Caixa</small>
+            <b className="big-num" style={{ color: "#34d27b" }}>{formatMoney(c.balance)}</b>
+          </div>
+          <div className="k-fin-kpi">
+            <small>Receitas ({w.season})</small>
+            <b style={{ color: "var(--accent)" }}>{formatMoney(totalIn)}</b>
+          </div>
+          <div className="k-fin-kpi">
+            <small>Despesas ({w.season})</small>
+            <b style={{ color: "var(--danger)" }}>{formatMoney(totalOut)}</b>
+          </div>
+          <div className="k-fin-kpi">
+            <small>Balanço Anual</small>
+            <b style={{ color: totalIn - totalOut >= 0 ? "var(--accent)" : "var(--danger)" }}>
+              {formatMoney(totalIn - totalOut)}
+            </b>
+          </div>
         </div>
       </div>
-      <div className="card">
-        <h3>Receitas {w.season}</h3>
-        {Object.entries(INCOME_LABELS).map(([k, l]) => <Line key={k} l={l} v={inc[k] ?? 0} />)}
-        <Line l="Total" v={totalIn} bold />
-      </div>
-      <div className="card">
-        <h3>Despesas {w.season}</h3>
-        {Object.entries(EXPENSE_LABELS).map(([k, l]) => <Line key={k} l={l} v={-(exp[k] ?? 0)} />)}
-        <Line l="Total" v={-totalOut} bold />
-      </div>
-      <div className="card small">
-        <h3>Previsão anual</h3>
-        <Line l="TV" v={annualTV(c)} />
-        <Line l="Patrocínios" v={annualSponsor(c)} />
-        <Line l="Salários (12 meses)" v={-wageBill(w, c) * 12} />
-        <div className="muted tiny mt8">Bilheteria depende do público: preço médio do ingresso R$ {c.ticket}. Premiações são pagas no fim da temporada.</div>
-        <div className="row gap8 mt8">
-          <span>Ingresso:</span>
-          <button className="btn sm" onClick={() => { update(() => { c.ticket = Math.max(10, c.ticket - 10); }); autosave(); }}>−</button>
-          <b>R$ {c.ticket}</b>
-          <button className="btn sm" onClick={() => { update(() => { c.ticket = Math.min(300, c.ticket + 10); }); autosave(); }}>+</button>
+      <div className="k-fin-grid">
+        <div className="card k-fin-col">
+          <h3>Receitas {w.season}</h3>
+          {Object.entries(INCOME_LABELS).map(([k, l]) => <Line key={k} l={l} v={inc[k] ?? 0} />)}
+          <Line l="Total" v={totalIn} bold />
+        </div>
+        <div className="card k-fin-col">
+          <h3>Despesas {w.season}</h3>
+          {Object.entries(EXPENSE_LABELS).map(([k, l]) => <Line key={k} l={l} v={-(exp[k] ?? 0)} />)}
+          <Line l="Total" v={-totalOut} bold />
+        </div>
+        <div className="card small k-fin-col">
+          <h3>Previsão anual & Ingressos</h3>
+          <Line l="TV (Anual)" v={annualTV(c)} />
+          <Line l="Patrocínios" v={annualSponsor(c)} />
+          <Line l="Salários (12m)" v={-wageBill(w, c) * 12} />
+          <div className="muted tiny mt4">Bilheteria: preço médio R$ {c.ticket}. Premiações no fim da temporada.</div>
+          <div className="row gap8 mt6" style={{ alignItems: "center" }}>
+            <span>Ingresso:</span>
+            <button className="btn sm" onClick={() => { update(() => { c.ticket = Math.max(10, c.ticket - 10); }); autosave(); }}>−</button>
+            <b>R$ {c.ticket}</b>
+            <button className="btn sm" onClick={() => { update(() => { c.ticket = Math.min(300, c.ticket + 10); }); autosave(); }}>+</button>
+          </div>
         </div>
       </div>
     </div>
