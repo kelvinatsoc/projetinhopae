@@ -1,4 +1,4 @@
-/* Estilo visual da tela de pré-carregamento (GamePreloader) */
+/* Estilo visual da tela de pré-carregamento (GamePreloader — Widescreen Horizontal) */
 .g-preloader {
   position: fixed;
   inset: 0;
@@ -9,7 +9,7 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 20px;
+  padding: 16px 28px;
   overflow: hidden;
   font-family: "Barlow", system-ui, -apple-system, sans-serif;
   user-select: none;
@@ -27,50 +27,53 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(14px) brightness(0.24) saturate(1.2);
-  transform: scale(1.08);
+  filter: blur(8px) brightness(0.28) saturate(1.25);
+  transform: scale(1.05);
 }
 
 .gp-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(16, 24, 40, 0.6) 0%, rgba(4, 7, 13, 0.94) 85%);
+  background:
+    radial-gradient(circle at 25% 50%, rgba(220, 38, 38, 0.16) 0%, transparent 55%),
+    radial-gradient(circle at 75% 50%, rgba(16, 24, 40, 0.65) 0%, rgba(4, 7, 13, 0.94) 85%);
 }
 
 .gp-center {
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 440px;
+  max-width: 820px;
   margin: auto 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 0.95fr 1.25fr;
   align-items: center;
-  gap: 22px;
+  gap: 28px;
 }
 
 .gp-logo-wrapper {
-  text-align: center;
+  text-align: left;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .gp-ball-glow {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(250, 204, 21, 0.22) 0%, rgba(250, 204, 21, 0) 70%);
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.25), rgba(250, 204, 21, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
-  box-shadow: 0 0 35px rgba(250, 204, 21, 0.15);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 
 .gp-ball-spin {
-  color: #ffd83a;
-  animation: gpSpin 6s linear infinite;
+  color: #facc15;
+  animation: gpSpin 7s linear infinite;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -83,9 +86,9 @@
 
 .gp-title {
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 38px;
+  font-size: 36px;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #ffffff;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
@@ -98,9 +101,9 @@
 
 .gp-subtitle {
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 1.8px;
+  letter-spacing: 1.6px;
   color: #94a3b8;
   margin-top: 6px;
   text-transform: uppercase;
@@ -108,23 +111,23 @@
 
 .gp-card {
   width: 100%;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 21, 32, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 18px 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .gp-progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 600;
 }
 
@@ -137,7 +140,7 @@
 }
 
 .gp-percent-text {
-  color: #facc15;
+  color: #10b981;
   font-family: "Barlow Condensed", sans-serif;
   font-size: 17px;
   font-weight: 800;
@@ -146,7 +149,7 @@
 
 .gp-bar-container {
   width: 100%;
-  height: 9px;
+  height: 8px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   overflow: hidden;
@@ -156,20 +159,17 @@
 
 .gp-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%);
+  background: linear-gradient(90deg, #dc2626 0%, #f59e0b 45%, #10b981 100%);
   border-radius: 999px;
   transition: width 0.35s ease-out;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
 }
 
 .gp-bar-shimmer {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
   animation: gpShimmer 1.4s infinite;
 }
@@ -180,19 +180,19 @@
 }
 
 .gp-tip-box {
-  margin-top: 4px;
-  padding-top: 10px;
+  margin-top: 2px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .gp-tip-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.8px;
   color: #facc15;
@@ -201,44 +201,37 @@
 
 .gp-tip-text {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
   color: #94a3b8;
-  min-height: 36px;
-  transition: opacity 0.25s ease;
+  min-height: 32px;
 }
 
 .gp-ready-btn {
-  background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
-  color: #0b0f1a;
+  grid-column: 1 / -1;
+  justify-self: end;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
   border: none;
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
-  padding: 12px 32px;
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(250, 204, 21, 0.35);
+  padding: 9px 24px;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
   cursor: pointer;
-  animation: gpPulse 1.6s infinite;
-  transition: transform 0.15s ease;
-}
-
-.gp-ready-btn:active {
-  transform: scale(0.96);
-}
-
-@keyframes gpPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 6px 20px rgba(250, 204, 21, 0.35); }
-  50% { transform: scale(1.03); box-shadow: 0 8px 26px rgba(250, 204, 21, 0.55); }
 }
 
 .gp-footer {
   position: relative;
   z-index: 2;
-  font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.4);
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
   letter-spacing: 0.5px;
-  text-align: center;
 }

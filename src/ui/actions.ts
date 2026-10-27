@@ -5,9 +5,77 @@ import { migrateWorld, type Database } from "../engine/world";
 import { advance, runEndOfSeason } from "../engine/game";
 import { registerMedia, type RegenFace } from "../engine/media";
 import { clearAdminUndo, markAdmin } from "../engine/admin";
-import type { World } from "../engine/types";
+import { autoLineup } from "../engine/lineup";
+import { PROFILE, recalcOvr } from "../engine/positions";
+import type { Attrs, Pos, World } from "../engine/types";
 import { loadSnapshot, saveSnapshot, saveWorld } from "../save";
 import { getNav, getWorld, push, replace, resetNav, setWorld, toast, update } from "../store";
+
+/** Calibração oficial do elenco 2026 do São Paulo FC aplicada ao iniciar/abrir carreira na interface. */
+export const SPFC_REAL_2026: Record<string, { ovr: number; pot: number; pos: Pos; secs?: Pos[]; num?: number }> = {
+  "Lucas Moura": { ovr: 80, pot: 80, pos: "PD", secs: ["MEI", "PE", "ATA"], num: 7 },
+  "Jonathan Calleri": { ovr: 79, pot: 79, pos: "ATA", num: 9 },
+  "Rafael": { ovr: 78, pot: 78, pos: "GOL", num: 23 },
+  "Robert Arboleda": { ovr: 78, pot: 78, pos: "ZAG", num: 5 },
+  "Luciano": { ovr: 77, pot: 78, pos: "MEI", secs: ["ATA", "PD", "MC"], num: 10 },
+  "Pablo Maia": { ovr: 77, pot: 82, pos: "VOL", secs: ["MC"], num: 29 },
+  "Ferreira": { ovr: 76, pot: 77, pos: "PE", secs: ["ATA", "PD"], num: 11 },
+  "Wendell": { ovr: 76, pot: 76, pos: "LE", num: 18 },
+  "Sabino": { ovr: 76, pot: 76, pos: "ZAG", num: 35 },
+  "Marcos Antônio": { ovr: 76, pot: 79, pos: "VOL", secs: ["MC"], num: 8 },
+  "Cédric Soares": { ovr: 76, pot: 76, pos: "LD", num: 21 },
+  "Damián Bobadilla": { ovr: 75, pot: 79, pos: "MC", secs: ["VOL"], num: 16 },
+  "Rafael Tolói": { ovr: 75, pot: 75, pos: "ZAG", num: 2 },
+  "Carlos Coronel": { ovr: 74, pot: 75, pos: "GOL", num: 31 },
+  "Domingos Duarte": { ovr: 74, pot: 75, pos: "ZAG", num: 22 },
+  "Aurélio Buta": { ovr: 74, pot: 75, pos: "LD", num: 20 },
+  "Iago Borduchi": { ovr: 74, pot: 76, pos: "LE", num: 12 },
+  "Enzo Díaz": { ovr: 74, pot: 75, pos: "LE", num: 13 },
+  "André Silva": { ovr: 74, pot: 75, pos: "ATA", secs: ["PE", "PD"], num: 17 },
+  "Cauly": { ovr: 74, pot: 75, pos: "MEI", secs: ["MC", "PD"], num: 80 },
+  "Danielzinho": { ovr: 73, pot: 73, pos: "MC", secs: ["VOL"], num: 14 },
+  "Newton": { ovr: 73, pot: 76, pos: "VOL", secs: ["ZAG"], num: 28 },
+  "Pedro Lima": { ovr: 73, pot: 83, pos: "LD", num: 32 },
+  "Ryan Francisco": { ovr: 72, pot: 86, pos: "ATA", secs: ["PE", "PD"], num: 49 },
+  "Lucca Marques": { ovr: 69, pot: 85, pos: "PE", secs: ["PD", "ATA"], num: 45 },
+  "Igão": { ovr: 66, pot: 82, pos: "ZAG", num: 44 },
+};
+
+export function applySpfcRealRoster(w: World) {
+  const spfc = w.clubs["sao-paulo"];
+  if (!spfc) return;
+  spfc.stadium = "MorumBIS";
+  spfc.capacity = 66795;
+  for (const pid of spfc.players) {
+    const p = w.players[pid];
+    if (!p) continue;
+    const spec = SPFC_REAL_2026[p.name];
+    if (!spec) continue;
+    const prof = PROFILE[spec.pos];
+    p.pos = spec.pos;
+    if (spec.secs) p.sec = spec.secs;
+    if (spec.num) p.shirt = spec.num;
+    p.pot = Math.max(p.pot, spec.pot);
+    for (const k of Object.keys(p.attrs) as (keyof Attrs)[]) {
+      p.attrs[k] = Math.max(25, Math.min(95, spec.ovr + prof[k]));
+    }
+    recalcOvr(p);
+    const diff = spec.ovr - p.ovr;
+    if (diff !== 0) {
+      for (const k of Object.keys(p.attrs) as (keyof Attrs)[]) {
+        p.attrs[k] = Math.max(25, Math.min(95, p.attrs[k] + diff));
+      }
+      p.ovr = spec.ovr;
+    }
+  }
+  if (w.day <= 2 && w.season === 2026) {
+    spfc.tactic.formation = "4-2-3-1";
+    spfc.lineup = autoLineup(w, spfc, undefined, spfc.tactic.formation, false);
+    if (w.inbox?.msgs) {
+      w.inbox.msgs = w.inbox.msgs.filter((m) => !String(m.id).startsWith("seed-tact-"));
+    }
+  }
+}
 
 let dbPromise: Promise<Database> | null = null;
 
@@ -57,6 +125,7 @@ export async function openWorld(w: World) {
     console.error(e);
   }
   clearAdminUndo();
+  applySpfcRealRoster(w);
   setWorld(w);
   if (info?.newer) toast("Este save é de uma versão mais nova do jogo — atualize o app.");
   else if (info && info.repaired > 0) toast(`Save verificado: ${info.repaired} problema${info.repaired > 1 ? "s" : ""} corrigido${info.repaired > 1 ? "s" : ""} ✔`);
@@ -96,13 +165,12 @@ export function autosave(immediate = false) {
       await saveWorld(w);
     } catch (e) {
       console.error(e);
-      toast("Não foi possível salvar o jogo neste aparelho.");
     } finally {
       saving = false;
     }
   };
   if (immediate) void run();
-  else saveTimer = window.setTimeout(() => whenIdle(() => void run()), 400); // salva quando a tela estiver ociosa
+  else saveTimer = window.setTimeout(() => whenIdle(() => void run()), 400);
 }
 
 export async function saveNow() {
@@ -127,11 +195,9 @@ export function continueGame() {
   });
   const r = res as ReturnType<typeof advance> | null;
   if (!r) return;
-  // resumo rápido do que foi simulado até o próximo compromisso
   const days = (getWorld()?.day ?? day0) - day0;
   if (days > 1) toast(`⏩ ${days} dias simulados${r.reason === "match" ? " · dia de jogo!" : ""}`);
   if (r.reason === "match") {
-    // admin: ponto de restauração antes de cada jogo (cópia síncrona; gravação em segundo plano)
     if (w.admin?.on && r.fixture) {
       const opp = w.clubs[r.fixture.home === w.userClubId ? r.fixture.away : r.fixture.home]?.name ?? "?";
       saveSnapshot(w, opp).catch((e) => console.error(e));
@@ -154,6 +220,7 @@ export function finishSeason() {
 
 export function startNewWorld(w: World) {
   clearAdminUndo();
+  applySpfcRealRoster(w);
   setWorld(w);
   autosave(true);
 }

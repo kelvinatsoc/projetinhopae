@@ -204,9 +204,19 @@ export function Crest({ club, size = 32 }: { club: Club; size?: number }) {
  * de regen. Se uma imagem falhar (ex.: sem internet), passa para a próxima. Jogador real sem foto livre aparece como silhueta com a camisa do clube (como nos apps
  * oficiais), a não ser que o usuário prefira rostos ilustrados.
  */
+const EXTRA_SPFC_PORTRAITS: Record<string, string> = {
+  "Brenno|2008": "players/spfc_brenno.webp",
+  "Matheus Ferreira|2006": "players/spfc_matheus_ferreira.webp",
+  "Pedro Oliveira|2008": "players/spfc_pedro_oliveira.webp",
+  "Marques Rickelme|2009": "players/spfc_marques_rickelme.webp",
+  "Mateus Manso|2007": "players/spfc_mateus_manso.webp",
+  "Robert William|2008": "players/spfc_robert_william.webp",
+};
+
 export function Avatar({ p, club, season, size = 40 }: { p: Player; club?: Club | null; season: number; size?: number }) {
   const [broken, setBroken] = useState<string[]>([]);
-  const cands = p.photo ? [p.photo] : [mediaUrlOrNull(playerImagePath(p)), sportsdbUrl(p)];
+  const extraPortrait = mediaUrlOrNull(EXTRA_SPFC_PORTRAITS[`${p.name}|${p.born}`] ?? null);
+  const cands = p.photo ? [p.photo] : [mediaUrlOrNull(playerImagePath(p)), extraPortrait, sportsdbUrl(p)];
   const src = cands.find((u): u is string => !!u && !broken.includes(u));
   const star = p.ovr >= 80;
   const cls = `avatar${p.legend ? " legend" : star ? " star" : ""}${src && src === sportsdbUrl(p) ? " ext" : ""}`;
@@ -630,9 +640,9 @@ export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PAT
   if (LucideComp) {
     return (
       <LucideComp
-        className="ico"
+        className={`ico${fill ? " ico-solid" : " ico-duo"}`}
         size={size}
-        strokeWidth={2}
+        strokeWidth={1.9}
         fill={fill ? "currentColor" : "none"}
       />
     );
@@ -640,13 +650,13 @@ export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PAT
   const duo = DUO[name];
   if (fill) {
     return (
-      <svg className="ico" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <svg className="ico ico-solid" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path d={duo?.f ?? PATHS[name] ?? ""} />
       </svg>
     );
   }
   return (
-    <svg className={`ico${duo?.f ? " duo" : ""}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg className={`ico${duo?.f ? " duo" : ""}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
       {duo?.f && <path className="ico-f" d={duo.f} stroke="none" />}
       <path d={duo?.d ?? PATHS[name] ?? ""} />
     </svg>

@@ -1,34 +1,32 @@
-// Conjunto de ícones do jogo: duotom (traço 2 px + preenchimento suave na cor de destaque),
-// com detalhes de futebol. Cada ícone pode ser trocado por uma imagem própria:
-// coloque public/media/icons/<nome>.png (512 px, fundo transparente) e o jogo usa a imagem,
-// caindo de volta para o SVG quando o arquivo não existe.
-import { useState, type ReactElement } from "react";
-import { mediaUrl } from "./mediaUrl";
+// Conjunto de ícones do jogo (Estilo FM24/FM26 Modern Dark — Opção 1):
+// Renderiza 100% ícones vetoriais SVG/Lucide de alta precisão com camada duotone sutil,
+// sem usar bitmaps antigos, garantindo nitidez máxima em qualquer tela horizontal.
+import type { ReactElement } from "react";
 
 /** d = traço; f = camada de preenchimento (duotom). */
 export const DUO: Record<string, { d: string; f?: string }> = {
   home: { d: "M3 11 12 3.5 21 11M5 9.5V20h5v-5.5h4V20h5V9.5", f: "M5 10 12 4.5 19 10v10h-5v-5.5h-4V20H5z" },
-  squad: { // duas camisas
+  squad: {
     d: "M5 6.5 8 5a2 2 0 0 0 4 0l3 1.5 1.5 3.5-2 1V19H5.5v-8l-2-1zM16 5.2 17.5 5a2 2 0 0 0 2.5-.3l1 1.3-1 3.2-1.5.6V16",
     f: "M5 6.5 8 5a2 2 0 0 0 4 0l3 1.5 1.5 3.5-2 1V19H5.5v-8l-2-1z",
   },
-  trophy: { // taça com alças e base
+  trophy: {
     d: "M7 3.5h10v5a5 5 0 0 1-10 0zM7 5.5H4.5a3 3 0 0 0 3 4.3M17 5.5h2.5a3 3 0 0 1-3 4.3M12 13.5V17M8.5 20.5h7M9.5 17h5l1 3.5h-7z",
     f: "M7 3.5h10v5a5 5 0 0 1-10 0zM9.5 17h5l1 3.5h-7z",
   },
-  market: { // etiqueta de preço com bola
+  market: {
     d: "M3.5 12.5 11 5h8.5v8.5L12 21zM16 8.5h.01",
     f: "M3.5 12.5 11 5h8.5v8.5L12 21z",
   },
-  club: { // escudo com faixa
+  club: {
     d: "M12 3 4.5 5.5V11c0 5 3.3 8.5 7.5 10 4.2-1.5 7.5-5 7.5-10V5.5zM4.8 11h14.4M12 3v18",
     f: "M12 3 4.5 5.5V11h7.5zM12 11h7.5c0 5-3.3 8.5-7.5 10z",
   },
-  board: { // prancheta tática
+  board: {
     d: "M6 4.5h12a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1zM9 3h6v3H9zM8.5 10.5l2 2m0-2-2 2M15.5 16a1.5 1.5 0 1 0 0-.01M10 16c2-2 3.5-4 5-5.5m0 0h-2.2m2.2 0v2.2",
     f: "M6 4.5h12a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z",
   },
-  boot: { // chuteira (treino)
+  boot: {
     d: "M3.5 8.5h6l1.5 3 7 1.5a3 3 0 0 1 2.5 3V17H3.5zM3.5 17v1.5M7 17v1.5M11 17v1.5M15 17v1.5M19 17v1.5M9.5 8.5 10 11M12.5 12l.5 2M15.5 12.8l.3 2",
     f: "M3.5 8.5h6l1.5 3 7 1.5a3 3 0 0 1 2.5 3V17H3.5z",
   },
@@ -36,12 +34,12 @@ export const DUO: Record<string, { d: string; f?: string }> = {
     d: "M4 13a5 5 0 1 0 10 0l7-4V6h-9.5A5 5 0 0 0 4 13zM13 6V4M9 13h.01",
     f: "M4 13a5 5 0 1 0 10 0l7-4V6h-9.5A5 5 0 0 0 4 13z",
   },
-  scarf: { // cachecol da torcida
+  scarf: {
     d: "M4 6c3 2 13 2 16 0v4c-3 2-13 2-16 0zM6 9.5v10l2-1.5 2 1.5v-9.6M15 10.4V20l2-1.5 2 1.5V9.6",
     f: "M4 6c3 2 13 2 16 0v4c-3 2-13 2-16 0z",
   },
   mail: { d: "M3.5 6h17v12h-17zM3.5 6.5l8.5 6.5 8.5-6.5", f: "M3.5 6h17v12h-17z" },
-  sprout: { // muda + bola (base)
+  sprout: {
     d: "M12 20v-8M12 12C12 8 9 5.5 4.5 5.5c0 4 3 6.5 7.5 6.5zM12 10.5c0-3 2.5-5.5 7.5-5.5 0 4-3 6-7.5 6M8 20h8",
     f: "M12 12C12 8 9 5.5 4.5 5.5c0 4 3 6.5 7.5 6.5zM12 10.5c0-3 2.5-5.5 7.5-5.5 0 4-3 6-7.5 6z",
   },
@@ -52,7 +50,7 @@ export const DUO: Record<string, { d: string; f?: string }> = {
   },
   briefcase: { d: "M3.5 8h17v11.5h-17zM9 8V5.5h6V8M3.5 13h17M11 13v2h2v-2", f: "M3.5 8h17v5h-17z" },
   calendar: { d: "M4 5.5h16v15H4zM4 10h16M8.5 3v4M15.5 3v4M8 14h2v2H8z", f: "M4 5.5h16V10H4z" },
-  stadium: { // silhueta de estádio com refletores
+  stadium: {
     d: "M2.5 17c0-3.3 4.3-5.5 9.5-5.5s9.5 2.2 9.5 5.5M2.5 17v3h19v-3M7 20v-2.5h10V20M4.5 12V5M19.5 12V5M3 5h3M18 5h3M12 11.5V8",
     f: "M2.5 17c0-3.3 4.3-5.5 9.5-5.5s9.5 2.2 9.5 5.5v3h-19z",
   },
@@ -73,7 +71,6 @@ export const DUO: Record<string, { d: string; f?: string }> = {
   scout: { d: "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm10.5 16.5-6-6M10 7v6M7 10h6", f: "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12z" },
   binoculars: { d: "M6.5 8a3.5 3.5 0 1 0 0 .01M17.5 8a3.5 3.5 0 1 0 0 .01M3 15.5a3.5 3.5 0 1 0 7 0V8M14 8v7.5a3.5 3.5 0 1 0 7 0M10 10h4", f: "M3 15.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 0 0-7 0zM14 15.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 0 0-7 0z" },
   bell: { d: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20.5a2 2 0 0 0 4 0", f: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4z" },
-  // Ícones táticos e esportivos próprios (substituindo emojis)
   flameTactical: {
     d: "M12 2c-.5 2.5-2.5 4.5-4 6.5C6.5 10.5 5 13 5 15.5a7 7 0 0 0 14 0c0-3.5-2-6-4.5-8-1 2-2 3-2.5 3.5C12 9 12 5 12 2z",
     f: "M12 2c-.5 2.5-2.5 4.5-4 6.5C6.5 10.5 5 13 5 15.5a7 7 0 0 0 14 0c0-3.5-2-6-4.5-8-1 2-2 3-2.5 3.5C12 9 12 5 12 2z",
@@ -143,7 +140,7 @@ export const DUO: Record<string, { d: string; f?: string }> = {
   },
 };
 
-/** Nome do arquivo de imagem (public/media/icons/<slug>.png) → ícone SVG de reserva. */
+/** Mapeamento de slug do jogo → chave do ícone vetorial. */
 export const ICON_SLUGS = {
   inicio: "home", elenco: "squad", tatica: "board", treino: "boot", mercado: "market", olheiros: "binoculars",
   base: "sprout", financas: "coins", estrutura: "crane", patrocinios: "handshake", noticias: "news",
@@ -154,18 +151,9 @@ export const ICON_SLUGS = {
 } as const;
 export type IconSlug = keyof typeof ICON_SLUGS;
 
-// arquivos que já falharam nesta sessão (evita pedir de novo a cada render)
-const missing = new Set<string>();
-
 /**
- * Ícone do jogo com troca opcional por imagem: tenta media/icons/<slug>.png e,
- * se não existir, mostra o SVG duotom.
+ * Renderiza sempre o ícone vetorial SVG/Lucide (padrão FM24/FM26 Modern Dark).
  */
 export function GameIcon({ slug, size = 22, svg }: { slug: IconSlug; size?: number; svg: (name: string, size: number) => ReactElement }) {
-  const [failed, setFailed] = useState(() => missing.has(slug));
-  if (failed) return svg(ICON_SLUGS[slug], size);
-  return (
-    <img className="game-icon" src={mediaUrl(`icons/${slug}.png`)} width={size} height={size} alt="" aria-hidden="true" decoding="async" draggable={false}
-      onError={() => { missing.add(slug); setFailed(true); }} />
-  );
+  return svg(ICON_SLUGS[slug], size);
 }

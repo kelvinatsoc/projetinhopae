@@ -48,19 +48,18 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "more", label: "Mais", icon: "more" },
 ];
 
-const RAIL_ITEMS: { id: string; label: string; icon: string; action: () => void; isActive: (tab: Tab, top?: Route) => boolean }[] = [
-  { id: "home", label: "Início (Portal)", icon: "home", action: () => setTab("home"), isActive: (t, top) => !top && t === "home" },
-  { id: "inbox", label: "Caixa de Entrada", icon: "mail", action: () => setTab("inbox"), isActive: (t, top) => (!top && t === "inbox") || top?.name === "inbox" },
-  { id: "tactics", label: "Tática", icon: "tactics", action: () => setTab("tactics"), isActive: (t, top) => (!top && t === "tactics") || top?.name === "tactics" || top?.name === "setpieces" },
-  { id: "squad", label: "Elenco", icon: "squad", action: () => setTab("squad"), isActive: (t, top) => !top && t === "squad" },
-  { id: "training", label: "Treinos", icon: "cone", action: () => push({ name: "training" }), isActive: (_, top) => top?.name === "training" },
-  { id: "medical", label: "Centro Médico & Vestiário", icon: "medical", action: () => push({ name: "dressing" }), isActive: (_, top) => top?.name === "dressing" },
-  { id: "comps", label: "Competições", icon: "trophy", action: () => setTab("comps"), isActive: (t, top) => !top && t === "comps" },
-  { id: "calendar", label: "Calendário", icon: "calendar", action: () => setTab("comps"), isActive: (_, top) => top?.name === "fixture" },
-  { id: "scouting", label: "Olheiros & Base", icon: "search", action: () => push({ name: "youth" }), isActive: (_, top) => top?.name === "youth" || top?.name === "peneira" },
-  { id: "market", label: "Mercado de Transferências", icon: "swap", action: () => setTab("market"), isActive: (t, top) => !top && t === "market" },
-  { id: "club", label: "Clube & Sede 3D", icon: "club", action: () => setTab("club"), isActive: (t, top) => (!top && (t === "club" || t === "more")) || top?.name === "facilities" || top?.name === "board" || top?.name === "staff" },
-  { id: "finances", label: "Finanças & Diretoria", icon: "bank", action: () => push({ name: "finances" }), isActive: (_, top) => top?.name === "finances" || top?.name === "sponsors" },
+const RAIL_ITEMS: { id: string; label: string; short: string; icon: string; primary?: boolean; action: () => void; isActive: (tab: Tab, top?: Route) => boolean }[] = [
+  { id: "home", label: "Início (Portal)", short: "Início", icon: "home", primary: true, action: () => setTab("home"), isActive: (t, top) => !top && t === "home" },
+  { id: "inbox", label: "Caixa de Entrada", short: "Caixa", icon: "mail", primary: true, action: () => setTab("inbox"), isActive: (t, top) => (!top && t === "inbox") || top?.name === "inbox" },
+  { id: "squad", label: "Elenco", short: "Elenco", icon: "squad", primary: true, action: () => setTab("squad"), isActive: (t, top) => !top && t === "squad" },
+  { id: "tactics", label: "Tática", short: "Tática", icon: "tactics", primary: true, action: () => setTab("tactics"), isActive: (t, top) => (!top && t === "tactics") || top?.name === "tactics" || top?.name === "setpieces" },
+  { id: "more", label: "Central do Manager (Mais)", short: "Mais", icon: "more", primary: true, action: () => setTab("more"), isActive: (t, top) => !top && t === "more" },
+  { id: "training", label: "Treinos", short: "Treino", icon: "cone", action: () => push({ name: "training" }), isActive: (_, top) => top?.name === "training" },
+  { id: "comps", label: "Competições & Calendário", short: "Ligas", icon: "trophy", action: () => setTab("comps"), isActive: (t, top) => (!top && t === "comps") || top?.name === "fixture" },
+  { id: "market", label: "Mercado & Olheiros", short: "Mercado", icon: "swap", action: () => setTab("market"), isActive: (t, top) => !top && t === "market" },
+  { id: "scouting", label: "Base & Peneira", short: "Base", icon: "sprout", action: () => push({ name: "youth" }), isActive: (_, top) => top?.name === "youth" || top?.name === "peneira" },
+  { id: "club", label: "Clube & Sede 3D", short: "Clube", icon: "club", action: () => setTab("club"), isActive: (t, top) => (!top && t === "club") || top?.name === "facilities" || top?.name === "board" || top?.name === "staff" },
+  { id: "finances", label: "Finanças & Patrocínios", short: "Caixa R$", icon: "bank", action: () => push({ name: "finances" }), isActive: (_, top) => top?.name === "finances" || top?.name === "sponsors" },
 ];
 
 function tabTitle(tab: Tab, clubName: string): string {
@@ -138,7 +137,15 @@ export function App() {
     document.documentElement.dataset.theme = w?.settings.theme ?? "dark";
   }, [w?.settings.theme]);
 
-  useEffect(() => installTapHaptics(), []);
+  useEffect(() => {
+    installTapHaptics();
+    try {
+      const ori = (screen as unknown as { orientation?: { lock?: (o: string) => Promise<void> } }).orientation;
+      ori?.lock?.("landscape")?.catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // festa do título: uma vez por taça conquistada pelo clube do usuário
   const [, bumpSeen] = useState(0);
@@ -264,19 +271,23 @@ export function App() {
             </button>
           </div>
           <div className="k-rail-list">
-            {RAIL_ITEMS.map((item) => {
+            {RAIL_ITEMS.map((item, idx) => {
               const active = item.isActive(nav.tab, top);
+              const showSep = idx === 5;
               return (
-                <button
-                  key={item.id}
-                  className={`k-rail-btn${active ? " active" : ""}`}
-                  onClick={item.action}
-                  title={item.label}
-                  aria-label={item.label}
-                >
-                  <Icon name={item.icon} size={17} />
-                  {item.id === "inbox" && unread > 0 && <i className="k-rail-dot" />}
-                </button>
+                <div key={item.id} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  {showSep && <div className="k-rail-sep" />}
+                  <button
+                    className={`k-rail-btn${active ? " active" : ""}${item.primary ? " primary" : ""}`}
+                    onClick={item.action}
+                    title={item.label}
+                    aria-label={item.label}
+                  >
+                    <Icon name={item.icon} size={16} />
+                    <span className="k-rail-lb">{item.short}</span>
+                    {item.id === "inbox" && unread > 0 && <i className="k-rail-badge">{Math.min(unread, 99)}</i>}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -315,7 +326,7 @@ export function App() {
         )}
         <div className={`screen k-content${top ? "" : " from-tab"}`} key={routeKey}>{content}</div>
         {!fullScreen && !hideNav && (
-          <nav className="bottomnav k-bottomnav" aria-label="Navegação principal">
+          <nav className="bottomnav k-bottomnav k-bottomnav-sr" aria-label="Navegação principal">
             {TABS.map((t) => {
               const isAct = (!top && nav.tab === t.id) || (t.id === "inbox" && top?.name === "inbox") || (t.id === "tactics" && top?.name === "tactics");
               return (
