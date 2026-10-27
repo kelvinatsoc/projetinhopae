@@ -6,7 +6,7 @@ import { bestTaker, ROUTINES, setPieceConfig, setRoutine, setTaker, TAKER_LABEL,
 import type { SetPieceRoutine } from "../engine/types";
 import { update, useWorld } from "../store";
 import { autosave } from "./actions";
-import { Avatar, PosBadge, Sheet } from "./components";
+import { Avatar, Icon, PosBadge, Sheet } from "./components";
 import "./economy.css";
 
 const ROLES: TakerRole[] = ["corner", "fk", "pen", "cap"];
@@ -23,7 +23,7 @@ export function SetPiecesScreen() {
   return (
     <div className="page">
       <div className="card">
-        <h3>🎯 Batedores</h3>
+        <h3 className="row gap8"><Icon name="target" size={18} /> Batedores</h3>
         <div className="tiny muted">Sem escolha (ou se o escolhido não estiver em campo), vale o melhor jogador em campo.</div>
         <div className="sp-roles mt8">
           {ROLES.map((r) => {
@@ -41,7 +41,7 @@ export function SetPiecesScreen() {
         </div>
       </div>
       <div className="card">
-        <h3>🚩 Jogada de escanteio</h3>
+        <h3 className="row gap8"><Icon name="compass" size={18} /> Jogada de escanteio</h3>
         <div className="eco-offers">
           {(Object.keys(ROUTINES) as SetPieceRoutine[]).map((k) => (
             <div key={k} className={`eco-offer${cfg.routine === k ? " sel" : ""}`} role="button" tabIndex={0} aria-pressed={cfg.routine === k}
@@ -56,7 +56,7 @@ export function SetPiecesScreen() {
         <Sheet title={`${TAKER_LABEL[role].emoji} ${TAKER_LABEL[role].label}`} onClose={() => setRole(null)}>
           <div className="list">
             <div className="list-item" onClick={() => { save(() => setTaker(c, role, null)); setRole(null); }}>
-              <span className="grow">✨ Automático (melhor em campo)</span>
+              <span className="grow row gap8"><Icon name="sparkle" size={16} /> Automático (melhor em campo)</span>
             </div>
             {squad.slice().sort((a, b) => takerScore(b, role) - takerScore(a, role)).map((p) => (
               <div key={p.id} className="list-item" onClick={() => {
@@ -65,7 +65,7 @@ export function SetPiecesScreen() {
               }}>
                 <Avatar p={p} club={c} season={w.season} size={30} />
                 <PosBadge pos={p.pos} />
-                <span className="grow ellipsis">{who(role) === p.id ? "✅ " : ""}{p.name}</span>
+                <span className="grow ellipsis row gap6">{who(role) === p.id && <Icon name="check" size={14} />}{p.name}</span>
                 <span className="small muted">{role === "corner" ? `PAS ${p.attrs.pas}` : role === "cap" ? `fama ${p.fame}` : `FIN ${p.attrs.fin}`}</span>
               </div>
             ))}

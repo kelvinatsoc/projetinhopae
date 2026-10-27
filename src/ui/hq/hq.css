@@ -249,3 +249,193 @@
     animation: none;
   }
 }
+
+
+/* =====================================================================
+   ESTILO HD-2D SEA OF STARS / FINAL FANTASY RPG
+   ===================================================================== */
+.hd2d-complex-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-card, rgba(17, 24, 39, 0.75));
+  border: 1px solid var(--border-card, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius, 14px);
+  padding: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.hd2d-complex-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hd2d-site-selector {
+  display: inline-flex;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hd2d-site-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted, #94a3b8);
+  font-family: var(--font-sans, "Barlow", sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hd2d-site-tab:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hd2d-site-tab.active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.hd2d-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.hd2d-site-tab.active .hd2d-badge {
+  background: #22c55e;
+  color: #022c22;
+}
+
+.hd2d-time-toggle {
+  display: inline-flex;
+  gap: 3px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hd2d-time-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hd2d-time-btn.active {
+  background: var(--gold, #f59e0b);
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.hd2d-viewport-box {
+  position: relative;
+  width: 100%;
+}
+
+.hd2d-scene-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hd2d-scene-svg-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.hd2d-scene-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.hd2d-meta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hd2d-meta-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: #f8fafc;
+}
+
+.hd2d-meta-sub {
+  font-size: 11.5px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.hd2d-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.hd2d-tag.ok {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.hd2d-tag.info {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.hd2d-meta-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hd2d-stadium-wrap.is-interactive {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hd2d-stadium-wrap.is-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}

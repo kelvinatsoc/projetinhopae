@@ -212,6 +212,48 @@ No PowerShell do Windows, os scripts `.ps1` do npm/npx podem ser bloqueados pela
 3. Não quebrar o determinismo do motor em `src/engine/` (nunca usar `Math.random` — usar sempre `this.xr` ou `rng.ts`).
 4. Ao rodar `git push`, a release `apk-latest` no GitHub Actions é disparada automaticamente.
 
+## 11. Gráficos 2D HD (Sea of Stars / Final Fantasy), Sede 3 Pilares e Menu Iniciar (Antigravity, 27/10/2026)
+
+### 📌 Resumo da Entrega
+- **Complexo do Clube em 2D HD (Sea of Stars / RPG 16-32bit):**
+  - Removido o mapa 3D procedural pesado de tráfego/cidade (`ProceduralCampus.tsx`), eliminando engasgos de GPU em dispositivos modestos (Galaxy A31/A5, Redmi).
+  - Implementado `Hd2dComplex.tsx` com foco estrito nos 3 pilares fundamentais solicitados:
+    1. **Estádio Principal** (MorumBIS / Arena do clube com arquibancadas, cobertura, refletores e telão).
+    2. **CT Profissional** (Barra Funda: campos de treino tático, academia de musculação, departamento médico e alojamento).
+    3. **Categorias de Base** (CFA Cotia: campos de base, alojamento das joias, quadra poliesportiva e refeitório).
+  - Cada pilar possui identificação de nível de instalação (`Lv X`), badge visual, ciclo atmosférico dinâmico (Dia ☀️, Tarde 🌅, Noite 🌙) e atalhos rápidos contextuais.
+- **Renderizador de Estádios 2D HD (`Hd2dStadium.tsx` & `StadiumLook.tsx`):**
+  - Novo componente leve e responsivo que desenha o estádio do clube em projeção isométrica HD-2D, reagindo a cada reforma visual em tempo real:
+    - Cores e padrões das arquibancadas (anel duplo, degradê, listras do clube).
+    - Tipos de cobertura (anel clássico, marquise moderna, camarotes suspensos, pétalas arquitetônicas).
+    - Fachada externa (pilastras romanas, pele de vidro espelhada, concreto aparente).
+    - Holofotes volumétricos com iluminação de jogo noturno, placar eletrônico com escudo e capacidade oficial.
+- **Menu Iniciar Totalmente Reformulado (`Start.tsx`):**
+  - Vitrine de gala destacando o São Paulo FC com miniatura 2D HD do MorumBIS, galeria de títulos mundiais/continentais e brasão oficial.
+  - Eliminação de caracteres e glifos legados (`▶`, `＋`).
+  - Botões de modos de jogo modernizados com ícones Lucide vetoriais: Carreira Livre (`Sparkles`), Cenários Oficiais (`Target`), Modo Treinador (`Briefcase`) e Carregar Save (`Save`).
+- **Substituição de Ícones Antigos (Adequação Visual Completa):**
+  - Substituição de emojis e ícones antigos por ícones vetoriais modernos Lucide (`Icon` / `Ic`) em todas as telas:
+    - `Club.tsx`: botões da sede, tiles de menu e cabeçalhos.
+    - `StadiumLook.tsx`: todas as opções de reforma, setores e naming rights.
+    - `Dressing.tsx`: entrosamento, lideranças, moral do vestiário e conversas rápidas.
+    - `Board.tsx`: metas da diretoria, pedidos de verba e feedbacks.
+    - `Facilities.tsx`: cards de estrutura, obras e evolução.
+    - `Sponsors.tsx`: slots master, mangas, calção e contratos.
+    - `Academy.tsx`: captação, instalações, peneira e cartas dos garotos.
+    - `TrophyRoom.tsx`: estante, galeria de troféus, recordes históricos e linha do tempo.
+    - `Staff.tsx`: comissão técnica, cargos e busca de substitutos.
+    - `SetPieces.tsx`: batedores de faltas/pênaltis e jogadas de escanteio.
+    - `Uniforms.tsx`: uniformes 1, 2 e 3º kit.
+    - `Player.tsx`: botões de ação do atleta (comprar, renovar, treinar, promover, emprestar, etc.).
+- **Builds e Verificações:**
+  - TypeScript: `tsc --noEmit -p .` aprovado com 0 erros.
+  - Vitest: 51 suites de teste e 310 testes passaram com sucesso.
+  - Vite: Build de produção concluído com sucesso.
+  - Android: `npx cap sync android` sincronizado.
+  - Gradle: `gradlew assembleRelease` gerou APK de 55,31 MB na raiz (`LendasDaBase.apk` e `lendas-da-base.apk`).
+
+
 
 
 

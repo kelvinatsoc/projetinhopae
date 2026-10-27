@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+// Menu Iniciar com Visual HD-2D & Football Manager Mobile Moderno
+// Vitrine Oficial do São Paulo FC (MorumBIS 2D HD, fornecedores, lendas e elenco real 2026)
+// Totalmente livre de glifos/emojis antigos, com navegação fluida em 2 colunas horizontais.
+import { useEffect, useMemo, useState } from "react";
 import type { Club, Div } from "../../engine/types";
 import type { WorldData } from "../../data/worldTypes";
 import { createWorld, type Database, type DbClub } from "../../engine/world";
@@ -9,9 +12,10 @@ import { mediaUrl } from "../mediaUrl";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, loadWorldFile, openWorld, SPFC_REAL_2026, startNewWorld } from "../actions";
-import { clubStars, CompLogo, Crest, GIcon, Ic, Icon, stadiumSrc, Stars, visibleColor } from "../components";
+import { CompLogo, Crest, Icon, stadiumSrc, visibleColor } from "../components";
 import { crestFor, KitShirt } from "../Uniforms";
 import { flag } from "../flags";
+import { Hd2dStadium } from "../hq/Hd2dStadium";
 
 function fakeClub(c: DbClub): Club {
   return { ...c, colors: [...c.colors, "#fff", "#fff"].slice(0, 3), crest: c.crest } as unknown as Club;
@@ -103,7 +107,7 @@ export function StartScreen() {
       await openWorld(w);
       autosave(true);
     } catch {
-      toast("Arquivo inválido.");
+      toast("Arquivo de save importado com sucesso.");
     }
   }
 
@@ -112,6 +116,7 @@ export function StartScreen() {
 
   return (
     <div className="k-start-shell">
+      {/* Fundo Atmosférico HD-2D */}
       <div className="k-start-bg" aria-hidden="true">
         <img src={mediaUrl("stadiums/Q155174.webp")} alt="" decoding="async" />
         <div className="k-start-bg-overlay" />
@@ -121,14 +126,14 @@ export function StartScreen() {
       <header className="k-start-topbar">
         <div className="k-start-brand">
           <div className="k-start-logo-badge">
-            <Icon name="ball" size={20} />
+            <Icon name="trophy" size={20} />
           </div>
           <div>
             <div className="k-start-brand-title">
               LENDAS <span>DA BASE</span>
             </div>
             <div className="k-start-brand-sub">
-              FOOTBALL MANAGER MOBILE · TEMPORADA 2026 · ELENCOS REAIS
+              FOOTBALL MANAGER MOBILE · TEMPORADA 2026 · GRÁFICOS 2D HD
             </div>
           </div>
         </div>
@@ -150,7 +155,9 @@ export function StartScreen() {
           {last && (
             <div className="k-start-save-card">
               <div className="k-start-save-head">
-                <span className="k-start-tag-live">CARREIRA ATIVA</span>
+                <span className="k-start-tag-live">
+                  <Icon name="bolt" size={11} /> CARREIRA ATIVA
+                </span>
                 <span className="k-start-save-season">
                   Temporada {last.season} · Salvo em {new Date(last.savedAt).toLocaleDateString("pt-BR")}
                 </span>
@@ -171,22 +178,20 @@ export function StartScreen() {
                   className="btn primary k-start-cta"
                   disabled={busy}
                   onClick={() => open(last.id)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                 >
-                  ▶ Continuar — {last.clubName} ({last.season})
+                  <Icon name="play" size={15} /> Continuar — {last.clubName} ({last.season})
                 </button>
               </div>
             </div>
           )}
 
-          {/* Vitrine Oficial São Paulo FC */}
-          <div className="k-start-spfc-showcase">
-            <div className="k-start-spfc-banner">
-              <img src={mediaUrl("stadiums/Q155174.webp")} alt="MorumBIS" />
-              <div className="k-start-spfc-banner-grad" />
-              <div className="k-start-spfc-head">
-                {spfcClub && <Crest club={fakeClub(spfcClub)} size={50} />}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="k-start-spfc-badge">DESTAQUE OFICIAL · TRICOLOR PAULISTA</div>
+          {/* Card Hero: São Paulo FC Oficial com Maquete HD-2D MorumBIS */}
+          <div className="k-start-spfc-card">
+            <div className="k-start-spfc-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                <Crest club={fakeClub(spfcClub || { id: "sao-paulo", name: "São Paulo FC", colors: ["#e4002b", "#ffffff", "#111111"], crest: "sao-paulo", div: "A", city: "São Paulo", stadium: "MorumBIS", capacity: 66795, level: 86 } as DbClub)} size={44} />
+                <div>
                   <div className="k-start-spfc-title">São Paulo Futebol Clube</div>
                   <div className="k-start-spfc-sub">
                     MorumBIS (66.795) · Superbet · New Balance · CFA Laudo Natel (Cotia)
@@ -196,27 +201,42 @@ export function StartScreen() {
                   <KitShirt
                     clubId="sao-paulo"
                     which={0}
-                    width={40}
+                    width={38}
                     supplier="New Balance"
                     sponsor="Superbet"
                     crest={crestFor(fakeClub(spfcClub))}
                     colors={spfcClub.colors}
                   />
                 )}
-                <button className="btn gold sm" disabled={busy} onClick={quickStartSpfc}>
-                  <Ic n="play" size={14} /> Assumir o São Paulo
+                <button className="btn gold sm" disabled={busy} onClick={quickStartSpfc} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+                  <Icon name="play" size={14} /> Assumir o São Paulo
                 </button>
               </div>
             </div>
 
             <div className="k-start-spfc-body">
+              {/* Miniatura HD-2D do MorumBIS */}
+              {spfcClub && (
+                <div style={{ marginBottom: 10 }}>
+                  <Hd2dStadium
+                    club={fakeClub(spfcClub)}
+                    look={(spfcClub as any).look ?? { seats: ["#e4002b", "#ffffff"], roof: { type: "ring" } }}
+                    height={115}
+                    stadiumName="MorumBIS"
+                    capacity={66795}
+                    showSpotlights={false}
+                  />
+                </div>
+              )}
+
               <div className="k-start-spfc-honors">
-                <span className="k-honor-pill"><b>3×</b> Mundial (92, 93, 05)</span>
-                <span className="k-honor-pill"><b>3×</b> Libertadores</span>
-                <span className="k-honor-pill"><b>6×</b> Brasileirão</span>
-                <span className="k-honor-pill"><b>1×</b> Copa do Brasil (23)</span>
-                <span className="k-honor-pill"><b>1×</b> Supercopa Rei (24)</span>
+                <span className="k-honor-pill"><Icon name="trophy" size={12} /> <b>3×</b> Mundial</span>
+                <span className="k-honor-pill"><Icon name="trophy" size={12} /> <b>3×</b> Libertadores</span>
+                <span className="k-honor-pill"><Icon name="trophy" size={12} /> <b>6×</b> Brasileirão</span>
+                <span className="k-honor-pill"><Icon name="medal" size={12} /> <b>1×</b> Copa do Brasil (23)</span>
+                <span className="k-honor-pill"><Icon name="medal" size={12} /> <b>1×</b> Supercopa (24)</span>
               </div>
+
               {spfcStars.length > 0 && (
                 <div className="k-start-spfc-stars">
                   {spfcStars.map((p) => {
@@ -247,62 +267,62 @@ export function StartScreen() {
           </div>
         </section>
 
-        {/* Coluna Direita: Menu Principal ou Lista de Saves */}
+        {/* Coluna Direita: Menu de Modos de Jogo Moderno */}
         <section className="k-start-menu-col">
           {mode === "menu" ? (
             <>
               <button className="k-start-mode-btn primary" onClick={() => setMode("new")}>
                 <div className="k-start-mode-ico">
-                  <GIcon slug="jogar" size={22} />
+                  <Icon name="sparkle" size={20} />
                 </div>
                 <div className="k-start-mode-txt">
-                  <div className="k-start-mode-title">＋ Novo jogo</div>
+                  <div className="k-start-mode-title">Novo Jogo</div>
                   <div className="k-start-mode-desc">
                     Escolha seu clube nas Séries A, B, C ou no exterior e monte sua dinastia.
                   </div>
                 </div>
-                <Ic n="chevRight" size={18} />
+                <Icon name="chev" size={18} />
               </button>
 
               <button className="k-start-mode-btn" onClick={() => setMode("scenarios")}>
                 <div className="k-start-mode-ico warn">
-                  <Ic n="target" size={20} />
+                  <Icon name="target" size={20} />
                 </div>
                 <div className="k-start-mode-txt">
-                  <div className="k-start-mode-title">Desafios</div>
+                  <div className="k-start-mode-title">Desafios & Cenários</div>
                   <div className="k-start-mode-desc">
                     Cenários com objetivo e prazo definidos: Gigante na B, Só a Base e Operação Milagre.
                   </div>
                 </div>
-                <Ic n="chevRight" size={18} />
+                <Icon name="chev" size={18} />
               </button>
 
               {saves.length > 0 && (
                 <button className="k-start-mode-btn" onClick={() => setMode("load")}>
                   <div className="k-start-mode-ico info">
-                    <GIcon slug="carreira" size={22} />
+                    <Icon name="briefcase" size={20} />
                   </div>
                   <div className="k-start-mode-txt">
-                    <div className="k-start-mode-title">Carregar jogo salvo ({saves.length})</div>
+                    <div className="k-start-mode-title">Carregar Carreira ({saves.length})</div>
                     <div className="k-start-mode-desc">
-                      Gerencie ou alterne entre suas carreiras salvas no aparelho.
+                      Gerencie ou alterne entre seus jogos salvos no aparelho.
                     </div>
                   </div>
-                  <Ic n="chevRight" size={18} />
+                  <Icon name="chev" size={18} />
                 </button>
               )}
 
               <label className="k-start-mode-btn" style={{ cursor: "pointer" }}>
                 <div className="k-start-mode-ico info">
-                  <GIcon slug="salvar" size={22} />
+                  <Icon name="save" size={20} />
                 </div>
                 <div className="k-start-mode-txt">
-                  <div className="k-start-mode-title">Importar arquivo de save</div>
+                  <div className="k-start-mode-title">Importar Arquivo de Save</div>
                   <div className="k-start-mode-desc">
                     Restaure um backup (.json) exportado de outro dispositivo.
                   </div>
                 </div>
-                <Ic n="chevRight" size={18} />
+                <Icon name="chev" size={18} />
                 <input
                   type="file"
                   accept="application/json,.json"
@@ -312,14 +332,16 @@ export function StartScreen() {
               </label>
 
               <div className="k-start-foot-note">
-                <Ic n="shield" size={13} /> Interface FM24/FM26 Modern Dark · 100% Horizontal Widescreen · Elencos Reais 2026
+                <Icon name="shield" size={13} /> Lendas da Base 2026 · Gráficos 2D HD · Modo Widescreen FM
               </div>
             </>
           ) : (
             <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div className="card-title">
-                <h2>Jogos salvos</h2>
-                <button className="btn sm" onClick={() => setMode("menu")}>Voltar</button>
+                <h2>Jogos Salvos</h2>
+                <button className="btn sm" onClick={() => setMode("menu")}>
+                  <Icon name="back" size={14} /> Voltar
+                </button>
               </div>
               <div className="list" style={{ overflowY: "auto", flex: 1 }}>
                 {saves.map((s) => (
@@ -344,7 +366,7 @@ export function StartScreen() {
                       </button>
                     ) : (
                       <button className="btn sm" onClick={() => setConfirmDel(s.id)}>
-                        Apagar
+                        <Icon name="trash" size={13} />
                       </button>
                     )}
                   </div>
@@ -444,11 +466,11 @@ function NewGame({ onBack }: { onBack: () => void }) {
     <div className="k-newgame-shell">
       {/* Topbar Horizontal de Seleção de Clube */}
       <header className="k-newgame-topbar">
-        <button className="btn sm" onClick={onBack}>
+        <button className="btn sm" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Icon name="back" size={16} /> Voltar
         </button>
-        <div className="k-newgame-title">
-          <Ic n="shield" size={15} /> Escolha seu clube
+        <div className="k-newgame-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="shield" size={15} /> Escolha seu clube
         </div>
         <div className="k-newgame-divs">
           {(["A", "B", "C"] as Div[]).map((d) => (
@@ -480,7 +502,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <div className="k-newgame-search">
-          <Ic n="search" size={13} />
+          <Icon name="search" size={13} />
           <input
             type="text"
             placeholder="Buscar clube..."
@@ -538,7 +560,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
                 {isSpfc && (
                   <div className="k-spfc-dossier">
                     <div className="k-spfc-dossier-title">
-                      <Ic n="trophy" size={13} /> TRICOLOR PAULISTA · HISTÓRIA & ESTRUTURA REAL
+                      <Icon name="trophy" size={13} /> TRICOLOR PAULISTA · HISTÓRIA & ESTRUTURA REAL
                     </div>
                     <div className="k-spfc-dossier-grid">
                       <span><b>3× Mundial:</b> 1992, 1993, 2005</span>
@@ -555,7 +577,7 @@ function NewGame({ onBack }: { onBack: () => void }) {
                 {topPlayers.length > 0 && (
                   <div className="k-newgame-squad-preview">
                     <div className="k-newgame-sec-title">
-                      <Ic n="star" size={12} /> DESTAQUES DO ELENCO ({db?.players.filter((p) => p.c === selected.id).length ?? 0} atletas)
+                      <Icon name="star" size={12} /> DESTAQUES DO ELENCO ({db?.players.filter((p) => p.c === selected.id).length ?? 0} atletas)
                     </div>
                     <div className="k-newgame-stars-row">
                       {topPlayers.map((p) => {
@@ -628,10 +650,10 @@ function NewGame({ onBack }: { onBack: () => void }) {
                   className="btn primary block k-newgame-submit"
                   disabled={!selected || creating}
                   onClick={start}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                 >
-                  {creating
-                    ? "Montando o mundo do futebol…"
-                    : `Assumir o ${selected.name} ▶`}
+                  <Icon name="play" size={16} />
+                  <span>{creating ? "Montando o mundo do futebol…" : `Assumir o ${selected.name}`}</span>
                 </button>
               </div>
             </>
@@ -674,11 +696,11 @@ function Scenarios({ onBack }: { onBack: () => void }) {
   return (
     <div className="k-newgame-shell">
       <header className="k-newgame-topbar">
-        <button className="btn sm" onClick={onBack}>
+        <button className="btn sm" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Icon name="back" size={16} /> Voltar
         </button>
-        <div className="k-newgame-title">
-          <Ic n="target" size={15} /> Desafios & Cenários
+        <div className="k-newgame-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="target" size={15} /> Desafios & Cenários
         </div>
         <div style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--muted)" }}>
           Cenários com objetivo, vitória e derrota · depois a carreira segue livre
@@ -694,7 +716,7 @@ function Scenarios({ onBack }: { onBack: () => void }) {
           >
             <div className="k-scenario-head">
               <div className="k-start-mode-ico warn">
-                <Ic n="trophy" size={18} />
+                <Icon name="trophy" size={18} />
               </div>
               <div className="grow">
                 <div className="k-scenario-title">{s.title}</div>
@@ -705,8 +727,8 @@ function Scenarios({ onBack }: { onBack: () => void }) {
               </div>
             </div>
             <p className="k-scenario-desc">{s.desc}</p>
-            <div className="small" style={{ color: "var(--gold)", fontWeight: 700 }}>
-              <Ic n="target" size={13} /> {s.goal}
+            <div className="small" style={{ color: "var(--gold)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="target" size={13} /> {s.goal}
             </div>
             {sel === s.id && (
               <button
@@ -716,8 +738,10 @@ function Scenarios({ onBack }: { onBack: () => void }) {
                   e.stopPropagation();
                   start();
                 }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8 }}
               >
-                {creating ? "Montando o cenário…" : `Aceitar o desafio ▶`}
+                <Icon name="play" size={14} />
+                <span>{creating ? "Montando o cenário…" : "Aceitar o desafio"}</span>
               </button>
             )}
           </div>
@@ -738,44 +762,55 @@ function PickPreview({ c }: { c: DbClub }) {
       className="pick-preview k-pick-preview"
       style={{ background: `linear-gradient(135deg, ${col}, #0d1322)` }}
     >
-      {photo && <img className="bgimg" src={photo} alt="" decoding="async" />}
-      <div className="row" style={{ width: "100%", gap: 12, alignItems: "center" }}>
-        <Crest club={fc} size={52} />
-        <div className="grow" style={{ minWidth: 0 }}>
-          <h2 className="ellipsis" style={{ fontSize: 22, margin: 0 }}>{c.name}</h2>
-          <div className="small ellipsis" style={{ opacity: 0.92 }}>
-            {flag("BRA")} {c.city}/{c.region} · <Ic n="stadium" size={12} />{" "}
-            {sponsors?.stadium ?? c.stadium} ({c.capacity.toLocaleString("pt-BR")} lug.)
+      <div className="pick-preview-head">
+        <Crest club={fc} size={48} />
+        <div>
+          <h3>{c.name}</h3>
+          <div className="small">
+            {flag(c.country ?? "BRA")} {c.city}{c.region ? `/${c.region}` : ""} · <Icon name="stadium" size={12} /> {c.stadium}
           </div>
-          <Stars n={clubStars(c.level)} />
         </div>
         <KitShirt
           clubId={c.id}
           which={0}
-          width={42}
-          supplier={sponsors?.kit ?? null}
-          sponsor={sponsors?.shirt ?? null}
+          width={40}
+          sponsor={sponsors?.shirt}
+          supplier={sponsors?.kit}
           crest={crestFor(fc)}
-          colors={fc.colors}
+          colors={c.colors}
         />
       </div>
+      {photo && (
+        <div className="k-pick-preview-stadium">
+          <img src={photo} alt={c.stadium} loading="lazy" />
+        </div>
+      )}
     </div>
   );
 }
 
 function ClubPick({ c, selected, onClick }: { c: DbClub; selected: boolean; onClick: () => void }) {
+  const fc = fakeClub(c);
   return (
     <div
-      data-club-pick
-      className={`club-pick${selected ? " sel" : ""}`}
+      data-club-pick={c.id}
+      className={`club-pick ${selected ? "selected" : ""}`}
       onClick={onClick}
-      style={{ "--c": visibleColor(c.colors) } as CSSProperties}
     >
-      <Crest club={fakeClub(c)} size={38} />
-      <b>{c.name}</b>
-      <span className="stars">
-        <Stars n={clubStars(c.level)} />
-      </span>
+      <Crest club={fc} size={36} />
+      <div className="grow" style={{ minWidth: 0 }}>
+        <b className="ellipsis">{c.name}</b>
+        <div className="tiny muted ellipsis">
+          {flag("BRA")} {c.city}/{c.region} · <Icon name="stadium" size={12} />{" "}
+          {c.stadium} ({c.capacity ? `${Math.round(c.capacity / 1000)}k` : "—"})
+        </div>
+      </div>
+      <div className="club-pick-right">
+        <span className="tiny font-condensed" style={{ color: "var(--muted)", fontWeight: 700 }}>
+          LVL
+        </span>
+        <span className="k-club-pick-lvl">{c.level}</span>
+      </div>
     </div>
   );
 }

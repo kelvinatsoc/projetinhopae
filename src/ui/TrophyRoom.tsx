@@ -3,7 +3,7 @@ import { useState } from "react";
 import { COMP_META } from "../engine/competitions";
 import type { ClubSeasonLog, World } from "../engine/types";
 import { push, useWorld } from "../store";
-import { CompLogo } from "./components";
+import { CompLogo, Icon } from "./components";
 import "./progression.css";
 import { TrophyImg } from "./Trophy";
 import { trophySpec } from "./trophies";
@@ -30,16 +30,16 @@ export function clubRecords(w: World, clubId: string) {
   const mvp = logs.filter((l) => l.mvp).sort((x, y) => y.mvp!.rating - x.mvp!.rating)[0];
   const signing = logs.filter((l) => l.bestSigning).sort((x, y) => y.bestSigning!.rating - x.bestSigning!.rating)[0];
   const rows: { icon: string; label: string; value: string; sub?: string }[] = [
-    { icon: "🏆", label: "Títulos (no jogo)", value: String(c.trophies.length) },
-    { icon: "📅", label: "Temporadas na Série A", value: String(aSeasons.length) },
+    { icon: "trophy", label: "Títulos (no jogo)", value: String(c.trophies.length) },
+    { icon: "calendar", label: "Temporadas na Série A", value: String(aSeasons.length) },
   ];
-  if (bestA) rows.push({ icon: "🥇", label: "Melhor campanha na Série A", value: `${bestA.pos}º`, sub: String(bestA.season) });
-  if (mostTitles?.titles.length) rows.push({ icon: "✨", label: "Mais títulos numa temporada", value: String(mostTitles.titles.length), sub: String(mostTitles.season) });
-  if (scorer) rows.push({ icon: "👟", label: "Artilheiro de uma temporada", value: `${scorer.topScorer!.goals} gols`, sub: `${scorer.topScorer!.name} (${scorer.season})` });
-  if (mvp) rows.push({ icon: "⭐", label: "Melhor jogador de uma temporada", value: mvp.mvp!.rating.toFixed(2), sub: `${mvp.mvp!.name} (${mvp.season})` });
-  if (signing) rows.push({ icon: "✍️", label: "Melhor contratação", value: signing.bestSigning!.rating.toFixed(2), sub: `${signing.bestSigning!.name} (${signing.season})` });
+  if (bestA) rows.push({ icon: "medal", label: "Melhor campanha na Série A", value: `${bestA.pos}º`, sub: String(bestA.season) });
+  if (mostTitles?.titles.length) rows.push({ icon: "sparkle", label: "Mais títulos numa temporada", value: String(mostTitles.titles.length), sub: String(mostTitles.season) });
+  if (scorer) rows.push({ icon: "target", label: "Artilheiro de uma temporada", value: `${scorer.topScorer!.goals} gols`, sub: `${scorer.topScorer!.name} (${scorer.season})` });
+  if (mvp) rows.push({ icon: "star", label: "Melhor jogador de uma temporada", value: mvp.mvp!.rating.toFixed(2), sub: `${mvp.mvp!.name} (${mvp.season})` });
+  if (signing) rows.push({ icon: "edit", label: "Melhor contratação", value: signing.bestSigning!.rating.toFixed(2), sub: `${signing.bestSigning!.name} (${signing.season})` });
   const big = w.ach?.c.bigWin;
-  if (big && clubId === w.userClubId) rows.push({ icon: "💥", label: "Maior goleada (sob seu comando)", value: `+${big.gd}`, sub: `${big.text} (${big.season})` });
+  if (big && clubId === w.userClubId) rows.push({ icon: "flame", label: "Maior goleada (sob seu comando)", value: `+${big.gd}`, sub: `${big.text} (${big.season})` });
   return rows;
 }
 
@@ -59,7 +59,7 @@ export function TrophyRoomScreen() {
         <aside className="k-trophy-aside">
           <div className="card k-trophy-shelf-card">
             <div className="card-title">
-              <h3>🏆 Galeria de Conquistas</h3>
+              <h3 className="row gap8"><Icon name="trophy" size={18} /> Galeria de Conquistas</h3>
               <b style={{ color: "var(--gold)" }}>{c.trophies.length} taças</b>
             </div>
             <div className="cabinet mt6">
@@ -87,11 +87,11 @@ export function TrophyRoomScreen() {
 
         <main className="k-trophy-main">
           <div className="card">
-            <div className="card-title"><h3>📜 Recordes & Marcas Históricas</h3></div>
+            <div className="card-title"><h3 className="row gap8"><Icon name="scroll" size={18} /> Recordes & Marcas Históricas</h3></div>
             <div className="mt4 col gap2">
               {clubRecords(w, c.id).map((r) => (
                 <div key={r.label} className="row small" style={{ padding: "4px 0", borderBottom: "1px solid var(--line)" }}>
-                  <span style={{ width: 24, fontSize: 16 }}>{r.icon}</span>
+                  <span style={{ width: 24, display: "inline-flex", alignItems: "center" }}><Icon name={r.icon} size={16} /></span>
                   <div className="grow">{r.label}{r.sub && <div className="tiny muted">{r.sub}</div>}</div>
                   <b>{r.value}</b>
                 </div>
@@ -116,14 +116,14 @@ export function TrophyRoomScreen() {
                 </div>
                 {h.titles.length > 0 && (
                   <div className="row gap8 small mt8" style={{ flexWrap: "wrap" }}>
-                    {h.titles.map((t) => <span key={t} className="row gap8"><CompLogo id={t} size={16} />🏆 {COMP_META[t]?.short ?? t}</span>)}
+                    {h.titles.map((t) => <span key={t} className="row gap8"><CompLogo id={t} size={16} /><Icon name="trophy" size={14} /> {COMP_META[t]?.short ?? t}</span>)}
                   </div>
                 )}
                 {log && (
                   <div className="tiny muted mt8" style={{ lineHeight: 1.5 }}>
-                    {log.topScorer && <div onClick={() => w.players[log.topScorer!.pid] && push({ name: "player", id: log.topScorer!.pid })}>⚽ Artilheiro: {log.topScorer.name} ({log.topScorer.goals})</div>}
-                    {log.mvp && <div onClick={() => w.players[log.mvp!.pid] && push({ name: "player", id: log.mvp!.pid })}>⭐ Craque: {log.mvp.name} (nota {log.mvp.rating.toFixed(2)})</div>}
-                    {log.bestSigning && <div>✍️ Melhor contratação: {log.bestSigning.name} (nota {log.bestSigning.rating.toFixed(2)})</div>}
+                    {log.topScorer && <div className="row gap6" onClick={() => w.players[log.topScorer!.pid] && push({ name: "player", id: log.topScorer!.pid })}><Icon name="ball" size={14} /> Artilheiro: {log.topScorer.name} ({log.topScorer.goals})</div>}
+                    {log.mvp && <div className="row gap6" onClick={() => w.players[log.mvp!.pid] && push({ name: "player", id: log.mvp!.pid })}><Icon name="star" size={14} /> Craque: {log.mvp.name} (nota {log.mvp.rating.toFixed(2)})</div>}
+                    {log.bestSigning && <div className="row gap6"><Icon name="edit" size={14} /> Melhor contratação: {log.bestSigning.name} (nota {log.bestSigning.rating.toFixed(2)})</div>}
                   </div>
                 )}
               </div>

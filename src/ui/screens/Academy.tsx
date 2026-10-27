@@ -11,7 +11,8 @@ import type { Player } from "../../engine/types";
 import { isGem, Q_LABEL, Q_STARS, resolvePeneira, youthCap, youthCoach, youthCount, youthFac, youthRec } from "../../engine/youth";
 import { back, push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, PlayerRow, PosBadge, Stars } from "../components";
+import { Avatar, Icon, PlayerRow, PosBadge, Stars } from "../components";
+import type React from "react";
 import "../manage.css";
 
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
@@ -36,20 +37,20 @@ export function AcademyScreen() {
       <div className="k-academy-grid">
         <aside className="k-academy-aside">
           <div className="card">
-            <h3>🌱 Categorias de Base</h3>
+            <h3 className="row gap8"><Icon name="sprout" size={18} /> Categorias de Base</h3>
             <div className="mt6">
-              <Rating icon="🔍" name="Captação" n={rec} text="mais garotos e joias" />
-              <Rating icon="🏫" name="Instalações" n={fac} text={`até ${cap} na base`} />
-              <Rating icon="🎓" name="Treinadores" n={coach} text="evolução acelerada" />
+              <Rating icon={<Icon name="search" size={18} />} name="Captação" n={rec} text="mais garotos e joias" />
+              <Rating icon={<Icon name="crane" size={18} />} name="Instalações" n={fac} text={`até ${cap} na base`} />
+              <Rating icon={<Icon name="briefcase" size={18} />} name="Treinadores" n={coach} text="evolução acelerada" />
             </div>
             <button className="btn sm ghost mt8 block" onClick={() => push({ name: "facilities" })}>Obras em Estrutura ›</button>
           </div>
 
           {pending > 0 ? (
             <div className="card tap" onClick={() => push({ name: "peneira" })} style={{ borderColor: "var(--gold)", background: "linear-gradient(135deg, #3b2e05, #172a21)" }}>
-              <b>🌱 Dia da Peneira!</b>
+              <b className="row gap6"><Icon name="sprout" size={16} /> Dia da Peneira!</b>
               <div className="tiny mt4">{pending} garoto{pending === 1 ? "" : "s"} aguardando teste.</div>
-              <button className="btn gold sm block mt6">🌱 Avaliar Peneira</button>
+              <button className="btn gold sm block mt6 row center gap6"><Icon name="sprout" size={14} /> Avaliar Peneira</button>
             </div>
           ) : (
             <div className="card flat small">
@@ -67,7 +68,7 @@ export function AcademyScreen() {
             <div className="row" style={{ justifyContent: "space-between" }}>
               <span>Ocupação:</span><b>{youthCount(w, club)} de {cap} vagas</b>
             </div>
-            <div className="tiny muted mt4">Lendas do futebol mundial podem renascer aqui! ⭐</div>
+            <div className="tiny muted mt4">Lendas do futebol mundial podem renascer aqui!</div>
           </div>
         </aside>
 
@@ -87,8 +88,8 @@ export function AcademyScreen() {
                       right={<span className="tiny" style={{ color: "var(--gold)", whiteSpace: "nowrap" }}>{stars(s)}</span>} />
                     {(ready || loan) && (
                       <div style={{ margin: "-4px 0 6px 56px" }}>
-                        {ready && <span className="tag good">✅ Pronto para o profissional</span>}
-                        {loan && <span className="tag">📤 Empréstimo recomendado</span>}
+                        {ready && <span className="tag good row gap4"><Icon name="check" size={12} /> Pronto para o profissional</span>}
+                        {loan && <span className="tag row gap4"><Icon name="swap" size={12} /> Empréstimo recomendado</span>}
                       </div>
                     )}
                   </div>
@@ -104,10 +105,10 @@ export function AcademyScreen() {
   );
 }
 
-function Rating({ icon, name, n, text }: { icon: string; name: string; n: number; text: string }) {
+function Rating({ icon, name, n, text }: { icon: React.ReactNode; name: string; n: number; text: string }) {
   return (
     <div className="rating-row">
-      <span style={{ fontSize: 18, width: 24 }}>{icon}</span>
+      <span style={{ width: 24, display: "inline-flex", alignItems: "center" }}>{icon}</span>
       <div className="grow" style={{ minWidth: 0 }}>
         <div className="small"><b>{name}</b> <span style={{ color: "var(--gold)" }}>{stars(n)}</span></div>
         <div className="tiny muted">{text}</div>
@@ -125,7 +126,7 @@ export function PeneiraScreen() {
     return (
       <div className="page">
         <div className="card center">
-          <b>🌱 Nenhuma peneira pendente</b>
+          <b className="row center gap6"><Icon name="sprout" size={18} /> Nenhuma peneira pendente</b>
           <div className="small muted mt8">Os novos garotos chegam todo fim de janeiro, depois da Copinha.</div>
           <button className="btn block mt12" style={{ minHeight: 44 }} onClick={() => back()}>Voltar</button>
         </div>
@@ -160,8 +161,8 @@ export function PeneiraScreen() {
         ))}
       </div>
       <div className="grid2">
-        <button className="btn" style={{ minHeight: 44 }} onClick={() => setFlipped(new Set(pn.kids.map((k) => k.id)))}>🔄 Virar todas</button>
-        <button className="btn primary" style={{ minHeight: 44 }} disabled={!free} onClick={() => act(best.slice(0, free), [])}>✍️ Assinar todos os que cabem</button>
+        <button className="btn row center gap6" style={{ minHeight: 44 }} onClick={() => setFlipped(new Set(pn.kids.map((k) => k.id)))}><Icon name="refresh" size={16} /> Virar todas</button>
+        <button className="btn primary row center gap6" style={{ minHeight: 44 }} disabled={!free} onClick={() => act(best.slice(0, free), [])}><Icon name="edit" size={16} /> Assinar todos os que cabem</button>
       </div>
       {!free && <div className="small muted center">Base cheia: promova ou dispense alguém da base para abrir vaga.</div>}
       <div style={{ height: 40 }} />
@@ -180,25 +181,25 @@ function KidCard({ k, level, open, onFlip, onSign, onRelease, canSign }: {
     <div className="pn-card">
       <div className={`pn-inner${open ? " flipped" : ""}`}>
         <div className="pn-face pn-back" onClick={onFlip}>
-          <div style={{ fontSize: 40 }}>🌱</div>
+          <div style={{ fontSize: 40, display: "flex", justifyContent: "center" }}><Icon name="sprout" size={40} /></div>
           <b className="small">Toque para virar</b>
         </div>
         <div className={`pn-face pn-front${gem ? " gem" : ""}`}>
-          {gem && <span className="tag legend">💎 Joia rara</span>}
+          {gem && <span className="tag legend row gap4"><Icon name="sparkle" size={12} /> Joia rara</span>}
           <Avatar p={k} club={club} season={w.season} size={gem ? 48 : 56} />
           <b className="small ellipsis" style={{ maxWidth: "100%" }}>{k.name}</b>
           <div className="row gap4 tiny muted" style={{ justifyContent: "center" }}>
             <PosBadge pos={k.pos} /> {age(k, w.season)}a · pé {k.foot === "E" ? "esq." : k.foot === "A" ? "ambos" : "dir."} · <b style={{ color: "var(--text)" }}>{k.ovr}</b>
           </div>
           <div className="tiny">Potencial <Stars n={starsFor(k.pot, level)} /></div>
-          <div className="tiny" style={{ minHeight: 16 }}>{traits.map((t) => `${TRAITS[t].emoji} ${TRAITS[t].label}`).join(" · ")}</div>
-          <div className="tiny muted">🧠 {personalityLabel(k)}{k.traits?.includes("PAV") ? " 🌋" : ""}</div>
+          <div className="tiny" style={{ minHeight: 16 }}>{traits.map((t) => `${TRAITS[t].label}`).join(" · ")}</div>
+          <div className="tiny muted">{personalityLabel(k)}</div>
         </div>
       </div>
       {open && (
         <div className="pn-actions">
-          <button className="btn primary" disabled={!canSign} onClick={onSign}>✍️ Assinar</button>
-          <button className="btn" onClick={onRelease}>👋 Dispensar</button>
+          <button className="btn primary row center gap4" disabled={!canSign} onClick={onSign}><Icon name="edit" size={14} /> Assinar</button>
+          <button className="btn row center gap4" onClick={onRelease}><Icon name="close" size={14} /> Dispensar</button>
         </div>
       )}
     </div>
@@ -213,7 +214,7 @@ export function PeneiraHomeCard() {
   return (
     <div className="card tap" onClick={() => push({ name: "peneira" })} style={{ borderColor: "var(--gold)", background: "linear-gradient(135deg, #3b2e05, #172a21)" }}>
       <div className="row gap8">
-        <span style={{ fontSize: 28 }}>🌱</span>
+        <span style={{ width: 28, display: "inline-flex", alignItems: "center" }}><Icon name="sprout" size={24} /></span>
         <div className="grow">
           <b>Dia da peneira!</b>
           <div className="small">{n} garoto{n === 1 ? "" : "s"} esperando sua avaliação</div>

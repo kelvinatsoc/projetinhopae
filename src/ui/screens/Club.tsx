@@ -8,7 +8,6 @@ import { crestFor, KitShirt } from "../Uniforms";
 import "../economy.css";
 import { ClubHQ } from "../hq/ClubHQ";
 import { nextFixture } from "../../engine/competitions";
-import type { IconSlug } from "../icons";
 import { estadualTitles } from "../../engine/estaduais";
 import { annualSponsor, annualTV, EXPENSE_LABELS, formatMoney, INCOME_LABELS, wageBill } from "../../engine/finance";
 import { clubStrength, squadOf } from "../../engine/lineup";
@@ -68,7 +67,9 @@ export function ClubScreen() {
             <span>Folha / Mês</span>
           </button>
           <button className="chk-item" onClick={() => push({ name: "trophies" })}>
-            <b style={{ color: "#f5c542" }}>🏆 {titles}</b>
+            <b style={{ color: "#f5c542", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon name="trophy" size={14} /> {titles}
+            </b>
             <span>Sala de Troféus</span>
           </button>
         </div>
@@ -76,17 +77,17 @@ export function ClubScreen() {
 
       <ClubHQ club={c} matchToday={nextFixture(w, c.id)?.day === w.day} fallback={
         <div className="tiles">
-          <Tile icon="💰" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
-          <Tile icon="👔" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
-          <Tile icon="🏛️" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
-          <Tile icon="🏗️" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
-          <Tile icon="🤝" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
-          <Tile icon="👕" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
-          <Tile icon="⚡" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
-          <Tile icon="💬" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
-          <Tile icon="🏋️" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
-          <Tile icon="🌱" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
-          <Tile icon="⚙️" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
+          <Tile icon="coins" label="Finanças" sub="Receitas e salários" tint="#1fbf68" onClick={() => push({ name: "finances" })} />
+          <Tile icon="briefcase" label="Comissão" sub="Comissão técnica" tint="#4fa3ff" onClick={() => push({ name: "staff" })} />
+          <Tile icon="bank" label="Diretoria" sub={`${Math.round(w.board.confidence)}% confiança`} tint="#f5c542" onClick={() => push({ name: "board" })} />
+          <Tile icon="crane" label="Estrutura" sub="Estádio, CT, base" tint="#ff8a3d" onClick={() => push({ name: "facilities" })} />
+          <Tile icon="handshake" label="Patrocínios" sub={[shirtSponsor(w, c), kitSupplier(w, c)].filter(Boolean).join(" · ") || "Camisa e estádio"} tint="#b57bff" onClick={() => push({ name: "sponsors" })} />
+          <Tile icon="shirt" label="Uniformes" sub={`Kits ${w.season}`} tint="#ff5d5d" onClick={() => push({ name: "kits", id: c.id })} />
+          <Tile icon="bolt" label="Poderes" sub="Loja de Poderes" tint="#ffb000" onClick={() => push({ name: "powers" })} />
+          <Tile icon="chat" label="Vestiário" sub="Clima do elenco" tint="#ff5d8f" onClick={() => push({ name: "dressing" })} />
+          <Tile icon="dumbbell" label="Treino" sub="Foco e intensidade" tint="#34d27b" onClick={() => push({ name: "training" })} />
+          <Tile icon="sprout" label="Base" sub={`${youth} jogadores`} tint="#7ddc4a" onClick={() => push({ name: "youth" })} />
+          <Tile icon="gear" label="Ajustes" sub="Som, tema, escudo" tint="#9aa6c4" onClick={() => push({ name: "settings" })} />
         </div>
       } />
 
@@ -97,57 +98,67 @@ export function ClubScreen() {
 
       <div className="club-grid3">
         <button className="cg-tile" onClick={() => push({ name: "finances" })}>
-          <span className="cg-ic"><GIcon slug="financas" size={22} /></span>
+          <span className="cg-ic"><Icon name="coins" size={22} /></span>
           <b>Finanças</b>
           <small>Balanço e ingresso</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "kits", id: c.id })}>
-          <span className="cg-ic">👕</span>
+          <span className="cg-ic"><Icon name="shirt" size={22} /></span>
           <b>Uniformes</b>
           <small>Kits {w.season}</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "sponsors" })}>
-          <span className="cg-ic"><GIcon slug="patrocinios" size={22} /></span>
+          <span className="cg-ic"><Icon name="handshake" size={22} /></span>
           <b>Patrocínios</b>
           <small>{shirtSponsor(w, c) || "Cotas e marcas"}</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "board" })}>
-          <span className="cg-ic"><GIcon slug="diretoria" size={22} /></span>
+          <span className="cg-ic"><Icon name="bank" size={22} /></span>
           <b>Diretoria</b>
           <small>{Math.round(w.board.confidence)}% confiança</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "staff" })}>
-          <span className="cg-ic"><GIcon slug="olheiros" size={22} /></span>
+          <span className="cg-ic"><Icon name="briefcase" size={22} /></span>
           <b>Comissão</b>
           <small>Equipe técnica</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "facilities" })}>
-          <span className="cg-ic"><GIcon slug="estrutura" size={22} /></span>
+          <span className="cg-ic"><Icon name="crane" size={22} /></span>
           <b>Obras & Níveis</b>
           <small>Estádio, CT, Base</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "career" })}>
-          <span className="cg-ic"><GIcon slug="carreira" size={22} /></span>
+          <span className="cg-ic"><Icon name="briefcase" size={22} /></span>
           <b>Carreira</b>
           <small>{offers > 0 ? `${offers} proposta${offers > 1 ? "s" : ""}!` : "Reputação"}</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "legends" })}>
-          <span className="cg-ic"><GIcon slug="lendas" size={22} /></span>
+          <span className="cg-ic"><Icon name="star" size={22} /></span>
           <b>Álbum Lendas</b>
           <small>{Object.keys(w.legends).length}/{LEGENDS.length} ativas</small>
         </button>
         <button className="cg-tile" onClick={() => push({ name: "history" })}>
           <span className="cg-ic"><Icon name="scroll" size={20} /></span>
           <b>Histórico</b>
-          <small>Campeões ({achs} 🏅)</small>
+          <small>Campeões ({achs})</small>
         </button>
       </div>
 
       <div className="chip-row" style={{ marginTop: 2 }}>
-        <button className="chip" onClick={() => push({ name: "achievements" })}>🏅 Conquistas ({achs})</button>
-        <button className="chip" onClick={() => push({ name: "powers" })}>⚡ Loja de Poderes</button>
-        <button className="chip" onClick={() => push({ name: "settings" })}>⚙️ Ajustes</button>
-        {w.admin?.on && <button className="chip active" onClick={() => push({ name: "admin" })}>🛠️ Editor Admin</button>}
+        <button className="chip" onClick={() => push({ name: "achievements" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon name="medal" size={14} /> Conquistas ({achs})
+        </button>
+        <button className="chip" onClick={() => push({ name: "powers" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon name="bolt" size={14} /> Loja de Poderes
+        </button>
+        <button className="chip" onClick={() => push({ name: "settings" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon name="gear" size={14} /> Ajustes
+        </button>
+        {w.admin?.on && (
+          <button className="chip active" onClick={() => push({ name: "admin" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name="wrench" size={14} /> Editor Admin
+          </button>
+        )}
       </div>
 
       <div className="grid2 mt4">
@@ -166,16 +177,11 @@ const TILE_ICON: Record<string, string> = {
   "🧭": "compass", "📜": "scroll", "🔎": "search", "🛠️": "wrench",
 };
 
-const TILE_SLUG: Record<string, IconSlug> = {
-  "💰": "financas", "👔": "olheiros", "🏛️": "diretoria", "🏗️": "estrutura", "🤝": "patrocinios", "💬": "vestiario",
-  "🏋️": "treino", "🌱": "base", "⚙️": "configuracoes", "🏆": "competicoes", "⭐": "lendas", "🏅": "conquistas",
-  "🧭": "carreira", "🔎": "clube",
-};
-
 function Tile({ icon, label, sub, tint, wide, hot, onClick }: { icon: string; label: string; sub: string; tint: string; wide?: boolean; hot?: boolean; onClick: () => void }) {
+  const iconName = TILE_ICON[icon] || icon;
   return (
     <button className={`tile${wide ? " wide" : ""}${hot ? " hot" : ""}`} style={{ "--tint": tint } as CSSProperties} onClick={onClick}>
-      <span className="ti">{TILE_SLUG[icon] ? <GIcon slug={TILE_SLUG[icon]!} size={26} /> : TILE_ICON[icon] ? <Icon name={TILE_ICON[icon]} size={26} /> : icon}</span>
+      <span className="ti"><Icon name={iconName} size={24} /></span>
       <span><b>{label}</b><small>{sub}</small></span>
     </button>
   );
@@ -225,7 +231,16 @@ export function ClubInfoScreen({ id }: { id: string }) {
             <div className="stat-box"><b>{c.trophies.length}</b><span>títulos</span></div>
           </div>
           {c.trophies.length > 0 && (
-            <div className="card small">{estadualTitles(c) > 0 && <div>🏅 Estaduais: {estadualTitles(c)}</div>}🏆 {c.trophies.slice(-6).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}</div>
+            <div className="card small">
+              {estadualTitles(c) > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                  <Icon name="medal" size={13} /> Estaduais: {estadualTitles(c)}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <Icon name="trophy" size={13} /> {c.trophies.slice(-6).map((t) => `${COMP_META[t.comp]?.short ?? t.name} ${t.season}`).join(" · ")}
+              </div>
+            </div>
           )}
         </aside>
 
@@ -359,8 +374,8 @@ export function HistoryScreen() {
                       </div>
                     ))}
                   </div>
-                  {s.topScorer && <div className="tiny mt4">⚽ Artilheiro: {s.topScorer.name} ({s.topScorer.goals})</div>}
-                  {s.bestPlayer && <div className="tiny">🏅 Craque: {s.bestPlayer.name} ({s.bestPlayer.rating})</div>}
+                  {s.topScorer && <div className="tiny mt4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="ball" size={12} /> Artilheiro: {s.topScorer.name} ({s.topScorer.goals})</div>}
+                  {s.bestPlayer && <div className="tiny" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="medal" size={12} /> Craque: {s.bestPlayer.name} ({s.bestPlayer.rating})</div>}
                 </div>
               ))}
             </div>
@@ -620,11 +635,11 @@ export function SeasonEndScreen({ summary }: { summary: string[] }) {
             {Object.entries(last.champions).map(([comp, club]) => (
               <div key={comp} className="row gap8" style={{ padding: "4px 0" }}><CompLogo id={comp} size={20} /><span className="muted small" style={{ width: 96 }}>{COMP_META[comp]?.short}</span>{w.clubs[club] && <Crest club={w.clubs[club]} size={20} />}<b>{w.clubs[club]?.name ?? w.formerClubs?.[club] ?? club}</b></div>
             ))}
-            {last.topScorer && <div className="small mt8">⚽ Artilheiro: {last.topScorer.name} ({last.topScorer.goals} gols)</div>}
+            {last.topScorer && <div className="small mt8" style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="ball" size={14} /> Artilheiro: {last.topScorer.name} ({last.topScorer.goals} gols)</div>}
           </div>
         )}
         <div className="card small" style={{ whiteSpace: "pre-line" }}>{summary.join("\n")}</div>
-        {last && w.admin?.seasons.includes(last.season) && <div className="tiny center" style={{ color: "var(--gold)" }}>🛠️ Temporada com edições do administrador</div>}
+        {last && w.admin?.seasons.includes(last.season) && <div className="tiny center" style={{ color: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="wrench" size={12} /> Temporada com edições do administrador</div>}
         <button className="btn primary block" onClick={() => { forceBack(); setTab("home"); if (w.fired) push({ name: "fired" }); }}>Começar {w.season}</button>
       </div>
     </div>

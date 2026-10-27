@@ -113,43 +113,43 @@ export function PlayerScreen({ id }: { id: number }) {
             {loanedIn ? (
               <>
                 {p.loan!.opt
-                  ? <button className="btn primary sm block" onClick={() => setSheet("option")}>💰 Comprar ({formatMoney(p.loan!.opt)})</button>
-                  : <button className="btn primary sm block" onClick={() => setSheet("offer")}>💼 Comprar em definitivo</button>}
-                <button className="btn sm" onClick={() => setSheet("talk")}>💬 Conversar</button>
-                <button className="btn sm" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`${p.name} devolvido ao ${parent?.name ?? "clube"}`); back(); }}>↩️ Devolver</button>
+                  ? <button className="btn primary sm block row center gap6" onClick={() => setSheet("option")}><Ic n="coins" size={14} /> Comprar ({formatMoney(p.loan!.opt)})</button>
+                  : <button className="btn primary sm block row center gap6" onClick={() => setSheet("offer")}><Ic n="briefcase" size={14} /> Comprar em definitivo</button>}
+                <button className="btn sm row center gap6" onClick={() => setSheet("talk")}><Ic n="chat" size={14} /> Conversar</button>
+                <button className="btn sm row center gap6" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`${p.name} devolvido ao ${parent?.name ?? "clube"}`); back(); }}><Ic n="back" size={14} /> Devolver</button>
               </>
             ) : ownedOut ? (
-              <button className="btn sm block" onClick={() => setSheet("renew")}>📝 Renovar contrato</button>
+              <button className="btn sm block row center gap6" onClick={() => setSheet("renew")}><Ic n="edit" size={14} /> Renovar contrato</button>
             ) : mine ? (
               <>
-                <button className="btn sm primary" onClick={() => setSheet("train")}>🎯 Treinar</button>
-                <button className="btn sm" onClick={() => setSheet("talk")}>💬 Conversar</button>
-                <button className="btn sm" onClick={() => setSheet("renew")}>📝 Renovar</button>
-                <button className="btn sm" onClick={() => setSheet("act")}>⚡ Interação</button>
+                <button className="btn sm primary row center gap6" onClick={() => setSheet("train")}><Ic n="target" size={14} /> Treinar</button>
+                <button className="btn sm row center gap6" onClick={() => setSheet("talk")}><Ic n="chat" size={14} /> Conversar</button>
+                <button className="btn sm row center gap6" onClick={() => setSheet("renew")}><Ic n="edit" size={14} /> Renovar</button>
+                <button className="btn sm row center gap6" onClick={() => setSheet("act")}><Ic n="bolt" size={14} /> Interação</button>
                 <button className="btn sm" onClick={() => { update(() => { p.listed = !p.listed; }); toast(p.listed ? "Colocado na lista de transferências" : "Retirado da lista"); autosave(); }}>
-                  {p.listed ? "Deslistar" : "💲 Vender"}
+                  {p.listed ? "Deslistar" : "Vender"}
                 </button>
                 {p.youth ? (
-                  <button className="btn sm" onClick={() => { update(() => { p.youth = false; }); toast(`${p.name} promovido ao profissional!`); autosave(); }}>⬆️ Promover</button>
+                  <button className="btn sm row center gap6" onClick={() => { update(() => { p.youth = false; }); toast(`${p.name} promovido ao profissional!`); autosave(); }}><Ic n="trend" size={14} /> Promover</button>
                 ) : ageY <= 20 ? (
-                  <button className="btn sm" onClick={() => { update(() => { p.youth = true; if (club?.lineup) { club.lineup.starters = club.lineup.starters.map((x) => (x === p.id ? null : x)); club.lineup.bench = club.lineup.bench.filter((x) => x !== p.id); } }); autosave(); }}>⬇️ Mandar base</button>
+                  <button className="btn sm row center gap6" onClick={() => { update(() => { p.youth = true; if (club?.lineup) { club.lineup.starters = club.lineup.starters.map((x) => (x === p.id ? null : x)); club.lineup.bench = club.lineup.bench.filter((x) => x !== p.id); } }); autosave(); }}><Ic n="sprout" size={14} /> Mandar base</button>
                 ) : (
                   <button className="btn sm danger" onClick={() => setSheet("release")}>Dispensar</button>
                 )}
-                <button className="btn sm" onClick={() => setSheet("loanOut")}>📤 Emprestar</button>
+                <button className="btn sm row center gap6" onClick={() => setSheet("loanOut")}><Ic n="swap" size={14} /> Emprestar</button>
               </>
             ) : (
               <>
-                <button className="btn primary sm block" disabled={!!p.loan} onClick={() => setSheet("offer")}>{p.clubId ? "💼 Proposta" : "✍️ Contratar"}</button>
+                <button className="btn primary sm block" disabled={!!p.loan} onClick={() => setSheet("offer")}>{p.clubId ? <span className="row center gap6"><Ic n="briefcase" size={14} /> Proposta</span> : <span className="row center gap6"><Ic n="edit" size={14} /> Contratar</span>}</button>
                 <button className="btn sm" onClick={() => update((x) => { x.shortlist = shortlisted ? x.shortlist.filter((s) => s !== p.id) : [...x.shortlist, p.id]; })}>
-                  {shortlisted ? "★ Em alvos" : "☆ Seguir"}
+                  {shortlisted ? <span className="row center gap6"><Ic n="star" size={14} /> Em alvos</span> : <span className="row center gap6"><Ic n="star" size={14} /> Seguir</span>}
                 </button>
-                {canAskLoan(w, p) && <button className="btn sm" onClick={() => setSheet("loanIn")}>📥 Empréstimo</button>}
+                {canAskLoan(w, p) && <button className="btn sm row center gap6" onClick={() => setSheet("loanIn")}><Ic n="swap" size={14} /> Empréstimo</button>}
               </>
             )}
             {!mine && !ownedOut && <ScoutButton p={p} />}
-            <button className="btn sm" onClick={() => setSheet("photo")}>📷 Foto</button>
-            <button className="btn sm" onClick={() => setSheet("edit")}>{w.admin?.on ? "🛠️ Editor" : "✏️ Editar"}</button>
+            <button className="btn sm row center gap6" onClick={() => setSheet("photo")}><Ic n="camera" size={14} /> Foto</button>
+            <button className="btn sm" onClick={() => setSheet("edit")}>{w.admin?.on ? <span className="row center gap6"><Ic n="wrench" size={14} /> Editor</span> : <span className="row center gap6"><Ic n="edit" size={14} /> Editar</span>}</button>
           </div>
           <PhotoCredit p={p} />
         </aside>

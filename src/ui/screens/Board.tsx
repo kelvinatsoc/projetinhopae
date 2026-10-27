@@ -5,7 +5,7 @@ import { buildPct, FAC_INFO, weeksLeft } from "../../engine/facilities";
 import { formatMoney } from "../../engine/finance";
 import { push, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Bar, Sheet } from "../components";
+import { Bar, Icon, Sheet } from "../components";
 import "../club.css";
 
 export function BoardScreen() {
@@ -18,25 +18,38 @@ export function BoardScreen() {
       <div className="k-board-grid">
         <aside className="k-board-aside">
           <div className="card">
-            <div className="card-title"><h3>🏛️ Diretoria</h3><b>{Math.round(w.board.confidence)}%</b></div>
+            <div className="card-title">
+              <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="bank" size={16} /> Diretoria
+              </h3>
+              <b>{Math.round(w.board.confidence)}%</b>
+            </div>
             <Bar v={w.board.confidence} />
             <div className="mt8 col gap4">
-              <div className="small">🎯 <b>Objetivo Liga:</b> {w.board.objective}</div>
-              {w.board.estadual?.season === w.season && <div className="small">🏅 <b>Estadual:</b> {w.board.estadual.text}</div>}
+              <div className="small" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="target" size={13} /> <b>Objetivo Liga:</b> {w.board.objective}
+              </div>
+              {w.board.estadual?.season === w.season && (
+                <div className="small" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="medal" size={13} /> <b>Estadual:</b> {w.board.estadual.text}
+                </div>
+              )}
             </div>
             <div className="tiny muted mt8" style={{ borderTop: "1px solid var(--line)", paddingTop: 6 }}>
               Vencer partidas e cumprir metas eleva a confiança. Confiança alta destrava verbas maiores.
             </div>
           </div>
 
-          <div className="card tap small" onClick={() => push({ name: "facilities" })}>
-            🏗️ <b>Estrutura do Clube:</b> Obras de estádio, CT e categorias de base ›
+          <div className="card tap small" onClick={() => push({ name: "facilities" })} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="crane" size={15} /> <b>Estrutura do Clube:</b> Obras de estádio, CT e categorias de base ›
           </div>
         </aside>
 
         <main className="k-board-main">
           <div className="card">
-            <h3>📋 Solicitações & Verbas Extras</h3>
+            <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="board" size={16} /> Solicitações & Verbas Extras
+            </h3>
             <p className="tiny muted mt4">Reuniões com o presidente para liberar orçamento suplementar.</p>
             <div className="mt8 col gap8">
               {REQUESTS.map((r) => {
@@ -79,7 +92,9 @@ export function BoardScreen() {
           )}
           {answer && (
             <>
-              <div className="center" style={{ fontSize: 44 }}>{answer.ok ? "✅" : "❌"}</div>
+              <div className="center" style={{ margin: "16px 0", color: answer.ok ? "var(--ok)" : "var(--danger)" }}>
+                <Icon name={answer.ok ? "check" : "close"} size={44} />
+              </div>
               <p className="center"><b>{answer.msg.replace(/^[✅❌]\s*/u, "")}</b></p>
               <button className="btn primary block mt12" onClick={() => setAsk(null)}>Ok</button>
             </>
@@ -98,8 +113,8 @@ export function BoardHomeCard() {
   const builds = c?.fac?.builds ?? [];
   if (!builds.length) return null;
   return (
-    <div className="card tap small" onClick={() => push({ name: "facilities" })}>
-      🏗️ Obras: {builds.map((b) => `${FAC_INFO[b.kind].label} ${buildPct(w, b)}% · faltam ${weeksLeft(w, b)} sem.`).join(" | ")}
+    <div className="card tap small" onClick={() => push({ name: "facilities" })} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <Icon name="crane" size={14} /> <b>Obras:</b> {builds.map((b) => `${FAC_INFO[b.kind].label} ${buildPct(w, b)}% · faltam ${weeksLeft(w, b)} sem.`).join(" | ")}
     </div>
   );
 }

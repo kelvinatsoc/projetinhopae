@@ -5,7 +5,7 @@ import { ensureStaff, hireStaff, staffAccepts, staffCandidates, staffSeverance, 
 import type { Club, StaffMember, StaffRole, World } from "../../engine/types";
 import { toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Sheet, Stars, textOn } from "../components";
+import { Sheet, Stars, textOn, Icon } from "../components";
 import { flag } from "../flags";
 import "../club.css";
 
@@ -52,15 +52,15 @@ export function StaffScreen() {
       <div className="k-staff-grid">
         <aside className="k-staff-aside">
           <div className="card">
-            <h3>👔 Comissão Técnica</h3>
+            <h3 className="row gap8"><Icon name="briefcase" size={18} /> Comissão Técnica</h3>
             <p className="tiny muted mt4">Profissionais de apoio: treinos, recuperação física, olheiros e base.</p>
             <div className="mt8 col gap4">
               <div className="row small"><span className="muted grow">Folha da comissão</span><b>{formatMoney(total)}/mês</b></div>
-              <div className="row small"><span className="muted grow">Qualidade média</span><b style={{ color: "var(--gold)" }}>⭐ {avgStars} / 5.0</b></div>
+              <div className="row small"><span className="muted grow">Qualidade média</span><b style={{ color: "var(--gold)" }}>{avgStars} / 5.0</b></div>
               <div className="row small"><span className="muted grow">Cargos preenchidos</span><b>{STAFF_ROLES.length} de {STAFF_ROLES.length}</b></div>
             </div>
             <div className="tiny muted mt10" style={{ borderTop: "1px solid var(--line)", paddingTop: 8 }}>
-              💡 Toque num cargo ao lado para ver o efeito e contratar substitutos. Renovação anual automática (+10%).
+              Toque num cargo ao lado para ver o efeito e contratar substitutos. Renovação anual automática (+10%).
             </div>
           </div>
         </aside>
@@ -119,7 +119,7 @@ function StaffSheet({ w, role, onClose }: { w: World; role: StaffRole; onClose: 
           <div className="staff-effect">{staffEffect(role, cur.stars)}</div>
         </div>
       </div>
-      {!list && <button className="btn primary block mt12" onClick={search}>🔄 Procurar substituto</button>}
+      {!list && <button className="btn primary block mt12 row center gap8" onClick={search}><Icon name="refresh" size={16} /> Procurar substituto</button>}
       {list && (
         <>
           <h3 className="mt12">Candidatos</h3>

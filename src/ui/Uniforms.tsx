@@ -9,9 +9,8 @@ import { autosave } from "./actions";
 import { canEditCustomKit, draftCustomKit, KIT_PATTERNS, saveCustomKit, setCustomKitWear } from "../engine/customKit";
 import type { CustomKit } from "../engine/types";
 import { customToKit } from "./Kit";
-import { Sheet } from "./components";
 import { BrandLogo } from "./BrandLogo";
-import { Crest } from "./components";
+import { Crest, Icon, Sheet } from "./components";
 import { kitsOf, KitView, plainKit, type Kit } from "./Kit";
 import { kitPhoto, makeKitTexture, type KitTexOptions, type KitWhich } from "./kitTexture";
 import { mediaUrl } from "./mediaUrl";
@@ -156,7 +155,7 @@ function CustomKitCard({ w, c }: { w: World; c: Club }) {
   const set = (p: Partial<CustomKit>) => setDraft((d) => (d ? { ...d, ...p } : d));
   return (
     <div className="card">
-      <div className="card-title"><h3>🎨 3º uniforme personalizado</h3>{c.customKit && <span className="tiny muted">lançado em {c.customKit.season}</span>}</div>
+      <div className="card-title"><h3 className="row gap8"><Icon name="shirt" size={18} /> 3º uniforme personalizado</h3>{c.customKit && <span className="tiny muted">lançado em {c.customKit.season}</span>}</div>
       <div className="tiny muted">Crie a camisa alternativa do clube: uma vez por temporada. Ela vira o 3º uniforme na partida e aqui na aba.</div>
       {c.customKit && (
         <label className="row gap8 mt8 small">
@@ -165,7 +164,7 @@ function CustomKitCard({ w, c }: { w: World; c: Club }) {
         </label>
       )}
       <button className="btn block mt8" disabled={!can} onClick={() => setDraft(draftCustomKit(w, c))}>
-        {can ? (c.customKit ? "Criar o uniforme desta temporada" : "Criar 3º uniforme") : `🔒 Já lançado em ${w.season}: novo só em ${w.season + 1}`}
+        {can ? (c.customKit ? "Criar o uniforme desta temporada" : "Criar 3º uniforme") : `Já lançado em ${w.season}: novo só em ${w.season + 1}`}
       </button>
       {draft && (
         <Sheet title="Editor de uniforme" onClose={() => setDraft(null)}>
@@ -193,7 +192,7 @@ function CustomKitCard({ w, c }: { w: World; c: Club }) {
             <button className="btn primary" onClick={() => {
               let err: string | null = null;
               update((x) => { err = saveCustomKit(x, x.clubs[c.id], draft); });
-              toast(err ?? "👕 3º uniforme lançado!");
+              toast(err ?? "3º uniforme lançado com sucesso!");
               if (!err) { setDraft(null); autosave(); }
             }}>Lançar uniforme</button>
           </div>

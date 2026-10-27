@@ -8,7 +8,7 @@ import { loanStats } from "../../engine/loans";
 import type { Player, SquadRole } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, DeltaTag, Ovr, Sheet } from "../components";
+import { Avatar, DeltaTag, Icon, Ovr, Sheet } from "../components";
 import "../market.css";
 
 export function DressingScreen() {
@@ -32,9 +32,17 @@ export function DressingScreen() {
       <div className="k-dressing-grid">
         <aside className="k-dressing-aside">
           <div className="card">
-            <div className="row"><b className="grow">🤝 Entrosamento {chem}%<DeltaTag d={dynDelta(w, "chem", chem)} /></b></div>
+            <div className="row" style={{ alignItems: "center" }}>
+              <b className="grow" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="handshake" size={16} /> Entrosamento {chem}%<DeltaTag d={dynDelta(w, "chem", chem)} />
+              </b>
+            </div>
             <div className="agent-bar"><i style={{ width: `${chem}%`, background: chemColor }} /></div>
-            <div className="row mt8"><b className="grow">🙂 Clima do Grupo {mood}<DeltaTag d={dynDelta(w, "mood", mood)} /></b></div>
+            <div className="row mt8" style={{ alignItems: "center" }}>
+              <b className="grow" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="users" size={16} /> Clima do Grupo {mood}<DeltaTag d={dynDelta(w, "mood", mood)} />
+              </b>
+            </div>
             <div className="agent-bar"><i style={{ width: `${mood}%`, background: moodColor }} /></div>
             <div className="tiny muted mt8">
               A mesma base jogando junta sobe o entrosamento. Clima = média da moral dos atletas.
@@ -43,7 +51,9 @@ export function DressingScreen() {
 
           {leaders.length > 0 && (
             <div className="card">
-              <h3>🧭 Líderes do Vestiário</h3>
+              <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="compass" size={16} /> Líderes do Vestiário
+              </h3>
               <div className="leaders mt6">
                 {leaders.map((p) => (
                   <div key={p.id} className="tap" onClick={() => push({ name: "player", id: p.id })}>
@@ -58,8 +68,10 @@ export function DressingScreen() {
           )}
 
           <div className="card">
-            <h3>📤 Emprestados ({loaned.length})</h3>
-            {!loaned.length && <div className="tiny muted mt4">Nenhum jogador emprestado. Use “📤 Emprestar” no perfil do jogador.</div>}
+            <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="swap" size={16} /> Emprestados ({loaned.length})
+            </h3>
+            {!loaned.length && <div className="tiny muted mt4">Nenhum jogador emprestado. Use "Emprestar" no perfil do jogador.</div>}
             {loaned.map((p) => {
               const c = p.clubId ? w.clubs[p.clubId] : null;
               const st = loanStats(p);
@@ -93,10 +105,10 @@ export function DressingScreen() {
                   <div key={p.id} className="dr-row tap" onClick={() => push({ name: "player", id: p.id })}>
                     <Avatar p={p} club={club} season={w.season} size={36} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div className="row gap4" style={{ minWidth: 0 }}>
+                      <div className="row gap4" style={{ minWidth: 0, alignItems: "center" }}>
                         <b className="small ellipsis">{p.name}</b>
-                        {p.promise && <span title="Promessa de minutos">⏱️</span>}
-                        {p.loan && <span className="tag">📥</span>}
+                        {p.promise && <span title="Promessa de minutos" style={{ display: "inline-flex" }}><Icon name="stopwatch" size={13} /></span>}
+                        {p.loan && <span className="tag" style={{ display: "inline-flex", padding: "1px 4px" }}><Icon name="swap" size={11} /></span>}
                       </div>
                       <div className="row gap6 mt2" style={{ minWidth: 0 }}>
                         <span className="role-chip">{ROLE_SHORT[role]}</span>
@@ -110,7 +122,9 @@ export function DressingScreen() {
                     <div className="row gap4" style={{ alignItems: "center" }}>
                       <span style={{ fontSize: 18 }} title={`Moral ${p.morale}`}>{moodEmoji(p)}</span>
                       <DeltaTag d={moraleDelta(w, p)} />
-                      <button className="btn sm" style={{ minWidth: 32, minHeight: 28, padding: "2px 6px" }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>💬</button>
+                      <button className="btn sm" style={{ minWidth: 32, minHeight: 28, padding: "2px 6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>
+                        <Icon name="chat" size={13} />
+                      </button>
                     </div>
                   </div>
                 );
@@ -143,7 +157,7 @@ export function TalkSheet({ p, onClose }: { p: Player; onClose: () => void }) {
   }
 
   return (
-    <Sheet title={`💬 Conversar com ${p.name}`} onClose={onClose}>
+    <Sheet title={`Conversar com ${p.name}`} onClose={onClose}>
       <div className="small muted">Moral {moodEmoji(p)} · papel {ROLE_LABEL[cur]}{p.wantsOut ? " · 😤 quer sair" : ""}</div>
       {res ? (
         <>
@@ -183,8 +197,10 @@ export function SquadMoodHomeCard() {
   if (!n) return null;
   return (
     <div className="card tap" onClick={() => push({ name: "dressing" })}>
-      <div className="row">
-        <span style={{ fontSize: 26 }}>💬</span>
+      <div className="row" style={{ alignItems: "center", gap: 10 }}>
+        <div className="cg-ic" style={{ color: "var(--accent)" }}>
+          <Icon name="chat" size={24} />
+        </div>
         <div className="grow">
           <b>{n === 1 ? "1 jogador quer conversar" : `${n} jogadores querem conversar`}</b>
           <div className="small muted">Toque para ir ao Vestiário.</div>

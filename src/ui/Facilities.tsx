@@ -5,8 +5,15 @@ import { formatMoney } from "../engine/finance";
 import type { FacilityKind } from "../engine/types";
 import { push, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
-import { Bar, Sheet } from "./components";
+import { Bar, Icon, Sheet } from "./components";
 import "./economy.css";
+
+const FAC_ICONS: Record<FacilityKind, string> = {
+  stadium: "stadium",
+  training: "dumbbell",
+  youth: "sprout",
+  medical: "crossMedical",
+};
 
 export function FacilitiesScreen() {
   const w = useWorld();
@@ -16,7 +23,9 @@ export function FacilitiesScreen() {
     <div className="page k-fac-page">
       <div className="card k-fac-banner">
         <div className="card-title">
-          <h3>🏗️ Complexo & Estrutura do Clube</h3>
+          <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="crane" size={16} /> Complexo & Estrutura do Clube
+          </h3>
           <span>Saldo em Caixa: <b style={{ color: "#34d27b" }}>{formatMoney(c.balance)}</b></span>
         </div>
         <div className="tiny muted">Obras pagas à vista com duração de semanas. Até duas reformas simultâneas.</div>
@@ -32,7 +41,12 @@ export function FacilitiesScreen() {
           const why = canUpgrade(c, k);
           return (
             <div key={k} className="card k-fac-card">
-              <div className="card-title"><h3>{info.emoji} {info.label}</h3><b>Nível {lv} / {FAC_MAX}</b></div>
+              <div className="card-title">
+                <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name={FAC_ICONS[k]} size={16} /> {info.label}
+                </h3>
+                <b>Nível {lv} / {FAC_MAX}</b>
+              </div>
               <div className="eco-levels" aria-label={`Nível ${lv} de ${FAC_MAX}`}>
                 {Array.from({ length: FAC_MAX }, (_, i) => <i key={i} className={i < lv ? "on" : b && i === lv ? "next" : ""} />)}
               </div>
@@ -47,9 +61,17 @@ export function FacilitiesScreen() {
                   <div className="grow tiny muted">Próx: {formatMoney(cost)} · {weeks} sem.</div>
                   <button className="btn sm primary" disabled={!!why} onClick={() => setAsk(k)}>Melhorar</button>
                 </div>
-              ) : <div className="tiny muted mt6">Nível máximo atingido! ⭐</div>}
+              ) : (
+                <div className="tiny muted mt6" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--gold)" }}>
+                  <Icon name="star" size={12} /> Nível máximo atingido!
+                </div>
+              )}
               {why && !b && lv < FAC_MAX && <div className="tiny" style={{ color: "var(--warn)" }}>{why}</div>}
-              {k === "stadium" && <button className="btn sm ghost mt6 block" onClick={() => push({ name: "stadiumLook" })}>🎨 Personalizar Estádio ›</button>}
+              {k === "stadium" && (
+                <button className="btn sm ghost mt6 block" onClick={() => push({ name: "stadiumLook" })} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Icon name="wrench" size={14} /> Personalizar Estádio ›
+                </button>
+              )}
             </div>
           );
         })}
@@ -62,13 +84,14 @@ export function FacilitiesScreen() {
             <button className="btn primary" onClick={() => {
               let err: string | null = null;
               update((wd) => { err = startUpgrade(wd, wd.clubs[wd.userClubId], ask); });
-              toast(err ?? "Obra iniciada! 🏗️");
+              toast(err ?? "Obra iniciada com sucesso.");
               setAsk(null);
               autosave();
             }}>Começar obra</button>
           </div>
         </Sheet>
       )}
+      <div style={{ height: 30 }} />
     </div>
   );
 }
