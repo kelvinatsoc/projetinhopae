@@ -223,6 +223,8 @@ export interface TeamInstr {
   direct: number; // passes curtos / mistos / diretos
   cpress: boolean; // contrapressão
   waste: boolean; // fazer cera quando estiver vencendo
+  focus?: number; // foco de ataque por zona: 0 = alas/pontas, 1 = equilibrado, 2 = centro/funil
+  tackling?: number; // agressividade de desarme: 0 = cauteloso, 1 = normal, 2 = agressivo
 }
 
 export interface Lineup {

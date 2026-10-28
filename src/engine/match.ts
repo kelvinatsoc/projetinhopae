@@ -302,7 +302,12 @@ export class MatchSim {
       const p = this.player(id);
       ids.push(id);
       const role = key === "shoot" || key === "assist" ? this.roleOf(side, k) : null;
-      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1) * (role ? role[key as "shoot" | "assist"] : 1) * (id === marked ? MARK.pick : 1));
+      const focus = side.fx?.focusLane ?? 1;
+      const lane = LANE[side.slots[k]] ?? 1;
+      const focusMult = (key === "shoot" || key === "assist") && focus !== 1
+        ? (focus === 0 ? (lane !== 1 ? 1.35 : 0.8) : (lane === 1 ? 1.25 : 0.85))
+        : 1;
+      ws.push(weights[side.slots[k]] * Math.pow(p.attrs[attr] / 70, power) * (key ? this.pm(side, id)[key] : 1) * (role ? role[key as "shoot" | "assist"] : 1) * (id === marked ? MARK.pick : 1) * focusMult);
     });
     if (!ids.length) return null;
     return pickWeighted(ids, ws);
@@ -409,6 +414,9 @@ export class MatchSim {
       const d = this.pickOnPitch(O, DEF_W, "def", undefined, 2, "tackle");
       this.rate(O, d, 0.025);
       this.phase.tackle = { side: (1 - atk) as 0 | 1, pid: d };
+      if (this.live && chance(0.08)) {
+        this.ev({ min, type: "info", side: (1 - atk) as 0 | 1, text: phrase("zoneDef", { t: O.club.name, p: this.name(d) }) });
+      }
     }
 
     // pênalti
@@ -429,8 +437,20 @@ export class MatchSim {
     for (let i = 0; i < 2; i++) if (chance(0.0018)) this.injury(i as 0 | 1);
 
     // narração ambiente
-    if (this.live && this.events.length === start && chance(0.12)) {
-      this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("info", { t: S.club.name, p: this.name(this.pickOnPitch(S, MID_W, "pas")) }) });
+    if (this.live && this.events.length === start && chance(0.18)) {
+      const focus = S.fx.focusLane ?? 1;
+      const isWing = focus === 0 || (focus === 1 && chance(0.45));
+      if (isWing) {
+        const wingPid = this.pickOnPitch(S, ATT_W, "dri");
+        const assister = this.pickOnPitch(S, MID_W, "pas", wingPid ?? undefined);
+        this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("zoneWing", { t: S.club.name, p: this.name(wingPid ?? undefined), a: this.name(assister ?? undefined) }) });
+      } else if (chance(0.6)) {
+        const midPid = this.pickOnPitch(S, MID_W, "pas");
+        const forward = this.pickOnPitch(S, ATT_W, "fin", midPid ?? undefined);
+        this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("zoneMid", { t: S.club.name, p: this.name(midPid ?? undefined), a: this.name(forward ?? undefined) }) });
+      } else {
+        this.ev({ min, type: "info", side: atk as 0 | 1, text: phrase("pressMomentum", { t: S.club.name }) });
+      }
     }
 
     this.track(atk as 0 | 1);

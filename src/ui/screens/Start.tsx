@@ -16,6 +16,7 @@ import { CompLogo, Crest, Icon, stadiumSrc, visibleColor } from "../components";
 import { crestFor, KitShirt } from "../Uniforms";
 import { flag } from "../flags";
 import { Hd2dStadium } from "../hq/Hd2dStadium";
+import { ModdingModal } from "../ModdingModal";
 
 function fakeClub(c: DbClub): Club {
   return { ...c, colors: [...c.colors, "#fff", "#fff"].slice(0, 3), crest: c.crest } as unknown as Club;
@@ -37,6 +38,7 @@ export function StartScreen() {
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [db, setDb] = useState<Database | null>(null);
+  const [modModal, setModModal] = useState(false);
 
   useEffect(() => {
     listSaves().then(setSaves).catch(() => setSaves([]));
@@ -331,6 +333,19 @@ export function StartScreen() {
                 />
               </label>
 
+                            <button className="k-start-mode-btn" onClick={() => setModModal(true)}>
+                <div className="k-start-mode-ico warn">
+                  <Icon name="scroll" size={20} />
+                </div>
+                <div className="k-start-mode-txt">
+                  <div className="k-start-mode-title">Central de Mods & Dados (JSON)</div>
+                  <div className="k-start-mode-desc">
+                    Instale patches da comunidade com novos clubes, jogadores e ligas.
+                  </div>
+                </div>
+                <Icon name="chev" size={18} />
+              </button>
+
               <div className="k-start-foot-note">
                 <Icon name="shield" size={13} /> Lendas da Base 2026 · Gráficos 2D HD · Modo Widescreen FM
               </div>
@@ -376,6 +391,7 @@ export function StartScreen() {
           )}
         </section>
       </div>
+      {modModal && <ModdingModal onClose={() => setModModal(false)} />}
     </div>
   );
 }

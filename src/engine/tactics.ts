@@ -7,14 +7,16 @@ import { clamp } from "./rng";
 import type { Attrs, Club, Player, Pos, Tactic, TeamInstr, World } from "./types";
 
 // ---------------------------------------------------------------- instruções do time
-export const DEFAULT_TI: Readonly<TeamInstr> = Object.freeze({ line: 1, width: 1, tempo: 1, direct: 1, cpress: false, waste: false });
+export const DEFAULT_TI: Readonly<TeamInstr> = Object.freeze({ line: 1, width: 1, tempo: 1, direct: 1, cpress: false, waste: false, focus: 1, tackling: 1 });
 export const tiOf = (t: Tactic): TeamInstr => ({ ...DEFAULT_TI, ...(t.ti ?? {}) });
 
-export const TI_INFO: Record<"line" | "width" | "tempo" | "direct", { label: string; opts: [string, string, string]; hint: string }> = {
+export const TI_INFO: Record<"line" | "width" | "tempo" | "direct" | "focus" | "tackling", { label: string; opts: [string, string, string]; hint: string }> = {
   line: { label: "Linha defensiva", opts: ["Recuada", "Normal", "Adiantada"], hint: "Adiantada rouba bolas no meio, mas deixa espaço nas costas." },
   width: { label: "Largura", opts: ["Fechado", "Normal", "Aberto"], hint: "Aberto cria mais jogadas pelos lados; fechado congestiona o meio." },
   tempo: { label: "Ritmo", opts: ["Cadenciado", "Normal", "Acelerado"], hint: "Acelerado gera mais lances (para os dois lados) e cansa mais." },
   direct: { label: "Passes", opts: ["Curtos", "Mistos", "Diretos"], hint: "Curtos seguram a posse; diretos pulam o meio-campo." },
+  focus: { label: "Foco de ataque por zona", opts: ["Alas & Pontas", "Equilibrado", "Pelo Centro / Funil"], hint: "Alas geram mais cruzamentos e jogadas de fundo; centro foca em triangulações e penetração." },
+  tackling: { label: "Desarme & Agressividade", opts: ["Cauteloso", "Normal", "Agressivo"], hint: "Agressivo aumenta roubadas de bola (+defesa), mas comete mais faltas e eleva risco de cartões." },
 };
 
 /** Efeito tático de um time em campo (multiplicadores). */
@@ -28,6 +30,7 @@ export interface TacticFx {
   xgAgainst: number; // qualidade das finalizações sofridas
   fatigue: number;
   card: number;
+  focusLane?: number;
 }
 export const NEUTRAL_FX: Readonly<TacticFx> = Object.freeze({ att: 1, mid: 1, def: 1, open: 1, openAgainst: 1, xg: 1, xgAgainst: 1, fatigue: 1, card: 1 });
 
@@ -74,6 +77,15 @@ export function instructionFx(w: World, t: Tactic, slots: Pos[], ids: (number | 
   if (ti.cpress) { fx.mid *= 1 + 0.015 * engine; fx.def *= 0.995; fx.fatigue *= 1.08; fx.xgAgainst *= 1.04; }
   // cera: só vencendo depois dos 70'
   if (ti.waste && lead > 0 && minute >= 70) { fx.open *= 0.88; fx.openAgainst *= 0.88; fx.card *= 1.2; }
+  // foco de ataque por zona (Openfoot Manager)
+  const FOC = lv(ti.focus ?? 1);
+  fx.focusLane = ti.focus ?? 1;
+  if (FOC < 0) { fx.att *= 1.01; fx.open *= 1.02; }
+  else if (FOC > 0) { fx.mid *= 1.01; fx.xg *= 1.015; }
+  // agressividade de desarme
+  const TCK = lv(ti.tackling ?? 1);
+  if (TCK > 0) { fx.def *= 1.02; fx.mid *= 1.01; fx.card *= 1.25; fx.fatigue *= 1.05; }
+  else if (TCK < 0) { fx.def *= 0.985; fx.card *= 0.75; fx.fatigue *= 0.97; }
   return fx;
 }
 

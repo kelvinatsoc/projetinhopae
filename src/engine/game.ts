@@ -1,5 +1,6 @@
 import { syncInbox } from "./inbox";
 import { applyDerbyOutcome } from "./narrative";
+import { proceduralNewsTick } from "./rumors";
 // Laço principal: avançar dias, jogar partidas, aplicar resultados.
 import { achievementsAfterMatch } from "./achievements";
 import { adminCheats } from "./admin";
@@ -199,6 +200,7 @@ function dailyTick(w: World) {
   trainingDaily(w);
   peneiraTick(w);
   scoutTick(w);
+  proceduralNewsTick(w);
   if (d === 90 || d === 243) addNews(w, "transfer", "Janela de transferências fechada", "Agora só é possível contratar jogadores livres.");
   if (d === 181) addNews(w, "transfer", "Janela de transferências aberta", "A janela do meio do ano vai até 31 de agosto.");
   if (d === 300) {

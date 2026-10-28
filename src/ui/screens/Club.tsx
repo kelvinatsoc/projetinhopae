@@ -27,6 +27,7 @@ import { resizeImage } from "./Player";
 import { AdminSettingsCard } from "./Admin";
 import { activeOffers } from "../../engine/career";
 import { OfferList } from "../Career";
+import { ModdingModal } from "../ModdingModal";
 
 export function ClubScreen() {
   const w = useWorld();
@@ -459,6 +460,7 @@ export function SettingsScreen() {
   const [specials, setSpecials] = useState(specialsEnabled());
   const [vol, setVol] = useState(() => Math.round(crowdVolume() * 100));
   const [hasGoal, setHasGoal] = useState(false);
+  const [modModal, setModModal] = useState(false);
   useEffect(() => { loadMedia(`goal:${c.id}`).then((d) => setHasGoal(!!d)).catch(() => undefined); }, [c.id]);
 
   return (
@@ -536,6 +538,14 @@ export function SettingsScreen() {
           </div>
 
           <div className="card">
+            <h3>Central de Mods & Dados (JSON)</h3>
+            <p className="tiny muted">Instale patches comunitários com novos clubes e atletas (estilo Openfoot Manager).</p>
+            <button className="btn primary sm block mt6 row center gap6" onClick={() => setModModal(true)}>
+              <Ic n="scroll" /> Abrir Central de Mods
+            </button>
+          </div>
+
+          <div className="card">
             <h3>Backup & Dados</h3>
             <div className="grid2 mt6">
               <button className="btn sm" onClick={() => exportWorld(w)}>⬇️ Exportar save</button>
@@ -552,6 +562,7 @@ export function SettingsScreen() {
           </div>
         </div>
       </div>
+      {modModal && <ModdingModal onClose={() => setModModal(false)} />}
       <div style={{ height: 20 }} />
     </div>
   );

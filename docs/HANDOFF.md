@@ -257,3 +257,75 @@ No PowerShell do Windows, os scripts `.ps1` do npm/npx podem ser bloqueados pela
 
 
 
+
+
+## 12. Integração Completa das Mecânicas do Openfoot Manager (Antigravity, 27/10/2026)
+
+### 1. Contexto e Motivação
+A partir da análise das principais mecânicas do repositório Openfoot Manager (`https://github.com/openfootmanager/openfootmanager`), integramos ao *Lendas da Base* quatro pilares essenciais de gerenciamento e motor de jogo:
+1. **Match Engine & Narração por Zonas:** Aprofundamento do motor 2D/3D no grid 3x3 do campo (alas esquerda/direita e funil central), com instruções setoriais de foco e combate que afetam a criação de jogadas e narração ambiente viva.
+2. **Instruções Táticas Avançadas por Setor:** Controle direto de `focus` (alas, equilibrado, centro) e `tackling` (cauteloso, normal, agressivo) visíveis e configuráveis no menu de táticas.
+3. **Boletim Procedural, Notícias & Rumores de Mercado:** Feed dinâmico no inbox com sondagens de clubes europeus por revelações da base, boletins táticos do auxiliar técnico e repercussão de imprensa/torcida, acionado no `dailyTick` via RNG desacoplado (sem afetar determinismo do save).
+4. **Central de Mods & Dados Comunitários (JSON Custom DB):** Sistema completo para download de template JSON e importação de clubes e atletas criados pela comunidade, acessível na tela inicial (`Start.tsx`) e nas configurações (`Club.tsx`).
+
+---
+
+### 2. Principais Modificações por Arquivo
+
+#### `src/engine/types.ts` & `src/engine/tactics.ts`
+- Adicionados os campos `focus` (`0 = alas`, `1 = equilibrado`, `2 = centro`) e `tackling` (`0 = cauteloso`, `1 = normal`, `2 = agressivo`) à interface `TeamInstr`.
+- Registradas metadados e opções na constante `TI_INFO`, permitindo seleção automática na tela de táticas (`Tactics.tsx`).
+- Calculados os efeitos em `instructionFx`:
+  - `focus === 0`: bônus em jogadas abertas (`open`), xG de finalização por pontas e laterais.
+  - `focus === 2`: bônus pelo meio (`mid`), triangulações dos meias.
+  - `tackling === 0`: menor risco de cartões (`card: 0.7`), menor desgaste físico, ligeira queda no desarme.
+  - `tackling === 2`: bônus defensivo (`def: 1.08`), aumento de cartões (`card: 1.4`) e maior fadiga.
+  - Registrado `focusLane` em `TacticFx` para consumo direto pelo motor de jogo.
+
+#### `src/engine/match.ts` & `src/engine/commentary.ts`
+- Atualizado `pickOnPitch` em `match.ts` com ponderação dinâmica de posições e jogadores de acordo com o foco setorial selecionado.
+- Adicionadas frases de narração específicas em `commentary.ts`:
+  - `zoneWing`: jogadas individuais pelas pontas, cruzamentos e infiltrações na linha de fundo.
+  - `zoneMid`: triangulações no meio-campo, passes em profundidade e tabelas pelo funil central.
+  - `zoneDef`: desarmes precisos ou antecipações agressivas na linha defensiva.
+  - `pressMomentum`: momentos de pressão alta abafando a saída de bola do adversário.
+
+#### `src/engine/rumors.ts` & `src/engine/game.ts`
+- Criado gerador procedural `proceduralNewsTick(w)` integrado ao loop diário (`dailyTick`).
+- **Garantia de Determinismo:** Uso de gerador pseudo-aleatório local independente (`makeRng(hashString(...))`), garantindo que a geração de notícias não consuma chamadas do RNG global (`w.rng`), mantendo determinismo estrito em todas as simulações e testes de temporada.
+- Geração de notícias em 3 categorias:
+  - Rumores de transferências internacionais (clubes europeus sondando jovens promessas).
+  - Boletins de desempenho da comissão técnica analisando o impacto tático em campo.
+  - Noticiário da imprensa e engajamento da torcida.
+
+#### `src/engine/modding.ts` & `src/ui/ModdingModal.tsx`
+- Implementado parser resiliente de pacotes de dados JSON (`ModPackage`).
+- Função `applyModToWorld(w, mod)` para inserção e atualização atômica de clubes (`Club`) e jogadores (`Player`), gerando atributos, atributos ocultos e faces de forma consistente.
+- Modal `ModdingModal` com abas para:
+  - Instalar / importar arquivos `.json` de mods com pré-visualização de quantidade de clubes e atletas incluídos.
+  - Baixar template oficial formatado (`lendas-da-base-mod-template.json`) para criadores de conteúdo da comunidade.
+- Integração nas telas:
+  - `Start.tsx`: botão com ícone de pergaminho "Central de Mods & Dados (JSON)" no menu principal.
+  - `Club.tsx`: card dedicado na aba de configurações.
+
+---
+
+### 3. Testes Automatizados e Validação
+- **`tests/modding.test.ts`:**
+  - Validação de importação de clubes e atletas de teste.
+  - Verificação de atributos e elenco consistente.
+  - Exportação de template JSON válido.
+- **`tests/tactics_zones.test.ts`:**
+  - Verificação do cálculo de multiplicadores táticos de foco e combate em `instructionFx`.
+  - Verificação da renderização e geração de frases de comentários por zonas (`zoneWing`, `zoneMid`, `pressMomentum`).
+- **`tests/training.test.ts`:**
+  - Execução completa do teste de deriva em 3 temporadas (`semente 99`), confirmando aprovação e estabilidade matemática total.
+
+---
+
+### 4. Build de Produção e Compilação Android
+- `npx tsc --noEmit -p .`: 0 erros de compilação TypeScript.
+- `npm run build`: bundle web minificado e assets otimizados via Vite.
+- `npx cap sync android`: ativos copiados para a plataforma nativa.
+- `gradlew assembleRelease`: compilação do APK de release concluída com sucesso (`BUILD SUCCESSFUL in 1m 44s`).
+- APK gerado: `LendasDaBase.apk` e `lendas-da-base.apk` (55,31 MB) atualizados na raiz do repositório.

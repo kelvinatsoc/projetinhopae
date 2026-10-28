@@ -81,6 +81,28 @@ const T = {
     "Partida movimentada, as duas equipes buscam o gol.",
     "{p} sofre falta perto da área.",
   ],
+  zoneWing: [
+    "{p} dispara em velocidade pela ala, finta o marcador e cruza!",
+    "{p} tabela na ponta com {a} e busca a linha de fundo!",
+    "Jogada rápida pelo corredor: {p} corta para dentro e enfia a bola!",
+    "{p} recebe aberto na ponta, pedala e alça a bola na grande área!",
+  ],
+  zoneMid: [
+    "{p} domina na intermediária, dita o ritmo e acha {a} entre as linhas!",
+    "Triangulação envolvente do {t}! {p} tabela pelo meio e clareia o lance.",
+    "{p} gira com a bola no círculo central e faz linda inversão de jogo!",
+    "Infiltração perigosa! {p} recebe em velocidade pelo meio da zaga.",
+  ],
+  zoneDef: [
+    "Corte providencial de {p} na entrada da grande área!",
+    "Desarme cirúrgico! {p} toma a bola limpa e sai jogando com categoria.",
+    "{p} antecipa a jogada e intercepta o passe no momento exato!",
+  ],
+  pressMomentum: [
+    "Blitz do {t}! Pressão sufocante que força o erro na saída de bola!",
+    "O {t} adianta as linhas e encurrala o adversário no campo de defesa!",
+    "Contrapressão agressiva do {t}! Recuperação imediata da posse de bola.",
+  ],
 };
 
 export type CommentaryKind = keyof typeof T;
