@@ -6,7 +6,7 @@ import { LOAN_IN_PAY, loanInBlock, loanOut, loanOutBlock, loanOutOffers, request
 import type { Player } from "../../engine/types";
 import { toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Crest, Sheet } from "../components";
+import { Crest, Sheet, Ic } from "../components";
 import "../market.css";
 
 const DIV_NAME: Record<string, string> = { A: "Série A", B: "Série B", C: "Série C", D: "Série D" };
@@ -28,7 +28,7 @@ export function LoanOutSheet({ p, onClose }: { p: Player; onClose: () => void })
     update((x) => { err = loanOut(x, p, chosen, half, noOpt); });
     if (err) { toast(err); return; }
     autosave();
-    toast(`📤 ${p.name} emprestado ao ${w.clubs[chosen.clubId].name}`);
+    toast(`${p.name} emprestado ao ${w.clubs[chosen.clubId].name}`);
     onClose();
   }
 
@@ -61,10 +61,10 @@ export function LoanOutSheet({ p, onClose }: { p: Player; onClose: () => void })
                 {canHalf && <button className={`chip${half ? " active" : ""}`} onClick={() => setHalf(true)}>Meia temporada (até 30/jun)</button>}
               </div>
               <div className="neg-chips mt8">
-                <button className={`chip${noOpt ? " active" : ""}`} onClick={() => setNoOpt(!noOpt)}>{noOpt ? "✓ " : ""}Sem opção de compra</button>
+                <button className={`chip${noOpt ? " active" : ""}`} onClick={() => setNoOpt(!noOpt)}><span className="row center gap4">{noOpt && <Ic n="check" size={12} />} Sem opção de compra</span></button>
               </div>
               <button className="btn primary block mt12" disabled={!chosen} onClick={confirm}>
-                {chosen ? `📤 Emprestar ao ${w.clubs[chosen.clubId].name}` : "Escolha um clube"}
+                {chosen ? <span className="row center gap4"><Ic n="swap" size={14} /> Emprestar ao {w.clubs[chosen.clubId].name}</span> : "Escolha um clube"}
               </button>
             </>
           )}
@@ -100,7 +100,7 @@ export function LoanInSheet({ p, onClose }: { p: Player; onClose: () => void }) 
               <button key={v} className={`chip${pay === v ? " active" : ""}`} onClick={() => setPay(v)}>{Math.round(v * 100)}% do salário ({formatMoney(Math.round(p.wage * v))})</button>
             ))}
           </div>
-          <button className="btn primary block mt12" onClick={ask}>📥 Pedir emprestado</button>
+          <button className="btn primary block mt12" onClick={ask}><span className="row center gap4"><Ic n="swap" size={14} /> Pedir emprestado</span></button>
         </>
       ))}
       {res?.ok && <button className="btn block mt12" onClick={onClose}>Fechar</button>}

@@ -237,7 +237,7 @@ function TopScorers({ w, comp }: { w: World; comp: Competition }) {
           <div key={p.id} className="list-item" onClick={() => push({ name: "player", id: p.id })}>
             <span className="muted" style={{ width: 18 }}>{i + 1}</span>
             {p.clubId && <Crest club={w.clubs[p.clubId]} size={18} />}
-            <span className="grow ellipsis">{p.name}{p.legend ? " ★" : ""}</span>
+            <span className="grow ellipsis row gap4">{p.name}{p.legend ? <Icon name="star" size={11} fill /> : null}</span>
             <b>{p.compGoals[comp.id]}</b>
           </div>
         ))}

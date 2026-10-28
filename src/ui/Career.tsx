@@ -21,7 +21,7 @@ export function OfferList({ w, onAccepted }: { w: World; onAccepted?: () => void
     let ok = false;
     update((x) => { ok = acceptOffer(x, o.id); });
     if (ok) {
-      toast(`🤝 Você é o novo técnico do ${name}!`);
+      toast(`Você é o novo técnico do ${name}!`);
       autosave(true);
       onAccepted?.();
     }

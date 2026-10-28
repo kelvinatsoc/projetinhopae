@@ -11,7 +11,7 @@ import { canAfford } from "../../engine/transfers";
 import type { Player } from "../../engine/types";
 import { toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Sheet } from "../components";
+import { Sheet, Ic } from "../components";
 import "../market.css";
 
 const STEPS = 17; // 70% a 150% em passos de 5%
@@ -31,7 +31,7 @@ export function NegotiationSheet({ p, mode, fee = 0, onClose }: { p: Player; mod
   if (mode === "renew" && p.wantsOut) {
     return (
       <Sheet title={`Renovar com ${p.name}`} onClose={onClose}>
-        <div className="banner red">😤 {p.name} quer sair e não aceita renovar agora.</div>
+        <div className="banner red row center gap6"><Ic n="alert" size={14} /> <span>{p.name} quer sair e não aceita renovar agora.</span></div>
         <p className="small muted mt8">Converse com ele, prometa minutos ou venda. Quando ele ficar feliz de novo, a renovação volta a ser possível.</p>
       </Sheet>
     );
@@ -42,7 +42,7 @@ export function NegotiationSheet({ p, mode, fee = 0, onClose }: { p: Player; mod
   const luvas = Math.round(t.wage * LUVAS_MULT[t.luvas]);
   const total = fee + luvas;
   const color = view.score >= 80 ? "var(--accent)" : view.score >= AGENT_OK ? "#b9e66d" : view.score >= 45 ? "var(--warn)" : "var(--danger)";
-  const face = view.score >= 80 ? "😄" : view.score >= AGENT_OK ? "😊" : view.score >= 45 ? "😐" : "😠";
+  // sentiment face removed
 
   function close() {
     if (!ok) return;
@@ -55,11 +55,11 @@ export function NegotiationSheet({ p, mode, fee = 0, onClose }: { p: Player; mod
           from ? `Contratado do ${from} por ${formatMoney(fee)}. Salário de ${formatMoney(t.wage)}/mês até ${x.season + t.years}.` : `Chegou sem custo de transferência. Salário de ${formatMoney(t.wage)}/mês até ${x.season + t.years}.`, { pid: p.id });
       } else {
         renewWithTerms(x, p, t);
-        addNews(x, "contract", `✍️ ${p.name} renovou até ${x.season + t.years}`, `Salário de ${formatMoney(t.wage)}/mês · papel: ${ROLE_LABEL[t.role]}${t.clause ? ` · multa de ${formatMoney(p.clause ?? 0)}` : ""}.`, { pid: p.id });
+        addNews(x, "contract", `${p.name} renovou até ${x.season + t.years}`, `Salário de ${formatMoney(t.wage)}/mês · papel: ${ROLE_LABEL[t.role]}${t.clause ? ` · multa de ${formatMoney(p.clause ?? 0)}` : ""}.`, { pid: p.id });
       }
     });
     autosave();
-    toast(mode === "sign" ? `${p.name} contratado! ✍️` : "Contrato renovado! ✍️");
+    toast(mode === "sign" ? `${p.name} contratado!` : "Contrato renovado!");
     onClose();
   }
 
@@ -122,12 +122,12 @@ export function NegotiationSheet({ p, mode, fee = 0, onClose }: { p: Player; mod
       )}
       <div className="neg-foot">
       <div className="agent">
-        <div className="agent-head"><span>{face} Empresário: {view.score}% satisfeito</span></div>
+        <div className="agent-head"><span className="row center gap6"><Ic n={ok ? "check" : "alert"} size={14} /> Empresário: {view.score}% satisfeito</span></div>
         <div className="agent-bar" style={{ marginTop: 6 }}><i style={{ width: `${view.score}%`, background: color }} /><s style={{ left: `${AGENT_OK}%` }} /></div>
         <div className="small mt4" style={{ color: ok ? undefined : "var(--warn)" }}>{view.hint}</div>
       </div>
       <button className="btn primary block mt8" disabled={!ok} onClick={close}>
-        ✍️ Fechar contrato{ok ? ` até ${w.season + t.years}` : ` (precisa de ${AGENT_OK}%)`}
+        <span className="row center gap6"><Ic n="edit" size={14} /> Fechar contrato{ok ? ` até ${w.season + t.years}` : ` (precisa de ${AGENT_OK}%)`}</span>
       </button>
       </div>
     </Sheet>

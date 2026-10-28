@@ -13,7 +13,7 @@ import { TRAIT_UNLOCK_OVR, TRAITS } from "../../engine/traits";
 import type { Player, ScoutMission, TraitId } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Bar, PlayerRow, Sheet } from "../components";
+import { Bar, Ic, Icon, PlayerRow, Sheet, Stars } from "../components";
 import "../manage.css";
 
 const BTN40 = { minHeight: 40 } as const;
@@ -48,7 +48,7 @@ export function ScoutingTab() {
   return (
     <>
       <div className="card">
-        <div className="card-title"><h3>🔭 Nova missão</h3><span className="tiny muted">Olheiro-chefe {"★".repeat(olh)}{"☆".repeat(5 - olh)}</span></div>
+        <div className="card-title"><h3><span className="row center gap6"><Ic n="binoculars" size={16} /> Nova missão</span></h3><span className="tiny muted row center gap4">Olheiro-chefe <Stars count={olh} size={11} /></span></div>
         <div className="small muted">Onde procurar?</div>
         <div className="chips mt8" style={{ flexWrap: "wrap", overflow: "visible" }}>
           {SCOUT_REGIONS.map((r) => (
@@ -76,7 +76,7 @@ export function ScoutingTab() {
           <div className="list mt8">
             {s.missions.map((m) => (
               <div key={m.id} className="list-item" style={{ minHeight: 48, cursor: "default" }}>
-                <span style={{ fontSize: 20 }}>🧭</span>
+                <Icon name="compass" size={20} />
                 <div className="grow" style={{ minWidth: 0 }}>
                   <b className="small">{regionLabel(m.region)}</b>
                   <div className="tiny muted">{SCOUT_FOCUS[m.focus]} · faltam {Math.max(0, m.until - now)} dias</div>
@@ -90,14 +90,14 @@ export function ScoutingTab() {
 
       <div className="card">
         <div className="card-title"><h3>Na fila de observação</h3><span className="tiny muted">{queue.length}/{qSlots}</span></div>
-        {!queue.length && <div className="small muted">Ninguém sendo observado. No perfil de qualquer jogador, toque em “🔭 Mandar olheiro”.</div>}
+        {!queue.length && <div className="small muted">Ninguém sendo observado. No perfil de qualquer jogador, toque em “Mandar olheiro”.</div>}
         <div className="list">
           {queue.map((p) => {
             const k = Math.round(knowledgeOf(w, p));
             return (
               <div key={p.id}>
                 <PlayerRow p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })}
-                  right={<button className="icon-btn" style={{ minWidth: 40, minHeight: 40 }} aria-label="Tirar da fila" onClick={(e) => { e.stopPropagation(); update(() => unqueueScout(w, p.id)); }}>✕</button>} />
+                  right={<button className="icon-btn" style={{ minWidth: 40, minHeight: 40 }} aria-label="Tirar da fila" onClick={(e) => { e.stopPropagation(); update(() => unqueueScout(w, p.id)); }}><Icon name="close" size={14} /></button>} />
                 <div className="row gap8 tiny muted" style={{ margin: "-2px 0 6px 52px" }}><span style={{ flex: 1 }}><Bar v={k} color="var(--info)" /></span>{k}%</div>
               </div>
             );
@@ -114,7 +114,7 @@ export function ScoutingTab() {
               right={
                 <div className="row gap4" style={{ flex: "none" }}>
                   <span className="tiny muted" style={{ textAlign: "center", lineHeight: 1.15 }}>pot.<br /><b style={{ color: "var(--text)" }}>{potRangeLabel(w, p)}</b></span>
-                  <button className="icon-btn" style={{ minWidth: 32, minHeight: 40, padding: 0 }} aria-label="Dispensar" onClick={(e) => { e.stopPropagation(); update(() => dismissRec(w, p.id)); }}>✕</button>
+                  <button className="icon-btn" style={{ minWidth: 32, minHeight: 40, padding: 0 }} aria-label="Dispensar" onClick={(e) => { e.stopPropagation(); update(() => dismissRec(w, p.id)); }}><Icon name="close" size={14} /></button>
                 </div>
               } />
           ))}
@@ -123,7 +123,7 @@ export function ScoutingTab() {
 
       {reports.length > 0 && (
         <div className="card">
-          <h3>📋 Relatórios prontos</h3>
+          <h3><span className="row center gap6"><Ic n="board" size={16} /> Relatórios prontos</span></h3>
           <div className="list mt8">
             {reports.map((p) => (
               <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => setReport(p.id)}
@@ -142,7 +142,7 @@ function ReportSheet({ p, onClose }: { p: Player; onClose: () => void }) {
   const w = useWorld();
   const aux = staffStars(w, w.clubs[w.userClubId], "aux");
   return (
-    <Sheet title={`📋 Relatório: ${p.name}`} onClose={onClose}>
+    <Sheet title={`Relatório: ${p.name}`} onClose={onClose}>
       <div className="row gap8"><span className="tag good" style={{ fontSize: 14 }}>Recomendação {reportGrade(w, p)}</span></div>
       <p className="small">{reportBody(w, p)}</p>
       {reportLines(p, aux).length > 0 && <ul className="small" style={{ paddingLeft: 18, margin: "6px 0" }}>{reportLines(p, aux).map((l) => <li key={l}>{l}</li>)}</ul>}
@@ -160,13 +160,13 @@ export function ScoutButton({ p }: { p: Player }) {
   if (st === "done") {
     return (
       <>
-        <button className="btn block" style={{ minHeight: 44 }} onClick={() => setOpen(true)}>📋 Ver relatório</button>
+        <button className="btn block" style={{ minHeight: 44 }} onClick={() => setOpen(true)}><span className="row center gap4"><Ic n="board" size={14} /> Ver relatório</span></button>
         {open && <ReportSheet p={p} onClose={() => setOpen(false)} />}
       </>
     );
   }
   if (st === "queued") {
-    return <button className="btn block" style={{ minHeight: 44 }} disabled>🔭 Observando… {Math.round(knowledgeOf(w, p))}%</button>;
+    return <button className="btn block" style={{ minHeight: 44 }} disabled><span className="row center gap4"><Ic n="binoculars" size={14} /> Observando… </span>{Math.round(knowledgeOf(w, p))}%</button>;
   }
   return (
     <button className="btn block" style={{ minHeight: 44 }} onClick={() => {
@@ -175,7 +175,7 @@ export function ScoutButton({ p }: { p: Player }) {
       if (err) { toast(err); return; }
       autosave();
       toast("Olheiro a caminho! O relatório chega em alguns dias.");
-    }}>🔭 Mandar olheiro</button>
+    }}><span className="row center gap4"><Ic n="binoculars" size={14} /> Mandar olheiro</span></button>
   );
 }
 
@@ -198,7 +198,7 @@ export function PlayerInsightCards({ p }: { p: Player }) {
       <div className="card">
         <h3>Jogadas preferidas</h3>
         {!showTraits ? (
-          <div className="small muted mt8">❔ Jogadas desconhecidas — mande um olheiro.</div>
+          <div className="small muted mt8 row gap6"><Icon name="help" size={13} /> Jogadas desconhecidas — mande um olheiro.</div>
         ) : (
           <>
             <div className="row gap8 wrap mt8">
@@ -209,18 +209,18 @@ export function PlayerInsightCards({ p }: { p: Player }) {
               ))}
               {locked.map((t) => {
                 const i = Math.min(2, Math.max(0, traits.length - 1 + locked.indexOf(t)));
-                return <span key={t} className="trait-chip locked">🔒 desperta aos {TRAIT_UNLOCK_OVR[i]} de overall</span>;
+                return <span key={t} className="trait-chip locked"><Icon name="lock" size={11} /> desperta aos {TRAIT_UNLOCK_OVR[i]} de overall</span>;
               })}
             </div>
             {!traits.length && !locked.length && <div className="small muted mt8">Nenhuma jogada especial ainda — dá para ensinar no Treino individual.</div>}
           </>
         )}
-        {mine && p.tf && <div className="small mt12">🎯 {trainFocusLabel(p)}{"prog" in p.tf ? ` · ${p.tf.prog}%` : ""}</div>}
+        {mine && p.tf && <div className="small mt12 row gap6"><Icon name="target" size={12} /> {trainFocusLabel(p)}{"prog" in p.tf ? ` · ${p.tf.prog}%` : ""}</div>}
       </div>
 
       <div className="card">
         <div className="row gap8" style={{ cursor: showPers ? "pointer" : undefined, minHeight: 32 }} onClick={() => showPers && setSheet("pers")}>
-          <span className="grow">🧠 Personalidade: {showPers ? <b>{label}</b> : <span className="muted">❔ (precisa de relatório do olheiro)</span>}</span>
+          <span className="grow row gap6"><Icon name="sparkles" size={13} /> Personalidade: {showPers ? <b>{label}</b> : <span className="muted row gap4"><Icon name="help" size={11} /> (precisa de relatório do olheiro)</span>}</span>
           {showPers && <span className="small muted">ⓘ</span>}
         </div>
         {lines.length > 0 && (
@@ -235,11 +235,11 @@ export function PlayerInsightCards({ p }: { p: Player }) {
         <Sheet title={`${TRAITS[sheet.t].emoji} ${TRAITS[sheet.t].label}`} onClose={() => setSheet(null)}>
           <p className="small">{TRAITS[sheet.t].desc}</p>
           {!TRAITS[sheet.t].bad && sheet.t !== "DEC" && <p className="small muted">Como ganhar: Elenco › Treino › Treino individual › Nova jogada.</p>}
-          {sheet.t === "PAV" && <p className="small muted">Dá para melhorar: Treino individual › Nova jogada › 🧘 Trabalhar o temperamento.</p>}
+          {sheet.t === "PAV" && <p className="small muted">Dá para melhorar: Treino individual › Nova jogada › Trabalhar o temperamento.</p>}
         </Sheet>
       )}
       {sheet === "pers" && (
-        <Sheet title={`🧠 ${label}`} onClose={() => setSheet(null)}>
+        <Sheet title={label} onClose={() => setSheet(null)}>
           <p className="small">{PERSONALITY_DESC[label]}</p>
         </Sheet>
       )}

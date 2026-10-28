@@ -75,14 +75,14 @@ function ensureInitialInboxContext(w: World) {
         season: w.season,
         read: false,
         kind: "contract",
-        title: `📝 Situação contratual e papel de ${exp.name}`,
+        title: `Situação contratual e papel de ${exp.name}`,
         body: `O representante de ${exp.name} entrou em contato com a diretoria do ${club.name} para alinhar a valorização salarial e a extensão do vínculo. Você pode abrir a negociação ou conversar com o atleta diretamente por esta mensagem.`,
         pid: exp.id,
         clubId: club.id,
         actions: [
-          { id: "renew", label: "📝 Renovar Contrato" },
-          { id: "dressing", label: "💬 Conversar" },
-          { id: "player", label: "👤 Ver Perfil" },
+          { id: "renew", label: "Renovar Contrato" },
+          { id: "dressing", label: "Conversar" },
+          { id: "player", label: "Ver Perfil" },
         ],
       });
     }
@@ -93,13 +93,13 @@ function ensureInitialInboxContext(w: World) {
         season: w.season,
         read: false,
         kind: "dressing",
-        title: `📋 Relatório da Comissão Técnica: destaque para ${star.name}`,
+        title: `Relatório da Comissão Técnica: destaque para ${star.name}`,
         body: `O auxiliar técnico preparou o diagnóstico tático do ${club.name} (${club.tactic.formation}). ${star.name} (OVR ${star.ovr}) é a referência técnica do time titular. Confira a função e o dever tático antes da próxima rodada.`,
         pid: star.id,
         clubId: club.id,
         actions: [
-          { id: "player", label: "👤 Ver Atleta" },
-          { id: "board", label: "🏛️ Metas da Diretoria" },
+          { id: "player", label: "Ver Atleta" },
+          { id: "board", label: "Metas da Diretoria" },
         ],
       });
     }
@@ -182,16 +182,16 @@ export function InboxScreen() {
           xm.done = true;
           xm.read = true;
           xm.actions = xm.actions.filter((a) => a.id !== "accept" && a.id !== "reject");
-          xm.body = `${xm.body}\n\n✅ Contraproposta de ${formatMoney(boostedFee)} aceita pelo ${buyer.name}!`;
+          xm.body = `${xm.body}\n\nContraproposta de ${formatMoney(boostedFee)} aceita pelo ${buyer.name}!`;
         }
       });
-      toast(`🤝 ${buyer.name} aceitou a contraproposta de ${formatMoney(boostedFee)}!`);
+      toast(`${buyer.name} aceitou a contraproposta de ${formatMoney(boostedFee)}!`);
       autosave();
     } else {
       update((x) => {
         const xm = inboxOf(x).msgs.find((item) => item.id === m.id);
         if (xm) {
-          xm.body = `${xm.body}\n\n⚠️ O ${buyer.name} considerou ${formatMoney(boostedFee)} alto demais, mas manteve a oferta original de ${formatMoney(o.fee)}.`;
+          xm.body = `${xm.body}\n\nO ${buyer.name} considerou ${formatMoney(boostedFee)} alto demais, mas manteve a oferta original de ${formatMoney(o.fee)}.`;
         }
       });
       toast(`${buyer.name} manteve a oferta original de ${formatMoney(o.fee)}.`);
@@ -337,7 +337,7 @@ export function InboxScreen() {
                       <Ic n="swap" size={14} /> Contraproposta (+15%: {formatMoney(Math.round(msgOffer.fee * 1.15))})
                     </button>
                     <button className="k-act-btn reject" onClick={() => act(activeMsg, { id: "reject", label: "Recusar" })}>
-                      ✕ Recusar
+                      <span className="row center gap4"><Ic n="close" size={13} /> Recusar</span>
                     </button>
                   </>
                 )}
@@ -366,7 +366,15 @@ export function InboxScreen() {
                       className={`k-act-btn${a.id === "accept" ? " accept" : a.id === "reject" ? " reject" : ""}`}
                       onClick={() => act(activeMsg, a)}
                     >
-                      {a.label}
+                      <span className="row center gap4">
+                        {a.id === "renew" && <Ic n="edit" size={14} />}
+                        {a.id === "dressing" && <Ic n="chat" size={14} />}
+                        {a.id === "player" && <Ic n="user" size={14} />}
+                        {a.id === "board" && <Ic n="bank" size={14} />}
+                        {a.id === "accept" && <Ic n="check" size={14} />}
+                        {a.id === "reject" && <Ic n="close" size={14} />}
+                        {a.label.replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]\s*/u, "")}
+                      </span>
                     </button>
                   ))}
 

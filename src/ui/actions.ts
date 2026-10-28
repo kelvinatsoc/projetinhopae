@@ -128,7 +128,7 @@ export async function openWorld(w: World) {
   applySpfcRealRoster(w);
   setWorld(w);
   if (info?.newer) toast("Este save é de uma versão mais nova do jogo — atualize o app.");
-  else if (info && info.repaired > 0) toast(`Save verificado: ${info.repaired} problema${info.repaired > 1 ? "s" : ""} corrigido${info.repaired > 1 ? "s" : ""} ✔`);
+  else if (info && info.repaired > 0) toast(`Save verificado: ${info.repaired} problema${info.repaired > 1 ? "s" : ""} corrigido${info.repaired > 1 ? "s" : ""}`);
 }
 
 /** Admin: volta para o ponto de restauração (antes do último jogo). */
@@ -177,7 +177,7 @@ export async function saveNow() {
   const w = getWorld();
   if (!w) return;
   await saveWorld(w);
-  toast("Jogo salvo ✔");
+  toast("Jogo salvo");
 }
 
 /** Botão "Continuar": avança até o próximo jogo do usuário ou até o fim da temporada. */

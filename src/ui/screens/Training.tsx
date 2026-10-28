@@ -10,7 +10,7 @@ import { canLearn, LEARN_REQ, TRAITS } from "../../engine/traits";
 import type { Player, Pos, TeamFocus, TraitId } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, Ovr, PosBadge, Sheet, Ic, Icon } from "../components";
+import { Avatar, Bar, Ovr, PosBadge, Sheet, Ic, Icon, Stars } from "../components";
 
 const FOCUS_ICON: Record<TeamFocus, string> = { eq: "target", fis: "dumbbell", atk: "bolt", def: "shield", tat: "board", bola: "ball", rec: "calm" };
 const FOCUS_ORDER: TeamFocus[] = ["eq", "fis", "atk", "def", "tat", "bola", "rec"];
@@ -69,7 +69,7 @@ export function TrainingTab() {
               : t.int === 0 ? "Leve: recupera físico rápido, -10% evolução."
               : "Normal: equilíbrio entre evolução e descanso."}
           </div>
-          <div className="tiny muted mt4">Comissão técnica: {"★".repeat(tre)}{"☆".repeat(5 - tre)} · evolução no dia 1º de cada mês.</div>
+          <div className="tiny muted mt4 row center gap4">Comissão técnica: <Stars count={tre} size={11} /> · evolução no dia 1º de cada mês.</div>
         </div>
       </div>
 
@@ -247,7 +247,7 @@ export function IndividualTrainingSheet({ p, onClose }: { p: Player; onClose: ()
                   <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{TRAITS[t].emoji}</span>
                   <div className="grow" style={{ minWidth: 0 }}>
                     <b className="small">{TRAITS[t].label}</b>
-                    <div className="tiny muted">{ok ? TRAITS[t].desc : `🔒 ${LEARN_REQ[t]!.text}`}</div>
+                    <div className="tiny muted">{ok ? TRAITS[t].desc : <span className="row center gap4"><Ic n="lock" size={11} /> {LEARN_REQ[t]!.text}</span>}</div>
                   </div>
                   {on && <span className="tag good">treinando</span>}
                 </div>

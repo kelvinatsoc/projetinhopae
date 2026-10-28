@@ -37,7 +37,7 @@ export function MoreScreen() {
             </button>
             <button className="k-mod-card" style={{ borderLeftColor: "#10b981" }} onClick={() => { localStorage.setItem("ldb.marketTab", "scouting"); setTab("market"); }}>
               <b>Rede de Olheiros</b>
-              <small>Missões por região, conhecimento e relatórios com ★</small>
+              <small>Missões por região, conhecimento e relatórios com estrelas</small>
             </button>
             <button className="k-mod-card" style={{ borderLeftColor: "#f59e0b" }} onClick={() => { localStorage.setItem("ldb.marketTab", "targets"); setTab("market"); }}>
               <b>Lista de Interesse & Propostas {bidsCount > 0 ? `(${bidsCount})` : ""}</b>

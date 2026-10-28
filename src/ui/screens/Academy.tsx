@@ -15,7 +15,7 @@ import { Avatar, Icon, PlayerRow, PosBadge, Stars } from "../components";
 import type React from "react";
 import "../manage.css";
 
-const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
+// Stars imported from components
 
 /** Nova tela da base (rota "youth" e aba Base do Elenco). */
 export function AcademyScreen() {
@@ -55,11 +55,12 @@ export function AcademyScreen() {
           ) : (
             <div className="card flat small">
               {preview ? (
-                <>Próxima safra: <span style={{ color: "var(--gold)" }}>{stars(Q_STARS[preview.shown])}</span> <b>{Q_LABEL[preview.shown]}</b>
+                <>
+                  <span className="row center gap4">Próxima safra: <Stars count={Q_STARS[preview.shown]} size={11} /> <b>{Q_LABEL[preview.shown]}</b></span>
                   {(preview.shown === "boa" || preview.shown === "dourada") && <div className="muted mt4 tiny">Destaque: um {POS_NAME[preview.pos].toLowerCase()}.</div>}
                 </>
               ) : (
-                <div className="tiny muted">🔎 Olheiros avaliando a safra. Relatório em 1/nov; chegada em janeiro.</div>
+                <div className="tiny muted row center gap4"><Icon name="binoculars" size={13} /> Olheiros avaliando a safra. Relatório em 1/nov; chegada em janeiro.</div>
               )}
             </div>
           )}
@@ -85,7 +86,7 @@ export function AcademyScreen() {
                 return (
                   <div key={p.id}>
                     <PlayerRow p={p} club={club} season={w.season} onClick={() => push({ name: "player", id: p.id })}
-                      right={<span className="tiny" style={{ color: "var(--gold)", whiteSpace: "nowrap" }}>{stars(s)}</span>} />
+                      right={<Stars count={s} size={11} />} />
                     {(ready || loan) && (
                       <div style={{ margin: "-4px 0 6px 56px" }}>
                         {ready && <span className="tag good row gap4"><Icon name="check" size={12} /> Pronto para o profissional</span>}
@@ -110,7 +111,7 @@ function Rating({ icon, name, n, text }: { icon: React.ReactNode; name: string; 
     <div className="rating-row">
       <span style={{ width: 24, display: "inline-flex", alignItems: "center" }}>{icon}</span>
       <div className="grow" style={{ minWidth: 0 }}>
-        <div className="small"><b>{name}</b> <span style={{ color: "var(--gold)" }}>{stars(n)}</span></div>
+        <div className="small row center gap4"><b>{name}</b> <Stars count={n} size={11} /></div>
         <div className="tiny muted">{text}</div>
       </div>
     </div>

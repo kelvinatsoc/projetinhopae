@@ -13,7 +13,7 @@ import { askingPrice, canAfford, evaluateUserBid, playerWillingness, releasePlay
 import type { Attrs, Player, World } from "../../engine/types";
 import { back, push, replace, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, Bar, cardTier, Crest, Flag, FormDots, Ic, PosBadge, Sheet, Stars, TrendArrow } from "../components";
+import { Avatar, Bar, cardTier, Crest, Flag, FormDots, Ic, Icon, PosBadge, Sheet, Stars, TrendArrow } from "../components";
 import { bestPartners } from "../../engine/chemistry";
 import { awardsOf, expectedRating, formResidual, injuryProne, pendingRequest, streakOf } from "../../engine/form";
 import { roleStars, rolesFor } from "../../engine/tactics";
@@ -73,7 +73,7 @@ export function PlayerScreen({ id }: { id: number }) {
               if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
             }}
           >
-            {legend && <span className="tag legend fut-legend">★ {TIER_NAMES[legend.tier]}</span>}
+            {legend && <span className="tag legend fut-legend"><Ic n="star" size={12} /> {TIER_NAMES[legend.tier]}</span>}
             <div className="fut-top">
               <div className="fut-ovr">
                 <span className="pc-ovr">{p.ovr}</span>
@@ -158,29 +158,29 @@ export function PlayerScreen({ id }: { id: number }) {
         <main className="k-player-main">
           {ownedOut && club && (
             <div className="banner blue">
-              <span className="grow">📤 Emprestado ao <b>{club.name}</b> até {loanUntilLabel(p)}</span>
-              <button className="btn sm" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`↩️ ${p.name} voltou ao elenco`); }}>↩️ Chamar de volta</button>
+              <span className="grow"><Ic n="swap" size={13} /> Emprestado ao <b>{club.name}</b> até {loanUntilLabel(p)}</span>
+              <button className="btn sm" onClick={() => { update((x) => { endLoanNow(x, p); }); autosave(); toast(`${p.name} voltou ao elenco`); }}><Ic n="back" size={13} /> Chamar de volta</button>
             </div>
           )}
           {loanedIn && (
             <div className="banner blue">
-              <span className="grow">📥 Emprestado pelo <b>{parent?.name ?? "outro clube"}</b> até o fim de {p.loan!.until}{p.loan!.opt ? ` · opção de compra ${formatMoney(p.loan!.opt)}` : ""}</span>
+              <span className="grow"><Ic n="swap" size={13} /> Emprestado pelo <b>{parent?.name ?? "outro clube"}</b> até o fim de {p.loan!.until}{p.loan!.opt ? ` · opção de compra ${formatMoney(p.loan!.opt)}` : ""}</span>
             </div>
           )}
           {!mine && !ownedOut && p.loan && club && (
-            <div className="banner">📤 Emprestado pelo {parent?.name ?? "?"} ao {club.name} até {loanUntilLabel(p)}. Não pode ser negociado agora.</div>
+            <div className="banner"><Ic n="swap" size={13} /> Emprestado pelo {parent?.name ?? "?"} ao {club.name} até {loanUntilLabel(p)}. Não pode ser negociado agora.</div>
           )}
-          {mine && p.wantsOut && <div className="banner red">😤 {pendingRequest(w, p) === "bigger" ? `Depois de ${p.hm} meses em alta, quer um clube maior` : "Quer ser negociado"} — converse, prometa minutos ou venda.</div>}
+          {mine && p.wantsOut && <div className="banner red"><Ic n="alert" size={13} /> {pendingRequest(w, p) === "bigger" ? `Depois de ${p.hm} meses em alta, quer um clube maior` : "Quer ser negociado"} — converse, prometa minutos ou venda.</div>}
           {mine && pendingRequest(w, p) === "raise" && (
             <div className="banner blue row gap8">
-              <span className="grow">📝 Em grande fase, quer ser valorizado: renove com aumento antes que outros clubes apareçam.</span>
+              <span className="grow"><Ic n="doc" size={13} /> Em grande fase, quer ser valorizado: renove com aumento antes que outros clubes apareçam.</span>
               <button className="btn sm primary" onClick={() => setSheet("renew")}>Renovar</button>
             </div>
           )}
 
           {legend && (
             <div className="card" style={{ borderColor: "#8a6a00" }}>
-              <b>⭐ {legend.full}</b>
+              <b><Ic n="star" size={14} /> {legend.full}</b>
               <div className="small muted">{legend.era}</div>
               <p className="small" style={{ marginBottom: 0 }}>{legend.bio} Potencial de lenda: pode chegar a {legend.ovr} de overall.</p>
             </div>
@@ -197,7 +197,7 @@ export function PlayerScreen({ id }: { id: number }) {
                 {loanedIn ? `Contrato com o ${parent?.name ?? "clube de origem"} · você paga ${Math.round((p.loan!.wagePct) * 100)}% do salário` : clause > 0 ? <>Multa rescisória: <b>{formatMoney(clause)}</b></> : "Sem multa rescisória"}
                 {p.goalBonus && mine ? ` · bônus de ${formatMoney(p.goalBonus)} por gol` : ""}
               </div>
-              {mine && <div className="mt4">{roleLine(w, p)}{p.promise ? " · ⏱️ promessa ativa" : ""}</div>}
+              {mine && <div className="mt4">{roleLine(w, p)}{p.promise ? <> · <Ic n="stopwatch" size={12} /> promessa ativa</> : ""}</div>}
             </div>
           )}
 
@@ -209,8 +209,8 @@ export function PlayerScreen({ id }: { id: number }) {
             </div>
             <div className="row gap12 mt8 small">
               <span>Condição <b>{Math.round(p.cond)}%</b></span>
-              <span>Moral <b>{p.morale >= 75 ? "😄" : p.morale >= 50 ? "🙂" : p.morale >= 30 ? "😐" : "😞"}</b></span>
-              {p.injury > 0 && <span className="tag danger">🚑 {p.injuryName} ({p.injury} dias)</span>}
+              <span className={`k-morale-pill m-${p.morale >= 75 ? "hi" : p.morale >= 50 ? "ok" : p.morale >= 30 ? "med" : "low"}`}><Ic n={p.morale >= 50 ? "heart" : "alert"} size={11} /> Moral {Math.round(p.morale)}%</span>
+              {p.injury > 0 && <span className="tag danger"><Ic n="crossMedical" size={12} /> {p.injuryName} ({p.injury} dias)</span>}
               {Object.entries(p.bans).filter(([, n]) => n > 0).map(([c, n]) => <span key={c} className="tag danger">Suspenso: {COMP_META[c]?.short} ({n})</span>)}
             </div>
           </div>
@@ -258,8 +258,10 @@ export function PlayerScreen({ id }: { id: number }) {
             </div>
           )}
         </main>
-      </div>
-
+      </div>
+
+
+
       {sheet === "offer" && <OfferSheet w={w} p={p} onClose={() => setSheet(null)} />}
       {sheet === "renew" && <NegotiationSheet p={p} mode="renew" onClose={() => setSheet(null)} />}
       {sheet === "talk" && <TalkSheet p={p} onClose={() => setSheet(null)} />}
@@ -272,8 +274,8 @@ export function PlayerScreen({ id }: { id: number }) {
             let err: string | null = null;
             update((x) => { err = exerciseOption(x, p); });
             if (err) { toast(err); return; }
-            autosave(); setSheet(null); toast(`💰 ${p.name} agora é seu!`);
-          }}>💰 Exercer opção</button>
+            autosave(); setSheet(null); toast(`${p.name} agora é seu!`);
+          }}><span className="row center gap4"><Ic n="coins" size={14} /> Exercer opção</span></button>
         </Sheet>
       )}
       {sheet === "photo" && <PhotoSheet p={p} onClose={() => setSheet(null)} />}
@@ -333,7 +335,7 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
           </div>
           <button className="btn block mt12" disabled={!windowOpen} onClick={() => propose()}>Enviar proposta</button>
           {clause > 0 && windowOpen && resp?.status !== "accepted" && (
-            <button className="btn gold block mt8" onClick={() => propose(clause)}>💥 Pagar a multa ({formatMoney(clause)})</button>
+            <button className="btn gold block mt8" onClick={() => propose(clause)}><span className="row center gap4"><Ic n="bolt" size={14} /> Pagar a multa</span> ({formatMoney(clause)})</button>
           )}
         </>
       )}
@@ -343,7 +345,7 @@ function OfferSheet({ w, p, onClose }: { w: World; p: Player; onClose: () => voi
         </div>
       )}
       {resp?.status === "accepted" && willing.ok && (
-        <button className="btn primary block mt12" onClick={next}>✍️ Acertar o contrato {fee ? `(${formatMoney(fee)})` : ""}</button>
+        <button className="btn primary block mt12" onClick={next}><span className="row center gap4"><Ic n="edit" size={14} /> Acertar o contrato</span> {fee ? `(${formatMoney(fee)})` : ""}</button>
       )}
     </Sheet>
   );
@@ -374,7 +376,7 @@ function PhotoSheet({ p, onClose }: { p: Player; onClose: () => void }) {
     <Sheet title="Foto do jogador" onClose={onClose}>
       <p className="small muted">Escolha uma foto do seu celular ou cole um link de imagem. A foto fica salva só no seu jogo.</p>
       <label className="btn block">
-        📁 Escolher imagem do aparelho
+        <span className="row center gap4"><Ic n="camera" size={14} /> Escolher imagem do aparelho</span>
         <input type="file" accept="image/*" hidden onChange={async (e) => {
           const f = e.target.files?.[0];
           if (!f) return;
@@ -440,13 +442,13 @@ function PhotoCredit({ p }: { p: Player }) {
     loadCredits().then((c) => { if (alive) setCredit(c[`players/${real}.webp`] ?? null); });
     return () => { alive = false; };
   }, [real]);
-  if (!p.photo && p.ext) return <div className="tiny mt8" style={{ opacity: 0.7 }}>📷 Foto: TheSportsDB.com</div>;
-  if (!p.photo && p.img && /^[os]\d/.test(p.img)) return <div className="tiny mt8" style={{ opacity: 0.7 }}>📷 Foto: {p.img.startsWith("s") ? "São Paulo FC" : "ogol.com.br"}</div>;
+  if (!p.photo && p.ext) return <div className="tiny mt8" style={{ opacity: 0.7 }}><span className="row center gap2 inline-flex"><Ic n="camera" size={11} /> Foto:</span> TheSportsDB.com</div>;
+  if (!p.photo && p.img && /^[os]\d/.test(p.img)) return <div className="tiny mt8" style={{ opacity: 0.7 }}><span className="row center gap2 inline-flex"><Ic n="camera" size={11} /> Foto:</span> {p.img.startsWith("s") ? "São Paulo FC" : "ogol.com.br"}</div>;
   if (!p.photo && p.img?.startsWith("r")) return <div className="tiny mt8" style={{ opacity: 0.7 }}>Rosto gerado por IA (pessoa que não existe).</div>;
   if (!real || !credit) return null;
   return (
     <div className="tiny mt8" style={{ opacity: 0.7 }}>
-      📷 {p.legend ? "Foto do jogador original · " : ""}{credit.author || "Wikimedia Commons"} · {credit.license}
+      {p.legend ? "Foto do jogador original · " : ""}{credit.author || "Wikimedia Commons"} · {credit.license}
     </div>
   );
 }
@@ -551,7 +553,7 @@ function RolesCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
       </div>
       {partners.length > 0 && (
         <>
-          <div className="small muted mt12">🤝 Mais entrosado com</div>
+          <div className="small muted mt12 row gap6"><Icon name="handshake" size={13} /> Mais entrosado com</div>
           <div className="row gap8 wrap mt4">
             {partners.map(({ p: q, v }) => (
               <span key={q.id} className="tag" style={{ cursor: "pointer", borderColor: v >= 70 ? "var(--accent)" : undefined }} onClick={() => push({ name: "player", id: q.id })}>

@@ -12,7 +12,7 @@ import { mediaUrl } from "../mediaUrl";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, loadWorldFile, openWorld, SPFC_REAL_2026, startNewWorld } from "../actions";
-import { CompLogo, Crest, Icon, stadiumSrc, visibleColor } from "../components";
+import { CompLogo, Crest, Icon, Stars, stadiumSrc, visibleColor } from "../components";
 import { crestFor, KitShirt } from "../Uniforms";
 import { flag } from "../flags";
 import { Hd2dStadium } from "../hq/Hd2dStadium";
@@ -737,8 +737,7 @@ function Scenarios({ onBack }: { onBack: () => void }) {
               <div className="grow">
                 <div className="k-scenario-title">{s.title}</div>
                 <div className="tiny diff">
-                  {"★".repeat(s.difficulty)}
-                  {"☆".repeat(3 - s.difficulty)}
+                  <Stars count={s.difficulty} max={3} size={11} />
                 </div>
               </div>
             </div>

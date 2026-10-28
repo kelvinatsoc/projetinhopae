@@ -5175,3 +5175,128 @@ html.lite img { content-visibility: auto; }
 .k-news-card {
   padding: 6px 10px !important;
 }
+
+/* ---------------------------------------------------------------- Polimento Visual e Performance 2D HD */
+.stars-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+  line-height: 1;
+}
+.stars-inline .star-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stars-inline .star-on {
+  color: #fbbf24;
+}
+.stars-inline .star-off {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+/* Badges e cartões em partidas */
+.card-badge {
+  display: inline-block;
+  width: 9px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.card-badge.yellow {
+  background: #facc15;
+  border: 1px solid #ca8a04;
+}
+.card-badge.red {
+  background: #ef4444;
+  border: 1px solid #b91c1c;
+}
+.card-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Eventos de jogo no Feed e Toast */
+.ev-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.ev-ico.goal {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+.ev-ico.sub {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+.ev-ico.inj {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.ev-ico.var {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+/* Pílula de moral estilizada */
+.k-morale-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.k-morale-pill.m-hi {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.k-morale-pill.m-ok {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.k-morale-pill.m-med {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+.k-morale-pill.m-low {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Pulso do Elenco (chips) */
+.k-pulse-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.k-pulse-chip.hot {
+  color: #f97316;
+}
+.k-pulse-chip.cold {
+  color: #38bdf8;
+}
+
+/* Troféu no cabeçalho de competição */
+.ct-trophy-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffd700;
+  margin-left: 4px;
+}

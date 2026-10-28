@@ -321,7 +321,7 @@ function AlertsPanel({
         </div>
       ) : (
         <div className="k-alert-empty">
-          <span className="k-alert-ok">✓</span>
+          <span className="k-alert-ok"><Icon name="check" size={14} /></span>
           <div>
             <b>Departamento Médico zerado</b>
             <span>Todos os atletas estão aptos para a próxima partida.</span>
@@ -435,7 +435,7 @@ function NextMatchCard({ w, f }: { w: World; f: Fixture }) {
         </div>
         <ul className="nm-info k-nm-info">
           <li className="ellipsis"><Icon name="stadium" size={14} />{f.neutral ? "Campo neutro" : stadiumName(w, home)}</li>
-          <li>⚡ Força {hStr} × {aStr}</li>
+          <li className="row center gap4"><Icon name="bolt" size={14} /> Força {hStr} × {aStr}</li>
           {tv.length > 0 && <li className="ellipsis"><Icon name="tv" size={14} />{tv.join(" · ")}</li>}
         </ul>
         <div className="nm-actions k-nm-actions">
@@ -524,7 +524,23 @@ export function MiniTable({ w, compId, full }: { w: World; compId: string; full?
   );
 }
 
-const ICON: Record<string, string> = { legend: "⭐", youth: "🌱", transfer: "💼", offer: "💰", board: "🏛️", injury: "🚑", contract: "📝", season: "🏆", match: "⚽", info: "📣", training: "🏋️", staff: "👔", scout: "🔭", dressing: "💬", admin: "🛠️" };
+const NEWS_ICONS: Record<string, string> = {
+  legend: "star",
+  youth: "sprout",
+  transfer: "swap",
+  offer: "coins",
+  board: "bank",
+  injury: "crossMedical",
+  contract: "doc",
+  season: "trophy",
+  match: "ball",
+  info: "megaphone",
+  training: "dumbbell",
+  staff: "briefcase",
+  scout: "binoculars",
+  dressing: "chat",
+  admin: "wrench",
+};
 
 export function NewsScreen() {
   const w = useWorld();
@@ -538,10 +554,10 @@ export function NewsScreen() {
         {w.news.map((n) => (
           <div key={n.id} className="card k-news-card" style={{ borderColor: n.kind === "legend" ? "#8a6a00" : undefined }} onClick={() => update(() => { n.read = true; })}>
             <div className="row">
-              <span style={{ fontSize: 20 }}>{ICON[n.kind] ?? "📣"}</span>
+              <span className="row center" style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }}><Icon name={NEWS_ICONS[n.kind] ?? "megaphone"} size={16} /></span>
               <div className="grow" style={{ minWidth: 0 }}>
                 <b className="ellipsis" style={{ display: "block" }}>{n.title}</b>
-                <div className="tiny muted">{newsSource(w, n) ? `📰 ${newsSource(w, n)} · ` : ""}{formatDate(n.season, n.day)} {n.season}</div>
+                <div className="tiny muted">{newsSource(w, n) ? <span className="row center gap2 inline-flex"><Ic n="news" size={11} /> {newsSource(w, n)} · </span> : ""}{formatDate(n.season, n.day)} {n.season}</div>
               </div>
               {!n.read && <span className="tag good">novo</span>}
             </div>

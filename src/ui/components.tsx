@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Award,
+  Battery,
   Bell,
   Binoculars,
   BookOpen,
@@ -30,10 +31,13 @@ import {
   FileText,
   Film,
   Flame,
+  Globe,
+  GraduationCap,
   Grid2x2,
   Hammer,
   Handshake,
   Heart,
+  HelpCircle,
   Home,
   Landmark,
   LayoutList,
@@ -47,6 +51,7 @@ import {
   Menu,
   MessageSquare,
   Mic,
+  Moon,
   Newspaper,
   Pause,
   Pencil,
@@ -55,17 +60,22 @@ import {
   RefreshCw,
   Rocket,
   Save,
+  Scale,
+  School,
   ScrollText,
   Search,
   Settings,
   Shield,
   Shirt,
   SlidersHorizontal,
+  Smile,
   Snowflake,
   Sparkles,
   Sprout,
   Square,
   Star,
+  Sun,
+  Sunset,
   Tag,
   Target,
   Trash2,
@@ -346,14 +356,24 @@ export function Bar({ v, color }: { v: number; color?: string }) {
   );
 }
 
-export function Stars({ n, max = 5, half }: { n: number; max?: number; half?: boolean }) {
-  if (half) {
-    // meias estrelas (aptidão por função): ★★★⯪☆
-    const full = Math.floor(n), h = n - full >= 0.5 ? 1 : 0;
-    return <span className="stars" aria-label={`${n} de ${max} estrelas`} style={{ color: "var(--gold)", letterSpacing: 1 }}>{"★".repeat(full)}{h ? "⯪" : ""}{"☆".repeat(Math.max(0, max - full - h))}</span>;
-  }
-  const full = Math.max(1, Math.round(n));
-  return <span style={{ color: "var(--gold)", letterSpacing: 1 }}>{"★".repeat(full)}{"☆".repeat(Math.max(0, max - full))}</span>;
+export function Stars({ count, n, max = 5, size = 12 }: { count?: number; n?: number; max?: number; half?: boolean; size?: number }) {
+  const val = Math.max(0, Math.min(max, count ?? n ?? 0));
+  return (
+    <span className="stars-inline" aria-label={`${val} de ${max} estrelas`}>
+      {Array.from({ length: max }, (_, i) => {
+        const on = i < Math.round(val);
+        return (
+          <Star
+            key={i}
+            size={size}
+            className={on ? "star-on" : "star-off"}
+            fill={on ? "currentColor" : "none"}
+            strokeWidth={on ? 1.5 : 1.2}
+          />
+        );
+      })}
+    </span>
+  );
 }
 
 /** Bolinhas das últimas 5 notas (mais antiga à esquerda). */
@@ -378,7 +398,7 @@ export function TrendArrow({ p, label }: { p: Player; label?: boolean }) {
   const txt = t === "up" ? "Em evolução" : t === "down" ? "Em queda" : "Estável";
   return (
     <span className={`trend-arrow ${t ?? "flat"}`} title={txt}>
-      {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}{s === "hot" ? " 🔥" : s === "cold" ? " 🧊" : ""}
+      {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}{s === "hot" ? " ▲" : s === "cold" ? " ▼" : ""}
     </span>
   );
 }
@@ -422,7 +442,7 @@ export function PlayerRow({ p, club, season, right, onClick, showClub, starter, 
         <div className="row gap4" style={{ minWidth: 0 }}>
           <b className="ellipsis" style={{ fontSize: 14.5 }}>{p.name}</b>
           {starter && <span className="xi-pill">XI</span>}
-          {p.legend && <span className="tag legend">★ LENDA</span>}
+          {p.legend && <span className="tag legend"><Icon name="star" size={10} fill /> LENDA</span>}
           {injured && <span className="tag danger"><Icon name="crossMedical" size={12} fill /> {p.injury}d</span>}
           {banned && <span className="tag danger"><Icon name="cardRed" size={12} fill /></span>}
           {p.listed && <span className="tag"><Icon name="priceTag" size={12} /></span>}
@@ -431,7 +451,7 @@ export function PlayerRow({ p, club, season, right, onClick, showClub, starter, 
           <span style={{ flex: "none" }}><Flag code={p.nat} /> {age(p, season)}a</span>
           {showClub && club && <span className="ellipsis" style={{ minWidth: 0 }}>· {club.name}</span>}
           {!showClub && (
-            <span style={{ color: condColor, fontWeight: 700, flex: "none" }}>· ⚡{Math.round(p.cond)}% <TrendArrow p={p} /></span>
+            <span style={{ color: condColor, fontWeight: 700, flex: "none", display: "inline-flex", alignItems: "center", gap: 3 }}>· <Icon name="bolt" size={11} />{Math.round(p.cond)}% <TrendArrow p={p} /></span>
           )}
           {mood && <span style={{ flex: "none" }}>{mood}</span>}
           <PlayerBadges p={p} />
@@ -626,24 +646,43 @@ const LUCIDE_MAP: Record<string, ComponentType<{ size?: number; strokeWidth?: nu
   download: Download,
   doc: FileText,
   filter: SlidersHorizontal,
+  sliders: SlidersHorizontal,
+  sparkles: Sparkles,
+  snowflake: Snowflake,
+  zap: Zap,
+  award: Award,
+  arrowUpRight: ArrowLeftRight,
+  arrowDownLeft: ArrowLeftRight,
   more: Grid2x2,
   menu: Menu,
+  globe: Globe,
+  help: HelpCircle,
+  battery: Battery,
+  scale: Scale,
+  smile: Smile,
+  sun: Sun,
+  sunset: Sunset,
+  moon: Moon,
+  graduation: GraduationCap,
+  school: School,
 };
+
+
 
 /** Ícone alinhado ao texto (usa pacote Lucide React estilo Opção 1). */
 export function Ic({ n, size = 16 }: { n: string; size?: number }) {
   return <span className="ic-inline" aria-hidden="true"><Icon name={n} size={size} /></span>;
 }
 
-export function Icon({ name, size = 22, fill = false }: { name: keyof typeof PATHS | string; size?: number; fill?: boolean }) {
+export function Icon({ name, size = 22, fill = false, className = "" }: { name: keyof typeof PATHS | string; size?: number; fill?: boolean | string; className?: string }) {
   const LucideComp = LUCIDE_MAP[name];
   if (LucideComp) {
     return (
       <LucideComp
-        className={`ico${fill ? " ico-solid" : " ico-duo"}`}
+        className={`ico${fill ? " ico-solid" : " ico-duo"}${className ? ` ${className}` : ""}`}
         size={size}
         strokeWidth={1.9}
-        fill={fill ? "currentColor" : "none"}
+        fill={typeof fill === "string" ? fill : (fill ? "currentColor" : "none")}
       />
     );
   }
@@ -827,9 +866,7 @@ export function KosmalaPlayerRow({
       </div>
       <span className="k-tr-flag"><Flag code={p.nat} /></span>
       <div className="k-tr-stars">
-        {Array.from({ length: 5 }, (_, i) => (
-          <span key={i} style={{ color: i < stars ? "#f59e0b" : "#323644" }}>★</span>
-        ))}
+        <Stars count={stars} max={5} size={11} />
       </div>
       <div className="k-tr-player">
         <Avatar p={p} club={club} season={effSeason} size={22} />

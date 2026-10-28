@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ACHIEVEMENTS, type AchCategory } from "../engine/achievements";
 import { useWorld } from "../store";
-import { Bar } from "./components";
+import { Bar, Icon } from "./components";
 import "./progression.css";
 
 const CATS: { id: AchCategory | "all"; label: string }[] = [
@@ -23,7 +23,7 @@ export function AchievementsScreen() {
   return (
     <div className="page">
       <div className="card">
-        <div className="card-title"><h3>🏅 Conquistas</h3><b>{n}/{ACHIEVEMENTS.length}</b></div>
+        <div className="card-title"><h3 className="row gap6"><Icon name="award" size={18} /> Conquistas</h3><b>{n}/{ACHIEVEMENTS.length}</b></div>
         <Bar v={(n / ACHIEVEMENTS.length) * 100} color="var(--gold)" />
         {c && (
           <div className="grid3 mt12">
@@ -45,7 +45,7 @@ export function AchievementsScreen() {
               <div>
                 <b className="small">{a.name}</b>
                 <div className="tiny muted">{a.desc}</div>
-                {g && <div className="tiny" style={{ color: "var(--gold)" }}>✔ {g.season}{w.clubs[g.clubId] ? ` · ${w.clubs[g.clubId].name}` : ""}</div>}
+                {g && <div className="tiny" style={{ color: "var(--gold)" }}>{g.season}{w.clubs[g.clubId] ? ` · ${w.clubs[g.clubId].name}` : ""}</div>}
               </div>
             </div>
           );

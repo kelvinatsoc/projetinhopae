@@ -10,7 +10,7 @@ import type { Player, World } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { CompareIconBtn } from "../Compare";
-import { DeltaTag, Ic, KosmalaPlayerRow, PlayerCard, PlayerRow } from "../components";
+import { DeltaTag, Ic, Icon, KosmalaPlayerRow, PlayerCard, PlayerRow, Stars } from "../components";
 import { AcademyScreen } from "./Academy";
 import { DressingScreen } from "./Dressing";
 import { Pitch, TacticsScreen } from "./Tactics";
@@ -131,8 +131,8 @@ function SquadList() {
             <Ic n="sparkle" size={12} /> Escalar
           </button>
           <div className="view-toggle">
-            <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista">☰</button>
-            <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas">▦</button>
+            <button className={view === "list" ? "active" : ""} onClick={() => pickView("list")} aria-label="Ver lista"><Icon name="list" size={14} /></button>
+            <button className={view === "cards" ? "active" : ""} onClick={() => pickView("cards")} aria-label="Ver cartas"><Icon name="more" size={14} /></button>
           </div>
         </div>
       </div>
@@ -216,11 +216,11 @@ function SquadPulse({ w, players }: { w: World; players: Player[] }) {
   );
   return (
     <div className="k-card squad-pulse" style={{ marginBottom: 8 }}>
-      <div className="row"><b className="small grow">Pulso de Fase do Elenco</b><span className="tiny muted">🔥 Em alta: {hot.length} · 🧊 Em baixa: {cold.length}</span></div>
+      <div className="row"><b className="small grow">Pulso de Fase do Elenco</b><span className="tiny muted"><span className="k-pulse-chip hot"><Ic n="flame" size={12} /> Em alta: {hot.length}</span> · <span className="k-pulse-chip cold"><Ic n="snowflake" size={12} /> Em baixa: {cold.length}</span></span></div>
       {awards.length > 0 && <div className="chips mt4">{awards.map(({ p, a }) => chip(p, `${a.emoji} ${a.label.split(" ")[0]}`, "active"))}</div>}
-      {reqs.length > 0 && <div className="chips mt4">{reqs.map(({ p, r }) => chip(p, r === "raise" ? "📝 Pede valorização:" : "🚀 Quer transferência:"))}</div>}
+      {reqs.length > 0 && <div className="chips mt4">{reqs.map(({ p, r }) => chip(p, r === "raise" ? "Pede valorização:" : "Quer transferência:"))}</div>}
       {(hot.length > 0 || cold.length > 0) && (
-        <div className="chips mt4">{hot.slice(0, 4).map((p) => chip(p, "🔥"))}{cold.slice(0, 3).map((p) => chip(p, "🧊"))}</div>
+        <div className="chips mt4">{hot.slice(0, 4).map((p) => chip(p, "Em alta"))}{cold.slice(0, 3).map((p) => chip(p, "Em baixa"))}</div>
       )}
     </div>
   );
@@ -233,7 +233,7 @@ export function YouthScreen() {
   return (
     <div className="page">
       <div className="card flat small">
-        🌱 Nível da base: <b>{"★".repeat(club.youthLevel)}{"☆".repeat(5 - club.youthLevel)}</b>. Novos garotos chegam todo fim de janeiro, depois da Copinha.
+        <span className="row center gap6"><Ic n="sprout" size={14} /> Nível da base: <Stars count={club.youthLevel} size={13} /></span>. Novos garotos chegam todo fim de janeiro, depois da Copinha.
         Lendas do futebol podem renascer aqui! Promova quem estiver pronto para o profissional.
       </div>
       <div className="card flat" style={{ padding: "2px 10px" }}>

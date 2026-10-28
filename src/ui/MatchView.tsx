@@ -11,7 +11,7 @@ import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
 import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from "../engine/types";
-import { Avatar, CompLogo, Crest, StadiumPhoto } from "./components";
+import { Avatar, CompLogo, Crest, Icon, StadiumPhoto } from "./components";
 import { COMP_META } from "../engine/competitions";
 import { compTheme, themeClass, themeVars } from "./compThemes";
 import { celebrationFor, drawPitchDude, lookOf, PixelFX, setPose, shotStyle, type SpriteDude } from "./matchSprites";
@@ -2548,7 +2548,7 @@ export function MatchView(props: MatchViewProps) {
         {flat && (
           <div className="mv-intro" onClick={props.onSkipIntro}>
             <div className="mv-intro-fallback">
-              <b>🏟️ {sim.f.neutral ? "Campo neutro" : home.stadium}</b>
+              <b className="row gap6"><Icon name="trophy" size={13} /> {sim.f.neutral ? "Campo neutro" : home.stadium}</b>
               {!sim.f.neutral && home.capacity > 0 && <span>{home.capacity.toLocaleString("pt-BR")} lugares · {home.city}</span>}
             </div>
             {photo && <div className="mv-intro-photo"><StadiumPhoto club={home} /></div>}
@@ -2654,7 +2654,7 @@ export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: Mat
       {goals.length > 0 && (
         <div className="small mt8 col gap4">
           {goals.map((e, i) => (
-            <span key={i}>⚽ {e.min}' {e.pid ? w.players[e.pid]?.name : ""}{e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""} — {(e.side === 0 ? H : A).abbr}</span>
+            <span key={i} className="row gap4"><Icon name="ball" size={11} /> {e.min}' {e.pid ? w.players[e.pid]?.name : ""}{e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""} — {(e.side === 0 ? H : A).abbr}</span>
           ))}
         </div>
       )}

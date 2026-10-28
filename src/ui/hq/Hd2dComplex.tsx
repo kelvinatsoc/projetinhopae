@@ -30,10 +30,10 @@ export function Hd2dComplex({ club, matchToday = false }: Hd2dComplexProps) {
   const youthLv = facLevel(club, "youth");
   const medLv = facLevel(club, "medical");
 
-  const TIME_BTNS: [Hd2dTimeOfDay, string, string][] = [
-    ["day", "Dia", "☀️"],
-    ["sunset", "Tarde", "🌅"],
-    ["night", "Noite", "🌙"],
+  const TIME_BTNS: [Hd2dTimeOfDay, string][] = [
+    ["day", "Dia"],
+    ["sunset", "Tarde"],
+    ["night", "Noite"],
   ];
 
   return (

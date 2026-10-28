@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CompareIconBtn } from "../Compare";
 import { userWindowOpen } from "../../engine/admin";
 import { windowLabel } from "../../engine/calendar";
@@ -26,7 +26,7 @@ export function MarketScreen() {
       <div className={`window-banner${open ? " open" : " closed"}`}>
         <span className="wb-txt">
           <span className="wb-dot" aria-hidden="true" />
-          <span>{windowLabel(w.day) ?? (open ? "🛠️ Janela aberta (Admin)" : "Janela fechada · só livres")}</span>
+          <span>{windowLabel(w.day) ?? (open ? <span className="row center gap4"><Ic n="wrench" size={13} /> Janela aberta (Admin)</span> : "Janela fechada · só livres")}</span>
         </span>
         <span className="wb-bal">Caixa: <b>{formatMoney(user.balance)}</b></span>
       </div>
@@ -52,6 +52,15 @@ function Search() {
   const version = useVersion();
   const [f, setF] = useState<MarketFilter>({ pos: "", maxAge: 0, minOvr: 0, maxValue: 0, scope: "all" });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [queryInput, setQueryInput] = useState(f.query ?? "");
+
+  // Debounce da busca para eliminar qualquer travamento de digitação com 7500 jogadores
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setF((prev) => (prev.query === queryInput ? prev : { ...prev, query: queryInput }));
+    }, 160);
+    return () => clearTimeout(t);
+  }, [queryInput]);
   const results = useMemo(() => searchMarket(w, f, 80), [w, f, version]);
   const set = (patch: Partial<MarketFilter>) => setF((x) => ({ ...x, ...patch }));
   const advCount = (f.maxAge ? 1 : 0) + (f.minOvr ? 1 : 0) + (f.maxValue ? 1 : 0) + (f.scope !== "all" ? 1 : 0) + (f.trait ? 1 : 0);
@@ -61,19 +70,19 @@ function Search() {
       <div className="search-bar">
         <div className="search-input-wrap">
           <Icon name="search" size={16} />
-          <input placeholder="Buscar jogador por nome..." value={f.query ?? ""} onChange={(e) => set({ query: e.target.value })} />
+          <input placeholder="Buscar jogador por nome..." value={queryInput} onChange={(e) => setQueryInput(e.target.value)} />
         </div>
         <button className={`filter-drawer-btn${advCount ? " active" : ""}`} onClick={() => setFilterOpen(true)}>
-          ⚙ Filtros{advCount ? ` (${advCount})` : ""}
+          <span className="row center gap4"><Icon name="sliders" size={14} /> Filtros{advCount ? ` (${advCount})` : ""}</span>
         </button>
       </div>
 
       <div className="chip-row">
         <button className={`chip${!f.pos && !f.freeOnly && !f.listedOnly && !f.legendsOnly ? " active" : ""}`}
           onClick={() => set({ pos: "", freeOnly: false, listedOnly: false, legendsOnly: false })}>Todas</button>
-        <button className={`chip${f.freeOnly ? " active" : ""}`} onClick={() => set({ freeOnly: !f.freeOnly })}>🟢 Livres</button>
-        <button className={`chip${f.listedOnly ? " active" : ""}`} onClick={() => set({ listedOnly: !f.listedOnly })}>🏷️ À venda</button>
-        <button className={`chip${f.legendsOnly ? " active" : ""}`} onClick={() => set({ legendsOnly: !f.legendsOnly })}>★ Lendas</button>
+        <button className={`chip${f.freeOnly ? " active" : ""}`} onClick={() => set({ freeOnly: !f.freeOnly })}><span className="row center gap4"><Ic n="check" size={12} /> Livres</span></button>
+        <button className={`chip${f.listedOnly ? " active" : ""}`} onClick={() => set({ listedOnly: !f.listedOnly })}><span className="row center gap4"><Ic n="tag" size={12} /> À venda</span></button>
+        <button className={`chip${f.legendsOnly ? " active" : ""}`} onClick={() => set({ legendsOnly: !f.legendsOnly })}><span className="row center gap4"><Ic n="star" size={12} /> Lendas</span></button>
         {POSITIONS.map((p) => (
           <button key={p} className={`chip${f.pos === p ? " active" : ""}`} onClick={() => set({ pos: f.pos === p ? "" : (p as Pos) })}>{p}</button>
         ))}
@@ -147,7 +156,7 @@ function Search() {
               <span className="muted">Jogada preferida</span>
               <select className="text" value={f.trait ?? ""} onChange={(e) => set({ trait: e.target.value as TraitId | "" })} aria-label="Jogada preferida">
                 <option value="">Jogada: qualquer</option>
-                {TRAIT_IDS.filter((t) => !TRAITS[t].bad).map((t) => <option key={t} value={t}>{TRAITS[t].emoji} {TRAITS[t].label}</option>)}
+                {TRAIT_IDS.filter((t) => !TRAITS[t].bad).map((t) => <option key={t} value={t}>{TRAITS[t].label}</option>)}
               </select>
             </label>
             {f.trait && <div className="tiny muted">Só aparecem jogadores que seus olheiros conhecem bem.</div>}

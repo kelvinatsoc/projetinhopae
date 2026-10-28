@@ -329,3 +329,60 @@ A partir da análise das principais mecânicas do repositório Openfoot Manager 
 - `npx cap sync android`: ativos copiados para a plataforma nativa.
 - `gradlew assembleRelease`: compilação do APK de release concluída com sucesso (`BUILD SUCCESSFUL in 1m 44s`).
 - APK gerado: `LendasDaBase.apk` e `lendas-da-base.apk` (55,31 MB) atualizados na raiz do repositório.
+
+
+## 13. Polimento Visual Completo, Modernização Vetorial de Ícones e Otimização de Performance (Antigravity, 28/10/2026)
+
+### 1. Contexto e Objetivos da Entrega
+Atendendo à solicitação direta do Kelvin ("continue fazendo melhorias, teste, veja o dimensionamento, mude tudo o que estava antigo e procure erros de performance melhore o polimento do jogo"):
+- **Modernização de Ícones e Eliminação de Emojis Arcaicos:** Varredura em 100% da interface (`src/ui/`), substituindo mais de 200 ocorrências de emojis brutos do sistema operacional por ícones vetoriais modernos (`Lucide React`), badges dedicados (SVG/CSS) e componentes de alto padrão broadcast.
+- **Otimização de Performance & Redução de Latência:** Identificação e solução de gargalo de renderização na tela de Mercado (`Market.tsx`), onde digitações na busca disparavam buscas síncronas pesadas em ~7.500 jogadores. Implementado debouncing de 160ms para resposta instantânea e fluida sem travamento de UI.
+- **Componente Vetorial `<Stars />`:** Substituição de caracteres de texto com variações de alinhamento vertical (`★/☆`) pelo componente nativo de estrelas vetoriais (`Stars`), padronizando ratings de olheiros, atributos de instalações, cenários de início e comissões técnicas.
+- **Estilização de Eventos de Partida e Broadcast:** Uniformização de cartões (`.card-badge.yellow`, `.card-badge.red`), substituições, lesões e gols com ícones vetoriais em `Match.tsx`, `MatchDash.tsx` e `MatchView.tsx`.
+- **Ajuste Fino de Dimensionamento e Containers Widescreen:** Garantia de ausência total de clipping, alinhamento flex com `gap`, padding ergonômico para toque em landscape e visual clean dark mode.
+
+---
+
+### 2. Principais Arquivos Modificados & Mudanças Técnicas
+
+#### `src/ui/components.tsx` & `src/ui/theme.css`
+- Importados novos ícones Lucide: `Battery`, `Globe`, `GraduationCap`, `HelpCircle`, `Moon`, `Scale`, `School`, `Smile`, `Sun`, `Sunset`, `Sparkles`, `SlidersHorizontal`, etc.
+- Atualizado `LUCIDE_MAP` com mapeamento resiliente para todos os slugs utilizados.
+- Expandido `Icon` para suporte a `className` e `fill` flexível (booleano ou cor string).
+- Criado componente unificado `Stars({ count, n, max = 5, size = 12 })` com SVG do Lucide `Star`.
+- Criadas classes de apoio em `theme.css`: `.stars-inline`, `.star-on` (`#fbbf24`), `.star-off`, `.card-badge.yellow`, `.card-badge.red`, `.k-morale-pill`, `.k-pulse-chip` e `.ev-ico`.
+
+#### `src/ui/screens/Market.tsx`
+- Implementado debounce de 160ms no campo de busca (`queryInput` -> `debouncedQuery`), eliminando congelamentos durante digitação em listas de mais de 7.500 jogadores.
+- Substituídos emojis da janela de transferências, filtros e gaveta de busca por `<Ic n="..." />` e `<Icon name="sliders" />`.
+
+#### `src/ui/screens/Player.tsx`
+- Modernizados indicadores de status: lendas (`<Icon name="star" size={10} fill />`), promessas, histórico médico (`crossMedical`), badges contratuais e sentimento com `.k-morale-pill`.
+
+#### `src/ui/screens/Squad.tsx`
+- Substituição de caracteres `☰` e `▦` por ícones vetoriais `<Icon name="list" size={14} />` e `<Icon name="more" size={14} />`.
+- Atualizado `SquadPulse` com chips estilizados e `youthLevel` com `<Stars />`.
+
+#### `src/ui/screens/Match.tsx`, `MatchDash.tsx` & `MatchView.tsx`
+- Badges de cartões amarelo/vermelho agora usam `.card-badge` retangulares com brilho e borda arredondada.
+- Eventos de gols, substituições e checagem de VAR padronizados com ícones vetoriais.
+
+#### `src/ui/screens/Admin.tsx`
+- Modernização completa dos 37 botões e sheets da central do administrador: saldo (`coins`), CT (`crane`), comissão técnica (`star`), curar elenco (`crossMedical`), condição (`battery`), moral (`smile`), cartões (`card-badge`), peneira (`sprout`), reparo de save (`wrench`).
+
+#### Telas Adicionais (`Scouting.tsx`, `Academy.tsx`, `Contracts.tsx`, `World.tsx`, `Training.tsx`, `Inbox.tsx`, `Assistant.tsx`, `Achievements.tsx`, `Start.tsx`, `Club.tsx`)
+- Varredura e substituição completa de emojis de relatórios de olheiros, contratos, títulos mundiais e conquistas por ícones vetoriais integrados.
+
+---
+
+### 3. Validação, Testes e APK
+
+- **Checagem de Tipos:** `npx tsc --noEmit -p .` aprovado com **0 erros**.
+- **Testes Unitários e de Integração:**
+  - `tests/tactics_zones.test.ts` (3/3 testes aprovados).
+  - `tests/modding.test.ts` (3/3 testes aprovados).
+  - `tests/dynamics.test.ts` (15/15 testes aprovados).
+- **Build Web de Produção:** `npm run build` gerou a distribuição de produção sem erros em 39s.
+- **Sincronização Nativa:** `npx cap sync android` sincronizou todos os assets para o Android.
+- **Compilação Release do Android:** `gradlew assembleRelease` finalizado com sucesso (`BUILD SUCCESSFUL in 2m 4s`).
+- **Arquivos APK:** Atualizados na raiz `LendasDaBase.apk` e `lendas-da-base.apk` (55,32 MB).

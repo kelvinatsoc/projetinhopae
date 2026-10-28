@@ -19,7 +19,7 @@ import type { Attrs, Club, Hidden, IntakeQuality, Player, Pos, TraitId, World } 
 import { hasSnapshot, type SnapshotMeta } from "../../save";
 import { back, push, toast, update, useWorld } from "../../store";
 import { autosave, restoreBeforeMatch } from "../actions";
-import { Crest, PlayerRow, Sheet } from "../components";
+import { Crest, PlayerRow, Sheet, Ic, Icon } from "../components";
 import { COUNTRY_NAME, flag } from "../flags";
 import "../club.css";
 
@@ -31,7 +31,7 @@ function run(fn: (w: World) => AdminResult, quiet = false): AdminResult {
   let res: AdminResult = { ok: false, msg: "" };
   update((w) => { res = fn(w); });
   if (res.ok) autosave();
-  if (!quiet || !res.ok) toast(res.ok ? `🛠️ ${res.msg}` : res.msg);
+  if (!quiet || !res.ok) toast(res.msg);
   return res;
 }
 
@@ -41,7 +41,9 @@ export function StarPick({ value, onPick }: { value: number; onPick: (n: number)
   return (
     <span className="star-pick" role="radiogroup">
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} className={n <= value ? "on" : ""} aria-label={`${n} estrelas`} onClick={(e) => { e.stopPropagation(); onPick(n); }}>★</button>
+        <button key={n} className={n <= value ? "on" : ""} aria-label={`${n} estrelas`} onClick={(e) => { e.stopPropagation(); onPick(n); }}>
+          <Icon name="star" size={14} fill={n <= value} />
+        </button>
       ))}
     </span>
   );
@@ -110,12 +112,12 @@ export function AdminSettingsCard() {
     autosave();
     setSheet(null);
     setPin("");
-    toast("🛠️ Modo administrador ligado!");
+    toast("Modo administrador ligado!");
   }
 
   return (
     <div className="card" style={on ? { borderColor: "#8a6a00" } : undefined}>
-      <h3>🛠️ Perfil administrador</h3>
+      <h3><span className="row center gap6"><Ic n="wrench" size={16} /> Perfil administrador</span></h3>
       <div className="switch">
         <div><b>Ativar modo administrador</b><div className="small muted">Edite dinheiro, jogadores, lendas e ligue trapaças.</div></div>
         <input type="checkbox" checked={on} onChange={(e) => {
@@ -126,17 +128,17 @@ export function AdminSettingsCard() {
       </div>
       {on && (
         <div className="col gap8 mt8">
-          <button className="btn gold block" onClick={() => push({ name: "admin" })}>🛠️ Abrir o painel do administrador</button>
+          <button className="btn gold block" onClick={() => push({ name: "admin" })}><span className="row center gap6"><Ic n="wrench" size={14} /> Abrir o painel do administrador</span></button>
           {w.admin?.pin
-            ? <button className="btn sm" onClick={() => { update((x) => { adminClearPin(x); }); autosave(); toast("Senha removida."); }}>🔓 Remover a senha</button>
-            : <button className="btn sm" onClick={() => { setPin(""); setSheet("newpin"); }}>🔒 Criar senha de 4 números</button>}
+            ? <button className="btn sm" onClick={() => { update((x) => { adminClearPin(x); }); autosave(); toast("Senha removida."); }}><span className="row center gap6"><Ic n="lock" size={13} /> Remover a senha</span></button>
+            : <button className="btn sm" onClick={() => { setPin(""); setSheet("newpin"); }}><span className="row center gap4"><Ic n="lock" size={13} /> Criar senha de 4 números</span></button>}
         </div>
       )}
-      {w.admin?.everUsed && <div className="tiny muted mt8">Este save já tem o selo 🛠️ (temporadas: {w.admin.seasons.join(", ")}).</div>}
+      {w.admin?.everUsed && <div className="tiny muted mt8">Este save já tem o selo de Administrador (temporadas: {w.admin.seasons.join(", ")}).</div>}
 
       {sheet === "activate" && (
         <Sheet title="Ativar o modo administrador?" onClose={() => setSheet(null)}>
-          <p className="small">Com ele você pode editar tudo: dinheiro, jogadores, lendas, diretoria e ligar trapaças. É o seu jogo — divirta-se! As temporadas em que você usar o modo ganham o selo 🛠️ no histórico (só para você saber).</p>
+          <p className="small">Com ele você pode editar tudo: dinheiro, jogadores, lendas, diretoria e ligar trapaças. É o seu jogo — divirta-se! As temporadas em que você usar o modo ganham o selo de Admin no histórico (só para você saber).</p>
           <label className="field mt12">Criar senha de 4 números (opcional)
             <input className="text pin-input" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="••••" />
           </label>
@@ -148,7 +150,7 @@ export function AdminSettingsCard() {
         </Sheet>
       )}
       {sheet === "pin" && (
-        <Sheet title="🔒 Digite a senha" onClose={() => setSheet(null)}>
+        <Sheet title="Digite a senha" onClose={() => setSheet(null)}>
           <input className="text pin-input" inputMode="numeric" maxLength={4} value={pin} autoFocus placeholder="••••"
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, "").slice(0, 4);
@@ -174,7 +176,7 @@ export function AdminSettingsCard() {
         </Sheet>
       )}
       {sheet === "newpin" && (
-        <Sheet title="🔒 Criar senha" onClose={() => setSheet(null)}>
+        <Sheet title="Criar senha" onClose={() => setSheet(null)}>
           <input className="text pin-input" inputMode="numeric" maxLength={4} value={pin} autoFocus placeholder="••••" onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} />
           <p className="tiny muted mt8">A senha é só uma trava para crianças: fica guardada no próprio save.</p>
           <button className="btn primary block mt12" disabled={pin.length !== 4} onClick={() => { update((x) => { adminSetPin(x, pin); }); autosave(); toast("Senha criada."); setSheet(null); }}>Salvar senha</button>
@@ -192,7 +194,7 @@ export function AdminScreen() {
     return (
       <div className="page">
         <div className="card center">
-          <div style={{ fontSize: 40 }}>🛠️</div>
+          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}><Icon name="wrench" size={40} /></div>
           <b>O modo administrador está desligado</b>
           <p className="small muted">Ligue em Clube › Configurações.</p>
           <button className="btn gold block mt12" onClick={() => { update((x) => adminSetOn(x, true)); autosave(); }}>Ligar agora</button>
@@ -241,7 +243,7 @@ function ClubTab() {
       </div>
 
       <div className="card">
-        <div className="card-title"><h3>💰 Saldo</h3><b style={{ color: c.balance < 0 ? "var(--danger)" : "var(--accent)" }}>{money(c.balance)}</b></div>
+        <div className="card-title"><h3 className="row gap6"><Icon name="coins" size={16} /> Saldo</h3><b style={{ color: c.balance < 0 ? "var(--danger)" : "var(--accent)" }}>{money(c.balance)}</b></div>
         <div className="chip-wrap">
           {[1e6, 1e7, 1e8].map((v) => <button key={v} className="chip" onClick={() => run((x) => adminMoney(x, c.id, { add: v }))}>+{money(v)}</button>)}
           {c.balance < 0 && <button className="chip" onClick={() => run((x) => adminMoney(x, c.id, { set: 0 }))}>Zerar dívida</button>}
@@ -259,8 +261,8 @@ function ClubTab() {
       </div>
 
       <div className="card">
-        <h3>🏗️ Estrutura</h3>
-        {([["facilities", "🏋️ CT (Estrutura)"], ["youthLevel", "🔍 Captação da base"], ["youthFac", "🏫 Instalações da base"], ["youthCoach", "🎓 Treinadores da base"]] as [keyof ClubPatch, string][]).map(([k, l]) => (
+        <h3 className="row gap6"><Icon name="crane" size={16} /> Estrutura</h3>
+        {([["facilities", "CT (Estrutura)"], ["youthLevel", "Captação da base"], ["youthFac", "Instalações da base"], ["youthCoach", "Treinadores da base"]] as [keyof ClubPatch, string][]).map(([k, l]) => (
           <div key={k} className="adm-row">
             <span className="grow small">{l}</span>
             <StarPick value={(c[k] as number | undefined) ?? c.youthLevel} onPick={(n) => level(k, n)} />
@@ -270,12 +272,12 @@ function ClubTab() {
         <Slider label="Capacidade do estádio" value={draft.capacity} min={1000} max={120000} step={500} fmt={(v) => v.toLocaleString("pt-BR")} onChange={(v) => setDraft({ ...draft, capacity: v })} />
         <Slider label="Ingresso médio" value={draft.ticket} min={5} max={300} fmt={(v) => `R$ ${v}`} onChange={(v) => setDraft({ ...draft, ticket: v })} />
         {dirty && <button className="btn primary block mt8" onClick={() => run((x) => adminClub(x, c.id, draft))}>Aplicar</button>}
-        <button className="btn sm block mt8" disabled={!c.fac?.builds.length} onClick={() => run((x) => adminFinishProjects(x, c.id))}>⚡ Concluir obras agora{c.fac?.builds.length ? ` (${c.fac.builds.length})` : ""}</button>
+        <button className="btn sm block mt8" disabled={!c.fac?.builds.length} onClick={() => run((x) => adminFinishProjects(x, c.id))}><span className="row center gap6"><Icon name="zap" size={13} /> Concluir obras agora{c.fac?.builds.length ? ` (${c.fac.builds.length})` : ""}</span></button>
       </div>
 
       {isUser && (
         <div className="card">
-          <h3>🏛️ Diretoria</h3>
+          <h3 className="row gap6"><Icon name="bank" size={16} /> Diretoria</h3>
           <Slider label="Confiança da diretoria" value={conf} min={0} max={100} fmt={(v) => `${v}%`} onChange={setConf} />
           {conf !== Math.round(w.board.confidence) && <button className="btn primary block" onClick={() => run((x) => adminBoard(x, conf))}>Aplicar confiança</button>}
           <div className="small muted mt8">Objetivo da temporada</div>
@@ -289,20 +291,20 @@ function ClubTab() {
 
       {isUser && w.staff && (
         <div className="card">
-          <h3>👔 Comissão técnica</h3>
+          <h3 className="row gap6"><Icon name="briefcase" size={16} /> Comissão técnica</h3>
           {STAFF_ROLES.map((r) => (
             <div key={r} className="adm-row">
               <span className="grow small ellipsis">{STAFF_INFO[r].emoji} {STAFF_INFO[r].label}</span>
               <StarPick value={w.staff?.[r]?.stars ?? 3} onPick={(n) => run((x) => adminStaffStars(x, r, n))} />
             </div>
           ))}
-          <button className="btn gold block mt8" onClick={() => run(adminAllStaffFive)}>⭐ Comissão técnica toda 5★</button>
+          <button className="btn gold block mt8" onClick={() => run(adminAllStaffFive)}><span className="row center gap6"><Icon name="star" size={13} fill /> Comissão técnica toda 5 estrelas</span></button>
         </div>
       )}
 
       {!isUser && (
         <div className="card">
-          <button className="btn gold block" onClick={() => setTakeOver(true)}>🤝 Assumir este clube</button>
+          <button className="btn gold block" onClick={() => setTakeOver(true)}><span className="row center gap6"><Icon name="handshake" size={13} /> Assumir este clube</span></button>
           <div className="tiny muted mt8">Você vira o técnico do {c.name} na hora, sem ser demitido. As notícias continuam.</div>
         </div>
       )}
@@ -332,11 +334,11 @@ function PlayersTab() {
   return (
     <>
       <div className="grid2">
-        <button className="btn" onClick={() => setSheet("create")}>➕ Criar jogador</button>
+        <button className="btn" onClick={() => setSheet("create")}><span className="row center gap6"><Icon name="plus" size={13} /> Criar jogador</span></button>
         <button className="btn gold" onClick={() => setSheet("legend")}>⭐ Invocar lenda</button>
       </div>
       <input className="text" placeholder="Buscar qualquer jogador do mundo…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="small muted">{q.trim().length < 2 ? "Seu elenco (toque para abrir e usar o 🛠️ Editor completo)" : `${list.length} encontrados`}</div>
+      <div className="small muted">{q.trim().length < 2 ? "Seu elenco (toque para abrir o editor completo)" : `${list.length} encontrados`}</div>
       <div className="card flat" style={{ padding: "2px 10px" }}>
         <div className="list">
           {list.map((p) => <PlayerRow key={p.id} p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} showClub onClick={() => push({ name: "player", id: p.id })} />)}
@@ -358,7 +360,7 @@ function CreatePlayerSheet({ onClose }: { onClose: () => void }) {
   const [picker, setPicker] = useState(false);
   const set = (patch: Partial<CreateSpec>) => setS((x) => ({ ...x, ...patch, pot: Math.max(patch.pot ?? x.pot, patch.ovr ?? x.ovr) }));
   return (
-    <Sheet title="➕ Criar jogador" onClose={onClose}>
+    <Sheet title="Criar jogador" onClose={onClose}>
       <label className="field">Nome
         <input className="text" maxLength={40} value={s.name} placeholder="Ex.: Kelvinho" onChange={(e) => set({ name: e.target.value })} />
       </label>
@@ -468,22 +470,22 @@ function CheatsTab() {
       <div className="card">
         <h3>Na hora</h3>
         <div className="adm-grid">
-          <button className="btn" onClick={() => run((x) => adminSquad(x, "heal"))}>🚑 Curar elenco</button>
-          <button className="btn" onClick={() => run((x) => adminSquad(x, "cond"))}>🔋 Condição 100%</button>
-          <button className="btn" onClick={() => run((x) => adminSquad(x, "morale"))}>😄 Moral máxima</button>
-          <button className="btn" onClick={() => run((x) => adminSquad(x, "cards"))}>🟨 Zerar cartões e suspensões</button>
-          <button className="btn" onClick={() => run((x) => adminSquad(x, "renew"))}>📝 Renovar todos (+2 anos)</button>
-          <button className="btn" onClick={() => run(adminForceGem)} disabled={!!w.forceGem}>💎 {w.forceGem ? "Joia garantida ✔" : "Garantir joia rara na próxima peneira"}</button>
+          <button className="btn" onClick={() => run((x) => adminSquad(x, "heal"))}><span className="row center gap6"><Icon name="crossMedical" size={13} /> Curar elenco</span></button>
+          <button className="btn" onClick={() => run((x) => adminSquad(x, "cond"))}><span className="row center gap6"><Icon name="battery" size={13} /> Condição 100%</span></button>
+          <button className="btn" onClick={() => run((x) => adminSquad(x, "morale"))}><span className="row center gap6"><Icon name="smile" size={13} /> Moral máxima</span></button>
+          <button className="btn" onClick={() => run((x) => adminSquad(x, "cards"))}><span className="row center gap6"><span className="card-badge yellow" /> Zerar cartões e suspensões</span></button>
+          <button className="btn" onClick={() => run((x) => adminSquad(x, "renew"))}><span className="row center gap6"><Icon name="doc" size={13} /> Renovar todos (+2 anos)</span></button>
+          <button className="btn" onClick={() => run(adminForceGem)} disabled={!!w.forceGem}><span className="row center gap6"><Icon name="sparkles" size={13} /> {w.forceGem ? "Joia garantida" : "Garantir joia rara na próxima peneira"}</span></button>
         </div>
         <button className="btn gold block mt8" onClick={() => run(adminLegendWave)}>⭐ Onda de lendas agora</button>
       </div>
 
       <div className="card">
-        <h3>🌱 Nova peneira agora</h3>
+        <h3 className="row gap6"><Icon name="sprout" size={16} /> Nova peneira agora</h3>
         <div className="seg">
           {QUALITIES.map(([k, l]) => <button key={k} className={q === k ? "active" : ""} onClick={() => setQ(k)}>{l}</button>)}
         </div>
-        <button className="btn primary block mt8" onClick={() => run((x) => adminIntake(x, q))}>🌱 Chamar garotos ({QUALITIES.find((x) => x[0] === q)![1].toLowerCase()})</button>
+        <button className="btn primary block mt8" onClick={() => run((x) => adminIntake(x, q))}><span className="row center gap6"><Icon name="sprout" size={13} /> Chamar garotos ({QUALITIES.find((x) => x[0] === q)![1].toLowerCase()})</span></button>
       </div>
     </>
   );
@@ -509,7 +511,7 @@ function WorldTab() {
       {!snap && <div className="card small muted">⏪ Com o modo ligado, o jogo guarda um ponto de restauração antes de cada partida sua. Depois do próximo jogo, você poderá voltar no tempo aqui.</div>}
 
       <div className="card">
-        <h3>⚖️ Ajustar pontos</h3>
+        <h3 className="row gap6"><Icon name="scale" size={16} /> Ajustar pontos</h3>
         <div className="seg">
           {(["serieA", "serieB", "serieC"] as const).filter((id) => w.comps[id]).map((id) => (
             <button key={id} className={comp === id ? "active" : ""} onClick={() => setComp(id)}>{w.comps[id].short}</button>
@@ -550,8 +552,8 @@ function LogTab() {
           let n = 0;
           update((x) => { n = repairWorld(x); });
           if (n) autosave();
-          toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
-        }}>🩺 Verificar e reparar save</button>
+          toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo");
+        }}><span className="row center gap6"><Icon name="wrench" size={13} /> Verificar e reparar save</span></button>
       </div>
       <div className="card">
         <h3>Registro</h3>
@@ -619,7 +621,7 @@ export function AdminPlayerEditor({ p, onClose }: { p: Player; onClose: () => vo
   const act = (fn: (x: World) => AdminResult) => { const r = run(fn); if (r.ok) onClose(); };
 
   return (
-    <Sheet title={`🛠️ ${p.name}`} onClose={onClose}>
+    <Sheet title={p.name} onClose={onClose}>
       <div className="seg adm-seg">
         {ED_TABS.map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}
       </div>
@@ -699,8 +701,8 @@ export function AdminPlayerEditor({ p, onClose }: { p: Player; onClose: () => vo
           <Slider label="Condição física" value={d.cond} min={0} max={100} fmt={(v) => `${v}%`} onChange={(v) => set({ cond: v })} />
           <Slider label="Fama" value={d.fame} min={0} max={100} onChange={(v) => set({ fame: v })} />
           <div className="grid2 mt8">
-            <button className={`btn${d.heal ? " primary" : ""}`} disabled={!p.injury} onClick={() => set({ heal: !d.heal })}>🚑 {p.injury ? (d.heal ? "Vai curar ✔" : `Curar lesão (${p.injury}d)`) : "Sem lesão"}</button>
-            <button className={`btn${d.clearCards ? " primary" : ""}`} disabled={!banned} onClick={() => set({ clearCards: !d.clearCards })}>🟨 {banned ? (d.clearCards ? "Vai zerar ✔" : "Zerar cartões") : "Sem cartões"}</button>
+            <button className={`btn${d.heal ? " primary" : ""}`} disabled={!p.injury} onClick={() => set({ heal: !d.heal })}><span className="row center gap6"><Icon name="crossMedical" size={13} /> {p.injury ? (d.heal ? "Vai curar" : `Curar lesão (${p.injury}d)`) : "Sem lesão"}</span></button>
+            <button className={`btn${d.clearCards ? " primary" : ""}`} disabled={!banned} onClick={() => set({ clearCards: !d.clearCards })}><span className="row center gap6"><span className="card-badge yellow" /> {banned ? (d.clearCards ? "Vai zerar" : "Zerar cartões") : "Sem cartões"}</span></button>
           </div>
         </div>
       )}
@@ -728,17 +730,17 @@ export function AdminPlayerEditor({ p, onClose }: { p: Player; onClose: () => vo
           <div className="col gap8 mt8">
             {atOther && (
               <div className="grid2">
-                <button className="btn gold" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, false))}>⚡ Contratar de graça</button>
-                <button className="btn" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, true))}>⚡ Pagando {money(value)}</button>
+                <button className="btn gold" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, false))}><span className="row center gap6"><Icon name="zap" size={13} /> Contratar de graça</span></button>
+                <button className="btn" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, true))}><span className="row center gap6"><Icon name="coins" size={13} /> Pagando {money(value)}</span></button>
               </div>
             )}
-            {!p.clubId && <button className="btn gold" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, false))}>⚡ Contratar agora para o {user.name}</button>}
-            <button className="btn" onClick={() => setSheet("move")}>🔁 Transferir para… (grátis, na hora)</button>
+            {!p.clubId && <button className="btn gold" onClick={() => act((x) => adminMovePlayer(x, p.id, x.userClubId, false))}><span className="row center gap6"><Icon name="zap" size={13} /> Contratar agora para o {user.name}</span></button>}
+            <button className="btn" onClick={() => setSheet("move")}><span className="row center gap6"><Icon name="swap" size={13} /> Transferir para… (grátis, na hora)</span></button>
             {p.clubId && (p.youth
               ? <button className="btn" onClick={() => act((x) => adminSetYouth(x, p.id, false))}>⬆️ Subir ao profissional</button>
-              : <button className="btn" onClick={() => act((x) => adminSetYouth(x, p.id, true))}>🌱 Mandar para a base</button>)}
-            {p.clubId && <button className="btn" onClick={() => act((x) => adminMovePlayer(x, p.id, null))}>🆓 Liberar (fica livre)</button>}
-            <button className="btn danger" onClick={() => setSheet("retire")}>👴 Aposentar agora</button>
+              : <button className="btn" onClick={() => act((x) => adminSetYouth(x, p.id, true))}><span className="row center gap6"><Icon name="sprout" size={13} /> Mandar para a base</span></button>)}
+            {p.clubId && <button className="btn" onClick={() => act((x) => adminMovePlayer(x, p.id, null))}><span className="row center gap6"><Icon name="door" size={13} /> Liberar (fica livre)</span></button>}
+            <button className="btn danger" onClick={() => setSheet("retire")}><span className="row center gap6"><Icon name="doorExit" size={13} /> Aposentar agora</span></button>
           </div>
         </div>
       )}

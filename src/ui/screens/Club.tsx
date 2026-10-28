@@ -410,7 +410,7 @@ export function LegendsScreen() {
           const active = st?.active != null ? w.players[st.active] : undefined;
           return (
             <div key={l.id} className={`legend-card t${l.tier}${st ? "" : " locked"}`} onClick={() => active && push({ name: "player", id: active.id })}>
-              {active ? <Avatar p={active} club={active.clubId ? w.clubs[active.clubId] : null} season={w.season} size={56} /> : <div style={{ fontSize: 40, height: 56 }}>{st ? "👤" : "❔"}</div>}
+              {active ? <Avatar p={active} club={active.clubId ? w.clubs[active.clubId] : null} season={w.season} size={56} /> : <div className="row center" style={{ height: 56, color: "rgba(255,255,255,0.4)" }}><Icon name={st ? "user" : "lock"} size={36} /></div>}
               <div className="nm">{st ? l.name : "???"}</div>
               <div className="tiny" style={{ color: "#d9c58a" }}>{TIER_NAMES[l.tier]} · {flag(l.nat)} · {l.pos}</div>
               {active && <div className="tiny" style={{ color: "#fff" }}>{active.clubId ? w.clubs[active.clubId].abbr : "livre"} · {w.season - active.born}a · {active.ovr}</div>}
@@ -555,7 +555,7 @@ export function SettingsScreen() {
               let n = 0;
               update((x) => { n = repairWorld(x); });
               if (n) autosave();
-              toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo ✔");
+              toast(n ? `${n} problema${n > 1 ? "s" : ""} corrigido${n > 1 ? "s" : ""}` : "Tudo certo!");
             }}><Ic n="check" /> Verificar integridade</button>
             <p className="tiny muted mt6">Dados dos elencos: Wikipedia/Wikidata ({w.dataDate}).</p>
             <button className="btn sm block mt6" onClick={() => push({ name: "credits" })}><Ic n="scroll" /> Créditos de fotos e sons</button>

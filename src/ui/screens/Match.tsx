@@ -659,9 +659,14 @@ function Feed({ events }: { events: MatchEvent[] }) {
     <div className="feed">
       {events.map((e, i) => (
         <div key={i} className={`ev ${isGoal(e) ? "goal" : e.type}`}>
-          <span className="m">{e.type === "half" || e.type === "end" ? "⏱" : `${e.min}'`}</span>
-          {(e.type === "yellow" || e.type === "red") && <span className="ic" />}
-          <span>{e.type === "sub" ? "🔄 " : e.type === "injury" ? "🚑 " : e.type === "var" ? "📺 " : ""}{e.text}</span>
+          <span className="m">{e.type === "half" || e.type === "end" ? <Icon name="stopwatch" size={12} /> : `${e.min}'`}</span>
+          {e.type === "yellow" && <span className="card-badge yellow" style={{ marginRight: 4 }} />}
+          {e.type === "red" && <span className="card-badge red" style={{ marginRight: 4 }} />}
+          {isGoal(e) && <span className="ev-ico goal"><Icon name="ball" size={12} /></span>}
+          {e.type === "sub" && <span className="ev-ico sub"><Icon name="swap" size={12} /></span>}
+          {e.type === "injury" && <span className="ev-ico inj"><Icon name="crossMedical" size={12} /></span>}
+          {e.type === "var" && <span className="ev-ico var"><Icon name="tv" size={12} /></span>}
+          <span>{e.text}</span>
         </div>
       ))}
       {!events.length && <div className="empty">A bola vai rolar…</div>}
@@ -672,10 +677,21 @@ function Feed({ events }: { events: MatchEvent[] }) {
 /** Aviso pequeno e passageiro com o último lance; um toque abre o histórico completo. */
 function EventToast({ e, sim, onOpen }: { e: MatchEvent; sim: MatchSim; onOpen: () => void }) {
   const club = e.side != null ? sim.sides[e.side].club : null;
-  const icon = isGoal(e) ? "⚽" : e.type === "yellow" ? "🟨" : e.type === "red" ? "🟥" : e.type === "sub" ? "🔄" : e.type === "injury" ? "🚑" : e.type === "var" ? "📺" : e.type === "half" ? "⏱" : e.type === "save" ? "🧤" : e.type === "post" ? "🥅" : "👀";
+  const renderToastIcon = () => {
+    if (isGoal(e)) return <Icon name="ball" size={16} />;
+    if (e.type === "yellow") return <span className="card-badge yellow" />;
+    if (e.type === "red") return <span className="card-badge red" />;
+    if (e.type === "sub") return <Icon name="swap" size={16} />;
+    if (e.type === "injury") return <Icon name="crossMedical" size={16} />;
+    if (e.type === "var") return <Icon name="tv" size={16} />;
+    if (e.type === "half" || e.type === "end") return <Icon name="stopwatch" size={16} />;
+    if (e.type === "save") return <Icon name="shield" size={16} />;
+    if (e.type === "post") return <Icon name="target" size={16} />;
+    return <Icon name="sparkles" size={16} />;
+  };
   return (
     <button className={`mx-toast${isGoal(e) ? " goal" : ""}`} role="status" aria-live="polite" aria-label={`${e.min}' ${e.text}. Toque para ver todos os lances`} onClick={onOpen} style={{ "--tc": club ? visibleColor(club.colors) : "#9aa5a0" } as CSSProperties}>
-      <span className="mx-toast-ic" aria-hidden="true">{icon}</span>
+      <span className="mx-toast-ic" aria-hidden="true">{renderToastIcon()}</span>
       <span className="mx-toast-m">{e.min}'</span>
       <span className="mx-toast-t">{e.text}</span>
     </button>
@@ -691,13 +707,18 @@ function LiveStrip({ sim, w, onTactic, onSubs, onHistory }: { sim: MatchSim; w: 
   const reds = sim.events.filter((e) => e.type === "red");
   const surname = (pid?: number | null) => (pid != null && w.players[pid] ? shortName(w.players[pid].name) : "");
   const side = (k: 0 | 1) => goals.filter((e) => e.side === k).map((e) => `${surname(e.pid)} ${e.min}'${e.type === "pen-goal" ? " (pên.)" : e.type === "owngoal" ? " (contra)" : ""}`);
-  const cards = (k: 0 | 1) => (st.yellows[k] || st.reds[k] ? `${st.yellows[k] ? `🟨${st.yellows[k]}` : ""}${st.reds[k] ? `🟥${st.reds[k]}` : ""}` : "–");
+  const cards = (k: 0 | 1) => (st.yellows[k] || st.reds[k] ? (
+    <span className="card-badge-wrap">
+      {st.yellows[k] ? <span className="row center gap2"><span className="card-badge yellow" />{st.yellows[k]}</span> : null}
+      {st.reds[k] ? <span className="row center gap2"><span className="card-badge red" />{st.reds[k]}</span> : null}
+    </span>
+  ) : "–");
   return (
     <div className="mx-strip" role="region" aria-label="Resumo ao vivo">
       {goals.length > 0 && (
         <div className="mx-goals">
-          <div className="l">{side(0).map((t, i) => <span key={i}>⚽ {t}</span>)}</div>
-          <div className="r">{side(1).map((t, i) => <span key={i}>{t} ⚽</span>)}</div>
+          <div className="l">{side(0).map((t, i) => <span key={i} className="row center gap4"><Ic n="ball" size={11} /> {t}</span>)}</div>
+          <div className="r">{side(1).map((t, i) => <span key={i} className="row center gap4">{t} <Ic n="ball" size={11} /></span>)}</div>
         </div>
       )}
       <div className="mx-stats">

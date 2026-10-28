@@ -5,7 +5,7 @@ import { fanEmoji, fanLabel } from "../engine/narrative";
 import { applyPress, generatePress, pressDone, PRESS_TONES, type PressEffect, type PressPhase, type PressTone } from "../engine/press";
 import { back, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
-import { Crest } from "./components";
+import { Crest, Ic, Icon } from "./components";
 import "./narrative.css";
 
 const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
@@ -44,7 +44,7 @@ export function PressConferenceScreen({ fid, phase }: { fid: number; phase: Pres
     <div className="page">
       <div className="press-head card">
         <div className="row gap8">
-          <span style={{ fontSize: 28 }}>🎤</span>
+          <span className="row center" style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }}><Icon name="mic" size={24} /></span>
           <div className="grow">
             <b>Coletiva {phase === "pre" ? "pré-jogo" : "pós-jogo"}</b>
             <div className="small muted">contra o {opp?.name}</div>
@@ -62,9 +62,9 @@ export function PressConferenceScreen({ fid, phase }: { fid: number; phase: Pres
         <div className="card">
           <h3>Repercussão</h3>
           <div className="press-fx mt8">
-            <div><span>🧑‍🤝‍🧑 Elenco</span><b className={result.morale >= 0 ? "pos" : "neg"}>{sign(result.morale)}</b></div>
-            <div><span>🏛️ Diretoria</span><b className={result.board >= 0 ? "pos" : "neg"}>{sign(result.board)}</b></div>
-            <div><span>📣 Torcida</span><b className={result.fans >= 0 ? "pos" : "neg"}>{sign(result.fans)}</b></div>
+            <div><span className="row center gap4"><Ic n="users" size={14} /> Elenco</span><b className={result.morale >= 0 ? "pos" : "neg"}>{sign(result.morale)}</b></div>
+            <div><span className="row center gap4"><Ic n="bank" size={14} /> Diretoria</span><b className={result.board >= 0 ? "pos" : "neg"}>{sign(result.board)}</b></div>
+            <div><span className="row center gap4"><Ic n="megaphone" size={14} /> Torcida</span><b className={result.fans >= 0 ? "pos" : "neg"}>{sign(result.fans)}</b></div>
           </div>
           {result.player !== 0 && <div className="small mt8">O jogador citado reagiu: {sign(result.player)} de moral.</div>}
           <div className="small muted mt8">Torcida: {fanEmoji(w.narrative?.fan ?? 60)} {fanLabel(w.narrative?.fan ?? 60)} · Diretoria: {w.board.confidence}%</div>

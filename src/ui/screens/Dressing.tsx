@@ -8,7 +8,7 @@ import { loanStats } from "../../engine/loans";
 import type { Player, SquadRole } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, DeltaTag, Icon, Ovr, Sheet } from "../components";
+import { Avatar, DeltaTag, Ic, Icon, Ovr, Sheet } from "../components";
 import "../market.css";
 
 export function DressingScreen() {
@@ -158,7 +158,7 @@ export function TalkSheet({ p, onClose }: { p: Player; onClose: () => void }) {
 
   return (
     <Sheet title={`Conversar com ${p.name}`} onClose={onClose}>
-      <div className="small muted">Moral {moodEmoji(p)} · papel {ROLE_LABEL[cur]}{p.wantsOut ? " · 😤 quer sair" : ""}</div>
+      <div className="small muted row center gap4"><span>Moral {moodEmoji(p)} · papel {ROLE_LABEL[cur]}</span>{p.wantsOut ? <span className="tag danger row center gap4"><Ic n="alert" size={11} /> quer sair</span> : null}</div>
       {res ? (
         <>
           <div className={`banner mt12 ${res.ok && res.delta >= 0 ? "" : "red"}`} style={res.ok && res.delta >= 0 ? { borderColor: "var(--accent)" } : undefined}>

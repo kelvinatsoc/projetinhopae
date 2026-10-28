@@ -130,9 +130,23 @@ function Numbers({ sim, colors }: { sim: MatchSim; colors: [string, string] }) {
       <StatRow label="Faltas" a={s.fouls[0]} b={s.fouls[1]} colors={colors} invert />
       <StatRow label="Impedimentos" a={x.offsides[0]} b={x.offsides[1]} colors={colors} invert />
       <div className="md-row md-cards">
-        <b>{s.yellows[0] ? `🟨${s.yellows[0]}` : "–"}{s.reds[0] ? ` 🟥${s.reds[0]}` : ""}</b>
+        <b>
+          {s.yellows[0] || s.reds[0] ? (
+            <span className="card-badge-wrap">
+              {s.yellows[0] ? <span className="row center gap2"><span className="card-badge yellow" />{s.yellows[0]}</span> : null}
+              {s.reds[0] ? <span className="row center gap2"><span className="card-badge red" />{s.reds[0]}</span> : null}
+            </span>
+          ) : "–"}
+        </b>
         <span>Cartões</span>
-        <b>{s.yellows[1] ? `🟨${s.yellows[1]}` : "–"}{s.reds[1] ? ` 🟥${s.reds[1]}` : ""}</b>
+        <b>
+          {s.yellows[1] || s.reds[1] ? (
+            <span className="card-badge-wrap">
+              {s.yellows[1] ? <span className="row center gap2"><span className="card-badge yellow" />{s.yellows[1]}</span> : null}
+              {s.reds[1] ? <span className="row center gap2"><span className="card-badge red" />{s.reds[1]}</span> : null}
+            </span>
+          ) : "–"}
+        </b>
       </div>
     </div>
   );
@@ -226,7 +240,7 @@ function Threats({ sim, side }: { sim: MatchSim; side: 0 | 1 }) {
         const lane = k >= 0 ? LANE[O.slots[k]] : 1;
         return <span key={id} className={`md-threat${recent?.pid === id ? " hot" : ""}`}>{O.slots[k]} {sim.name(id)} <b>{v.toFixed(2).replace(".", ",")}</b>{lane !== 1 ? (lane === 0 ? " ◂" : " ▸") : ""}</span>;
       })}
-      {sim.sides[side].mark != null && <span className="md-threat mark">🛡️ marcando {sim.name(sim.sides[side].mark)}</span>}
+      {sim.sides[side].mark != null && <span className="md-threat mark"><Icon name="shield" size={12} /> marcando {sim.name(sim.sides[side].mark)}</span>}
     </div>
   );
 }
@@ -239,7 +253,7 @@ export function MatchDashboard({ sim, w, userSide }: { sim: MatchSim; w: World; 
   return (
     <div className="md">
       <section className="md-card">
-        <div className="md-head"><b>Momentum</b><span className="tiny muted">pressão minuto a minuto · ⚪ gol</span></div>
+        <div className="md-head"><b>Momentum</b><span className="tiny muted">pressão minuto a minuto · gol</span></div>
         <div className="md-legend tiny"><span><i style={{ background: colors[0] }} />{H.club.abbr}</span><span><i style={{ background: colors[1] }} />{A.club.abbr}</span></div>
         <Momentum sim={sim} colors={colors} />
         <div className="md-head mt4"><b>Posse ao longo do jogo</b><span className="tiny muted">últimos 10 min</span></div>

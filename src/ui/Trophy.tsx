@@ -1,3 +1,4 @@
+import { Icon } from "./components";
 /** Imagem do troféu oficial de uma competição: foto real recortada ou modelo 3D renderizado. */
 import { useEffect, useRef, useState } from "react";
 import { mediaUrl } from "./mediaUrl";
@@ -19,7 +20,7 @@ export function TrophyImg({ comp, size = 64, className }: { comp: string; size?:
     return () => { alive = false; };
   }, [comp, failed]); // eslint-disable-line react-hooks/exhaustive-deps
   const spec = trophySpec(comp);
-  if (!src) return <span className={`trophy-img ph ${className ?? ""}`} style={{ width: size, height: size, fontSize: size * 0.6 }} aria-hidden="true">🏆</span>;
+  if (!src) return <span className={`trophy-img ph ${className ?? ""}`} style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }} aria-hidden="true"><Icon name="trophy" size={Math.round(size * 0.7)} /></span>;
   return (
     <img className={`trophy-img ${className ?? ""}`} src={src} alt={spec.name} title={spec.name} width={size} height={size} decoding="async"
       onError={() => { if (!failed) { setFailed(true); setSrc(null); } }} />

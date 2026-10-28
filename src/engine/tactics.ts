@@ -32,7 +32,7 @@ export interface TacticFx {
   card: number;
   focusLane?: number;
 }
-export const NEUTRAL_FX: Readonly<TacticFx> = Object.freeze({ att: 1, mid: 1, def: 1, open: 1, openAgainst: 1, xg: 1, xgAgainst: 1, fatigue: 1, card: 1 });
+export const NEUTRAL_FX: Readonly<TacticFx> = Object.freeze({ att: 1, mid: 1, def: 1, open: 1, openAgainst: 1, xg: 1, xgAgainst: 1, fatigue: 1, card: 1, focusLane: 1 });
 
 const avgAttr = (ps: Player[], k: keyof Attrs, dflt = 70) => (ps.length ? ps.reduce((s, p) => s + p.attrs[k], 0) / ps.length : dflt);
 

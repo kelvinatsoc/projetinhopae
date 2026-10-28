@@ -16,7 +16,7 @@ import { Avatar, Crest, Ic, Icon, PosBadge } from "./components";
 import "./assistant.css";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
-const FIX_ICON: Record<LineupFix["kind"], string> = { missing: "🚑", tired: "🔋", position: "🧭", better: "⬆️" };
+const FIX_SLUG: Record<LineupFix["kind"], string> = { missing: "crossMedical", tired: "calm", position: "compass", better: "trend" };
 const VERDICT: Record<MatchAnalysis["verdict"], { label: string; cls: string }> = {
   favorito: { label: "Favorito", cls: "good" },
   equilibrado: { label: "Jogo parelho", cls: "warn" },
@@ -52,12 +52,12 @@ function WDL({ o, compact }: { o: Outlook | Odds; compact?: boolean }) {
   );
 }
 
-const REC_ICON: Record<string, string> = { "🧩": "board", "🎯": "target", "⚡": "bolt" };
+
 
 function RecRow({ icon, label, value, reason, changed }: { icon: string; label: string; value: string; reason: string; changed: boolean }) {
   return (
     <div className="as-rec">
-      <span className="as-rec-ico" aria-hidden="true">{REC_ICON[icon] ? <Icon name={REC_ICON[icon]} size={18} /> : icon}</span>
+      <span className="as-rec-ico" aria-hidden="true"><Icon name={icon} size={18} /></span>
       <div className="grow">
         <div className="row gap8 wrap"><span className="small muted">{label}</span><b>{value}</b>{changed && <span className="tag good">mudar</span>}</div>
         <div className="small as-reason">{reason}</div>
@@ -73,7 +73,7 @@ function FixList({ w, fixes, compId }: { w: World; fixes: LineupFix[]; compId?: 
     <div className="as-fixes">
       {fixes.map((f, i) => (
         <div key={`${f.kind}-${f.slot}-${i}`} className="as-fix">
-          <span aria-hidden="true">{FIX_ICON[f.kind]}</span>
+          <span aria-hidden="true" className="row center"><Icon name={FIX_SLUG[f.kind]} size={16} /></span>
           <span className="grow small">{f.text}</span>
           {f.kind !== "missing" && f.inId != null && (
             <button className="btn sm" onClick={() => { update((world) => applyFix(world, world.clubs[club.id], f, compId)); autosave(); toast("Escalação ajustada"); }}>Trocar</button>
@@ -87,13 +87,13 @@ function FixList({ w, fixes, compId }: { w: World; fixes: LineupFix[]; compId?: 
 function applyPlan(plan: TacticPlan, compId?: string) {
   update((world) => applyAdvice(world, world.clubs[world.userClubId], plan, compId));
   autosave();
-  toast("Sugestões do auxiliar aplicadas ✔");
+  toast("Sugestões do auxiliar aplicadas!");
 }
 
 function applyAlternative(l: Lineup) {
   update((world) => { world.clubs[world.userClubId].lineup = { starters: l.starters.slice(), bench: l.bench.slice(), captain: l.captain }; });
   autosave();
-  toast("Time alternativo escalado ✔");
+  toast("Time alternativo escalado!");
 }
 
 /**
@@ -120,7 +120,7 @@ function Confidence({ a, checking }: { a: MatchAnalysis; checking: number | null
   if (checking != null) {
     return (
       <div className="as-sim">
-        <div className="tiny muted">🔎 Conferindo as opções em jogos simulados… {pct(checking)}</div>
+        <div className="tiny muted row center gap4"><Ic n="search" size={12} /> Conferindo as opções em jogos simulados… {pct(checking)}</div>
         <div className="as-progress"><i style={{ width: pct(checking) }} /></div>
       </div>
     );
@@ -202,9 +202,9 @@ function PreMatchCard({ w, f, a, checking }: { w: World; f: Fixture; a: MatchAna
 
       <div className="as-section">
         <div className="as-title">O que eu faria</div>
-        <RecRow icon="🧩" label="Formação" value={a.rec.formation.value} reason={a.rec.formation.reason} changed={a.rec.formation.value !== t.formation} />
-        <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[a.rec.mentality.value]} reason={a.rec.mentality.reason} changed={a.rec.mentality.value !== t.mentality} />
-        <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[a.rec.pressing.value]} reason={a.rec.pressing.reason} changed={a.rec.pressing.value !== t.pressing} />
+        <RecRow icon="board" label="Formação" value={a.rec.formation.value} reason={a.rec.formation.reason} changed={a.rec.formation.value !== t.formation} />
+        <RecRow icon="target" label="Mentalidade" value={MENTALITY_NAMES[a.rec.mentality.value]} reason={a.rec.mentality.reason} changed={a.rec.mentality.value !== t.mentality} />
+        <RecRow icon="bolt" label="Marcação" value={PRESSING_NAMES[a.rec.pressing.value]} reason={a.rec.pressing.reason} changed={a.rec.pressing.value !== t.pressing} />
         <Confidence a={a} checking={checking} />
         <div className="as-compare">
           <div><span className="tiny muted">Chances com a sua tática</span><WDL o={a.now} /></div>
@@ -343,9 +343,9 @@ export function TacticsAdvice() {
         </div>
         {open && (
           <div className="as-section">
-            <RecRow icon="🧩" label="Formação" value={match.rec.formation.value} reason={match.rec.formation.reason} changed={match.rec.formation.value !== t.formation} />
-            <RecRow icon="🎯" label="Mentalidade" value={MENTALITY_NAMES[match.rec.mentality.value]} reason={match.rec.mentality.reason} changed={match.rec.mentality.value !== t.mentality} />
-            <RecRow icon="⚡" label="Marcação" value={PRESSING_NAMES[match.rec.pressing.value]} reason={match.rec.pressing.reason} changed={match.rec.pressing.value !== t.pressing} />
+            <RecRow icon="board" label="Formação" value={match.rec.formation.value} reason={match.rec.formation.reason} changed={match.rec.formation.value !== t.formation} />
+            <RecRow icon="target" label="Mentalidade" value={MENTALITY_NAMES[match.rec.mentality.value]} reason={match.rec.mentality.reason} changed={match.rec.mentality.value !== t.mentality} />
+            <RecRow icon="bolt" label="Marcação" value={PRESSING_NAMES[match.rec.pressing.value]} reason={match.rec.pressing.reason} changed={match.rec.pressing.value !== t.pressing} />
             <Confidence a={match} checking={checking} />
             <div className="small muted">Destaques do {opp.name}: {match.opp.stars.map((s) => `${shortName(s.name)} (${s.ovr})`).join(", ")}</div>
           </div>
@@ -391,7 +391,7 @@ export function LiveAdvice({ sim, side, onApplied }: { sim: MatchSim; side: 0 | 
 
   function act(index?: number) {
     const n = applyTip(sim, side, tip, index);
-    toast(n > 0 ? "Feito! ✔" : "Não deu para aplicar agora");
+    toast(n > 0 ? "Feito!" : "Não deu para aplicar agora");
     setWhich(0);
     force((x) => x + 1);
     onApplied();

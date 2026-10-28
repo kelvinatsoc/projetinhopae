@@ -9,16 +9,16 @@ import { autosave } from "../actions";
 import { back, push, update, useWorld } from "../../store";
 import { CompHeader } from "../CompTheme";
 import { compTheme } from "../compThemes";
-import { Crest, Ovr } from "../components";
+import { Crest, Icon, Ovr } from "../components";
 import { flag } from "../flags";
 
 export type CompRegion = "BRA" | "CONT" | "UEFA" | "WORLD" | "INT";
 export const REGIONS: { id: CompRegion; label: string }[] = [
-  { id: "BRA", label: "🇧🇷 Brasil" },
-  { id: "CONT", label: "🌎 Continentais" },
-  { id: "UEFA", label: "🇪🇺 Europa" },
-  { id: "WORLD", label: "🌏 Outras ligas" },
-  { id: "INT", label: "🏳️ Seleções" },
+  { id: "BRA", label: "Brasil" },
+  { id: "CONT", label: "Continentais" },
+  { id: "UEFA", label: "Europa" },
+  { id: "WORLD", label: "Outras ligas" },
+  { id: "INT", label: "Seleções" },
 ];
 
 /** Região de uma competição de clubes no navegador. */
@@ -67,7 +67,7 @@ export function IntlBrowser({ w }: { w: World }) {
         {comps.map((c) => (
           <button key={c.id} className={`chip${comp?.id === c.id ? " active" : ""}`} onClick={() => setSel(c.id)}>{c.short} {c.label}</button>
         ))}
-        <button className="chip" onClick={() => push({ name: "nts" })}>🌍 Todas as seleções</button>
+        <button className="chip row gap6" onClick={() => push({ name: "nts" })}><Icon name="globe" size={14} /> Todas as seleções</button>
       </div>
       {comp && <IntlCompView w={w} comp={comp} />}
       {!comp && <div className="empty">Nenhum torneio de seleções no momento.</div>}
@@ -93,7 +93,7 @@ function IntlCompView({ w, comp }: { w: World; comp: Competition }) {
   return (
     <>
       <CompHeader id={comp.id} title={`${comp.name} ${comp.label ?? comp.season}`} sub={compTheme(comp.id, comp.color).motto} right={<span className="ct-pill">{STAGE_NAMES[comp.stage] ?? comp.stage}</span>} />
-      {comp.champion && <div className="card row" style={{ borderColor: "var(--gold)" }}><span style={{ fontSize: 26 }}>🏆</span><NtBadge w={w} id={comp.champion} bold /><span className="muted small">campeã</span></div>}
+      {comp.champion && <div className="card row" style={{ borderColor: "var(--gold)" }}><Icon name="trophy" size={24} /><NtBadge w={w} id={comp.champion} bold /><span className="muted small">campeã</span></div>}
       {comp.ties.length > 0 && [...new Set(comp.ties.map((t) => t.stage))].reverse().map((s) => (
         <div key={s} className="card flat">
           <h3>{STAGE_NAMES[s] ?? s}</h3>
@@ -206,7 +206,7 @@ export function NationalTeamsScreen() {
                   <span style={{ fontSize: 20 }}>{flag(n.fifa)}</span>
                   <span className="grow ellipsis">{n.name}{w.intl!.callups[n.id] ? " · convocada" : ""}</span>
                   <span className="tiny muted">{n.form.join(" ")}</span>
-                  {n.trophies.length > 0 && <span>🏆{n.trophies.length}</span>}
+                  {n.trophies.length > 0 && <span className="row gap4"><Icon name="trophy" size={12} />{n.trophies.length}</span>}
                 </div>
               ))}
             </div>
@@ -236,7 +236,7 @@ export function NationalTeamScreen({ id }: { id: string }) {
         </div>
       </div>
       {nt.trophies.length > 0 && (
-        <div className="card"><h3>Títulos</h3>{nt.trophies.map((t, i) => <div key={i} className="small">🏆 {t.name}</div>)}</div>
+        <div className="card"><h3>Títulos</h3>{nt.trophies.map((t, i) => <div key={i} className="small row gap6"><Icon name="trophy" size={13} /> {t.name}</div>)}</div>
       )}
       {games.length > 0 && (
         <div className="card flat"><h3>Jogos</h3><div className="list mt8">{games.map((f) => <IntlFixtureLine key={f.id} w={w} f={f} />)}</div></div>
@@ -307,7 +307,7 @@ function SquadPicker({ w, id }: { w: World; id: string }) {
             <input type="checkbox" readOnly checked={squad.has(p.id)} />
             <Ovr v={p.ovr} />
             <span className="tiny muted" style={{ width: 30 }}>{p.pos}</span>
-            <span className="grow ellipsis">{p.name}{p.injury > 0 ? " 🚑" : ""}</span>
+            <span className="grow ellipsis row gap4">{p.name}{p.injury > 0 ? <Icon name="crossMedical" size={12} /> : null}</span>
             {p.clubId && w.clubs[p.clubId] && <Crest club={w.clubs[p.clubId]} size={18} />}
           </div>
         ))}

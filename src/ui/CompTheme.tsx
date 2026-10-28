@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { COMP_META } from "../engine/competitions";
 import type { Club } from "../engine/types";
-import { CompLogo, Crest } from "./components";
+import { CompLogo, Crest, Icon } from "./components";
 import { compTheme, confettiColors, themeClass, themeVars } from "./compThemes";
 import { haptic } from "./haptics";
 import { championParty } from "./audio";
@@ -16,7 +16,7 @@ export function CompHeader({ id, title, sub, right, children }: { id: string; ti
   return (
     <div className={`ct-head ${themeClass(t)}`} style={themeVars(t)}>
       <div className="ct-head-row">
-        <span className="ct-logo"><CompLogo id={id} size={34} /><i aria-hidden="true">{t.trophy}</i></span>
+        <span className="ct-logo"><CompLogo id={id} size={34} /><i aria-hidden="true" className="ct-trophy-ico"><Icon name="trophy" size={15} /></i></span>
         <div className="ct-head-txt">
           <b className="ct-title">{title ?? meta?.name ?? id}</b>
           {sub && <span className="ct-sub">{sub}</span>}
@@ -218,7 +218,7 @@ export function TitleCelebration({ id, club, season, onClose }: { id: string; cl
                 border: "1px solid rgba(255,255,255,0.15)", color: "#cbd5e1", fontSize: "12px", fontWeight: 700, cursor: "pointer"
               }}
             >
-              🔄 Modo 2D
+              Modo 2D
             </button>
             <button className="btn primary" onClick={onClose} style={{
               minWidth: "140px", height: "46px", borderRadius: "999px", fontSize: "14.5px", fontWeight: 900,
@@ -263,7 +263,7 @@ export function TitleCelebration({ id, club, season, onClose }: { id: string; cl
             <div className="ct-tw-cup tiny">{trophyName}</div>
           </div>
           <div className="sticky-cta ct-tw-cta" style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-            <button className="btn ghost" onClick={() => setMode3d(true)}>🏟️ Ver Estádio 3D</button>
+            <button className="btn ghost" onClick={() => setMode3d(true)}>Ver Estádio 3D</button>
             <button className="btn primary block lg" onClick={onClose}>Continuar</button>
           </div>
         </>
