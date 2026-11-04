@@ -39,11 +39,11 @@ describe("auxiliar: seguir os conselhos não pode piorar", () => {
     }
     // nenhum cenário fica claramente pior (tolerância de ruído: 0,12 ponto/jogo)
     per.tudo.forEach((r, i) => expect(ppg(r)).toBeGreaterThanOrEqual(ppg(per.padraoTrocas[i]) - 0.12));
-  }, 1_200_000);
+  }, 1_800_000);
 
   it("auxiliar bom (5★): margem clara sobre a tática padrão", () => {
     const { tot } = table(["padraoTrocas", "tudo"], 5);
     expect(ppg(tot.tudo)).toBeGreaterThanOrEqual(ppg(tot.padraoTrocas) + 0.08);
     expect(goalDiff(tot.tudo)).toBeGreaterThan(goalDiff(tot.padraoTrocas) + 0.1);
-  }, 1_200_000);
+  }, 1_800_000);
 });

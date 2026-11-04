@@ -386,3 +386,21 @@ Atendendo à solicitação direta do Kelvin ("continue fazendo melhorias, teste,
 - **Sincronização Nativa:** `npx cap sync android` sincronizou todos os assets para o Android.
 - **Compilação Release do Android:** `gradlew assembleRelease` finalizado com sucesso (`BUILD SUCCESSFUL in 2m 4s`).
 - **Arquivos APK:** Atualizados na raiz `LendasDaBase.apk` e `lendas-da-base.apk` (55,32 MB).
+
+
+## 14. Validação do Auxiliar Técnico, Cache Determinístico no Harness e Scripts de Teste (Antigravity, 04/11/2026)
+
+### 1. Diagnóstico e Validação de `tests/assistantQuality.test.ts` (Item 0.1 do Plano)
+- Executado `tests/assistantQuality.test.ts` tanto com `CI=1` (`N=40`, 267s) quanto com amostra cheia sem `CI` (`N=300`, 1.476s).
+- **Resultado:** 100% aprovado nos dois modos:
+  - Auxiliar 3★ (`N=300`): `padraoTrocas` (V 41,2% | saldo +0,207 | 1,488 pts) → `preJogo` (V 45,8% | saldo +0,781 | 1,586 pts) → `tudo` (V 51,8% | saldo +0,986 | 1,751 pts).
+  - Auxiliar 5★ (`N=300`): `padraoTrocas` (1,488 pts, saldo +0,207) → `tudo` (1,741 pts, saldo +1,007).
+- Confirmado que as novas mecânicas táticas por zonas (Openfoot Manager) não introduziram regressão no auxiliar técnico; o timeout anterior ocorreu exclusivamente pela contenção de CPU ao rodar os 53 arquivos em paralelo sem `CI=1`.
+
+### 2. Otimização Determinística em `tests/helpers/assistantHarness.ts` e `package.json` (Itens 1.5 e 1.6)
+- Adicionado cache em memória em `assistantHarness.ts`:
+  - `planCache` por `${sc.tag}:${staffStars}`: evita recalcular o Monte Carlo de `refineAnalysis` duas vezes idênticas entre os braços `preJogo` e `tudo`.
+  - `baseArmCache` por `${sc.tag}:${arm}:${n}:${JSON.stringify(opts)}`: evita re-simular as 3.600 partidas de `padraoTrocas` no segundo teste (que não depende de `staffStars`).
+  - Validado que todos os números saem idênticos até a 3ª casa decimal.
+- Ampliado o timeout de segurança em `tests/assistantQuality.test.ts` de `1_200_000` (20 min) para `1_800_000` (30 min) para execuções locais concorrentes sem `CI=1`.
+- Adicionados os scripts `npm run test:fast` e `npm run test:calibration` em `package.json`.

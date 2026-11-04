@@ -10,6 +10,8 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:fast": "vitest run --exclude tests/assistantQuality.test.ts --exclude tests/assistantOrders.test.ts --exclude tests/longrun.test.ts",
+    "test:calibration": "vitest run tests/assistantQuality.test.ts tests/assistantOrders.test.ts tests/longrun.test.ts tests/season.test.ts",
     "dados": "python3 scripts/fetch_squads.py && python3 scripts/fetch_pt_positions.py && python3 scripts/build_database.py",
     "jogar": "node scripts/jogar.mjs",
     "android:sync": "npm run build && npx cap sync android",

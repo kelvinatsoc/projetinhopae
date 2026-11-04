@@ -49,16 +49,32 @@ function prepare(base: World, sc: Scenario, staffStars: number) {
   return { b, club, defLineup, defTactic: { ...club.tactic } };
 }
 
+const planCache = new Map<string, ReturnType<typeof analyzeMatch>["plan"]>();
+const baseArmCache = new Map<string, ArmResult>();
+
 /** Roda `n` jogos de um cenário num braço. Não mexe no RNG de fora. */
 export function runArm(base: World, sc: Scenario, arm: Arm, n: number, staffStars = 3, opts: ArmOpts = {}): ArmResult {
+  const isBaseArm = arm === "padrao" || arm === "padraoTrocas";
+  const armKey = isBaseArm ? `${sc.tag}:${arm}:${n}:${JSON.stringify(opts)}` : "";
+  if (isBaseArm) {
+    const cached = baseArmCache.get(armKey);
+    if (cached) return { ...cached };
+  }
   const outer = getRngState();
   const { b, club, defLineup, defTactic } = prepare(base, sc, staffStars);
   const side = b.userSide;
   let plan = null as ReturnType<typeof analyzeMatch>["plan"] | null;
   const live = arm === "tudo" || arm === "antigas";
   if (arm === "preJogo" || live) {
-    b.reset();
-    plan = refineAnalysis(b.mini, b.fx, analyzeMatch(b.mini, b.fx), staffStars).plan;
+    const pKey = `${sc.tag}:${staffStars}`;
+    const cachedPlan = planCache.get(pKey);
+    if (cachedPlan) {
+      plan = cachedPlan;
+    } else {
+      b.reset();
+      plan = refineAnalysis(b.mini, b.fx, analyzeMatch(b.mini, b.fx), staffStars).plan;
+      planCache.set(pKey, plan);
+    }
   }
   const r: ArmResult = { n: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, go: 0 };
   const off = opts.stakes?.offset ?? 0;
@@ -95,6 +111,7 @@ export function runArm(base: World, sc: Scenario, arm: Arm, n: number, staffStar
     b.reset();
     setRngState(outer);
   }
+  if (isBaseArm) baseArmCache.set(armKey, { ...r });
   return r;
 }
 
