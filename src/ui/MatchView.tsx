@@ -11,7 +11,7 @@ import type { MatchSim, MinutePhase } from "../engine/match";
 import { FORMATIONS, POS_GROUP, type Slot } from "../engine/positions";
 import { makeRng } from "../engine/rng";
 import type { Club, Fixture, MatchEvent, MatchResult, Player, Race, World } from "../engine/types";
-import { Avatar, CompLogo, Crest, Icon, StadiumPhoto } from "./components";
+import { Avatar, CompLogo, Crest, Icon } from "./components";
 import { COMP_META } from "../engine/competitions";
 import { compTheme, themeClass, themeVars } from "./compThemes";
 import { celebrationFor, drawPitchDude, lookOf, PixelFX, setPose, shotStyle, type SpriteDude } from "./matchSprites";
@@ -19,8 +19,8 @@ import { actorOf, wantsCinematic, type CineOutcome, type CineSpec } from "./cine
 import "./economy.css";
 import "./matchView.css";
 // [stadium-art] identidade de cada estádio (src/ui/stadiumArt.ts)
-import { paintPitch, paintStadium, stadiumArt } from "./stadiumArt";
-import { StadiumBanner } from "./StadiumBanner";
+import { stadiumArt } from "./stadiumArt";
+import { Hd2dStadium } from "./hq/Hd2dStadium";
 import { stadiumStyleFor } from "../data/stadiumStyles";
 import { stadiumName } from "../engine/sponsors";
 import { getWorld } from "../store";
@@ -30,16 +30,15 @@ import { pickSpecial, SPECIALS, specialsEnabled, type SpecialDef } from "./speci
 import { crowdProfile, festaLevel, type CrowdProfile } from "./torcida";
 import { ballPass, ballKick, netRipple, savePunch, tackle, postHit } from "./audio";
 import { Festa2D } from "./torcida2d";
-import { isLite } from "./perf";
 
 // ---------------------------------------------------------------- geometria (pixels de jogo)
 import { W, H, PX0, PX1, PY0, PY1, PL, PW, CX, CY, POST, BOX_D, BOX_H, SPOT } from "./pitchGeom";
+const HD_SCALE = 5;
 const TUNNEL = { x: CX, y: PY0 - 5 };
 
-const GRASS_A = "#3f9a45";
-const GRASS_B = "#378c3d";
-const LINE = "#e6f4e6";
-const OUTLINE = "#0d1a12";
+const GRASS_A = "#1c6b39";
+const GRASS_B = "#227b43";
+const OUTLINE = "#08120c";
 
 // ---------------------------------------------------------------- cores dos times
 /** Cores de um uniforme como o campo desenha (camisa, mangas, calção, meias e padrão). */
@@ -284,34 +283,19 @@ interface Stadium {
   fans: Fan[];
 }
 
-function px(g: CanvasRenderingContext2D, x: number, y: number, w = 1, h = 1) {
-  g.fillRect(Math.round(x), Math.round(y), w, h);
-}
-
-function circlePts(r: number): [number, number][] {
-  const pts: [number, number][] = [];
-  let x = r, y = 0, err = 1 - r;
-  while (x >= y) {
-    pts.push([x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]);
-    y++;
-    if (err < 0) err += 2 * y + 1;
-    else { x--; err += 2 * (y - x) + 1; }
-  }
-  return pts;
-}
-
 function makeCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
+  c.width = W * HD_SCALE;
+  c.height = H * HD_SCALE;
   const g = c.getContext("2d")!;
+  g.scale(HD_SCALE, HD_SCALE);
   return [c, g];
 }
 
 // áreas sem torcida (torres de luz, bancos de reservas, túnel)
 const NO_FANS: [number, number, number, number][] = [
-  [0, 0, 6, 6], [W - 6, 0, 6, 6], [0, H - 6, 6, 6], [W - 6, H - 6, 6, 6],
-  [64, 8, 22, 8], [110, 8, 22, 8], [93, 6, 10, 10],
+  [0, 0, 7, 7], [W - 7, 0, 7, 7], [0, H - 7, 7, 7], [W - 7, H - 7, 7, 7],
+  [64, 7, 22, 9], [110, 7, 22, 9], [93, 5, 10, 11],
 ];
 const blocked = (x: number, y: number) => NO_FANS.some(([bx, by, bw, bh]) => x >= bx && x < bx + bw && y >= by && y < by + bh);
 
@@ -320,182 +304,285 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   const away = sim.sides[1].club;
   const rng = makeRng(home.id.split("").reduce((s, c) => s * 31 + c.charCodeAt(0), 7) >>> 0);
   const [bg, g] = makeCanvas();
-  // [stadium-art]
   const art = stadiumArt({ home, away, neutral: !!sim.f.neutral, stage: sim.f.stage });
 
-  // estrutura da arquibancada
-  g.fillStyle = "#1a2320";
+  // 1. Anel arquitetônico HD-2D noturno (degraus em ardósia profunda + escadarias âmbar)
+  g.fillStyle = "#080f1a";
   g.fillRect(0, 0, W, H);
-  g.fillStyle = "#28322e";
-  g.fillRect(0, 0, W, 2);
-  g.fillStyle = "#38443f";
-  g.fillRect(0, 1, W, 1);
+  g.fillStyle = "#101b2d";
+  g.fillRect(2, 2, W - 4, H - 4);
+  g.fillStyle = "#17253b";
+  g.fillRect(5, 5, W - 10, H - 10);
+  // Borda interna da arquibancada e fosso perimetral
+  g.fillStyle = "#0b1320";
+  g.fillRect(10, 12, W - 20, H - 20);
 
-  // gramado listrado (faixas de 10 px alinhadas com a linha de fundo)
-  paintPitch(g, art, GRASS_A, GRASS_B); // [stadium-art]
-  // placas laterais (atrás dos gols) — as de cima e de baixo são animadas
-  const boardPal = ["#1d4ed8", "#dc2626", "#f59e0b", "#059669", "#7c3aed", "#e5e5e5"];
-  for (let y = 16; y <= 120; y += 8) {
-    g.fillStyle = boardPal[Math.floor(rng() * boardPal.length)];
-    g.fillRect(12, y, 1, Math.min(8, 121 - y));
-    g.fillStyle = boardPal[Math.floor(rng() * boardPal.length)];
-    g.fillRect(184, y, 1, Math.min(8, 121 - y));
+  // Escadarias iluminadas em âmbar (estilo diorama HD-2D)
+  g.fillStyle = "rgba(245, 158, 11, 0.35)";
+  for (const sx of [28, 56, 140, 168]) {
+    g.fillRect(sx, 2, 1.5, 10);
+    g.fillRect(sx, 123, 1.5, 8);
+  }
+  for (const sy of [32, 66, 100]) {
+    g.fillRect(1, sy, 9, 1.4);
+    g.fillRect(186, sy, 9, 1.4);
   }
 
-  // linhas
-  g.fillStyle = LINE;
-  g.fillRect(PX0, PY0, PL + 1, 1);
-  g.fillRect(PX0, PY1, PL + 1, 1);
-  g.fillRect(PX0, PY0, 1, PW + 1);
-  g.fillRect(PX1, PY0, 1, PW + 1);
-  g.fillRect(CX, PY0, 1, PW + 1);
-  for (const [dx, dy] of circlePts(12)) px(g, CX + dx, CY + dy);
-  px(g, CX - 1, CY, 3, 1);
-  for (const s of [0, 1] as const) {
-    const gx = s === 0 ? PX0 : PX1;
-    const dir = s === 0 ? 1 : -1;
-    // grande área
-    const bx = gx + dir * BOX_D;
-    g.fillRect(Math.min(gx, bx), CY - BOX_H, BOX_D + 1, 1);
-    g.fillRect(Math.min(gx, bx), CY + BOX_H, BOX_D + 1, 1);
-    g.fillRect(bx, CY - BOX_H, 1, BOX_H * 2 + 1);
-    // pequena área
-    const sx = gx + dir * 8;
-    g.fillRect(Math.min(gx, sx), CY - 13, 9, 1);
-    g.fillRect(Math.min(gx, sx), CY + 13, 9, 1);
-    g.fillRect(sx, CY - 13, 1, 27);
-    // marca do pênalti e meia-lua
-    px(g, gx + dir * SPOT, CY);
-    for (const [dx, dy] of circlePts(10)) {
-      const x = gx + dir * SPOT + dx;
-      if ((dir === 1 && x > bx) || (dir === -1 && x < bx)) px(g, x, CY + dy);
-    }
-    // escanteios (arco + bandeirinha)
-    for (const cy of [PY0, PY1]) {
-      const vy = cy === PY0 ? 1 : -1;
-      g.fillStyle = LINE;
-      px(g, gx + dir * 2, cy);
-      px(g, gx + dir, cy + vy);
-      px(g, gx, cy + vy * 2);
-      g.fillStyle = "#f2d22e";
-      px(g, gx - dir, cy - 3 * (cy === PY0 ? 1 : 0) + (cy === PY0 ? 0 : 1), 1, 2);
-      g.fillStyle = "#ddd";
-      px(g, gx, cy - (cy === PY0 ? 3 : -1), 1, 3);
-      g.fillStyle = LINE;
-    }
-  }
-
-  // bancos de reservas e túnel (na arquibancada principal, em cima)
-  for (const [bx, kit] of [[66, colors.home], [112, colors.away]] as const) {
-    g.fillStyle = "#11181a";
-    g.fillRect(bx - 1, 9, 20, 7);
-    g.fillStyle = "#3b4b55";
-    g.fillRect(bx - 1, 9, 20, 2);
-    g.fillStyle = "#5d7380";
-    g.fillRect(bx - 1, 9, 20, 1);
-    for (let i = 0; i < 7; i++) {
-      const lx = bx + 1 + i * 2 + (i > 3 ? 1 : 0);
-      g.fillStyle = HAIR[Math.floor(rng() * HAIR.length)];
-      g.fillRect(lx, 12, 1, 1);
-      g.fillStyle = kit.shirt;
-      g.fillRect(lx, 13, 1, 2);
-    }
-  }
-  g.fillStyle = "#070b09";
-  g.fillRect(94, 7, 8, 9);
-  g.fillStyle = "#4b5a54";
-  g.fillRect(93, 7, 1, 9);
-  g.fillRect(102, 7, 1, 9);
-  g.fillRect(93, 6, 10, 1);
-
-  // torcida (cada torcedor = 1 px de cabeça + 1 px de corpo, fileiras a cada 3 px)
-  const density = art.density; // [stadium-art]
-  const pal = (c: Club) => [c.colors[0], c.colors[0], c.colors[0], c.colors[0], c.colors[1], c.colors[1], c.colors[2], "#e9e9e9", "#2a2a2a", c.colors[0]];
+  // 2. Torcida organizada em fileiras limpas (sem ruído estático de 1px)
+  const density = Math.min(0.92, Math.max(0.68, art.density));
+  const pal = (c: Club) => [c.colors[0], c.colors[0], c.colors[0], c.colors[1], c.colors[1], c.colors[2] || c.colors[0], "#e2e8f0"];
   const homePal = pal(home);
   const awayPal = pal(away);
-  const step = "#202925";
   const fans: Fan[] = [];
   const isAway = (x: number, y: number) => !sim.f.neutral && ((y >= 123 && x >= 150) || (x >= 185 && y >= 88));
   const isGap = (x: number, y: number) => !sim.f.neutral && ((y >= 123 && x >= 146 && x <= 148) || (x >= 185 && y >= 84 && y <= 86));
-  const rows: [number, number, number][] = []; // [y, x0, x1]
-  for (let y = 2; y <= 11; y += 3) rows.push([y, 0, W - 1]);
-  for (let y = 123; y <= 129; y += 3) rows.push([y, 0, W - 1]);
-  for (let y = 14; y <= 120; y += 3) { rows.push([y, 0, 11]); rows.push([y, 185, W - 1]); }
+  const rows: [number, number, number][] = [];
+  for (let y = 2.5; y <= 10.5; y += 2.6) rows.push([y, 8, W - 9]);
+  for (let y = 123.5; y <= 129.5; y += 2.6) rows.push([y, 8, W - 9]);
+  for (let y = 15; y <= 118; y += 2.8) {
+    rows.push([y, 2, 9.5]);
+    rows.push([y, 186.5, W - 3]);
+  }
   const skinPal = ["#f1c9a0", "#d9a273", "#b07546", "#7a4a2b", "#e8bb8c"];
   for (const [y, x0, x1] of rows) {
-    g.fillStyle = step;
-    g.fillRect(x0, y + 2, x1 - x0 + 1, 1);
-    for (let x = x0; x <= x1; x++) {
-      if (blocked(x, y) || blocked(x, y + 1) || art.mask(x, y)) continue; // [stadium-art]
-      const awaySec = isAway(x, y);
-      const dens = awaySec ? Math.min(density, 0.75) : density;
-      if (isGap(x, y) || rng() > dens) {
-        g.fillStyle = art.seatAt(x, y); // [stadium-art]
-        g.fillRect(x, y, 1, 2);
+    g.fillStyle = "rgba(7, 12, 21, 0.65)";
+    g.fillRect(x0, y + 1.6, x1 - x0 + 1, 0.65);
+    for (let x = x0; x <= x1; x += 1.65) {
+      const rx = Math.round(x);
+      const ry = Math.round(y);
+      if (blocked(rx, ry) || blocked(rx, ry + 1)) continue;
+      if ((rx >= 27 && rx <= 29) || (rx >= 55 && rx <= 57) || (rx >= 139 && rx <= 141) || (rx >= 167 && rx <= 169)) continue;
+      const awaySec = isAway(rx, ry);
+      const dens = awaySec ? Math.min(density, 0.78) : density;
+      if (isGap(rx, ry) || rng() > dens) {
+        g.fillStyle = "#1e293b";
+        g.fillRect(x, y + 0.3, 1.2, 1.3);
         continue;
       }
       const p = awaySec ? awayPal : homePal;
       const body = p[Math.floor(rng() * p.length)];
       const bottom = y >= 123;
       const head = bottom ? HAIR[Math.floor(rng() * HAIR.length)] : skinPal[Math.floor(rng() * skinPal.length)];
-      g.fillStyle = head;
-      g.fillRect(x, y, 1, 1);
       g.fillStyle = body;
-      g.fillRect(x, y + 1, 1, 1);
-      fans.push({ x, y, head, body, sec: awaySec ? 1 : 0, seat: art.seatAt(x, y), rank: Math.random() * 0.75 + (bottom ? 0 : 0.25) * Math.random() });
+      g.fillRect(x - 0.1, y + 0.55, 1.35, 1.15);
+      g.fillStyle = head;
+      g.fillRect(x + 0.1, y - 0.1, 0.95, 0.75);
+      fans.push({
+        x: rx,
+        y: ry,
+        head,
+        body,
+        sec: awaySec ? 1 : 0,
+        seat: "#1e293b",
+        rank: Math.random() * 0.75 + (bottom ? 0 : 0.25) * Math.random(),
+      });
     }
   }
-  // bandeirões
-  const flags: [number, number, Club][] = [[24, 3, home], [150, 3, home], [40, 124, home], [110, 124, home], [2, 40, home], [188, 30, home]];
-  if (!sim.f.neutral) flags.push([170, 124, away]);
-  for (const [fx, fy, c] of flags) {
-    g.fillStyle = c.colors[0];
-    g.fillRect(fx, fy, 3, 4);
-    g.fillStyle = c.colors[1];
-    g.fillRect(fx + 3, fy, 3, 4);
+
+  // 3. Gramado HD-2D esmeralda com corte em faixas, textura de relva e iluminação de refletores
+  g.fillStyle = "#134726";
+  g.fillRect(11, 13, W - 22, H - 25);
+
+  const stripes = 16;
+  const stripeW = PL / stripes;
+  for (let i = 0; i < stripes; i++) {
+    g.fillStyle = i % 2 === 0 ? GRASS_A : GRASS_B;
+    g.fillRect(PX0 + i * stripeW, PY0, stripeW + 0.15, PW);
+  }
+  // Faixas horizontais sutis de corte cruzado (efeito tapete de estádio)
+  for (let j = 0; j < 10; j++) {
+    g.fillStyle = j % 2 === 0 ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.03)";
+    g.fillRect(PX0, PY0 + (j * PW) / 10, PL, PW / 10);
   }
 
-  // [stadium-art] estrutura, teto, marcos, luzes, telão e mosaico
-  paintStadium(g, art, { home, away, neutral: !!sim.f.neutral, stage: sim.f.stage }, rng);
-  // goleiras (redes) por cima do gramado
+  // Iluminação volumétrica dos 4 refletores nos cantos + foco central
+  for (const [lx, ly] of [
+    [0, 0],
+    [W, 0],
+    [0, H],
+    [W, H],
+  ] as const) {
+    const grad = g.createRadialGradient(lx, ly, 4, lx, ly, 85);
+    grad.addColorStop(0, "rgba(254, 243, 199, 0.22)");
+    grad.addColorStop(0.35, "rgba(253, 230, 138, 0.08)");
+    grad.addColorStop(1, "rgba(253, 230, 138, 0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+  }
+  const centerGlow = g.createRadialGradient(CX, CY, 6, CX, CY, 78);
+  centerGlow.addColorStop(0, "rgba(187, 247, 208, 0.08)");
+  centerGlow.addColorStop(1, "rgba(6, 20, 12, 0.22)");
+  g.fillStyle = centerGlow;
+  g.fillRect(PX0 - 2, PY0 - 2, PL + 4, PW + 4);
+
+  // Placas publicitárias laterais atrás dos gols
+  const boardPal = ["#1d4ed8", "#dc2626", "#f59e0b", "#059669", "#7c3aed", "#e5e5e5"];
+  for (let y = 17; y <= 118; y += 8) {
+    g.fillStyle = boardPal[Math.floor(rng() * boardPal.length)];
+    g.fillRect(11.6, y, 1.1, Math.min(7.4, 120 - y));
+    g.fillStyle = boardPal[Math.floor(rng() * boardPal.length)];
+    g.fillRect(183.4, y, 1.1, Math.min(7.4, 120 - y));
+  }
+
+  // 4. Linhas do campo com nitidez HD-2D (5x de resolução interna)
+  g.save();
+  g.strokeStyle = "rgba(240, 253, 244, 0.9)";
+  g.fillStyle = "rgba(240, 253, 244, 0.92)";
+  g.lineWidth = 0.62;
+
+  // Retângulo externo e linha de meio-campo
+  g.strokeRect(PX0, PY0, PL, PW);
+  g.beginPath();
+  g.moveTo(CX, PY0);
+  g.lineTo(CX, PY1);
+  g.stroke();
+
+  // Círculo central e marca do meio-campo
+  g.beginPath();
+  g.arc(CX, CY, 12, 0, Math.PI * 2);
+  g.stroke();
+  g.beginPath();
+  g.arc(CX, CY, 0.95, 0, Math.PI * 2);
+  g.fill();
+
   for (const s of [0, 1] as const) {
     const gx = s === 0 ? PX0 : PX1;
-    const back = s === 0 ? PX0 - 3 : PX1 + 3;
-    const x0 = Math.min(gx, back);
-    g.fillStyle = "rgba(255,255,255,0.5)";
-    for (let y = CY - POST + 1; y < CY + POST; y++) for (let x = x0 + 1; x < x0 + 3; x++) if ((x + y) % 2 === 0) px(g, x, y);
-    g.fillStyle = "#f7f7f7";
-    g.fillRect(x0, CY - POST, 4, 1);
-    g.fillRect(x0, CY + POST, 4, 1);
-    g.fillRect(back, CY - POST, 1, POST * 2 + 1);
-    g.fillStyle = "#c9d2cc";
-    g.fillRect(back, CY - POST + 1, 1, POST * 2 - 1);
+    const dir = s === 0 ? 1 : -1;
+    const bx = gx + dir * BOX_D;
+    // Grande área
+    g.strokeRect(Math.min(gx, bx), CY - BOX_H, BOX_D, BOX_H * 2);
+    // Pequena área
+    const sx = gx + dir * 8;
+    g.strokeRect(Math.min(gx, sx), CY - 13, 8, 26);
+    // Marca do pênalti
+    const spotX = gx + dir * SPOT;
+    g.beginPath();
+    g.arc(spotX, CY, 0.75, 0, Math.PI * 2);
+    g.fill();
+    // Meia-lua da grande área
+    g.beginPath();
+    if (s === 0) {
+      g.arc(spotX, CY, 10, -0.68, 0.68);
+    } else {
+      g.arc(spotX, CY, 10, Math.PI - 0.68, Math.PI + 0.68);
+    }
+    g.stroke();
+
+    // Escanteios (arco + bandeirinha)
+    for (const cy of [PY0, PY1]) {
+      g.beginPath();
+      if (s === 0 && cy === PY0) g.arc(gx, cy, 2.5, 0, Math.PI * 0.5);
+      else if (s === 0 && cy === PY1) g.arc(gx, cy, 2.5, -Math.PI * 0.5, 0);
+      else if (s === 1 && cy === PY0) g.arc(gx, cy, 2.5, Math.PI * 0.5, Math.PI);
+      else g.arc(gx, cy, 2.5, Math.PI, Math.PI * 1.5);
+      g.stroke();
+
+      // Haste e flâmula da bandeirinha
+      const poleTop = cy - 2.6;
+      g.fillStyle = "#f8fafc";
+      g.fillRect(gx - 0.2, poleTop, 0.4, 2.7);
+      g.fillStyle = "#facc15";
+      g.fillRect(s === 0 ? gx + 0.2 : gx - 1.4, poleTop, 1.2, 0.9);
+      g.fillStyle = "rgba(240, 253, 244, 0.92)";
+    }
+  }
+  g.restore();
+
+  // 5. Bancos de reservas (casamatas modernas) e túnel central
+  for (const [bx, kit] of [[66, colors.home], [112, colors.away]] as const) {
+    g.fillStyle = "#09101b";
+    g.fillRect(bx - 1, 8.2, 20, 6.2);
+    g.fillStyle = "#334155";
+    g.fillRect(bx - 1, 8.2, 20, 1.8);
+    g.fillStyle = "#64748b";
+    g.fillRect(bx - 1, 8.2, 20, 0.6);
+    for (let i = 0; i < 7; i++) {
+      const lx = bx + 1 + i * 2.3 + (i > 3 ? 0.6 : 0);
+      g.fillStyle = kit.shirt;
+      g.fillRect(lx, 11.6, 1.3, 1.8);
+      g.fillStyle = HAIR[Math.floor(rng() * HAIR.length)];
+      g.fillRect(lx + 0.15, 10.7, 1.0, 0.9);
+    }
+  }
+  g.fillStyle = "#04080e";
+  g.fillRect(94, 6.5, 8, 8);
+  g.fillStyle = "#475569";
+  g.fillRect(93.2, 6.5, 0.8, 8);
+  g.fillRect(102, 6.5, 0.8, 8);
+  g.fillRect(93.2, 5.8, 9.6, 0.8);
+
+  // Torres de iluminação nos 4 cantos do estádio
+  for (const [tx, ty] of [
+    [1, 1],
+    [W - 6, 1],
+    [1, H - 6],
+    [W - 6, H - 6],
+  ] as const) {
+    g.fillStyle = "#1e293b";
+    g.fillRect(tx, ty, 5, 5);
+    g.fillStyle = "#fef08a";
+    g.fillRect(tx + 0.8, ty + 0.8, 3.4, 3.4);
+    g.fillStyle = "#ffffff";
+    g.fillRect(tx + 1.4, ty + 1.4, 2.2, 2.2);
   }
 
-  // quadros da torcida "pulando" (só os torcedores levantados; o resto já está no fundo)
+  // 6. Goleiras (redes 3D e traves metálicas)
+  for (const s of [0, 1] as const) {
+    const gx = s === 0 ? PX0 : PX1;
+    const back = s === 0 ? PX0 - 3.6 : PX1 + 3.6;
+    const x0 = Math.min(gx, back);
+    const gw = Math.abs(gx - back);
+    const gy0 = CY - POST;
+    const gh = POST * 2;
+
+    // Sombra interna da rede no gramado
+    g.fillStyle = "rgba(4, 12, 8, 0.42)";
+    g.fillRect(x0, gy0 + 0.4, gw, gh);
+
+    // Malha da rede
+    g.save();
+    g.strokeStyle = "rgba(226, 232, 240, 0.42)";
+    g.lineWidth = 0.22;
+    for (let ny = gy0 + 0.8; ny < gy0 + gh; ny += 1.2) {
+      g.beginPath();
+      g.moveTo(x0, ny);
+      g.lineTo(x0 + gw, ny);
+      g.stroke();
+    }
+    for (let nx = x0 + 0.6; nx < x0 + gw; nx += 0.9) {
+      g.beginPath();
+      g.moveTo(nx, gy0);
+      g.lineTo(nx, gy0 + gh);
+      g.stroke();
+    }
+    g.restore();
+
+    // Traves e travessão brancos com brilho
+    g.fillStyle = "#cbd5e1";
+    g.fillRect(back - 0.3, gy0, 0.6, gh + 0.4);
+    g.fillStyle = "#ffffff";
+    g.fillRect(x0, gy0 - 0.35, gw + 0.3, 0.75);
+    g.fillRect(x0, gy0 + gh - 0.35, gw + 0.3, 0.75);
+    g.fillRect(gx - 0.35, gy0 - 0.35, 0.75, 1.1);
+    g.fillRect(gx - 0.35, gy0 + gh - 0.75, 0.75, 1.1);
+  }
+
+  // Quadros da torcida vibrando
   const crowd: HTMLCanvasElement[] = [];
-  const frame = (pick: (f: Fan) => boolean, flagsUp: boolean) => {
+  const frame = (pick: (f: Fan) => boolean) => {
     const [c, cg] = makeCanvas();
     for (const f of fans) {
       if (!pick(f)) continue;
-      cg.fillStyle = f.head;
-      cg.fillRect(f.x, f.y - 1, 1, 1);
       cg.fillStyle = f.body;
-      cg.fillRect(f.x, f.y, 1, 2);
-    }
-    if (flagsUp) {
-      for (const [fx, fy, cl] of flags) {
-        cg.fillStyle = cl.colors[0];
-        cg.fillRect(fx, fy - 1, 3, 4);
-        cg.fillStyle = cl.colors[1];
-        cg.fillRect(fx + 3, fy - 2, 3, 4);
-      }
+      cg.fillRect(f.x - 0.1, f.y - 0.25, 1.35, 1.3);
+      cg.fillStyle = f.head;
+      cg.fillRect(f.x + 0.1, f.y - 0.95, 0.95, 0.75);
     }
     crowd.push(c);
   };
-  for (let i = 0; i < 3; i++) frame(() => Math.random() < 0.05, false);
-  for (let i = 0; i < 2; i++) frame((f) => f.sec === 0 && Math.random() < 0.55, i === 0);
-  for (let i = 0; i < 2; i++) frame((f) => f.sec === 1 && Math.random() < 0.6, false);
+  for (let i = 0; i < 3; i++) frame(() => Math.random() < 0.06);
+  for (let i = 0; i < 2; i++) frame((f) => f.sec === 0 && Math.random() < 0.55);
+  for (let i = 0; i < 2; i++) frame((f) => f.sec === 1 && Math.random() < 0.6);
   return { bg, crowd, fans };
 }
 
@@ -518,6 +605,7 @@ class PitchAnim {
   poss: 0 | 1 | null = null;
   acts: { t: number; f: () => void }[] = [];
   seen: number;
+  seenMin: number;
   ms = 650;
   goalHold = true;
   reduced = false;
@@ -551,9 +639,9 @@ class PitchAnim {
       const cc = sim.sides[this.crowd.side].club;
       const lvl = this.crowd.selecao ? 1 : Math.max(festaLevel(cc, !!sim.f.neutral), 0.25);
       this.festa = new Festa2D(this.stadium.fans, { club: cc.colors, selecao: this.crowd.selecao }, lvl, false);
-      if (sim.minute === 0 && sim.half === 1) this.festa.tifo(8000);
     }
     this.seen = sim.events.length;
+    this.seenMin = sim.minute + sim.half * 100;
     this.formations = sim.sides.map((s) => {
       const f = FORMATIONS[s.club.tactic.formation];
       return f && f.length === s.slots.length ? f : FORMATIONS["4-3-3"];
@@ -1015,8 +1103,10 @@ class PitchAnim {
   /** Chamado a cada minuto simulado (e quando vários minutos passam de uma vez). */
   onTick() {
     const sim = this.sim;
+    const curMin = sim.minute + sim.half * 100;
     const evs = sim.events.slice(this.seen);
-    if (sim.events.length === this.seen && !(sim.finished && !this.ended)) return;
+    if (curMin === this.seenMin && sim.events.length === this.seen && !(sim.finished && !this.ended)) return;
+    this.seenMin = curMin;
     this.seen = sim.events.length;
     this.syncRoster(evs);
     // descarta o que sobrou do minuto anterior (a bola em voo termina o trajeto)
@@ -1774,7 +1864,6 @@ class PitchAnim {
       d.speed = 1.35;
     }
     this.say(`${this.sim.sides[0].club.name} e ${this.sim.sides[1].club.name} entram em campo`);
-    this.festa?.tifo(10000);
     if (this.reduced) this.snapToTargets();
   }
 
@@ -1930,161 +2019,138 @@ class PitchAnim {
     const crowd = this.stadium.crowd;
     const fi = this.reduced ? -1 : cheering ? (this.cheer.side === 0 ? 3 : 5) + (Math.floor(now / 140) % 2) : Math.floor(now / 260) % 3;
     if (fi >= 0) g.drawImage(crowd[fi], 0, 0);
+
+    g.save();
+    g.scale(HD_SCALE, HD_SCALE);
+
     this.festa?.draw(g);
     this.drawExodus(g);
     this.drawBoards(g, cheering);
     if (!this.reduced && now < this.flashUntil) {
-      g.fillStyle = "#ffffff";
+      g.fillStyle = "rgba(255, 255, 255, 0.92)";
       for (let i = 0; i < 5; i++) {
         const r = Math.random();
-        if (r < 0.5) g.fillRect(Math.floor(Math.random() * W), 2 + Math.floor(Math.random() * 11), 1, 1);
-        else g.fillRect(Math.floor(Math.random() * W), 123 + Math.floor(Math.random() * 8), 1, 1);
+        if (r < 0.5) g.fillRect(Math.floor(Math.random() * W), 2 + Math.floor(Math.random() * 11), 0.9, 0.9);
+        else g.fillRect(Math.floor(Math.random() * W), 123 + Math.floor(Math.random() * 8), 0.9, 0.9);
       }
     }
-    // rede balançando
+    // Rede balançando no gol
     if (now < this.netShake.until) {
-      const back = this.netShake.side === 0 ? PX1 + 4 : PX0 - 4;
-      g.fillStyle = "rgba(255,255,255,0.8)";
-      g.fillRect(back, CY - POST + 2, 1, POST * 2 - 3);
+      const back = this.netShake.side === 0 ? PX1 + 3.4 : PX0 - 3.6;
+      g.fillStyle = "rgba(255, 255, 255, 0.85)";
+      g.fillRect(back, CY - POST + 1.2, 0.7, POST * 2 - 2.4);
     }
     const all = this.dudes.filter((d) => !d.hidden).concat(this.ghosts);
-    // sombras
-    g.fillStyle = "rgba(0,0,0,0.28)";
-    for (const d of all) {
-      const lying = now < d.down || now < d.dive;
-      g.fillRect(Math.round(d.x) - (lying ? 3 : 1), Math.round(d.y), lying ? 8 : 4, 1);
-    }
     all.sort((a, b) => a.y - b.y);
     for (const d of all) {
-      if (this.rich && d.side !== 2 || this.rich && d.pose) drawPitchDude(g, d, now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
-      else this.drawDude(g, d);
+      drawPitchDude(g, d, now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
     }
     if (this.rich || this.special || this.pfx.sparks.length) this.pfx.draw(g);
     this.drawBall(g);
     for (const ic of this.icons) this.drawIcon(g, ic);
+
+    g.restore();
   }
 
   drawBoards(g: CanvasRenderingContext2D, cheering: boolean) {
     const pal = ["#1d4ed8", "#dc2626", "#f59e0b", "#059669", "#7c3aed", "#0f766e"];
     const club = this.sim.sides[this.cheer.side].club;
     const flash = cheering ? Math.floor(this.now / 160) % 2 : 0;
-    const off = this.reduced ? 0 : Math.floor(this.now / 110) % 16;
-    for (const [y, dir] of [[14, 1], [121, -1]] as const) {
+    const off = this.reduced ? 0 : (this.now / 110) % 16;
+    for (const [y, dir] of [[13.8, 1], [120.8, -1]] as const) {
       for (let i = -1; i < 14; i++) {
         const x0 = 13 + i * 16 + dir * off - (dir < 0 ? 0 : 16) + 16;
         const idx = ((i % pal.length) + pal.length) % pal.length;
         g.fillStyle = cheering ? (flash ? club.colors[0] : club.colors[1]) : pal[idx];
         const a = Math.max(13, x0), b = Math.min(184, x0 + 16);
         if (b <= a) continue;
-        g.fillRect(a, y, b - a, 2);
+        g.fillRect(a, y, b - a, 1.8);
         g.fillStyle = cheering ? (flash ? club.colors[1] : club.colors[0]) : idx === 2 ? "#1b1b1b" : "#f5f5f5";
         const lx = x0 + 5;
-        if (lx >= 13 && lx + 6 <= 184) g.fillRect(lx, y + (y === 14 ? 0 : 1), 6, 1);
+        if (lx >= 13 && lx + 6 <= 184) g.fillRect(lx, y + 0.45, 6, 0.85);
       }
     }
     g.fillStyle = "#070b09";
-    g.fillRect(94, 14, 8, 2);
+    g.fillRect(94, 13.8, 8, 1.8);
   }
 
   drawDude(g: CanvasRenderingContext2D, d: Dude) {
-    const now = this.now;
-    const x = Math.round(d.x), y = Math.round(d.y);
-    if (now < d.down || now < d.dive) {
-      // deitado (lesionado) ou goleiro voando
-      const dir = now < d.dive ? d.diveDir : 1;
-      const lx = x - 3, ly = y - 3;
-      g.fillStyle = OUTLINE;
-      g.fillRect(lx - 1, ly - 1, 9, 4);
-      g.fillStyle = d.shorts;
-      g.fillRect(dir > 0 ? lx + 1 : lx + 4, ly, 2, 2);
-      g.fillStyle = d.shirt;
-      g.fillRect(lx + 2, ly, 3, 2);
-      g.fillStyle = d.skin;
-      g.fillRect(dir > 0 ? lx + 6 : lx, ly, 1, 2);
-      g.fillStyle = d.socks;
-      g.fillRect(dir > 0 ? lx : lx + 6, ly, 1, 2);
-      return;
-    }
-    const moving = Math.abs(d.vx) + Math.abs(d.vy) > 0.04;
-    const frame = moving ? Math.floor(d.walk / 2.2) % 2 : 0;
-    const up = d.vy < -0.05 && Math.abs(d.vy) > Math.abs(d.vx);
-    const arms = now < d.arms;
-    // contorno
-    g.fillStyle = OUTLINE;
-    g.fillRect(x - 2, y - 8, 4, 3);
-    g.fillRect(x - 3, y - 6, 6, 6);
-    if (arms) {
-      g.fillRect(x - 4, y - 9, 2, 4);
-      g.fillRect(x + 2, y - 9, 2, 4);
-    }
-    // cabeça
-    g.fillStyle = d.hair;
-    g.fillRect(x - 1, y - 7, 2, 1);
-    g.fillStyle = up ? d.hair : d.skin;
-    g.fillRect(x - 1, y - 6, 2, 1);
-    // camisa
-    g.fillStyle = d.shirt;
-    g.fillRect(x - 2, y - 5, 4, 2);
-    if (d.pattern === "stripes") {
-      g.fillStyle = d.stripe;
-      g.fillRect(x - 1, y - 5, 1, 2);
-      g.fillRect(x + 1, y - 5, 1, 2);
-    } else if (d.pattern === "hoops") {
-      g.fillStyle = d.stripe;
-      g.fillRect(x - 2, y - 4, 4, 1);
-    } else if (d.pattern === "sash" || d.pattern === "halves") {
-      g.fillStyle = d.stripe;
-      if (d.pattern === "halves") g.fillRect(x, y - 5, 2, 2);
-      else { g.fillRect(x - 1, y - 5, 1, 1); g.fillRect(x, y - 4, 1, 1); }
-    }
-    if (d.sleeve !== d.shirt) {
-      g.fillStyle = d.sleeve;
-      g.fillRect(x - 2, y - 5, 1, 1);
-      g.fillRect(x + 1, y - 5, 1, 1);
-    }
-    if (arms) {
-      const wave = Math.floor(now / 160) % 2;
-      g.fillStyle = d.sleeve;
-      g.fillRect(x - 3, y - 7 + wave, 1, 2);
-      g.fillRect(x + 2, y - 7 + (1 - wave), 1, 2);
-      g.fillStyle = d.skin;
-      g.fillRect(x - 3, y - 8 + wave, 1, 1);
-      g.fillRect(x + 2, y - 8 + (1 - wave), 1, 1);
-    }
-    // calção e pernas
-    g.fillStyle = d.shorts;
-    g.fillRect(x - 2, y - 3, 4, 1);
-    const l1 = frame ? x - 1 : x - 2, l2 = frame ? x : x + 1;
-    g.fillStyle = d.skin;
-    g.fillRect(l1, y - 2, 1, 1);
-    g.fillRect(l2, y - 2, 1, 1);
-    g.fillStyle = d.socks;
-    g.fillRect(l1, y - 1, 1, 1);
-    g.fillRect(l2, y - 1, 1, 1);
+    drawPitchDude(g, d, this.now, d === this.ball.holder, d.side === 2 ? 1 : (fwd(d.side) as 1 | -1));
   }
 
   drawBall(g: CanvasRenderingContext2D) {
     const b = this.ball;
-    const x = Math.round(b.x) - 1, y = Math.round(b.y) - 1, by = y - Math.round(b.h);
-    g.fillStyle = "rgba(0,0,0,0.4)";
-    g.fillRect(x, y + 2, 2, 1);
+    const bx = b.x;
+    const by = b.y - b.h;
+
+    // Sombra elíptica da bola no gramado
+    g.save();
+    g.beginPath();
+    const shadowScale = Math.max(0.55, 1 - b.h * 0.04);
+    g.ellipse(bx, b.y + 0.75, 1.45 * shadowScale, 0.65 * shadowScale, 0, 0, Math.PI * 2);
+    g.fillStyle = "rgba(4, 12, 8, 0.48)";
+    g.fill();
+
+    // Esfera da bola com contorno e gomos rotativos
+    const r = 1.42;
+    g.beginPath();
+    g.arc(bx, by, r + 0.32, 0, Math.PI * 2);
     g.fillStyle = OUTLINE;
-    g.fillRect(x - 1, by, 4, 2);
-    g.fillRect(x, by - 1, 2, 4);
+    g.fill();
+
+    g.beginPath();
+    g.arc(bx, by, r, 0, Math.PI * 2);
     g.fillStyle = "#ffffff";
-    g.fillRect(x, by, 2, 2);
-    g.fillStyle = "#7d8a84";
-    const sp = Math.floor(b.spin / 90) % 2;
-    g.fillRect(x + sp, by + 1 - sp, 1, 1);
-    // marcador de quem está com a bola
+    g.fill();
+
+    // Brilho superior esquerdo + gomos escuros girando com b.spin
+    const ang = (b.spin * 0.015) % (Math.PI * 2);
+    g.fillStyle = "#1e293b";
+    for (let k = 0; k < 3; k++) {
+      const a = ang + (k * Math.PI * 2) / 3;
+      const px = bx + Math.cos(a) * 0.62;
+      const py = by + Math.sin(a) * 0.62;
+      g.beginPath();
+      g.arc(px, py, 0.36, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+
+    // Seta dourada e plaquinha com o nome do jogador que conduz a bola
     const d = b.holder;
     if (d && d.side !== 2 && this.mode === "play" && d.grp !== 0) {
-      const mx = Math.round(d.x), my = Math.round(d.y) - 11;
-      g.fillStyle = OUTLINE;
-      g.fillRect(mx - 2, my - 1, 5, 3);
-      g.fillStyle = "#ffe14d";
-      g.fillRect(mx - 1, my, 3, 1);
-      g.fillRect(mx, my + 1, 1, 1);
+      const mx = d.x;
+      const my = d.y - 11.4;
+      g.save();
+      g.beginPath();
+      g.moveTo(mx, my + 1.4);
+      g.lineTo(mx - 1.5, my - 0.5);
+      g.lineTo(mx + 1.5, my - 0.5);
+      g.closePath();
+      g.fillStyle = "#facc15";
+      g.strokeStyle = OUTLINE;
+      g.lineWidth = 0.4;
+      g.stroke();
+      g.fill();
+
+      const label = hudName(this.name(d));
+      if (label) {
+        g.font = "bold 2.5px Inter, system-ui, sans-serif";
+        g.textAlign = "center";
+        g.textBaseline = "bottom";
+        const tw = g.measureText(label).width;
+        const pw = tw + 2.6;
+        const ph = 3.2;
+        const px0 = clamp(mx - pw * 0.5, 4, W - pw - 4);
+        const py0 = my - 4.1;
+        g.fillStyle = "rgba(8, 15, 26, 0.84)";
+        g.fillRect(px0, py0, pw, ph);
+        g.fillStyle = d.shirt;
+        g.fillRect(px0, py0, 0.8, ph);
+        g.fillStyle = "#f8fafc";
+        g.fillText(label, px0 + pw * 0.5 + 0.25, py0 + ph - 0.45);
+      }
+      g.restore();
     }
   }
 
@@ -2149,10 +2215,9 @@ class PitchAnim {
 // ---------------------------------------------------------------- componente
 
 // ---------------------------------------------------------------- qualidade gráfica
-// Um único seletor de desempenho (Alta/Média/Baixa); Alta é o padrão (aparelhos topo de linha).
-/** Qualidade da partida: os três níveis do 3D ou o Leve (campo 2D, para celulares fracos). */
+// "leve" agora é o modo padrão "2D HD" (diorama 16-bit em alta definição a 60 FPS), enquanto os modos 3D continuam disponíveis.
 export type MatchQuality = Quality | "leve";
-const GFX_KEY = "ldb.graphics.v4";
+const GFX_KEY = "ldb.graphics.v5";
 
 export function readQuality(): MatchQuality {
   try {
@@ -2161,7 +2226,7 @@ export function readQuality(): MatchQuality {
   } catch {
     /* sem armazenamento local */
   }
-  return isLite() ? "leve" : "alta";
+  return "leve";
 }
 
 export function saveQuality(q: MatchQuality) {
@@ -2172,7 +2237,7 @@ export function saveQuality(q: MatchQuality) {
   }
 }
 
-export const QUALITY_LABEL: Record<MatchQuality, string> = { alta: "Alta", media: "Média", baixa: "Baixa", leve: "Leve" };
+export const QUALITY_LABEL: Record<MatchQuality, string> = { leve: "2D HD", alta: "3D Alta", media: "3D Média", baixa: "3D Baixa" };
 
 function prefersReducedMotion(): boolean {
   try {
@@ -2242,7 +2307,7 @@ export interface MatchViewProps {
   /** desfecho de um lance perigoso (defesa, trave, para fora) — para o "uhhh" da torcida */
   onBeat?: (e: MatchEvent) => void;
   onSkipIntro?: () => void;
-  /** qualidade gráfica (só desempenho); "leve" = campo 2D */
+  /** qualidade gráfica (só desempenho); "leve" = campo 2D HD */
   quality: MatchQuality;
   /** golpe especial na tela (true) ou acabou (false): o relógio deve segurar */
   onCinema?: (on: boolean) => void;
@@ -2257,7 +2322,7 @@ export interface MatchViewProps {
   eruption?: { side: 0 | 1; virada: boolean; n: number } | null;
 }
 
-/** Campo da partida: 3D (estádio, jogadores e torcida) com o campinho 2D de reserva. */
+/** Campo da partida: 2D HD (padrão) ou 3D (Alta/Média/Baixa). */
 export function MatchView(props: MatchViewProps) {
   const { sim, tick, intro } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -2278,10 +2343,9 @@ export function MatchView(props: MatchViewProps) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const wrap = wrapRef.current!;
-    // Leve: canvas na CPU (196x132 é pequeno; evita a GPU fraca em cada quadro)
-    const g = canvas.getContext("2d", { alpha: false, willReadFrequently: propsRef.current.quality === "leve" });
+    const g = canvas.getContext("2d", { alpha: false });
     if (!g) return;
-    g.imageSmoothingEnabled = false;
+    g.imageSmoothingEnabled = true;
     const anim = new PitchAnim(sim, {
       caption: (text, color) => {
         if (capRef.current) capRef.current.textContent = text;
@@ -2294,9 +2358,8 @@ export function MatchView(props: MatchViewProps) {
         propsRef.current.onCinema?.(!!sp);
       },
     });
-    // Leve (celular fraco): campo 2D sem os efeitos ricos e a ~30 quadros por segundo
-    const lite = propsRef.current.quality === "leve";
-    anim.rich = !lite;
+    // Modo 2D HD mantém todos os efeitos ricos, dribles, poses e 60 FPS
+    anim.rich = true;
     anim.reduced = prefersReducedMotion();
     if (anim.festa) anim.festa.reduced = anim.reduced;
     anim.ms = propsRef.current.msPerMin;
@@ -2309,7 +2372,7 @@ export function MatchView(props: MatchViewProps) {
     else if (sim.finished) anim.say("Fim de jogo!");
     else if (sim.phase.atk != null) anim.say(`Bola com o ${sim.sides[sim.phase.atk].club.name}`, sim.phase.atk);
 
-    // 3D: o módulo (three.js) só é baixado agora
+    // 3D: o módulo (three.js) só é baixado quando o jogador escolhe 3D Alta/Média/Baixa
     let r3d: MatchRenderer | null = null;
     let dead = false;
     let tickAt = 0;
@@ -2336,7 +2399,7 @@ export function MatchView(props: MatchViewProps) {
       raf = 0;
       if (!last) last = t;
       const dt = t - last;
-      if (dt >= (lite && !r3d ? 31 : 1)) {
+      if (dt >= 1) {
         last = t;
         if (!anim.frozen && !propsRef.current.paused) anim.update(Math.min(dt, 50));
         if (r3d) r3d.render(snapshot3d(anim), Math.min(dt, 50), hud(), dt);
@@ -2357,8 +2420,8 @@ export function MatchView(props: MatchViewProps) {
     start();
 
     const h3d = (w: number) => landscape()
-      ? Math.max(180, window.innerHeight - 118)
-      : Math.min(Math.round(w * (9 / 16)), Math.max(180, window.innerHeight * 0.44));
+      ? Math.max(220, window.innerHeight - 92)
+      : Math.min(Math.round(w * (9 / 16)), Math.max(200, window.innerHeight * 0.56));
     const resize = () => {
       if (r3d) {
         const w = wrap.clientWidth;
@@ -2373,13 +2436,16 @@ export function MatchView(props: MatchViewProps) {
         return;
       }
       canvas.style.visibility = "";
-      const dpr = window.devicePixelRatio || 1;
-      const avail = wrap.clientWidth;
-      const maxH = Math.max(170, landscape() ? window.innerHeight - 118 : Math.min(Math.round(avail * (9 / 16)), window.innerHeight * 0.44));
-      let k = Math.max(1, Math.floor((avail * dpr) / W));
-      while (k > 1 && (H * k) / dpr > maxH) k--;
-      canvas.style.width = `${(W * k) / dpr}px`;
-      canvas.style.height = `${(H * k) / dpr}px`;
+      const avail = Math.max(240, wrap.clientWidth);
+      const maxH = Math.max(
+        210,
+        landscape()
+          ? window.innerHeight - 92
+          : Math.min(Math.round(avail * (H / W)), window.innerHeight * 0.64)
+      );
+      const scale = Math.min(avail / W, maxH / H);
+      canvas.style.width = `${Math.round(W * scale)}px`;
+      canvas.style.height = `${Math.round(H * scale)}px`;
     };
     const fallback = () => {
       if (dead) return;
@@ -2515,13 +2581,12 @@ export function MatchView(props: MatchViewProps) {
 
   const home = sim.sides[0].club;
   const away = sim.sides[1].club;
-  const photo = !!home.stadiumImg && !sim.f.neutral;
   const flat = intro && !gl;
   return (
     <div className="mv" ref={wrapRef}>
       <div className={`mv-stage${flat ? " sa-fly" : ""}`}>
         <div className="mv-cam">
-          <canvas ref={canvasRef} className="mv-canvas" width={W} height={H} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
+          <canvas ref={canvasRef} className="mv-canvas" width={W * HD_SCALE} height={H * HD_SCALE} aria-label={`Campo: ${home.name} x ${away.name}`} role="img" />
           <div ref={hostRef} className="m3d-host" aria-label={`Partida em 3D: ${home.name} x ${away.name}`} />
         </div>
         {special && (
@@ -2544,18 +2609,15 @@ export function MatchView(props: MatchViewProps) {
             <span className="row center gap4">Pular <Icon name="ff" size={12} /></span>
           </button>
         )}
-        {flat && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
         {flat && (
-          <div className="mv-intro" onClick={props.onSkipIntro}>
-            <div className="mv-intro-fallback">
-              <b className="row gap6"><Icon name="trophy" size={13} /> {sim.f.neutral ? "Campo neutro" : home.stadium}</b>
-              {!sim.f.neutral && home.capacity > 0 && <span>{home.capacity.toLocaleString("pt-BR")} lugares · {home.city}</span>}
+          <div className="mv-intro mv-intro-hd2d" onClick={props.onSkipIntro}>
+            <div className="mv-intro-hd2d-bg">
+              <Hd2dStadium club={home} timeOfDay="night" height="100%" />
             </div>
-            {photo && <div className="mv-intro-photo"><StadiumPhoto club={home} /></div>}
             <div className="mv-intro-crests">
-              <Crest club={home} size={44} />
+              <Crest club={home} size={48} />
               <b>×</b>
-              <Crest club={away} size={44} />
+              <Crest club={away} size={48} />
             </div>
           </div>
         )}

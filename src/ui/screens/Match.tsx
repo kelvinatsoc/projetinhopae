@@ -482,21 +482,21 @@ export function MatchScreen({ quick }: { quick: boolean }) {
               <button className={field ? "active" : ""} aria-pressed={field} onClick={() => toggleField(true)}><Ic n="pitch" /> Campo</button>
               <button className={!field ? "active" : ""} aria-pressed={!field} onClick={() => toggleField(false)}><Ic n="list" /> Lances</button>
               {field && (
-                <button aria-pressed={gfx === "alta"} title="Qualidade gráfica: Alta → Média → Baixa → Leve (campo 2D, celulares fracos)" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
-                  {gfx === "alta" ? <Ic n="sparkle" /> : gfx === "media" ? <Ic n="film" /> : <Ic n="feather" />} {QUALITY_LABEL[gfx]}
+                <button aria-pressed={gfx === "leve"} title="Modo de câmera: 2D HD → 3D Alta → 3D Média → 3D Baixa" aria-label={`Qualidade gráfica: ${QUALITY_LABEL[gfx]}`} onClick={cycleGfx}>
+                  {gfx === "leve" || gfx === "alta" ? <Ic n="sparkle" /> : gfx === "media" ? <Ic n="film" /> : <Ic n="feather" />} {QUALITY_LABEL[gfx]}
                 </button>
               )}
             </div>
           )}
         </div>
         <div className={`scoreboard${showField ? " mv-compact" : ""}`}>
-          <div className="team"><Crest club={H.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(H.club)}</span></div>
+          <div className="team"><Crest club={H.club} size={showField ? 24 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(H.club)}</span></div>
           <div className="center">
             <div className="score kbd">{H.goals} : {A.goals}</div>
             {sim.pens && <div className="small">pên. {sim.pens[0]} × {sim.pens[1]}</div>}
             <span className="minute">{over ? "Fim" : sim.minute === 0 ? "0'" : sim.half === 2 && sim.minute === 45 ? "Intervalo" : sim.displayMinute()}</span>
           </div>
-          <div className="team"><Crest club={A.club} size={showField ? 30 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(A.club)}</span></div>
+          <div className="team"><Crest club={A.club} size={showField ? 24 : 44} /><span className="ellipsis" style={{ maxWidth: 120 }}>{scoreName(A.club)}</span></div>
         </div>
         <div className="mv-momentum">
           <div className="momentum">

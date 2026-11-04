@@ -4222,15 +4222,23 @@ html.lite img { content-visibility: auto; }
   min-width: 0;
 }
 .k-club-pick-grid {
-  grid-template-columns: repeat(3, 1fr) !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 6px !important;
 }
 .k-club-pick-grid .club-pick {
-  padding: 6px 4px !important;
-  min-height: 72px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  text-align: left !important;
+  gap: 8px !important;
+  padding: 6px 8px !important;
+  min-height: 48px !important;
+  overflow: hidden !important;
 }
 .k-club-pick-grid .club-pick b {
-  font-size: 11px !important;
+  font-size: 11.5px !important;
+  display: block;
 }
 
 .k-newgame-detail {
@@ -4244,13 +4252,38 @@ html.lite img { content-visibility: auto; }
   overflow-y: auto;
 }
 .k-pick-preview {
+  position: relative;
+  overflow: hidden;
   margin: 0 !important;
   border-radius: 9px 9px 0 0 !important;
-  padding: 6px 12px !important;
-  min-height: 54px !important;
+  padding: 8px 12px !important;
+  min-height: 62px !important;
+  display: flex;
+  align-items: center;
 }
-.k-pick-preview h2 {
-  font-size: 17px !important;
+.k-pick-preview .pick-preview-head {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.k-pick-preview-stadium {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.36;
+}
+.k-pick-preview-stadium img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 45%;
+}
+.k-pick-preview h2, .k-pick-preview h3 {
+  font-size: 16px !important;
 }
 .k-newgame-detail-body {
   padding: 5px 10px;

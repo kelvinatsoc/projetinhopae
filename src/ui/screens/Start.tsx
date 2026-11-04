@@ -12,7 +12,7 @@ import { mediaUrl } from "../mediaUrl";
 import { deleteSave, importWorldFile, lastSaveId, listSaves, loadWorld, type SaveMeta } from "../../save";
 import { back, push, resetNav, toast, useNav } from "../../store";
 import { autosave, loadDatabase, loadWorldFile, openWorld, SPFC_REAL_2026, startNewWorld } from "../actions";
-import { CompLogo, Crest, Icon, Stars, stadiumSrc, visibleColor } from "../components";
+import { CompLogo, Crest, Icon, Stars, visibleColor } from "../components";
 import { crestFor, KitShirt } from "../Uniforms";
 import { flag } from "../flags";
 import { Hd2dStadium } from "../hq/Hd2dStadium";
@@ -120,7 +120,7 @@ export function StartScreen() {
     <div className="k-start-shell">
       {/* Fundo Atmosférico HD-2D */}
       <div className="k-start-bg" aria-hidden="true">
-        <img src={mediaUrl("stadiums/Q155174.webp")} alt="" decoding="async" />
+        <img src={mediaUrl("hd2d/stadium-night.jpg")} alt="" decoding="async" />
         <div className="k-start-bg-overlay" />
       </div>
 
@@ -766,9 +766,14 @@ function Scenarios({ onBack }: { onBack: () => void }) {
   );
 }
 
-/** Vitrine do clube escolhido: foto do estádio, escudo, camisa e dados. */
+/** Vitrine do clube escolhido: arte HD-2D do estádio, escudo, camisa e dados. */
 function PickPreview({ c }: { c: DbClub }) {
-  const photo = stadiumSrc(c);
+  const hd2dSrc =
+    c.id === "palmeiras" || c.id === "corinthians" || c.id === "athletico-pr" || c.id === "gremio" || c.id === "internacional"
+      ? mediaUrl("hd2d/stadium-arena.jpg")
+      : c.id === "santos" || c.id === "vasco" || c.id === "juventude"
+        ? mediaUrl("hd2d/stadium-caldeirao.jpg")
+        : mediaUrl("hd2d/stadium-night.jpg");
   const col = visibleColor(c.colors);
   const sponsors = REAL_SPONSORS[c.id];
   const fc = fakeClub(c);
@@ -777,29 +782,27 @@ function PickPreview({ c }: { c: DbClub }) {
       className="pick-preview k-pick-preview"
       style={{ background: `linear-gradient(135deg, ${col}, #0d1322)` }}
     >
+      <div className="k-pick-preview-stadium" aria-hidden="true">
+        <img src={hd2dSrc} alt="" loading="lazy" />
+      </div>
       <div className="pick-preview-head">
-        <Crest club={fc} size={48} />
-        <div>
-          <h3>{c.name}</h3>
-          <div className="small">
+        <Crest club={fc} size={42} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="ellipsis" style={{ margin: 0 }}>{c.name}</h3>
+          <div className="small ellipsis">
             {flag(c.country ?? "BRA")} {c.city}{c.region ? `/${c.region}` : ""} · <Icon name="stadium" size={12} /> {c.stadium}
           </div>
         </div>
         <KitShirt
           clubId={c.id}
           which={0}
-          width={40}
+          width={36}
           sponsor={sponsors?.shirt}
           supplier={sponsors?.kit}
           crest={crestFor(fc)}
           colors={c.colors}
         />
       </div>
-      {photo && (
-        <div className="k-pick-preview-stadium">
-          <img src={photo} alt={c.stadium} loading="lazy" />
-        </div>
-      )}
     </div>
   );
 }

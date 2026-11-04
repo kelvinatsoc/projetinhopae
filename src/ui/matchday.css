@@ -16,14 +16,44 @@
 .mx-goals .r { text-align: right; }
 .mx-goals span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.mx-stats > span { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; padding: 5px 8px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--border); font-size: 13px; min-width: 0; }
-.mx-stats b { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.mx-stats small { font-weight: 500; color: var(--text-3); font-size: 11px; }
+.mx-stats > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  min-width: 0;
+}
+.mx-stats b { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; }
+.mx-stats small { font-weight: 500; color: var(--text-3); font-size: 10.5px; }
 .mx-stats > span:last-child b { font-size: 11px; letter-spacing: -0.02em; }
-.mx-stats > span:last-child { padding: 5px 6px; }
-.mx-stats i { font-style: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.mx-stats > span:last-child { padding: 5px 4px; }
+.mx-stats i { font-style: normal; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
 .mx-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.mx-acts .btn.sm { min-height: 40px; justify-content: center; }
+.mx-acts .btn.sm { min-height: 36px; justify-content: center; font-size: 12px; padding: 4px 6px; }
+
+/* instruções rápidas em grade 2x2 na barra lateral da partida */
+.mx-side .md-shouts { padding: 6px 12px 0; }
+.mx-side .md-shouts-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  overflow: visible;
+  padding-bottom: 0;
+}
+.mx-side .md-shout {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  justify-content: center;
+  width: 100%;
+}
 
 /* lance a lance: aviso pequeno e passageiro (o histórico completo abre num toque) */
 .mx-toast {
@@ -45,18 +75,29 @@
 @media (prefers-reduced-motion: reduce) { .mx-toast, .mx-toast.goal { animation: none; } }
 .ct-pill { max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-@media (orientation: landscape) and (max-height: 560px) {
+@media (orientation: landscape) {
   .app.no-chrome:has(.mx) { max-width: none; }
-  .mx { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 36vw, 380px); }
-  .mx .mv-head { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; border-right: 1px solid var(--line); }
+  .mx { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 34vw, 370px); }
+  .mx .mv-head {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+  .mx .mv-head .mv-topline { padding: 3px 10px 0; }
   .mx .mv-head .mv-ctrl {
-    position: fixed; top: 0; right: 0; z-index: 20; width: clamp(280px, 36vw, 380px);
-    padding: calc(6px + env(safe-area-inset-top)) 8px 6px; flex-wrap: wrap;
+    position: fixed; top: 0; right: 0; z-index: 20; width: clamp(280px, 34vw, 370px);
+    padding: calc(5px + env(safe-area-inset-top)) 8px 5px; flex-wrap: wrap;
     background: var(--ct-base, var(--bg2)); border-bottom: 2px solid var(--ct-p, var(--line));
+    border-radius: 0;
   }
   .mx .mv-ctrl .seg { order: 3; flex-basis: 100%; }
-  .mx .mx-side { height: 100vh; height: 100dvh; overflow-y: auto; padding-top: 92px; overscroll-behavior: contain; }
-  .mx.mx-over .mx-side { padding-top: 60px; }
+  .mx .mx-side { height: 100vh; height: 100dvh; overflow-y: auto; padding-top: 86px; overscroll-behavior: contain; }
+  .mx.mx-over .mx-side { padding-top: 56px; }
   .mx .mx-side .page { padding-top: 6px; }
 }
 

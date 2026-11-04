@@ -85,10 +85,10 @@ export class Festa2D {
     });
     const [c0, c1, c2] = colors.club;
     this.flagCol = colors.selecao ? ["#1a9a3c", "#f7d117", "#1f3f9a"] : [c0, c1, c2];
-    // bandeirões: mais e maiores nas torcidas grandes
-    const nFlags = 2 + Math.round(this.level * 4);
+    // bandeirões discretos em escala HD-2D nas arquibancadas
+    const nFlags = 2 + Math.round(this.level * 2);
     const spots: [number, number, number, number][] = [
-      [26, 2, 14, 8], [148, 2, 14, 8], [1, 46, 10, 14], [1, 78, 10, 14], [40, 123, 14, 7], [96, 123, 14, 7], [186, 30, 9, 12],
+      [28, 3.5, 5, 3], [148, 3.5, 5, 3], [42, 125.5, 5, 3], [108, 125.5, 5, 3],
     ];
     for (let i = 0; i < Math.min(nFlags, spots.length); i++) {
       const [x, y, w, h] = spots[i];
@@ -199,12 +199,12 @@ export class Festa2D {
         if (ad > 0.035) continue;
         const x = this.fx[i], y = this.fy[i];
         g.fillStyle = this.fbody[i];
-        g.fillRect(x, y - 1, 1, 2);
+        g.fillRect(x, y - 0.8, 0.8, 1.4);
         g.fillStyle = this.fhead[i];
-        g.fillRect(x, y - 2, 1, 1);
+        g.fillRect(x, y - 1.5, 0.8, 0.7);
         if (ad < 0.018) {
           g.fillStyle = "#f1c9a0";
-          g.fillRect(x, y - 3, 1, 1);
+          g.fillRect(x, y - 2.1, 0.8, 0.6);
         }
       }
     }
@@ -215,11 +215,11 @@ export class Festa2D {
         const x = this.flares[i * 2], y = this.flares[i * 2 + 1];
         const flick = ((now / 60 + i * 3) | 0) % 3;
         g.fillStyle = flick === 0 ? "#fff6c8" : flick === 1 ? "#ff7a2a" : "#ff3b1f";
-        g.fillRect(x, y, 1, 1);
+        g.fillRect(x, y, 0.8, 0.8);
         g.fillStyle = "rgba(255,90,40,0.45)";
-        g.fillRect(x - 1, y, 1, 1);
-        g.fillRect(x + 1, y, 1, 1);
-        g.fillRect(x, y - 1, 1, 1);
+        g.fillRect(x - 0.8, y, 0.8, 0.8);
+        g.fillRect(x + 0.8, y, 0.8, 0.8);
+        g.fillRect(x, y - 0.8, 0.8, 0.8);
       }
     }
     // fumaça colorida
@@ -227,18 +227,18 @@ export class Festa2D {
       const l = this.sl[k];
       if (l <= 0) continue;
       const age = 1 - l / 4200;
-      const sz = 2 + Math.floor(age * 4);
+      const sz = 1.4 + age * 2.6;
       const col = this.smokeCol[this.sc[k]];
       const ai = Math.max(0, Math.min(col.length - 1, Math.floor((l / 4200) * col.length)));
       g.fillStyle = col[ai];
-      g.fillRect(Math.round(this.sx[k] - sz / 2), Math.round(this.sy[k] - sz / 2), sz, sz);
+      g.fillRect(this.sx[k] - sz / 2, this.sy[k] - sz / 2, sz, sz);
     }
     // papel picado
     for (let i = 0; i < MAX_PAPER; i++) {
       if (this.pl[i] <= 0) continue;
-      if (((now / 90 + i) | 0) % 4 === 0) continue; // girando: some e aparece
+      if (((now / 90 + i) | 0) % 4 === 0) continue;
       g.fillStyle = this.paperCol[this.pc[i]];
-      g.fillRect(Math.round(this.px[i]), Math.round(this.py[i]), 1, 1);
+      g.fillRect(this.px[i], this.py[i], 0.6, 0.6);
     }
   }
 
@@ -246,55 +246,39 @@ export class Festa2D {
     const [a, b, c] = this.flagCol;
     for (let k = 0; k < this.flags.length; k++) {
       const f = this.flags[k];
-      for (let i = 0; i < f.w; i++) {
-        // pano ondulando: cada coluna sobe/desce com uma onda que corre pela bandeira
-        const off = this.reduced ? 0 : Math.round(Math.sin(now / 240 - i * 0.7 + f.ph) * 1);
+      for (let i = 0; i < f.w; i += 0.5) {
+        const off = this.reduced ? 0 : Math.sin(now / 240 - i * 0.9 + f.ph) * 0.35;
         const x = f.x + i;
-        for (let j = 0; j < f.h; j++) {
+        for (let j = 0; j < f.h; j += 0.5) {
           let col: string;
           if (this.selecao) {
-            // verde, losango amarelo e círculo azul
-            const dx = Math.abs(i - (f.w - 1) / 2) / (f.w / 2), dy = Math.abs(j - (f.h - 1) / 2) / (f.h / 2);
+            const dx = Math.abs(i - f.w / 2) / (f.w / 2), dy = Math.abs(j - f.h / 2) / (f.h / 2);
             col = dx * dx + dy * dy < 0.18 ? c : dx + dy < 0.85 ? b : a;
           } else {
-            // listras do clube + faixa central
             const band = f.w > f.h ? j : i;
             const size = f.w > f.h ? f.h : f.w;
             col = band < size / 3 ? a : band < (2 * size) / 3 ? b : a;
-            if (f.w > f.h && j === Math.floor(f.h / 2) && i > 2 && i < f.w - 3) col = c;
+            if (f.w > f.h && Math.abs(j - f.h / 2) < 0.3 && i > 0.8 && i < f.w - 0.8) col = c;
           }
           g.fillStyle = col;
-          g.fillRect(x, f.y + j + off, 1, 1);
+          g.fillRect(x, f.y + j + off, 0.52, 0.52);
         }
       }
-      // mastro
-      g.fillStyle = "#d8d8d8";
-      g.fillRect(f.x - 1, f.y - 1, 1, f.h + 2);
+      g.fillStyle = "#cbd5e1";
+      g.fillRect(f.x - 0.35, f.y - 0.2, 0.3, f.h + 0.4);
     }
   }
 
   private drawTifo(g: CanvasRenderingContext2D, now: number) {
     const [a, b, c] = this.flagCol;
-    // atrás do gol da esquerda: faixas horizontais com um "escudo" no meio
     for (let y = 14; y <= 121; y++) {
       for (let x = 0; x <= 11; x++) {
         const dy = (y - 67) / 18, dx = (x - 5.5) / 5;
         let col = Math.floor(y / 9) % 2 ? a : b;
         if (dx * dx + dy * dy < 1) col = c === a || c === b ? (col === a ? b : a) : c;
-        // cartões tremendo: alguns falham de vez em quando
         if (((x * 7 + y * 13 + ((now / 400) | 0)) % 29) === 0) continue;
         g.fillStyle = col;
-        g.fillRect(x, y, 1, 1);
-      }
-    }
-    // arquibancada de cima (fora dos bancos): xadrez nas cores do clube
-    for (let y = 2; y <= 8; y++) {
-      for (let x = 0; x < W; x++) {
-        if (x > 60 && x < 136) continue;
-        const col = (Math.floor(x / 4) + Math.floor(y / 4)) % 2 ? a : b;
-        if (((x * 5 + y * 11 + ((now / 400) | 0)) % 31) === 0) continue;
-        g.fillStyle = col;
-        g.fillRect(x, y, 1, 1);
+        g.fillRect(x, y, 0.8, 0.8);
       }
     }
   }

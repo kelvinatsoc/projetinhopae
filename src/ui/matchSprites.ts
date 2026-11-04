@@ -1,4 +1,4 @@
-// Personalidade dos jogadores no campinho (modo Ultra): porte pela altura, cabelo e pele pelo rosto,
+// Personalidade dos jogadores no campinho (modo Ultra / 2D HD): porte pela altura, cabelo e pele pelo rosto,
 // estilo de jogo visível (driblador faz pedalada, centroavante sobe mais, velocista dispara,
 // goleiro voa) e poses extras (chute, cabeçada, carrinho, queda, comemorações).
 // Tudo determinístico a partir do jogador (nada de Math.random aqui, exceto onde o chamador passa a
@@ -154,7 +154,7 @@ export function celebrationFor(p: Player | undefined, seed: number): Celebration
   return "arms";
 }
 
-// ---------------------------------------------------------------- sprite do campinho
+// ---------------------------------------------------------------- sprite do campinho (HD-2D 16-bit)
 export type Pose = "kick" | "header" | "slide" | "fall" | "knee" | "flip" | "stepover" | "card" | "volley" | "bicycle" | "pass" | "save" | "special";
 
 /** O que o desenho precisa de um jogador (o Dude do MatchView tem tudo isso). */
@@ -185,7 +185,8 @@ export interface SpriteDude {
   poseCard?: "Y" | "R";
 }
 
-const OUTLINE = "#0d1a12";
+const OUTLINE = "#08120c";
+const CLEAT = "#111827";
 
 export function setPose(d: SpriteDude, pose: Pose, now: number, dur: number) {
   d.pose = pose;
@@ -197,9 +198,13 @@ function poseOf(d: SpriteDude, now: number): Pose | null {
   return d.pose && now < (d.poseUntil ?? 0) ? d.pose : null;
 }
 
-/** Desenha o jogador do campinho com porte, estilo e poses. holder = está com a bola. */
+/**
+ * Desenha o jogador no campinho em estilo HD-2D 16-bit (Sea of Stars / Pixel Cup Soccer).
+ * Usa coordenadas sub-pixel suaves (sem saltos de Math.round) para movimento fluido em 60 FPS.
+ */
 export function drawPitchDude(g: CanvasRenderingContext2D, d: SpriteDude, now: number, holder: boolean, facing: 1 | -1) {
-  const x = Math.round(d.x), y = Math.round(d.y);
+  const x = d.x;
+  const y = d.y;
   const L = d.look;
   const tall = L?.tall ?? 0;
   const pose = poseOf(d, now);
@@ -208,141 +213,272 @@ export function drawPitchDude(g: CanvasRenderingContext2D, d: SpriteDude, now: n
     g.fillStyle = c;
     g.fillRect(px, py, w, h);
   };
-  // deitado: lesão, queda após falta, voo do goleiro, carrinho
+  // Retângulo com cantos chanfrados em pixel-art 16-bit (evita aspecto quadrado de bloco)
+  const RR = (px: number, py: number, w: number, h: number, c: string, k = 0.38) => {
+    g.fillStyle = c;
+    g.fillRect(px + k, py, Math.max(0.1, w - k * 2), h);
+    g.fillRect(px, py + k, w, Math.max(0.1, h - k * 2));
+  };
+
+  // Anel luminoso RPG sob o portador da bola + sombra elíptica suave no gramado
+  if (typeof g.beginPath === "function" && typeof g.ellipse === "function") {
+    if (holder) {
+      const pulse = 0.65 + 0.25 * Math.sin(now * 0.008);
+      g.save();
+      g.beginPath();
+      g.ellipse(x, y + 0.4, 4.4, 2.0, 0, 0, Math.PI * 2);
+      g.fillStyle = `rgba(250, 204, 21, ${(0.22 * pulse).toFixed(3)})`;
+      g.fill();
+      g.lineWidth = 0.45;
+      g.strokeStyle = `rgba(250, 204, 21, ${(0.88 * pulse).toFixed(3)})`;
+      g.stroke();
+      g.restore();
+    }
+    g.save();
+    g.beginPath();
+    g.ellipse(x, y + 0.45, 2.9, 1.15, 0, 0, Math.PI * 2);
+    g.fillStyle = "rgba(4, 12, 8, 0.44)";
+    g.fill();
+    g.restore();
+  } else {
+    R(x - 2.4, y, 4.8, 1.1, "rgba(0,0,0,0.38)");
+  }
+
+  // Deitado: lesão, queda após falta, voo do goleiro, carrinho ou deslize de joelhos
   const lyingPose = pose === "fall" || pose === "slide" || pose === "knee";
   if (now < d.down || now < d.dive || lyingPose) {
     const dir = now < d.dive ? d.diveDir : pose === "slide" || pose === "knee" ? facing : 1;
-    const lift = now < d.dive ? Math.round(Math.sin(Math.PI * clamp01(1 - (d.dive - now) / 450)) * 3) : pose === "fall" ? Math.round(Math.max(0, Math.sin(Math.PI * s * 1.6)) * 2) : 0;
-    const lx = x - 3, ly = y - 3 - lift;
+    const lift =
+      now < d.dive
+        ? Math.sin(Math.PI * clamp01(1 - (d.dive - now) / 450)) * 3.2
+        : pose === "fall"
+          ? Math.max(0, Math.sin(Math.PI * s * 1.6)) * 2.2
+          : 0;
+    const lx = x - 3.2;
+    const ly = y - 3.2 - lift;
     if (pose === "knee") {
-      // deslizando de joelhos, braços abertos
-      R(x - 3, y - 7, 6, 7, OUTLINE);
-      R(x - 1, y - 6, 2, 1, d.skin);
-      R(x - 2, y - 5, 4, 2, d.shirt);
-      R(x - 4, y - 8, 1, 3, d.skin);
-      R(x + 3, y - 8, 1, 3, d.skin);
-      R(x - 2, y - 3, 4, 1, d.shorts);
-      R(x - 2 - dir, y - 2, 5, 1, d.socks);
+      // Deslizando de joelhos, braços abertos comemorando
+      R(x - 3.2, y - 7.4, 6.4, 7.4, OUTLINE);
+      R(x - 1.2, y - 6.6, 2.4, 1.4, d.skin);
+      R(x - 1.2, y - 7.2, 2.4, 0.8, d.hair);
+      R(x - 2.2, y - 5.2, 4.4, 2.4, d.shirt);
+      R(x - 4.2, y - 7.8, 1.2, 3.2, d.skin);
+      R(x + 3.0, y - 7.8, 1.2, 3.2, d.skin);
+      R(x - 2.2, y - 2.8, 4.4, 1.2, d.shorts);
+      R(x - 2.2 - dir * 0.8, y - 1.6, 5.0, 1.2, d.socks);
       return;
     }
-    R(lx - 1, ly - 1, 9, 4, OUTLINE);
+    R(lx - 0.8, ly - 0.8, 8.8, 3.8, OUTLINE);
     if (now < d.dive) {
-      // goleiro esticado: braços à frente
-      R(dir > 0 ? lx + 7 : lx - 2, ly, 2, 1, d.skin);
+      R(dir > 0 ? lx + 6.8 : lx - 2.0, ly, 2.2, 1.2, d.skin);
     }
-    R(dir > 0 ? lx + 1 : lx + 4, ly, 2, 2, d.shorts);
-    R(lx + 2, ly, 3, 2, d.shirt);
-    R(dir > 0 ? lx + 6 : lx, ly, 1, 2, d.skin);
-    R(dir > 0 ? lx : lx + 6, ly, 1, 2, d.socks);
-    if (pose === "slide") R(dir > 0 ? lx - 2 : lx + 7, ly + 1, 2, 1, d.socks);
+    R(dir > 0 ? lx + 0.8 : lx + 3.8, ly, 2.2, 2.2, d.shorts);
+    R(lx + 2.0, ly, 3.2, 2.2, d.shirt);
+    R(dir > 0 ? lx + 5.6 : lx, ly, 1.4, 2.2, d.skin);
+    R(dir > 0 ? lx : lx + 5.8, ly, 1.4, 2.2, d.socks);
+    if (pose === "slide") R(dir > 0 ? lx - 2.0 : lx + 6.8, ly + 0.8, 2.2, 1.2, d.socks);
     return;
   }
-  // pulo: cabeçada (centroavante sobe mais), voleio, bicicleta, mortal
+
+  // Pulo: cabeçada, voleio, bicicleta, mortal
   let jump = 0;
-  if (pose === "header") jump = Math.round(Math.sin(Math.PI * s) * (L?.style === "target" || tall > 0 ? 5 : 3));
-  if (pose === "bicycle" || pose === "flip") jump = Math.round(Math.sin(Math.PI * s) * 5);
-  if (pose === "volley") jump = Math.round(Math.sin(Math.PI * s) * 1);
-  if (jump) R(x - 1, y, 3, 1, "rgba(0,0,0,0.25)");
+  if (pose === "header") jump = Math.sin(Math.PI * s) * (L?.style === "target" || tall > 0 ? 5.2 : 3.4);
+  if (pose === "bicycle" || pose === "flip") jump = Math.sin(Math.PI * s) * 5.2;
+  if (pose === "volley") jump = Math.sin(Math.PI * s) * 1.4;
   const by = y - jump;
-  // bicicleta / mortal: de cabeça para baixo no meio do pulo
+
+  // Bicicleta / mortal: de cabeça para baixo no meio do pulo
   if ((pose === "bicycle" || pose === "flip") && s > 0.25 && s < 0.75) {
-    R(x - 2, by - 8, 4, 8, OUTLINE);
-    R(x - 1, by - 7, 2, 1, d.socks);
-    R(x - 1, by - 6, 2, 1, d.skin);
-    R(x - 2, by - 5, 4, 1, d.shorts);
-    R(x - 2, by - 4, 4, 2, d.shirt);
-    R(x - 1, by - 2, 2, 1, d.skin);
-    R(x - 1, by - 1, 2, 1, d.hair);
-    if (pose === "bicycle") R(x + facing * 2, by - 9, 1, 2, d.socks);
+    R(x - 2.4, by - 8.4, 4.8, 8.4, OUTLINE);
+    R(x - 1.2, by - 7.4, 2.4, 1.2, d.socks);
+    R(x - 1.2, by - 6.2, 2.4, 1.2, d.skin);
+    R(x - 2.0, by - 5.0, 4.0, 1.2, d.shorts);
+    R(x - 2.0, by - 3.8, 4.0, 2.2, d.shirt);
+    R(x - 1.2, by - 1.8, 2.4, 1.0, d.skin);
+    R(x - 1.2, by - 0.9, 2.4, 0.9, d.hair);
+    if (pose === "bicycle") R(x + facing * 2.0, by - 9.2, 1.2, 2.2, d.socks);
     return;
   }
+
   const speed = Math.hypot(d.vx, d.vy);
-  const moving = speed > 0.04;
-  const sprint = moving && (d.speed >= 1.5 || L?.style === "speedster" && speed > 0.25);
-  const cadence = sprint ? 1.5 : 2.2;
-  const frame = moving ? Math.floor(d.walk / cadence) % (sprint ? 4 : 2) : 0;
+  const moving = speed > 0.03;
+  const sprint = moving && (d.speed >= 1.5 || (L?.style === "speedster" && speed > 0.24));
+  const stridePhase = moving ? d.walk * (sprint ? 0.95 : 0.7) : 0;
+  const stride = moving ? Math.sin(stridePhase) : 0;
+  const bob = moving ? Math.abs(Math.cos(stridePhase)) * 0.45 : 0;
   const up = d.vy < -0.05 && Math.abs(d.vy) > Math.abs(d.vx);
   const arms = now < d.arms;
-  const top = by - 8 - (tall > 0 ? 1 : 0);
-  const w = L?.broad ? 5 : 4;
-  const tx = x - 2 - (L?.broad ? (facing > 0 ? 0 : 1) : 0);
-  const lean = sprint ? facing : 0;
-  // contorno
-  R(x - 2 + lean, top, 4, 3, OUTLINE);
-  R(tx - 1, top + 2, w + 2, by - (top + 2), OUTLINE);
-  if (arms || pose === "card") {
-    R(x - 4, top - 1, 2, 4, OUTLINE);
-    R(x + 2, top - 1, 2, 4, OUTLINE);
-  }
-  // cabeça e cabelo
-  const hs = L?.hairStyle ?? "short";
-  const hx = x - 1 + lean;
-  if (hs === "afro") R(hx - 1, top, 4, 2, d.hair);
-  else if (hs === "mohawk") R(hx, top - 1, 1, 2, d.hair);
-  else if (hs !== "bald") R(hx, top + 1, 2, 1, hs === "buzz" ? shade(d.hair, d.skin) : d.hair);
-  if (hs === "long") R(facing > 0 ? hx - 1 : hx + 2, top + 1, 1, 2, d.hair);
-  R(hx, top + 2, 2, 1, up ? d.hair : d.skin);
-  if (hs === "bald") R(hx, top + 1, 2, 1, d.skin);
-  if (L?.beard && !up) R(hx + (facing > 0 ? 1 : 0), top + 2, 1, 1, shade(d.hair, d.skin));
-  // tronco (alto ganha 1 pixel)
-  const ty0 = top + 3;
-  const th = 2 + (tall > 0 ? 1 : 0);
-  R(tx, ty0, w, th, d.shirt);
-  if (d.pattern === "stripes") {
-    R(tx + 1, ty0, 1, th, d.stripe);
-    R(tx + 3, ty0, 1, th, d.stripe);
-  } else if (d.pattern === "hoops") R(tx, ty0 + 1, w, 1, d.stripe);
-  else if (d.pattern === "halves") R(tx + (w >> 1), ty0, w - (w >> 1), th, d.stripe);
-  else if (d.pattern === "sash") for (let i = 0; i < th; i++) R(tx + 1 + i, ty0 + i, 1, 1, d.stripe);
-  if (d.sleeve !== d.shirt) {
-    R(tx, ty0, 1, 1, d.sleeve);
-    R(tx + w - 1, ty0, 1, 1, d.sleeve);
-  }
-  if (arms) {
-    const wave = Math.floor(now / 160) % 2;
-    R(x - 3, ty0 - 2 + wave, 1, 2, d.sleeve);
-    R(x + 2, ty0 - 2 + (1 - wave), 1, 2, d.sleeve);
-    R(x - 3, ty0 - 3 + wave, 1, 1, d.skin);
-    R(x + 2, ty0 - 3 + (1 - wave), 1, 1, d.skin);
-  } else if (pose === "card") {
-    R(x + 2, ty0 - 2, 1, 2, d.sleeve);
-    R(x + 2, ty0 - 4, 2, 2, d.poseCard === "R" ? "#ef3b36" : "#ffd83a");
-  } else if (sprint) {
-    // braços bombeando na corrida
-    const a = frame % 2;
-    R(a ? x - 3 : x + 2, ty0 + 1, 1, 1, d.skin);
-  }
-  // calção e pernas
-  const sy = ty0 + th;
-  R(tx, sy, w, 1, d.shorts);
-  const ly = sy + 1;
-  const legH = by - ly;
+
+  const extraH = tall > 0 ? 0.8 : tall < 0 ? -0.4 : 0;
+  const top = by - 9.2 - extraH - bob;
+  const w = L?.broad ? 4.6 : 4.0;
+  const lean = sprint ? facing * 0.65 : moving ? facing * 0.25 : 0;
+  const tx = x - w * 0.5 + lean * 0.5;
+
+  // ---------------- PERNAS, MEIÕES E CHUTEIRAS ----------------
+  const sy = top + 5.8 + extraH * 0.5;
+  const ly = sy + 1.35;
+  const legH = Math.max(1.6, by - ly);
+
   if (pose === "kick" || pose === "volley") {
-    // perna de apoio + perna do chute esticada para frente
     const back = s < 0.4;
-    R(x - 1, ly, 1, legH, d.skin);
-    R(x - 1, by - 1, 1, 1, d.socks);
-    const kx = back ? x - facing * 2 : x + facing * 2;
-    R(kx - (facing < 0 ? 1 : 0), back ? ly + 1 : ly, 2, 1, d.socks);
-    return;
+    // Perna de apoio
+    R(x - 1.3, ly - 0.2, 1.5, legH + 0.4, OUTLINE);
+    R(x - 1.05, ly, 1.0, legH * 0.48, d.skin);
+    R(x - 1.05, ly + legH * 0.45, 1.0, legH * 0.45, d.socks);
+    R(x - 1.15, by - 0.55, 1.3, 0.55, CLEAT);
+    // Perna do chute
+    const kx = back ? x - facing * 2.2 : x + facing * 2.4;
+    const ky = back ? ly + 0.5 : ly - 0.2;
+    R(kx - 1.1, ky - 0.25, 2.2, 1.5, OUTLINE);
+    R(kx - 0.85, ky, 1.7, 0.95, d.socks);
+    R(kx + (facing > 0 ? 0.55 : -1.05), ky - 0.05, 0.65, 1.05, CLEAT);
+  } else if (pose === "stepover" || (holder && L?.style === "dribbler" && moving && Math.floor(now / 520) % 3 === 0)) {
+    const off = Math.sin(now * 0.022) * 1.9;
+    R(x - 1.3, ly - 0.2, 1.5, legH + 0.4, OUTLINE);
+    R(x - 1.05, ly, 1.0, legH * 0.5, d.skin);
+    R(x - 1.05, ly + legH * 0.48, 1.0, legH * 0.45, d.socks);
+    R(x - 1.1, by - 0.55, 1.25, 0.55, CLEAT);
+    R(x + off - 0.7, ly - 0.1, 1.4, 1.4, OUTLINE);
+    R(x + off - 0.45, ly + 0.1, 0.95, 0.95, d.socks);
+  } else {
+    const swing = stride * (sprint ? 1.35 : 0.95);
+    const l1x = x - 1.25 + swing * 0.45;
+    const l2x = x + 0.35 - swing * 0.45;
+    const l1y = ly - Math.max(0, swing) * 0.35;
+    const l2y = ly - Math.max(0, -swing) * 0.35;
+    for (const [lx, lTop] of [
+      [l1x, l1y],
+      [l2x, l2y],
+    ] as [number, number][]) {
+      const hLeg = Math.max(1.2, by - lTop);
+      R(lx - 0.28, lTop - 0.2, 1.5, hLeg + 0.35, OUTLINE);
+      R(lx, lTop, 0.96, hLeg * 0.46, d.skin);
+      R(lx, lTop + hLeg * 0.44, 0.96, hLeg * 0.44, d.socks);
+      // Faixa superior do meião
+      R(lx, lTop + hLeg * 0.44, 0.96, 0.25, shade(d.socks, "#ffffff"));
+      // Chuteira
+      R(lx - 0.1, lTop + hLeg - 0.5, 1.2, 0.52, CLEAT);
+    }
   }
-  if (pose === "stepover" || (holder && L?.style === "dribbler" && moving && Math.floor(now / 520) % 3 === 0)) {
-    // pedalada: a perna passa por cima da bola em arco
-    const ph = Math.floor(now / 110) % 4;
-    const off = [-2, -1, 1, 2][ph];
-    R(x - 1, ly, 1, legH, d.skin);
-    R(x - 1, by - 1, 1, 1, d.socks);
-    R(x + off, ly, 1, 1, d.socks);
-    return;
+
+  // ---------------- CALÇÃO ----------------
+  RR(tx - 0.35, sy - 0.2, w + 0.7, 1.75, OUTLINE, 0.3);
+  RR(tx, sy, w, 1.35, d.shorts, 0.25);
+  // Divisão sutil entre as pernas do calção e listra lateral
+  R(x - 0.15, sy + 0.65, 0.3, 0.7, OUTLINE);
+  R(tx, sy + 0.15, 0.32, 1.05, shade(d.shorts, d.stripe));
+  R(tx + w - 0.32, sy + 0.15, 0.32, 1.05, shade(d.shorts, d.stripe));
+
+  // ---------------- TRONCO / CAMISA ----------------
+  const ty0 = top + 3.05;
+  const th = 2.85 + extraH * 0.5;
+  RR(tx - 0.4, ty0 - 0.3, w + 0.8, th + 0.6, OUTLINE, 0.42);
+  RR(tx, ty0, w, th, d.shirt, 0.32);
+
+  // Padrões de uniforme com nitidez HD-2D
+  if (d.pattern === "stripes") {
+    const sw = w / 5;
+    R(tx + sw, ty0 + 0.15, sw, th - 0.2, d.stripe);
+    R(tx + sw * 3, ty0 + 0.15, sw, th - 0.2, d.stripe);
+  } else if (d.pattern === "hoops") {
+    R(tx + 0.1, ty0 + th * 0.32, w - 0.2, th * 0.34, d.stripe);
+  } else if (d.pattern === "halves") {
+    R(tx + w * 0.5, ty0 + 0.15, w * 0.5 - 0.15, th - 0.3, d.stripe);
+  } else if (d.pattern === "sash") {
+    const steps = 5;
+    for (let i = 0; i < steps; i++) {
+      R(tx + (i / steps) * (w - 0.8), ty0 + (i / steps) * (th - 0.55), 0.85, 0.65, d.stripe);
+    }
   }
-  const pts: [number, number][] = sprint
-    ? [[-2, 1], [-1, 0], [0, -1], [-1, 0]].map(([a, b]) => [a, b] as [number, number])
-    : [[frame ? -1 : -2, frame ? 0 : 1]];
-  const [o1, o2] = pts[frame % pts.length];
-  const l1 = x + o1, l2 = x + o2 + (sprint ? 1 : 0);
-  for (const lx of [l1, l2]) {
-    if (legH > 1) R(lx, ly, 1, legH - 1, d.skin);
-    R(lx, by - 1, 1, 1, d.socks);
+
+  // Sombreamento lateral e gola V para volume 2.5D
+  R(tx + 0.2, ty0 + th - 0.38, w - 0.4, 0.38, shade(d.shirt, "#000000"));
+  R(x - 0.65 + lean * 0.5, ty0, 1.3, 0.42, shade(d.stripe, "#ffffff"));
+  R(x - 0.35 + lean * 0.5, ty0, 0.7, 0.28, d.skin);
+
+  // Mangas e braços
+  const armSwing = moving ? stride * 0.65 : 0;
+  const sleeveColor = d.sleeve || d.shirt;
+  if (arms) {
+    const wave = Math.sin(now * 0.018) * 0.45;
+    RR(tx - 1.15, ty0 - 1.8 + wave, 1.15, 2.4, OUTLINE, 0.25);
+    RR(tx + w, ty0 - 1.8 - wave, 1.15, 2.4, OUTLINE, 0.25);
+    R(tx - 0.9, ty0 - 0.7 + wave, 0.8, 1.2, sleeveColor);
+    R(tx + w + 0.1, ty0 - 0.7 - wave, 0.8, 1.2, sleeveColor);
+    R(tx - 0.9, ty0 - 1.55 + wave, 0.8, 0.9, d.skin);
+    R(tx + w + 0.1, ty0 - 1.55 - wave, 0.8, 0.9, d.skin);
+  } else if (pose === "card") {
+    RR(tx + w, ty0 - 2.1, 1.2, 2.4, OUTLINE, 0.25);
+    R(tx + w + 0.15, ty0 - 1.9, 0.85, 1.8, sleeveColor);
+    R(tx + w + 0.05, ty0 - 3.8, 1.7, 2.1, d.poseCard === "R" ? "#ef3b36" : "#ffd83a");
+  } else {
+    // Braço esquerdo e direito com balanço natural
+    const laY = ty0 + 0.2 - armSwing * 0.45;
+    const raY = ty0 + 0.2 + armSwing * 0.45;
+    RR(tx - 0.92, laY - 0.15, 0.98, 2.05, OUTLINE, 0.25);
+    RR(tx + w - 0.06, raY - 0.15, 0.98, 2.05, OUTLINE, 0.25);
+    R(tx - 0.72, laY, 0.72, 0.9, sleeveColor);
+    R(tx + w, raY, 0.72, 0.9, sleeveColor);
+    R(tx - 0.7, laY + 0.9, 0.68, 0.8, d.skin);
+    R(tx + w, raY + 0.9, 0.68, 0.8, d.skin);
+  }
+
+  // ---------------- CABEÇA, ROSTO E CABELO (Chibi 16-bit HD-2D) ----------------
+  const hs = L?.hairStyle ?? "short";
+  const hx = x - 1.5 + lean;
+  const hw = 3.0;
+  const hh = 2.85;
+
+  // Contorno arredondado da cabeça em pixel art 16-bit
+  RR(hx - 0.36, top - 0.36, hw + 0.72, hh + 0.72, OUTLINE, 0.52);
+  // Base de pele arredondada
+  RR(hx, top + 0.25, hw, hh - 0.25, d.skin, 0.38);
+  // Orelhas laterais
+  R(hx - 0.22, top + 1.25, 0.25, 0.55, d.skin);
+  R(hx + hw - 0.03, top + 1.25, 0.25, 0.55, d.skin);
+  // Sombreamento inferior do queixo/rosto
+  R(hx + 0.35, top + hh - 0.38, hw - 0.7, 0.38, shade(d.skin, "#7c4c2b"));
+
+  // Olhos expressivos 16-bit (exceto quando correndo de costas)
+  if (!up) {
+    const shift = facing > 0 ? 0.22 : -0.22;
+    R(hx + 0.65 + shift, top + 1.32, 0.38, 0.46, "#111827");
+    R(hx + hw - 1.03 + shift, top + 1.32, 0.38, 0.46, "#111827");
+  }
+
+  // Barba
+  if (L?.beard && !up) {
+    const beardColor = shade(d.hair, d.skin);
+    RR(hx + 0.25, top + 2.02, hw - 0.5, 0.68, beardColor, 0.22);
+  }
+
+  // Cabelo esculpido com volume e brilho no topo
+  const hairHighlight = shade(d.hair, "#ffffff");
+  if (hs === "afro") {
+    RR(hx - 0.55, top - 0.6, hw + 1.1, 1.95, OUTLINE, 0.55);
+    RR(hx - 0.3, top - 0.35, hw + 0.6, 1.5, d.hair, 0.42);
+    R(hx + 0.35, top - 0.2, hw - 0.7, 0.35, hairHighlight);
+  } else if (hs === "mohawk") {
+    RR(hx + 0.85, top - 0.75, 1.3, 1.8, OUTLINE, 0.3);
+    RR(hx + 1.0, top - 0.55, 1.0, 1.5, d.hair, 0.25);
+    R(hx + 1.15, top - 0.45, 0.65, 0.35, hairHighlight);
+  } else if (hs === "bald") {
+    RR(hx + 0.1, top + 0.15, hw - 0.2, 0.7, d.skin, 0.3);
+    R(hx + 0.55, top + 0.22, 1.1, 0.28, shade(d.skin, "#ffffff"));
+  } else {
+    const hc = hs === "buzz" ? shade(d.hair, d.skin) : d.hair;
+    const hTop = up ? hh - 0.2 : 1.18;
+    RR(hx - 0.08, top - 0.08, hw + 0.16, hTop, hc, 0.38);
+    if (hs !== "buzz") {
+      R(hx + 0.45, top + 0.08, hw - 0.9, 0.3, hairHighlight);
+      // Costeletas laterais
+      R(hx - 0.05, top + 0.85, 0.42, 0.7, hc);
+      R(hx + hw - 0.37, top + 0.85, 0.42, 0.7, hc);
+    }
+    if (hs === "long") {
+      RR(facing > 0 ? hx - 0.32 : hx + hw - 0.48, top + 0.75, 0.8, 1.85, d.hair, 0.25);
+    }
   }
 }
 
@@ -400,14 +536,14 @@ export class PixelFX {
     const n = this.streak.length;
     for (let i = 0; i < n - 1; i++) {
       const p = this.streak[i];
-      g.globalAlpha = ((i + 1) / n) * 0.7;
+      g.globalAlpha = ((i + 1) / n) * 0.72;
       g.fillStyle = i > n - 4 ? "#ffffff" : this.streakColor;
-      g.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 2, 1);
+      g.fillRect(p.x - 0.9, p.y - 0.6, 1.8, 1.1);
     }
     g.globalAlpha = 1;
     for (const s of this.sparks) {
       g.fillStyle = s.c;
-      g.fillRect(Math.round(s.x), Math.round(s.y), 1, 1);
+      g.fillRect(s.x - 0.45, s.y - 0.45, 0.9, 0.9);
     }
   }
 }

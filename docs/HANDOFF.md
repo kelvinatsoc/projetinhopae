@@ -441,3 +441,41 @@ Atendendo à solicitação direta do Kelvin ("continue fazendo melhorias, teste,
 - **Testes automatizados:**
   - `npm run test:fast`: **50/50 arquivos aprovados (308/308 testes)**, incluindo `tests/ptbr.test.ts`, `tests/tactics_zones.test.ts`, `tests/modding.test.ts` e `tests/worldReal.test.ts`.
   - `npm run test:calibration`: **2/2 testes aprovados** em `tests/assistantQuality.test.ts` (`CI=1` e `N=300`).
+
+
+
+---
+
+## 16. Reformulação Artística HD-2D (Estádios, CT, Base) e Overhaul Completo do Gameplay 2D HD (Antigravity, 04/11/2026)
+
+### 1. Contexto e Pesquisa de Referências
+Atendendo ao pedido direto do Kelvin (*"as artes do jogo estão horriveis, os estadios, o gameplay estão muito ruins, pesquise na internet crie artes pasra o jogo e me mande"*):
+- Pesquisadas referências visuais de **dioramas isométricos HD-2D** (*Sea of Stars*, *Octopath Traveler*, *Final Fantasy VI Pixel Remaster*) com iluminação volumétrica, *tilt-shift* e arquibancadas brasileiras vibrantes, além de jogos de futebol 2D em pixel art (*Pixel Cup Soccer*, *Pocket League Story*, *Super Arcade Football*).
+- Criadas **8 novas artes originais em alta definição (HD-2D)** otimizadas em `public/media/hd2d/`:
+  1. `stadium-night.jpg`: Estádio Monumental (estilo MorumBIS) em noite de clássico com refletores volumétricos, sinalizadores e mosaico tricolor.
+  2. `stadium-sunset.jpg`: Estádio Monumental ao pôr do sol dourado (*golden hour*).
+  3. `stadium-day.jpg`: Estádio Monumental em tarde ensolarada de domingo.
+  4. `stadium-arena.jpg`: Arena Moderna Coberta com anel de LED 360° e arquitetura contemporânea.
+  5. `stadium-caldeirao.jpg`: Estádio Caldeirão Clássico Brasileiro (estilo Vila Belmiro / São Januário / Mangueirão) com arquibancadas coladas ao gramado e festa da torcida.
+  6. `training-ct.jpg`: Centro de Treinamento Profissional (CT da Barra Funda) com campos iluminados, academia e centro médico em estilo diorama HD-2D.
+  7. `academy-cotia.jpg`: Centro de Formação de Atletas (CFA Cotia) cercado pela Mata Atlântica com alojamentos e jovens da base treinando.
+  8. `match-pitch-bg.jpg`: Campo de transmissão top-down em estilo HD-2D.
+
+### 2. Integração nos Componentes de Estádio, Complexo e Menu Inicial
+- **`src/ui/hq/Hd2dStadium.tsx`**: Substituído o antigo SVG procedural chapado pelo novo componente de diorama HD-2D com seleção inteligente de variante (`morumbis`, `arena`, `caldeirao`) conforme o clube ou reformas contratadas (`StadiumLook`), suporte a horário (`day`, `sunset`, `night`), iluminação volumétrica e badges translúcidos.
+- **`src/ui/hq/Hd2dComplex.tsx`**: Integrados os dioramas HD-2D nas abas `Estádio`, `CT Profissional` (`hd2d/training-ct.jpg`) e `Base (Cotia)` (`hd2d/academy-cotia.jpg`), além de seletor interativo de estilo arquitetônico (`MorumBIS Monumental`, `Arena Coberta`, `Caldeirão Clássico`) e horário (`Dia`, `Tarde`, `Noite`).
+- **`src/ui/screens/Start.tsx` e `src/ui/theme.css`**: Atualizado o plano de fundo principal (`.k-start-bg`) e o cabeçalho hero de seleção de clube (`PickPreview`) para utilizar as novas artes HD-2D, além de organizar a lista de clubes (`.k-club-pick-grid`) em 2 colunas horizontais limpas.
+
+### 3. Overhaul Completo do Gameplay da Partida ao Vivo (`MatchView.tsx`, `matchSprites.ts`, `torcida2d.ts`, `Match.tsx`)
+- **Resolução Interna 5x (`HD_SCALE = 5`, `980×660`) a 60 FPS**:
+  - `MatchView.tsx` agora opera em `980×660` pixels nativos com modo padrão `"leve"` (`"2D HD"`) mantendo `anim.rich = true` (todos os dribles, poses, efeitos especiais e partículas ativos a 60 FPS).
+  - Gramado esmeralda em 16 faixas de corte cruzado, iluminação radial dos 4 refletores nos cantos, linhas brancas nítidas sem serrilhado, redes 3D com malha fina e bola esférica com gomos rotativos e sombra elíptica.
+  - Removidas as antigas linhas fantasma do mini-campo e os blocos gigantes do mosaico/bandeirões que cobriam a arquibancada.
+- **Sprites 16-bit Chibi HD-2D (`src/ui/matchSprites.ts`)**:
+  - `drawPitchDude` redesenhado com cantos chanfrados em pixel art 16-bit (`RR`), cabeças esculpidas com orelhas e olhos expressivos, cortes de cabelo detalhados com brilho, camisas com gola V e padrões fiéis do clube, movimento sub-pixel suave (sem saltos de `Math.round`), anel dourado pulsante estilo RPG (`#facc15`) sob o portador da bola e plaquinha flutuante com o nome do jogador acima da cabeça.
+- **Correção Crítica na Saída de Bola (`onTick` em `MatchView.tsx`)**:
+  - Corrigido bug em que `onTick()` retornava prematuramente quando os primeiros minutos da partida não geravam eventos em `sim.events`, mantendo a partida parada em `"A bola vai rolar..."`. Agora `seenMin` garante que cada minuto simulado dispare o pontapé inicial e a troca de passes imediatamente.
+- **HUD de Transmissão e Abertura HD-2D (`Match.tsx`, `matchView.css`, `matchday.css`, `media.css`)**:
+  - Abertura da partida exibe o diorama HD-2D do estádio em tela cheia com os escudos confrontados e botão `Pular`.
+  - Placar broadcast compacto no topo e painel lateral direito com estatísticas empilhadas (`Posse`, `Chutes`, `Cartões`) e instruções de beira de campo em grade 2×2 sem truncamento.
+  - Corrigido `.comp-logo` em `media.css` (`padding: 2px`) para que os logos das competições fiquem nítidos.
