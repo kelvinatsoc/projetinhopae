@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
-import { deleteMsg, INBOX_ICON, inboxOf, markAllRead, markRead, runInboxAction, syncInbox } from "../engine/inbox";
+import { deleteMsg, inboxOf, markAllRead, markRead, runInboxAction, syncInbox } from "../engine/inbox";
 import { squadOf } from "../engine/lineup";
 import { fanLabel } from "../engine/narrative";
 import { inboxSource } from "../engine/outlets";
@@ -246,14 +246,14 @@ export function InboxScreen() {
               >
                 <i className="k-ib-stripe" style={{ background: col }} />
                 <span className="k-ib-ic">
-                  {KIND_ICON[m.kind] ? <Icon name={KIND_ICON[m.kind]!} size={16} /> : INBOX_ICON[m.kind]}
+                  <Icon name={KIND_ICON[m.kind] ?? "mail"} size={16} />
                 </span>
                 <div className="k-ib-item-body">
                   <div className="k-ib-item-top">
                     <span className="k-ib-cat" style={{ color: col }}>{ inboxSource(w, m) || KIND_LABEL[m.kind] }</span>
                     <span className="k-ib-date">{formatDate(m.season, m.day)}</span>
                   </div>
-                  <b className="k-ib-title ellipsis">{m.title}</b>
+                  <b className="k-ib-title ellipsis">{m.title.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")}</b>
                 </div>
                 {!m.read && <span className="k-ib-dot" aria-label="Não lida" />}
               </button>
@@ -271,7 +271,7 @@ export function InboxScreen() {
                   <div className="k-ib-detail-kicker" style={{ color: KIND_COLOR[activeMsg.kind] }}>
                     {inboxSource(w, activeMsg) || KIND_LABEL[activeMsg.kind]} · {formatDate(activeMsg.season, activeMsg.day)} de {activeMsg.season}
                   </div>
-                  <h3 className="k-ib-detail-title">{activeMsg.title}</h3>
+                  <h3 className="k-ib-detail-title">{activeMsg.title.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")}</h3>
                 </div>
                 <button
                   className="btn sm"

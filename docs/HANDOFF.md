@@ -404,3 +404,40 @@ Atendendo à solicitação direta do Kelvin ("continue fazendo melhorias, teste,
   - Validado que todos os números saem idênticos até a 3ª casa decimal.
 - Ampliado o timeout de segurança em `tests/assistantQuality.test.ts` de `1_200_000` (20 min) para `1_800_000` (30 min) para execuções locais concorrentes sem `CI=1`.
 - Adicionados os scripts `npm run test:fast` e `npm run test:calibration` em `package.json`.
+
+
+---
+
+## 15. Execução Completa do Plano de Melhorias — Auditoria Visual, Code-Splitting, Limpeza Vetorial e Higiene Git (Antigravity, 04/11/2026)
+
+### 1. Limpeza Total de Emojis Residuais, Setas de Texto (`❯❯`) e Redundância em `TrendArrow` (Etapas 0.3 e 0.4)
+- **Propriedades `.emoji` de objetos do motor substituídas por ícones vetoriais SVG (`<Icon />`, `<Ic />`, `<MoralePip />`):**
+  - `src/ui/components.tsx`: `TrendArrow` atualizado para exibir `<Icon name="flame" size={11} />` e `<Icon name="snowflake" size={11} />` no lugar de `▲`/`▼` redundantes ao lado de `↗`/`↘`. Criado e exportado o componente `<MoralePip p={p} />` com código de cores semântico (`#10b981`, `#3b82f6`, `#94a3b8`, `#f59e0b`, `#ef4444`).
+  - `src/ui/MatchView.tsx`, `src/ui/CompTheme.tsx`, `src/ui/GamePreloader.tsx`: removidos `Pular ❯❯`, `Continuar ❯❯`, `Começar Agora ❯`, `{theme.trophy}` e `⭐ Craque do jogo`, substituídos por `<Icon name="ff" />`, `<Icon name="chevRight" />`, `<Icon name="trophy" />` e `<Icon name="star" fill />`.
+  - `src/ui/PressConference.tsx`: substituídos `fanEmoji` e `PRESS_TONES[a.tone].emoji` por `<Ic n="megaphone" />` e `TONE_ICON` (`calm`, `star`, `flame`, `shield`).
+  - `src/ui/screens/Dressing.tsx` e `src/ui/screens/Squad.tsx`: substituídos `moodEmoji(p)`, `o.emoji` e `a.emoji` por `<MoralePip p={p} />` e `<Icon name="chat" />`.
+  - `src/ui/screens/Staff.tsx` e `src/ui/screens/Admin.tsx`: removidos `STAFF_INFO[r].emoji` e `TRAITS[t].emoji` (substituídos por `<Icon name="sparkle" />`).
+  - `src/ui/screens/Powers.tsx`, `src/ui/screens/Match.tsx`, `src/ui/screens/Player.tsx`, `src/ui/screens/Scouting.tsx`, `src/ui/screens/Training.tsx`, `src/ui/screens/Tactics.tsx`: substituídos `d.emoji`, `p.emoji`, `r.emoji`, `o.emoji`, `a.emoji` e `pr.emoji` por ícones vetoriais.
+  - `src/ui/screens/Board.tsx`, `src/ui/Achievements.tsx`, `src/ui/SetPieces.tsx`: substituídos `requestTitle` (com `💰`), `a.emoji` (em conquistas) e `TAKER_LABEL[r].emoji` (em bola parada) por ícones vetoriais (`coins`, `trophy`/`medal`, `compass`/`target`/`ball`/`crown`).
+  - `src/ui/Inbox.tsx` e `src/ui/screens/Home.tsx`: sanitização automática de emojis iniciais vindos de títulos do motor (`m.title` e `n.title`), evitando duplicidade com os ícones vetoriais das listas de mensagens e notícias.
+  - `src/engine/admin.ts`: removidos emojis iniciais de `SQUAD_TEXT`.
+
+### 2. Higiene do Repositório Git & Documentação Android (Etapas 1.1 e 1.2)
+- Removida a exceção `!lendas-da-base.apk` do `.gitignore` e executado `git rm --cached lendas-da-base.apk`.
+- Os arquivos `LendasDaBase.apk` e `lendas-da-base.apk` permanecem gerados localmente em disco (55,32 MB) para instalação direta e continuam publicados automaticamente na Release `apk-latest` pelo GitHub Actions (`.github/workflows/android.yml`), sem inflar novos commits do repositório com binários de 55 MB.
+- Atualizado `ANDROID.md` documentando a orientação oficial `sensorLandscape` (tela cheia imersiva).
+
+### 3. Code-Splitting e Redução do Bundle Principal para Celulares de Entrada (Etapa 1.3)
+- Convertidas as telas secundárias e o motor 3D de partida (`MatchScreen`, `PreMatchScreen`, `FixtureReport`, `AdminScreen`, `TrophyRoomScreen`, `StadiumLookScreen`, `SponsorsScreen`, `PowersScreen`, `FacilitiesScreen`, `AchievementsScreen`, `CareerScreen`, `PressConferenceScreen`, `World`, `Market`, `Comps`, `Club`, `Player`) para `React.lazy` + `<Suspense>` em `src/ui/App.tsx`.
+- **Impacto medido no build de produção (`vite build`):**
+  - Bundle principal `dist/assets/index-*.js`: caiu de **1.802,73 kB** (499,78 kB gzip) para **709,83 kB** (183,83 kB gzip) — **redução de 60,6%** no JavaScript carregado na abertura do app, reduzindo drasticamente o tempo de parse/boot na WebView do Redmi 10A.
+
+### 4. Auditoria Visual e de Dimensionamento Widescreen com Playwright (Etapas 0.2, 2.1, 2.2 e 2.5)
+- Executado o script `audit_full_plan.mjs` (Playwright Chromium Headless) inspecionando 41 telas e sub-rotas nos viewports paisagem `800×360` (DPR 2, base Redmi 10A), `1600×720` (resolução nativa HD+ Redmi 10A) e `915×412` (Galaxy S24 Ultra).
+- **Resultados verificados automaticamente no DOM:**
+  - **0 erros de JavaScript/console** em toda a navegação.
+  - **0 transbordo horizontal ou vertical** (`docW === vw`, `docH === vh`, `0 clipped elements`) em todas as 41 capturas.
+  - **0 chevrons de texto (`❯`/`❮`) e 0 emojis de interface** restantes nas telas auditadas.
+- **Testes automatizados:**
+  - `npm run test:fast`: **50/50 arquivos aprovados (308/308 testes)**, incluindo `tests/ptbr.test.ts`, `tests/tactics_zones.test.ts`, `tests/modding.test.ts` e `tests/worldReal.test.ts`.
+  - `npm run test:calibration`: **2/2 testes aprovados** em `tests/assistantQuality.test.ts` (`CI=1` e `N=300`).

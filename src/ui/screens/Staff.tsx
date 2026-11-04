@@ -75,7 +75,7 @@ export function StaffScreen() {
                   <div className="row">
                     <StaffAvatar s={s} club={club} />
                     <div className="grow" style={{ minWidth: 0 }}>
-                      <div className="small muted">{STAFF_INFO[r].emoji} {STAFF_INFO[r].label}</div>
+                      <div className="small muted">{STAFF_INFO[r].label}</div>
                       <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
                       <div className="small muted">{flag(s.nat)} {w.season - s.born} anos · <Stars n={s.stars} /></div>
                     </div>
@@ -110,7 +110,7 @@ function StaffSheet({ w, role, onClose }: { w: World; role: StaffRole; onClose: 
   }
 
   return (
-    <Sheet title={`${STAFF_INFO[role].emoji} ${STAFF_INFO[role].label}`} onClose={onClose}>
+    <Sheet title={STAFF_INFO[role].label} onClose={onClose}>
       <div className="row">
         <StaffAvatar s={cur} club={club} />
         <div className="grow">

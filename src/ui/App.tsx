@@ -1,12 +1,6 @@
 import { GamePreloader, isGamePreloaded } from "./GamePreloader";
-import { SponsorsScreen } from "./Sponsors";
-import { UniformsScreen } from "./Uniforms";
-import { PowersScreen } from "./screens/Powers";
 import { syncCustomKits } from "./Kit";
-import { FacilitiesScreen } from "./Facilities";
-import { StadiumLookScreen } from "./StadiumLook";
-import { SetPiecesScreen } from "./SetPieces";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { markTitleSeen, TitleCelebration, titlesSeen } from "./CompTheme";
 import { installTapHaptics } from "./haptics";
 import { nextFixture } from "../engine/competitions";
@@ -15,30 +9,50 @@ import { formatMoney } from "../engine/finance";
 import { inboxUnread } from "../engine/inbox";
 import { back, dismissToast, push, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
 import { popToast } from "../engine/achievements";
-import { AchievementsScreen } from "./Achievements";
-import { CareerScreen } from "./Career";
-import { TrophyRoomScreen } from "./TrophyRoom";
 import { continueGame } from "./actions";
 import { Crest, Icon, textOn, visibleColor } from "./components";
-import { ClubInfoScreen, ClubScreen, CreditsScreen, FinancesScreen, FiredScreen, HistoryScreen, LegendsScreen, SeasonEndScreen, SettingsScreen } from "./screens/Club";
-import { CompsScreen } from "./screens/Comps";
-import { NationalTeamScreen, NationalTeamsScreen, NtMatchScreen } from "./screens/World";
 import { HomeScreen, NewsScreen } from "./screens/Home";
-import { MarketScreen } from "./screens/Market";
-import { FixtureReport, MatchScreen, PreMatchScreen } from "./screens/Match";
-import { PlayerScreen } from "./screens/Player";
-import { CompareScreen } from "./Compare";
 import { SquadScreen, TacticsScreen } from "./screens/Squad";
 import { StartScreen } from "./screens/Start";
-import { AdminScreen } from "./screens/Admin";
+import { InboxScreen } from "./Inbox";
+import { MoreScreen } from "./screens/More";
+import { UniformsScreen } from "./Uniforms";
+import { SetPiecesScreen } from "./SetPieces";
+import { CompareScreen } from "./Compare";
 import { AcademyScreen, PeneiraScreen } from "./screens/Academy";
 import { BoardScreen } from "./screens/Board";
 import { DressingScreen } from "./screens/Dressing";
 import { StaffScreen } from "./screens/Staff";
 import { TrainingScreen } from "./screens/Training";
-import { InboxScreen } from "./Inbox";
-import { PressConferenceScreen } from "./PressConference";
-import { MoreScreen } from "./screens/More";
+
+// Carregamento sob demanda (React.lazy) das telas secundárias e do motor visual de partida (otimização Redmi 10A)
+const SponsorsScreen = lazy(() => import("./Sponsors").then((m) => ({ default: m.SponsorsScreen })));
+const PowersScreen = lazy(() => import("./screens/Powers").then((m) => ({ default: m.PowersScreen })));
+const FacilitiesScreen = lazy(() => import("./Facilities").then((m) => ({ default: m.FacilitiesScreen })));
+const StadiumLookScreen = lazy(() => import("./StadiumLook").then((m) => ({ default: m.StadiumLookScreen })));
+const AchievementsScreen = lazy(() => import("./Achievements").then((m) => ({ default: m.AchievementsScreen })));
+const CareerScreen = lazy(() => import("./Career").then((m) => ({ default: m.CareerScreen })));
+const TrophyRoomScreen = lazy(() => import("./TrophyRoom").then((m) => ({ default: m.TrophyRoomScreen })));
+const ClubScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.ClubScreen })));
+const ClubInfoScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.ClubInfoScreen })));
+const CreditsScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.CreditsScreen })));
+const FinancesScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.FinancesScreen })));
+const FiredScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.FiredScreen })));
+const HistoryScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.HistoryScreen })));
+const LegendsScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.LegendsScreen })));
+const SeasonEndScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.SeasonEndScreen })));
+const SettingsScreen = lazy(() => import("./screens/Club").then((m) => ({ default: m.SettingsScreen })));
+const CompsScreen = lazy(() => import("./screens/Comps").then((m) => ({ default: m.CompsScreen })));
+const NationalTeamsScreen = lazy(() => import("./screens/World").then((m) => ({ default: m.NationalTeamsScreen })));
+const NationalTeamScreen = lazy(() => import("./screens/World").then((m) => ({ default: m.NationalTeamScreen })));
+const NtMatchScreen = lazy(() => import("./screens/World").then((m) => ({ default: m.NtMatchScreen })));
+const MarketScreen = lazy(() => import("./screens/Market").then((m) => ({ default: m.MarketScreen })));
+const PreMatchScreen = lazy(() => import("./screens/Match").then((m) => ({ default: m.PreMatchScreen })));
+const MatchScreen = lazy(() => import("./screens/Match").then((m) => ({ default: m.MatchScreen })));
+const FixtureReport = lazy(() => import("./screens/Match").then((m) => ({ default: m.FixtureReport })));
+const PlayerScreen = lazy(() => import("./screens/Player").then((m) => ({ default: m.PlayerScreen })));
+const AdminScreen = lazy(() => import("./screens/Admin").then((m) => ({ default: m.AdminScreen })));
+const PressConferenceScreen = lazy(() => import("./PressConference").then((m) => ({ default: m.PressConferenceScreen })));
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "home", label: "Início", icon: "home" },
@@ -324,7 +338,11 @@ export function App() {
             </button>
           </header>
         )}
-        <div className={`screen k-content${top ? "" : " from-tab"}`} key={routeKey}>{content}</div>
+        <div className={`screen k-content${top ? "" : " from-tab"}`} key={routeKey}>
+          <Suspense fallback={<div className="page" />}>
+            {content}
+          </Suspense>
+        </div>
         {!fullScreen && !hideNav && (
           <nav className="bottomnav k-bottomnav k-bottomnav-sr" aria-label="Navegação principal">
             {TABS.map((t) => {

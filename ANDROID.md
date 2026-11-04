@@ -7,7 +7,7 @@ Para instruções simples de instalação, veja o [COMO-JOGAR.md](COMO-JOGAR.md)
 
 - O jogo é uma página web (Vite + React + TypeScript). O **Capacitor 8** empacota o `dist/` dentro de um
   app Android nativo (WebView). Nada é baixado da internet: o APK funciona offline.
-- `appId`: `com.kelvinatsoc.lendasdabase` · nome: *Lendas da Base* · orientação: retrato.
+- `appId`: `com.kelvinatsoc.lendasdabase` · nome: *Lendas da Base* · orientação: paisagem (`sensorLandscape`, tela cheia imersiva).
 - Versão: `versionName 0.2.0` / `versionCode 2` (em `android/app/build.gradle`; acompanhe o `version` do `package.json`).
 - SDK: `minSdk 24` (Android 7), `compileSdk 36`, `targetSdk 36` (Android 16) — em `android/variables.gradle`.
 - Ferramentas: Android Gradle Plugin 8.13, Gradle 8.14.3 (wrapper), **Java 21**.

@@ -224,7 +224,7 @@ export function TitleCelebration({ id, club, season, onClose }: { id: string; cl
               minWidth: "140px", height: "46px", borderRadius: "999px", fontSize: "14.5px", fontWeight: 900,
               boxShadow: "0 6px 24px rgba(200, 244, 60, 0.35)"
             }}>
-              Continuar ❯❯
+              <span className="row center gap4">Continuar <Icon name="chevRight" size={14} /></span>
             </button>
           </div>
         </div>

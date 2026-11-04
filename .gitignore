@@ -4,9 +4,8 @@ dist/
 *.log
 .DS_Store
 __pycache__/
-# APK gerado
+# APK gerado (publicado na release apk-latest pelo GitHub Actions e mantido localmente)
 *.apk
-!lendas-da-base.apk
 *.aab
 # chaves de assinatura e senhas ficam fora do repositório (veja ANDROID.md)
 *.jks

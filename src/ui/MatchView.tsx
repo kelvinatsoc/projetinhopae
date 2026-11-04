@@ -2541,7 +2541,7 @@ export function MatchView(props: MatchViewProps) {
             title="Pular apresentação e ir para o pontapé inicial"
             aria-label="Pular apresentação"
           >
-            Pular ❯❯
+            <span className="row center gap4">Pular <Icon name="ff" size={12} /></span>
           </button>
         )}
         {flat && <StadiumBanner club={home} away={away} neutral={!!sim.f.neutral} stage={sim.f.stage} /> /* [stadium-art] */}
@@ -2635,7 +2635,7 @@ export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: Mat
     r.lineups[side].filter((id) => w.players[id] && r.ratings[id] != null).sort((a, b) => r.ratings[b] - r.ratings[a]);
   return (
     <div className={`pm-card ct-card ${themeClass(theme)}`} style={{ "--h": H.colors[0], "--a": A.colors[0], ...themeVars(theme) } as CSSProperties} role="region" aria-label="Resumo da partida">
-      <div className="ct-card-band"><CompLogo id={f.comp} size={18} /><span className="grow">{COMP_META[f.comp]?.name ?? f.comp}</span><span aria-hidden="true">{theme.trophy}</span></div>
+      <div className="ct-card-band"><CompLogo id={f.comp} size={18} /><span className="grow">{COMP_META[f.comp]?.name ?? f.comp}</span><span aria-hidden="true"><Icon name="trophy" size={14} /></span></div>
       <div className="center small" style={{ fontWeight: 700 }}>{label}</div>
       <div className="pm-score mt8">
         <Crest club={H} size={40} />
@@ -2662,7 +2662,7 @@ export function PostMatchCard({ w, f, r, label }: { w: World; f: Fixture; r: Mat
         <div className="pm-motm">
           <Avatar p={motm} club={motm.clubId ? w.clubs[motm.clubId] : null} season={w.season} size={44} />
           <div className="grow">
-            <div className="tiny muted">⭐ Craque do jogo</div>
+            <div className="tiny muted row gap4"><Icon name="star" size={11} fill /> Craque do jogo</div>
             <b>{motm.name}</b>
           </div>
           <b style={{ fontSize: 22 }}>{r.ratings[motm.id]?.toFixed(1)}</b>

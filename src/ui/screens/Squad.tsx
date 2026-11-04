@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { chemOf, dynDelta, moodEmoji, moraleDelta } from "../../engine/dressing";
+import { chemOf, dynDelta, moraleDelta } from "../../engine/dressing";
 import { formatMoney, wageBill } from "../../engine/finance";
 import { awardsOf, formResidual, pendingRequest, streakOf } from "../../engine/form";
 import { autoLineup, lineupStrength, squadOf, validLineup } from "../../engine/lineup";
@@ -10,7 +10,7 @@ import type { Player, World } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { CompareIconBtn } from "../Compare";
-import { DeltaTag, Ic, Icon, KosmalaPlayerRow, PlayerCard, PlayerRow, Stars } from "../components";
+import { DeltaTag, Ic, Icon, KosmalaPlayerRow, MoralePip, PlayerCard, PlayerRow, Stars } from "../components";
 import { AcademyScreen } from "./Academy";
 import { DressingScreen } from "./Dressing";
 import { Pitch, TacticsScreen } from "./Tactics";
@@ -150,7 +150,7 @@ function SquadList() {
               starter={starters.has(p.id)}
               delay={i}
               onClick={() => push({ name: "player", id: p.id })}
-              mood={<span title={`Moral ${p.morale}`}>{moodEmoji(p)}<DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span>}
+              mood={<span className="row gap4" title={`Moral ${p.morale}`}><MoralePip p={p} /><DeltaTag d={moraleDelta(w, p)} what="de moral desde o último jogo" /></span>}
             />
           ))}
         </div>
@@ -217,7 +217,7 @@ function SquadPulse({ w, players }: { w: World; players: Player[] }) {
   return (
     <div className="k-card squad-pulse" style={{ marginBottom: 8 }}>
       <div className="row"><b className="small grow">Pulso de Fase do Elenco</b><span className="tiny muted"><span className="k-pulse-chip hot"><Ic n="flame" size={12} /> Em alta: {hot.length}</span> · <span className="k-pulse-chip cold"><Ic n="snowflake" size={12} /> Em baixa: {cold.length}</span></span></div>
-      {awards.length > 0 && <div className="chips mt4">{awards.map(({ p, a }) => chip(p, `${a.emoji} ${a.label.split(" ")[0]}`, "active"))}</div>}
+      {awards.length > 0 && <div className="chips mt4">{awards.map(({ p, a }) => chip(p, a.label.split(" ")[0], "active"))}</div>}
       {reqs.length > 0 && <div className="chips mt4">{reqs.map(({ p, r }) => chip(p, r === "raise" ? "Pede valorização:" : "Quer transferência:"))}</div>}
       {(hot.length > 0 || cold.length > 0) && (
         <div className="chips mt4">{hot.slice(0, 4).map((p) => chip(p, "Em alta"))}{cold.slice(0, 3).map((p) => chip(p, "Em baixa"))}</div>

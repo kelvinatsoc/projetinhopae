@@ -5,6 +5,7 @@ import { activePowers, buyPower, canEquip, POWER_SLOTS, POWERS, powerDef, remove
 import type { Player } from "../../engine/types";
 import { toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
+import { Icon } from "../components";
 import { haptic } from "../haptics";
 import "../uniforms.css";
 
@@ -48,7 +49,7 @@ export function PowersScreen() {
               const p = w.players[o.pid];
               return (
                 <div key={o.pid} className="row gap8 mt6" style={{ alignItems: "center" }}>
-                  <span style={{ fontSize: 20 }}>{d.emoji}</span>
+                  <Icon name={d.gk ? "shield" : "bolt"} size={18} />
                   <div className="grow" style={{ minWidth: 0 }}>
                     <b className="small ellipsis">{d.name}</b>
                     <div className="tiny muted ellipsis">{p?.name}</div>
@@ -65,7 +66,7 @@ export function PowersScreen() {
             {POWERS.map((d) => (
           <div key={d.id} className="card">
             <div className="row gap8">
-              <span style={{ fontSize: 30 }} aria-hidden="true">{d.emoji}</span>
+              <Icon name={d.gk ? "shield" : "bolt"} size={24} />
               <div className="grow">
                 <b>{d.name}</b>{d.gk && <span className="tiny muted"> · goleiro</span>}
                 <div className="small muted">{d.desc}</div>

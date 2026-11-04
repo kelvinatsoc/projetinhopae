@@ -108,7 +108,7 @@ export function TacticsScreen() {
       applyPreset(club, pr, FORMATIONS[pr.formation]);
     });
     autosave();
-    toast(`${pr.emoji} ${pr.label} aplicado`);
+    toast(`${pr.label} aplicado`);
   }
   function setShift(kind: "lead" | "trail", v: number | null) {
     update(() => {

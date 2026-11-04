@@ -207,7 +207,7 @@ export function HomeScreen() {
                       <div key={m.id} className={`k-ib-mini${!m.read ? " unread" : ""}`} onClick={() => { update(() => { m.read = true; }); setTab("inbox"); }}>
                         <i className="k-ib-bar" style={{ background: barCol }} />
                         <div className="k-ib-txt">
-                          <b className="ellipsis">{m.title}</b>
+                          <b className="ellipsis">{m.title.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")}</b>
                           <span>{formatDate(m.season, m.day)} · {m.actions.length ? `${m.actions.length} ação(ões) rápida(s)` : "Informativo"}</span>
                         </div>
                         <Icon name="chev" size={14} />
@@ -556,7 +556,7 @@ export function NewsScreen() {
             <div className="row">
               <span className="row center" style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }}><Icon name={NEWS_ICONS[n.kind] ?? "megaphone"} size={16} /></span>
               <div className="grow" style={{ minWidth: 0 }}>
-                <b className="ellipsis" style={{ display: "block" }}>{n.title}</b>
+                <b className="ellipsis" style={{ display: "block" }}>{n.title.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")}</b>
                 <div className="tiny muted">{newsSource(w, n) ? <span className="row center gap2 inline-flex"><Ic n="news" size={11} /> {newsSource(w, n)} · </span> : ""}{formatDate(n.season, n.day)} {n.season}</div>
               </div>
               {!n.read && <span className="tag good">novo</span>}

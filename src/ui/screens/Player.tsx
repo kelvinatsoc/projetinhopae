@@ -482,7 +482,7 @@ function InteractionSheet({ p, onClose }: { p: Player; onClose: () => void }) {
           <div className="act-grid">
             {opts.map((o) => (
               <button key={o.id} className="act-btn" disabled={!!o.disabled} onClick={() => go(o.id)}>
-                <span className="e">{o.emoji}</span>
+                <span className="e"><Ic n="flame" size={14} /></span>
                 <b className="small">{o.label}</b>
                 <small>{o.disabled ?? o.hint}</small>
               </button>
@@ -522,7 +522,7 @@ function FormCard({ w, p, mine }: { w: World; p: Player; mine: boolean }) {
       </div>
       {awards.length > 0 && (
         <div className="row gap8 wrap mt8 small">
-          {awards.map((a) => <span key={`${a.season}-${a.kind}`} className="tag legend" title={`${a.label} (${a.season})`}>{a.emoji} {a.label} {a.season}</span>)}
+          {awards.map((a) => <span key={`${a.season}-${a.kind}`} className="tag legend row center gap4" title={`${a.label} (${a.season})`}><Ic n="trophy" size={11} /> {a.label} {a.season}</span>)}
         </div>
       )}
       <div className="tiny muted mt8">Boas notas com minutos aceleram a evolução (principalmente dos jovens) e podem até subir o potencial; banco e notas ruins travam.{p.form.length === 0 ? ` ${age(p, w.season) <= 21 ? "Ainda sem jogos nesta fase." : ""}` : ""}</div>

@@ -1,6 +1,6 @@
 // Diretoria: confiança, objetivos e pedido de verba (obras ficam em Estrutura).
 import { useState } from "react";
-import { canRequest, makeRequest, REQUESTS, requestCost, requestTitle, type RequestKind } from "../../engine/board";
+import { canRequest, makeRequest, REQUESTS, REQUEST_BY_KIND, requestCost, type RequestKind } from "../../engine/board";
 import { buildPct, FAC_INFO, weeksLeft } from "../../engine/facilities";
 import { formatMoney } from "../../engine/finance";
 import { push, update, useWorld } from "../../store";
@@ -58,7 +58,7 @@ export function BoardScreen() {
                 return (
                   <div key={r.kind} className="req-row">
                     <div className="grow">
-                      <b className="small" style={{ display: "block" }}>{requestTitle(w, r.kind)}</b>
+                      <b className="small" style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="coins" size={14} /> {r.name}</b>
                       <div className="tiny muted">Liberação de {formatMoney(cost)} · 1x por temporada · exige confiança ≥ {r.conf}%</div>
                       {!can.ok && <div className="tiny" style={{ color: "var(--warn)" }}>{can.reason}</div>}
                     </div>
@@ -72,7 +72,7 @@ export function BoardScreen() {
       </div>
 
       {ask && (
-        <Sheet title={answer ? "Resposta da diretoria" : requestTitle(w, ask)} onClose={() => setAsk(null)}>
+        <Sheet title={answer ? "Resposta da diretoria" : REQUEST_BY_KIND[ask].name} onClose={() => setAsk(null)}>
           {!answer && (
             <>
               <p className="small">

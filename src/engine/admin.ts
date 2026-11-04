@@ -232,11 +232,11 @@ export function adminTakeOver(w: World, clubId: string): AdminResult {
 // ---------------------------------------------------------------- elenco do usuário
 export type SquadOp = "heal" | "cond" | "morale" | "cards" | "renew";
 const SQUAD_TEXT: Record<SquadOp, string> = {
-  heal: "🚑 Elenco curado",
-  cond: "🔋 Condição 100% para todos",
-  morale: "😄 Moral máxima para todos",
-  cards: "🟨 Cartões e suspensões zerados",
-  renew: "📝 Todos renovados por +2 anos",
+  heal: "Elenco curado",
+  cond: "Condição 100% para todos",
+  morale: "Moral máxima para todos",
+  cards: "Cartões e suspensões zerados",
+  renew: "Todos renovados por +2 anos",
 };
 
 export function adminSquad(w: World, op: SquadOp): AdminResult {

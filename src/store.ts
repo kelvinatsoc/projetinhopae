@@ -160,7 +160,7 @@ if (typeof window !== "undefined") {
   }
   forcePop = false;
 });
-  (window as any).__store = { push, replace, resetNav, setTab, getNav };
+  (window as any).__store = { push, replace, resetNav, setTab, getNav, getWorld };
 }
 
 let toastTimer: number | undefined;

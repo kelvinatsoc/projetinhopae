@@ -397,8 +397,22 @@ export function TrendArrow({ p, label }: { p: Player; label?: boolean }) {
   const s = streakOf(p);
   const txt = t === "up" ? "Em evolução" : t === "down" ? "Em queda" : "Estável";
   return (
-    <span className={`trend-arrow ${t ?? "flat"}`} title={txt}>
-      {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}{s === "hot" ? " ▲" : s === "cold" ? " ▼" : ""}
+    <span className={`trend-arrow ${t ?? "flat"}`} title={txt} style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+      {t === "up" ? "↗" : t === "down" ? "↘" : "→"}{label ? ` ${txt}` : ""}
+      {s === "hot" ? <Icon name="flame" size={11} /> : s === "cold" ? <Icon name="snowflake" size={11} /> : null}
+    </span>
+  );
+}
+
+/** Pílula vetorial de moral para substituir emojis de humor. */
+export function MoralePip({ p }: { p: Player }) {
+  const m = p.morale;
+  const cls = p.wantsOut ? "m-low" : m >= 75 ? "m-hi" : m >= 55 ? "m-ok" : m >= 35 ? "m-med" : "m-low";
+  const ic = p.wantsOut || m < 45 ? "alert" : "smile";
+  return (
+    <span className={`k-morale-pill ${cls}`} title={`Moral ${Math.round(m)}%`}>
+      <Icon name={ic} size={11} />
+      <span>{Math.round(m)}%</span>
     </span>
   );
 }

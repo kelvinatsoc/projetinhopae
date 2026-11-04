@@ -2,13 +2,13 @@
 import { useState } from "react";
 import { withWorldRng } from "../../engine/common";
 import { ROLE_LABEL, ROLE_LIST, ROLE_SHARE, ROLE_SHORT, roleOf } from "../../engine/contracts";
-import { chemOf, dynDelta, leadersOf, moodEmoji, moraleDelta, shareOf, squadMood, talkOptions, talkTo, talkWait, unhappyCount, type TalkId, type TalkResult } from "../../engine/dressing";
+import { chemOf, dynDelta, leadersOf, moraleDelta, shareOf, squadMood, talkOptions, talkTo, talkWait, unhappyCount, type TalkId, type TalkResult } from "../../engine/dressing";
 import { squadOf } from "../../engine/lineup";
 import { loanStats } from "../../engine/loans";
 import type { Player, SquadRole } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
-import { Avatar, DeltaTag, Ic, Icon, Ovr, Sheet } from "../components";
+import { Avatar, DeltaTag, Ic, Icon, MoralePip, Ovr, Sheet } from "../components";
 import "../market.css";
 
 export function DressingScreen() {
@@ -59,7 +59,7 @@ export function DressingScreen() {
                   <div key={p.id} className="tap" onClick={() => push({ name: "player", id: p.id })}>
                     <Avatar p={p} club={club} season={w.season} size={40} />
                     <b className="tiny ellipsis" style={{ maxWidth: "100%" }}>{p.name.split(" ").slice(-1)[0]}</b>
-                    <span style={{ fontSize: 16 }}>{moodEmoji(p)}</span>
+                    <MoralePip p={p} />
                   </div>
                 ))}
               </div>
@@ -120,7 +120,7 @@ export function DressingScreen() {
                       </div>
                     </div>
                     <div className="row gap4" style={{ alignItems: "center" }}>
-                      <span style={{ fontSize: 18 }} title={`Moral ${p.morale}`}>{moodEmoji(p)}</span>
+                      <MoralePip p={p} />
                       <DeltaTag d={moraleDelta(w, p)} />
                       <button className="btn sm" style={{ minWidth: 32, minHeight: 28, padding: "2px 6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }} aria-label={`Conversar com ${p.name}`} onClick={(e) => { e.stopPropagation(); setTalk(p); }}>
                         <Icon name="chat" size={13} />
@@ -158,7 +158,7 @@ export function TalkSheet({ p, onClose }: { p: Player; onClose: () => void }) {
 
   return (
     <Sheet title={`Conversar com ${p.name}`} onClose={onClose}>
-      <div className="small muted row center gap4"><span>Moral {moodEmoji(p)} · papel {ROLE_LABEL[cur]}</span>{p.wantsOut ? <span className="tag danger row center gap4"><Ic n="alert" size={11} /> quer sair</span> : null}</div>
+      <div className="small muted row center gap6"><MoralePip p={p} /><span>· papel {ROLE_LABEL[cur]}</span>{p.wantsOut ? <span className="tag danger row center gap4"><Ic n="alert" size={11} /> quer sair</span> : null}</div>
       {res ? (
         <>
           <div className={`banner mt12 ${res.ok && res.delta >= 0 ? "" : "red"}`} style={res.ok && res.delta >= 0 ? { borderColor: "var(--accent)" } : undefined}>
@@ -180,7 +180,7 @@ export function TalkSheet({ p, onClose }: { p: Player; onClose: () => void }) {
         <div className="col gap8 mt12">
           {opts.map((o) => (
             <button key={o.id} className="btn talk-opt" disabled={!!o.disabled} onClick={() => (o.id === "role" ? setRolePick(true) : go(o.id))}>
-              <span>{o.emoji} {o.label}</span>
+              <span className="row center gap6"><Ic n="chat" size={13} /> {o.label}</span>
               <small>{o.disabled ?? o.hint}</small>
             </button>
           ))}

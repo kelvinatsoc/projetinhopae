@@ -294,7 +294,7 @@ function ClubTab() {
           <h3 className="row gap6"><Icon name="briefcase" size={16} /> Comissão técnica</h3>
           {STAFF_ROLES.map((r) => (
             <div key={r} className="adm-row">
-              <span className="grow small ellipsis">{STAFF_INFO[r].emoji} {STAFF_INFO[r].label}</span>
+              <span className="grow small ellipsis">{STAFF_INFO[r].label}</span>
               <StarPick value={w.staff?.[r]?.stars ?? 3} onPick={(n) => run((x) => adminStaffStars(x, r, n))} />
             </div>
           ))}
@@ -684,7 +684,7 @@ export function AdminPlayerEditor({ p, onClose }: { p: Player; onClose: () => vo
               const on = d.traits.includes(t);
               return (
                 <button key={t} className={`chip${on ? " active" : ""}`} disabled={!on && d.traits.length >= 5} title={TRAITS[t].desc}
-                  onClick={() => set({ traits: on ? d.traits.filter((x) => x !== t) : [...d.traits, t] })}>{TRAITS[t].emoji} {TRAITS[t].label}</button>
+                  onClick={() => set({ traits: on ? d.traits.filter((x) => x !== t) : [...d.traits, t] })}><span className="row center gap4"><Icon name="sparkle" size={11} /> {TRAITS[t].label}</span></button>
               );
             })}
           </div>

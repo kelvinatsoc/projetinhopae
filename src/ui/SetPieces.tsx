@@ -32,7 +32,7 @@ export function SetPiecesScreen() {
             const p = id != null ? w.players[id] : auto != null ? w.players[auto] : null;
             return (
               <button key={r} className="sp-role" onClick={() => setRole(r)}>
-                <span className="tiny muted">{TAKER_LABEL[r].emoji} {TAKER_LABEL[r].label}</span>
+                <span className="tiny muted row gap4"><Icon name={r === "corner" ? "compass" : r === "fk" ? "target" : r === "pen" ? "ball" : "crown"} size={12} /> {TAKER_LABEL[r].label}</span>
                 <b className="ellipsis">{p ? shortName(p.name) : "—"}</b>
                 <span className="tiny muted">{id == null ? "automático" : "escolhido"}</span>
               </button>
@@ -53,7 +53,7 @@ export function SetPiecesScreen() {
         </div>
       </div>
       {role && (
-        <Sheet title={`${TAKER_LABEL[role].emoji} ${TAKER_LABEL[role].label}`} onClose={() => setRole(null)}>
+        <Sheet title={TAKER_LABEL[role].label} onClose={() => setRole(null)}>
           <div className="list">
             <div className="list-item" onClick={() => { save(() => setTaker(c, role, null)); setRole(null); }}>
               <span className="grow row gap8"><Icon name="sparkle" size={16} /> Automático (melhor em campo)</span>

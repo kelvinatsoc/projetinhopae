@@ -204,7 +204,7 @@ export function PlayerInsightCards({ p }: { p: Player }) {
             <div className="row gap8 wrap mt8">
               {traits.map((t) => (
                 <button key={t} className="trait-chip" style={TRAITS[t].bad ? { borderColor: "#6b2523", color: "#ffb3b1" } : undefined} onClick={() => setSheet({ t })}>
-                  {TRAITS[t].emoji} {TRAITS[t].label}
+                  <Ic n="sparkle" size={11} /> {TRAITS[t].label}
                 </button>
               ))}
               {locked.map((t) => {
@@ -232,7 +232,7 @@ export function PlayerInsightCards({ p }: { p: Player }) {
       </div>
 
       {sheet && sheet !== "pers" && (
-        <Sheet title={`${TRAITS[sheet.t].emoji} ${TRAITS[sheet.t].label}`} onClose={() => setSheet(null)}>
+        <Sheet title={TRAITS[sheet.t].label} onClose={() => setSheet(null)}>
           <p className="small">{TRAITS[sheet.t].desc}</p>
           {!TRAITS[sheet.t].bad && sheet.t !== "DEC" && <p className="small muted">Como ganhar: Elenco › Treino › Treino individual › Nova jogada.</p>}
           {sheet.t === "PAV" && <p className="small muted">Dá para melhorar: Treino individual › Nova jogada › Trabalhar o temperamento.</p>}

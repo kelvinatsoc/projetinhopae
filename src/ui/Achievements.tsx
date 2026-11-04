@@ -41,7 +41,7 @@ export function AchievementsScreen() {
           const g = got[a.id];
           return (
             <div key={a.id} className={`ach ${g ? "got" : "locked"}`}>
-              <span className="em">{a.emoji}</span>
+              <span className="em"><Icon name={g ? "trophy" : "medal"} size={18} /></span>
               <div>
                 <b className="small">{a.name}</b>
                 <div className="tiny muted">{a.desc}</div>

@@ -1,7 +1,7 @@
 // Coletiva de imprensa (pré ou pós-jogo). Opcional: dá para pular a qualquer momento.
 import { useMemo, useState } from "react";
 import { fixtureById } from "../engine/competitions";
-import { fanEmoji, fanLabel } from "../engine/narrative";
+import { fanLabel } from "../engine/narrative";
 import { applyPress, generatePress, pressDone, PRESS_TONES, type PressEffect, type PressPhase, type PressTone } from "../engine/press";
 import { back, toast, update, useWorld } from "../store";
 import { autosave } from "./actions";
@@ -9,6 +9,7 @@ import { Crest, Ic, Icon } from "./components";
 import "./narrative.css";
 
 const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+const TONE_ICON: Record<PressTone, string> = { calm: "calm", confident: "star", aggressive: "flame", deflect: "shield" };
 
 export function PressConferenceScreen({ fid, phase }: { fid: number; phase: PressPhase }) {
   const w = useWorld();
@@ -67,7 +68,7 @@ export function PressConferenceScreen({ fid, phase }: { fid: number; phase: Pres
             <div><span className="row center gap4"><Ic n="megaphone" size={14} /> Torcida</span><b className={result.fans >= 0 ? "pos" : "neg"}>{sign(result.fans)}</b></div>
           </div>
           {result.player !== 0 && <div className="small mt8">O jogador citado reagiu: {sign(result.player)} de moral.</div>}
-          <div className="small muted mt8">Torcida: {fanEmoji(w.narrative?.fan ?? 60)} {fanLabel(w.narrative?.fan ?? 60)} · Diretoria: {w.board.confidence}%</div>
+          <div className="small muted mt8 row gap6">Torcida: <Ic n="megaphone" size={13} /> {fanLabel(w.narrative?.fan ?? 60)} · Diretoria: {w.board.confidence}%</div>
         </div>
       ) : questions[step] && (
         <>
@@ -78,7 +79,7 @@ export function PressConferenceScreen({ fid, phase }: { fid: number; phase: Pres
           <div className="press-answers">
             {questions[step].answers.map((a) => (
               <button key={a.tone} className={`press-card tone-${a.tone}`} onClick={() => answer(a.tone)}>
-                <span className="press-tone">{PRESS_TONES[a.tone].emoji} {PRESS_TONES[a.tone].label}</span>
+                <span className="press-tone row gap6"><Ic n={TONE_ICON[a.tone]} size={13} /> {PRESS_TONES[a.tone].label}</span>
                 <span>{a.text}</span>
               </button>
             ))}

@@ -244,7 +244,7 @@ export function IndividualTrainingSheet({ p, onClose }: { p: Player; onClose: ()
               return (
                 <div key={t} className="list-item" style={{ minHeight: 44, opacity: ok ? 1 : 0.45, background: on ? "var(--card2)" : undefined }}
                   onClick={() => ok ? set({ k: "trait", t, prog: on && p.tf?.k === "trait" ? p.tf.prog : 0 }, `${p.name} começou a treinar: ${TRAITS[t].label}.`) : toast(`Requisito: ${LEARN_REQ[t]!.text}`)}>
-                  <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{TRAITS[t].emoji}</span>
+                  <span className="row center" style={{ width: 28 }}><Icon name="sparkle" size={16} /></span>
                   <div className="grow" style={{ minWidth: 0 }}>
                     <b className="small">{TRAITS[t].label}</b>
                     <div className="tiny muted">{ok ? TRAITS[t].desc : <span className="row center gap4"><Ic n="lock" size={11} /> {LEARN_REQ[t]!.text}</span>}</div>

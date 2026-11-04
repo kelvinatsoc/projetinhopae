@@ -41,7 +41,7 @@ function ReactionRow({ w, rs }: { w: World; rs: Reaction[] }) {
         return (
           <div key={r.pid} className="tk-react" role="listitem" title={`${p.name}: ${r.emoji}`}>
             <Avatar p={p} club={p.clubId ? w.clubs[p.clubId] : null} season={w.season} size={30} />
-            <span className="tk-emo">{r.emoji}</span>
+            <span className="tk-emo"><Ic n={r.morale >= 0 ? "smile" : "alert"} size={11} /></span>
           </div>
         );
       })}
@@ -576,7 +576,7 @@ export function MatchScreen({ quick }: { quick: boolean }) {
                 <button key={p.pid} className={`mx-power${p.ready ? " ready" : ""}`} disabled={!p.ready}
                   aria-label={p.ready ? `Ativar ${p.name} de ${p.player}` : `${p.name} de ${p.player}: ${p.charge}%`}
                   onClick={() => { if (sim.activatePower(userSide, p.pid)) { haptic("success"); bumpPowers((x) => x + 1); } }}>
-                  <span className="mx-power-ico" aria-hidden="true">{p.emoji}</span>
+                  <span className="mx-power-ico" aria-hidden="true"><Ic n="bolt" size={13} /></span>
                   <span className="mx-power-txt"><b>{p.ready ? "ATIVAR" : p.name}</b><small>{p.player}{!p.onPitch ? " (fora)" : ""}</small></span>
                   <i className="mx-power-bar" style={{ width: `${p.charge}%` }} />
                 </button>

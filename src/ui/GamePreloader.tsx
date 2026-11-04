@@ -135,7 +135,7 @@ export function GamePreloader({ onComplete }: { onComplete: () => void }) {
 
         {ready && (
           <button className="gp-ready-btn" onClick={onComplete}>
-            Começar Agora ❯
+            Começar Agora
           </button>
         )}
       </div>
