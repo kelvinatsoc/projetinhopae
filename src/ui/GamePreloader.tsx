@@ -95,7 +95,7 @@ export function GamePreloader({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="g-preloader" role="status" aria-live="polite">
       <div className="gp-bg" aria-hidden="true">
-        <img src={mediaUrl("stadiums/Q155174.webp")} alt="" decoding="async" />
+        <img src={mediaUrl("hd2d/stadium-night.jpg")} alt="" decoding="async" />
         <div className="gp-overlay" />
       </div>
 
@@ -107,7 +107,7 @@ export function GamePreloader({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
           <div className="gp-title">LENDAS <span>DA BASE</span></div>
-          <div className="gp-subtitle">EXPERIÊNCIA FUTEBOL REAL · TEMPORADA 2026</div>
+          <div className="gp-subtitle">RPG DE FUTEBOL HD-2D · TEMPORADA 2026</div>
         </div>
 
         <div className="gp-card">

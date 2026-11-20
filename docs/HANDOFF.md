@@ -479,3 +479,38 @@ Atendendo ao pedido direto do Kelvin (*"as artes do jogo estão horriveis, os es
   - Abertura da partida exibe o diorama HD-2D do estádio em tela cheia com os escudos confrontados e botão `Pular`.
   - Placar broadcast compacto no topo e painel lateral direito com estatísticas empilhadas (`Posse`, `Chutes`, `Cartões`) e instruções de beira de campo em grade 2×2 sem truncamento.
   - Corrigido `.comp-logo` em `media.css` (`padding: 2px`) para que os logos das competições fiquem nítidos.
+
+
+
+---
+
+## 17. Reconstrução Completa em Estilo RPG de Futebol HD-2D — Mundo Vivo 60 FPS, Sprites 16-Bit Direcionais 3/4 e Câmera TV Arcade (Antigravity, 19/11/2026)
+
+### 1. Contexto e Direcionamento do Kelvin
+Atendendo ao pedido de reconstrução completa focada em **RPG de Futebol HD-2D (estilo *Sea of Stars* / *Pixel Cup Soccer* / *Pocket League Story*)**, mantendo o banco de dados oficial e refazendo o mundo visual, o gameplay da partida e a integração das telas principais:
+
+### 2. Motor de Mundo Interativo HD-2D a 60 FPS (`src/ui/hq/Hd2dWorldCanvas.tsx`, `Hd2dStadium.tsx`, `Hd2dComplex.tsx`)
+- Criado o componente `Hd2dWorldCanvas.tsx` (`960×380` a 60 FPS), combinando os dioramas HD-2D com atores 16-bit vivos extraídos do elenco real do clube (`club.players`):
+  - **CT Profissional Ao Vivo (`site="ct"`)**: Os titulares e destaques do elenco profissional correm pelo gramado de treino, trocam passes com duas bolas em parábola, exibem plaquinhas RPG com seus nomes reais (`★ Moura`, `Calleri`, `Rafael`, `Luciano`, `Ferreira`) e geram popups flutuantes de evolução (`+1 FIN`, `+1 PAS`, `+1 FIS`, `🔥 FOCO MÁXIMO`, `★ EVOLUÇÃO!`). Clicar num atleta em campo dispara um boost de treino intenso e abre sua ficha.
+  - **Base CFA Cotia Ao Vivo (`site="academy"`)**: As promessas e joias Sub-17/Sub-20 da base treinam em tempo real no campo cercado pela Mata Atlântica, com estrelas douradas nas joias de alto potencial (`pot >= 82`), popups `+2 POTENCIAL ★` / `✨ JOIA DE COTIA!` e clique interativo para inspecionar o atleta.
+  - **Estádio Monumental / Arena / Caldeirão Ao Vivo (`site="stadium"`)**: Feixes de luz volumétricos oscilando nas torres de iluminação, fumaça colorida e sinalizadores nas cores reais do clube nas arquibancadas, atletas aquecendo no gramado e vaga-lumes dourados atmosféricos (*Sea of Stars*).
+- Integrado o mundo vivo a 60 FPS diretamente nas telas principais:
+  - **`Home.tsx` (`Início`)**: O `<Hd2dComplex />` interativo (com abas `Estádio`, `CT Profissional` e `Base Cotia`) agora é o destaque central logo ao entrar no jogo.
+  - **`Training.tsx` (`Treino`)**: O `<Hd2dWorldCanvas site="ct" />` roda ao vivo no topo da tela de treinos.
+  - **`Academy.tsx` (`Base`)**: O `<Hd2dWorldCanvas site="academy" />` roda ao vivo no topo da tela das categorias de base.
+  - **`components.tsx` (`stadiumSrc` & `StadiumPhoto`) e `GamePreloader.tsx`**: Substituídas todas as antigas fotos reais da Wikimedia Commons pelos novos dioramas HD-2D.
+
+### 3. Novo Gameplay da Partida ao Vivo 2.5D Arcade HD-2D (`src/ui/matchSprites.ts`, `src/ui/MatchView.tsx`)
+- **Sprites 16-Bit Chibi em Visão 3/4 Lateral Direcional (`drawPitchDude` em `src/ui/matchSprites.ts`)**:
+  - Os jogadores agora viram o corpo e o rosto em perfil 3/4 para a direção real da corrida ou da bola (`dir = -1 | 1`).
+  - Ciclo de corrida real em 4 fases com inclinação de sprint, poeira de grama levantando nas arrancadas, perna de trás e perna da frente articuladas (coxa, joelho, meião com faixa superior e chuteira direcional com detalhe branco), braço de trás e braço da frente alternados.
+  - Cabeça Chibi 16-bit esculpida com orelha lateral, olhos expressivos com esclera branca + pupila direcional + sobrancelha, barba/cavanhaque e cortes de cabelo com volume e topete/franja apontando na direção do movimento.
+  - Anel dourado RPG sob o dono da bola com **seta direcional de progressão** e plaquinha flutuante dourada com **`#NÚMERO NOME`** (ex.: `#25 CACA`, `#9 CALLERI`).
+- **Câmera Broadcast TV Dinâmica + Mini-Radar Tático RPG (`src/ui/MatchView.tsx`)**:
+  - Nova **Câmera TV Dinâmica (`camMode = "tv"`)** ativada por padrão: acompanha suavemente a bola com *look-ahead* na direção do ataque e aplica zoom dinâmico (`1.32×` em meio-campo, `1.44×` na grande área/chutes e `1.54×` em lances especiais/gols), deixando os sprites 16-bit grandes, nítidos e cheios de vida.
+  - Botão flutuante no canto superior esquerdo do campo para alternar a qualquer momento entre **`Câmera TV (Zoom)`** e **`Panorâmica`**.
+  - **Mini-Radar Tático RPG** com borda dourada no rodapé do campo quando em modo `Câmera TV`, exibindo a posição em tempo real dos 22 jogadores e da bola.
+  - **Alvo de Passe & Rastro Luminoso da Bola**: Círculo pulsante azul-celeste no ponto de destino dos passes/lançamentos e rastro curvo luminoso acompanhando o giro da bola.
+
+### 4. Sistema Visual RPG de Futebol HD-2D (`src/ui/theme.css`)
+- Aplicada nova paleta crepuscular (`#070c18`, `#0f182b`, `#16233d`) com molduras douradas RPG (`rgba(250, 204, 21, 0.22)`), abas ativas iluminadas em ouro/esmeralda e botão principal `Continuar` em ouro âmbar.

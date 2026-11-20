@@ -267,21 +267,32 @@ export function Silhouette({ club }: { club?: Club | null }) {
   );
 }
 
-/** Foto real do estádio (Wikimedia Commons), com nome e capacidade por cima. */
-/** Endereço da foto do estádio (ou null se o clube não tiver). */
-export function stadiumSrc(club: { stadiumImg?: string }): string | null {
-  return mediaUrlOrNull(club.stadiumImg ? `stadiums/${club.stadiumImg}.webp` : null);
+/** Arte HD-2D do estádio do clube (estilo Sea of Stars / Pocket League Story). */
+const HD2D_ARENA_IDS = new Set([
+  "flamengo", "fluminense", "palmeiras", "corinthians", "atletico_mg",
+  "gremio", "internacional", "athletico_pr", "bahia", "fortaleza", "botafogo", "cruzeiro",
+]);
+const HD2D_CALDEIRAO_IDS = new Set([
+  "santos", "vasco", "vitoria", "juventude", "criciuma", "atletico_go", "bragantino", "remo", "paysandu",
+]);
+
+export function stadiumSrc(club: { id?: string; capacity?: number; stadiumImg?: string }): string | null {
+  const id = club.id ?? "";
+  if (id === "sao_paulo" || id === "sao-paulo") return mediaUrlOrNull("hd2d/stadium-night.jpg");
+  if (HD2D_CALDEIRAO_IDS.has(id) || (club.capacity && club.capacity < 32000)) return mediaUrlOrNull("hd2d/stadium-caldeirao.jpg");
+  if (HD2D_ARENA_IDS.has(id)) return mediaUrlOrNull("hd2d/stadium-arena.jpg");
+  return mediaUrlOrNull("hd2d/stadium-night.jpg");
 }
 
 export function StadiumPhoto({ club }: { club: Club }) {
   const [broken, setBroken] = useState(false);
-  const src = mediaUrlOrNull(club.stadiumImg ? `stadiums/${club.stadiumImg}.webp` : null);
+  const src = stadiumSrc(club);
   if (!src || broken) return null;
   return (
     <div className="stadium-photo">
       <img src={src} alt={club.stadium} loading="lazy" decoding="async" onError={() => setBroken(true)} />
       <div className="stadium-caption">
-        <b>{club.stadium}</b>
+        <b>{club.stadium} · HD-2D</b>
         <span>{club.capacity ? `${club.capacity.toLocaleString("pt-BR")} lugares · ` : ""}{club.city}</span>
       </div>
     </div>

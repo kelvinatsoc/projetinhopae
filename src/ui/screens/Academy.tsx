@@ -12,6 +12,7 @@ import { isGem, Q_LABEL, Q_STARS, resolvePeneira, youthCap, youthCoach, youthCou
 import { back, push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Avatar, Icon, PlayerRow, PosBadge, Stars } from "../components";
+import { Hd2dWorldCanvas } from "../hq/Hd2dWorldCanvas";
 import type React from "react";
 import "../manage.css";
 
@@ -34,6 +35,45 @@ export function AcademyScreen() {
 
   return (
     <div className="page k-academy-page">
+      <div
+        className="card"
+        style={{
+          padding: 0,
+          overflow: "hidden",
+          marginBottom: 12,
+          border: "1px solid rgba(74, 222, 128, 0.38)",
+          position: "relative",
+        }}
+      >
+        <Hd2dWorldCanvas
+          club={club}
+          world={w}
+          site="academy"
+          timeOfDay="sunset"
+          height={195}
+          onPlayerClick={(pid) => {
+            if (w.players[pid]) push({ name: "player", id: pid });
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: 12,
+            background: "rgba(8, 13, 24, 0.88)",
+            border: "1px solid rgba(74, 222, 128, 0.45)",
+            padding: "4px 11px",
+            borderRadius: 8,
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: "#dcfce7",
+            pointerEvents: "none",
+          }}
+        >
+          🌱 CFA Cotia HD-2D Ao Vivo · {youth.length} promessas em campo (toque numa joia para inspecionar!)
+        </div>
+      </div>
+
       <div className="k-academy-grid">
         <aside className="k-academy-aside">
           <div className="card">

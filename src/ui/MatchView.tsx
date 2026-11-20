@@ -306,30 +306,47 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   const [bg, g] = makeCanvas();
   const art = stadiumArt({ home, away, neutral: !!sim.f.neutral, stage: sim.f.stage });
 
-  // 1. Anel arquitetônico HD-2D noturno (degraus em ardósia profunda + escadarias âmbar)
-  g.fillStyle = "#080f1a";
+  // 1. Arquitetura 2.5D Broadcast HD-2D (estilo Pixel Cup Soccer / Pocket League Story / Sea of Stars)
+  // Cobertura superior e estrutura metálica do estádio
+  const skyGrad = g.createLinearGradient(0, 0, 0, 16);
+  skyGrad.addColorStop(0, "#050913");
+  skyGrad.addColorStop(0.55, "#0d172a");
+  skyGrad.addColorStop(1, "#0b1322");
+  g.fillStyle = skyGrad;
   g.fillRect(0, 0, W, H);
-  g.fillStyle = "#101b2d";
-  g.fillRect(2, 2, W - 4, H - 4);
-  g.fillStyle = "#17253b";
-  g.fillRect(5, 5, W - 10, H - 10);
-  // Borda interna da arquibancada e fosso perimetral
-  g.fillStyle = "#0b1320";
-  g.fillRect(10, 12, W - 20, H - 20);
+
+  // Degraus arquitetônicos em perspectiva 2.5D nas arquibancadas
+  g.fillStyle = "#111c30";
+  g.fillRect(1.5, 1.5, W - 3, H - 3);
+  g.fillStyle = "#17253e";
+  g.fillRect(4, 3.2, W - 8, H - 6.4);
+  // Fosso e anel perimetral do gramado
+  g.fillStyle = "#0a1612";
+  g.fillRect(9.5, 12, W - 19, H - 20.5);
+
+  // Vigas da cobertura superior e refletores lineares de LED
+  g.fillStyle = "#1e293b";
+  g.fillRect(0, 0, W, 1.8);
+  for (let bx = 12; bx < W - 10; bx += 18) {
+    g.fillStyle = "#334155";
+    g.fillRect(bx, 0, 1.4, 2.4);
+    g.fillStyle = "#fef08a";
+    g.fillRect(bx + 3, 0.4, 8, 0.7);
+  }
 
   // Escadarias iluminadas em âmbar (estilo diorama HD-2D)
-  g.fillStyle = "rgba(245, 158, 11, 0.35)";
-  for (const sx of [28, 56, 140, 168]) {
-    g.fillRect(sx, 2, 1.5, 10);
-    g.fillRect(sx, 123, 1.5, 8);
+  g.fillStyle = "rgba(245, 158, 11, 0.42)";
+  for (const sx of [30, 56, 140, 166]) {
+    g.fillRect(sx, 2.2, 1.8, 9.8);
+    g.fillRect(sx, 123.2, 1.8, 7.5);
   }
   for (const sy of [32, 66, 100]) {
-    g.fillRect(1, sy, 9, 1.4);
-    g.fillRect(186, sy, 9, 1.4);
+    g.fillRect(1.5, sy, 8, 1.6);
+    g.fillRect(186.5, sy, 8, 1.6);
   }
 
-  // 2. Torcida organizada em fileiras limpas (sem ruído estático de 1px)
-  const density = Math.min(0.92, Math.max(0.68, art.density));
+  // 2. Torcida Chibi 16-bit em fileiras de arquibancada 2.5D
+  const density = Math.min(0.92, Math.max(0.72, art.density));
   const pal = (c: Club) => [c.colors[0], c.colors[0], c.colors[0], c.colors[1], c.colors[1], c.colors[2] || c.colors[0], "#e2e8f0"];
   const homePal = pal(home);
   const awayPal = pal(away);
@@ -337,36 +354,40 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
   const isAway = (x: number, y: number) => !sim.f.neutral && ((y >= 123 && x >= 150) || (x >= 185 && y >= 88));
   const isGap = (x: number, y: number) => !sim.f.neutral && ((y >= 123 && x >= 146 && x <= 148) || (x >= 185 && y >= 84 && y <= 86));
   const rows: [number, number, number][] = [];
-  for (let y = 2.5; y <= 10.5; y += 2.6) rows.push([y, 8, W - 9]);
-  for (let y = 123.5; y <= 129.5; y += 2.6) rows.push([y, 8, W - 9]);
-  for (let y = 15; y <= 118; y += 2.8) {
-    rows.push([y, 2, 9.5]);
-    rows.push([y, 186.5, W - 3]);
+  for (let y = 2.8; y <= 10.2; y += 2.4) rows.push([y, 8, W - 9]);
+  for (let y = 124.2; y <= 129.2; y += 2.5) rows.push([y, 8, W - 9]);
+  for (let y = 16; y <= 116; y += 3.0) {
+    rows.push([y, 2.2, 8.8]);
+    rows.push([y, 187.2, W - 2.8]);
   }
   const skinPal = ["#f1c9a0", "#d9a273", "#b07546", "#7a4a2b", "#e8bb8c"];
   for (const [y, x0, x1] of rows) {
-    g.fillStyle = "rgba(7, 12, 21, 0.65)";
-    g.fillRect(x0, y + 1.6, x1 - x0 + 1, 0.65);
-    for (let x = x0; x <= x1; x += 1.65) {
+    // Degrau de concreto sob cada fileira
+    g.fillStyle = "rgba(6, 11, 20, 0.78)";
+    g.fillRect(x0, y + 1.55, x1 - x0 + 1, 0.75);
+    for (let x = x0; x <= x1; x += 1.85) {
       const rx = Math.round(x);
       const ry = Math.round(y);
       if (blocked(rx, ry) || blocked(rx, ry + 1)) continue;
-      if ((rx >= 27 && rx <= 29) || (rx >= 55 && rx <= 57) || (rx >= 139 && rx <= 141) || (rx >= 167 && rx <= 169)) continue;
+      if ((rx >= 29 && rx <= 32) || (rx >= 55 && rx <= 58) || (rx >= 139 && rx <= 142) || (rx >= 165 && rx <= 168)) continue;
       const awaySec = isAway(rx, ry);
-      const dens = awaySec ? Math.min(density, 0.78) : density;
+      const dens = awaySec ? Math.min(density, 0.8) : density;
       if (isGap(rx, ry) || rng() > dens) {
         g.fillStyle = "#1e293b";
-        g.fillRect(x, y + 0.3, 1.2, 1.3);
+        g.fillRect(x, y + 0.35, 1.3, 1.25);
         continue;
       }
       const p = awaySec ? awayPal : homePal;
       const body = p[Math.floor(rng() * p.length)];
       const bottom = y >= 123;
       const head = bottom ? HAIR[Math.floor(rng() * HAIR.length)] : skinPal[Math.floor(rng() * skinPal.length)];
+      // Silhueta Chibi 16-bit de cada torcedor com contorno escuro
+      g.fillStyle = "#060b14";
+      g.fillRect(x - 0.2, y - 0.25, 1.75, 2.1);
       g.fillStyle = body;
-      g.fillRect(x - 0.1, y + 0.55, 1.35, 1.15);
+      g.fillRect(x - 0.05, y + 0.55, 1.45, 1.15);
       g.fillStyle = head;
-      g.fillRect(x + 0.1, y - 0.1, 0.95, 0.75);
+      g.fillRect(x + 0.1, y - 0.12, 1.12, 0.78);
       fans.push({
         x: rx,
         y: ry,
@@ -379,9 +400,29 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
     }
   }
 
-  // 3. Gramado HD-2D esmeralda com corte em faixas, textura de relva e iluminação de refletores
-  g.fillStyle = "#134726";
-  g.fillRect(11, 13, W - 22, H - 25);
+  // Faixas contínuas da torcida no parapeito inferior e superior (identidade do clube)
+  for (const [bx, by, bw, clubRef] of [
+    [14, 11.4, 46, home],
+    [136, 11.4, 46, home],
+    [16, 122.4, 54, home],
+    [82, 122.4, 52, home],
+    [150, 122.4, 30, sim.f.neutral ? away : home],
+  ] as [number, number, number, Club][]) {
+    g.fillStyle = "#050a12";
+    g.fillRect(bx - 0.3, by - 0.2, bw + 0.6, 1.4);
+    g.fillStyle = clubRef.colors[0];
+    g.fillRect(bx, by, bw, 0.55);
+    g.fillStyle = clubRef.colors[1] || "#ffffff";
+    g.fillRect(bx, by + 0.55, bw, 0.45);
+  }
+
+  // 3. Gramado 2.5D Broadcast HD-2D com faixas de corte, sombreamento de profundidade e iluminação volumétrica
+  const apronGrad = g.createLinearGradient(0, 12, 0, H - 12);
+  apronGrad.addColorStop(0, "#103e22");
+  apronGrad.addColorStop(0.5, "#15532e");
+  apronGrad.addColorStop(1, "#0f391f");
+  g.fillStyle = apronGrad;
+  g.fillRect(10.5, 12.8, W - 21, H - 24.5);
 
   const stripes = 16;
   const stripeW = PL / stripes;
@@ -389,11 +430,17 @@ function buildStadium(sim: MatchSim, colors: SideColors): Stadium {
     g.fillStyle = i % 2 === 0 ? GRASS_A : GRASS_B;
     g.fillRect(PX0 + i * stripeW, PY0, stripeW + 0.15, PW);
   }
-  // Faixas horizontais sutis de corte cruzado (efeito tapete de estádio)
-  for (let j = 0; j < 10; j++) {
-    g.fillStyle = j % 2 === 0 ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.03)";
-    g.fillRect(PX0, PY0 + (j * PW) / 10, PL, PW / 10);
+  // Faixas horizontais sutis de corte cruzado + gradiente 2.5D de profundidade (topo -> base)
+  for (let j = 0; j < 12; j++) {
+    g.fillStyle = j % 2 === 0 ? "rgba(255, 255, 255, 0.028)" : "rgba(0, 0, 0, 0.032)";
+    g.fillRect(PX0, PY0 + (j * PW) / 12, PL, PW / 12);
   }
+  const depthGrad = g.createLinearGradient(0, PY0, 0, PY1);
+  depthGrad.addColorStop(0, "rgba(4, 18, 10, 0.22)");
+  depthGrad.addColorStop(0.45, "rgba(187, 247, 208, 0.06)");
+  depthGrad.addColorStop(1, "rgba(4, 16, 9, 0.18)");
+  g.fillStyle = depthGrad;
+  g.fillRect(PX0, PY0, PL, PW);
 
   // Iluminação volumétrica dos 4 refletores nos cantos + foco central
   for (const [lx, ly] of [
@@ -628,6 +675,12 @@ class PitchAnim {
   /** torcida brasileira: perfil (null = clube estrangeiro, sem festa) e a festa nas arquibancadas */
   crowd: CrowdProfile | null;
   festa: Festa2D | null = null;
+  /** Câmera Dinâmica Arcade TV (segue a bola com zoom suave estilo Pixel Cup Soccer / Pocket League Story) */
+  camMode: "tv" | "wide" = "tv";
+  camX = CX;
+  camY = CY;
+  camZoom = 1.32;
+  ballTrail: { x: number; y: number; h: number }[] = [];
 
   constructor(sim: MatchSim, cb: Callbacks) {
     this.sim = sim;
@@ -1991,6 +2044,33 @@ class PitchAnim {
     }
     this.ghosts = this.ghosts.filter((g) => !g.hidden);
     if (this.icons.length) this.icons = this.icons.filter((i) => i.until > this.now);
+
+    // Rastro suave da bola em voo (passes longos e finalizações)
+    if (b.fl) {
+      this.ballTrail.push({ x: b.x, y: b.y, h: b.h });
+      if (this.ballTrail.length > 10) this.ballTrail.shift();
+    } else if (this.ballTrail.length) {
+      this.ballTrail.shift();
+    }
+
+    // Atualiza Câmera Broadcast TV Dinâmica (suavização exponencial seguindo a bola e o ataque)
+    const atkSide = this.poss ?? this.sim.phase.atk ?? 0;
+    const lookAheadX = this.mode === "play" ? fwd(atkSide) * 7 : 0;
+    const targetCamX = this.camMode === "wide" ? CX : clamp(b.x + lookAheadX, 42, W - 42);
+    const targetCamY = this.camMode === "wide" ? CY : clamp(b.y, 34, H - 34);
+    const inBox = b.x < PX0 + BOX_D + 6 || b.x > PX1 - BOX_D - 6;
+    const targetZoom =
+      this.camMode === "wide"
+        ? 1.0
+        : this.special || this.celebr || this.mode === "penalty"
+          ? 1.54
+          : inBox || this.now < this.flashUntil
+            ? 1.44
+            : 1.32;
+    const camEase = this.reduced ? 1 : 1 - Math.exp(-dt / 210);
+    this.camX += (targetCamX - this.camX) * camEase;
+    this.camY += (targetCamY - this.camY) * camEase;
+    this.camZoom += (targetZoom - this.camZoom) * (this.reduced ? 1 : 1 - Math.exp(-dt / 320));
   }
 
   /** Goleada: os torcedores da torcida dominante que já foram embora viram cadeira vazia. */
@@ -2014,6 +2094,22 @@ class PitchAnim {
   // ------------------------------------------------ desenho
   draw(g: CanvasRenderingContext2D) {
     const now = this.now;
+    const CW = W * HD_SCALE;
+    const CH = H * HD_SCALE;
+    g.clearRect(0, 0, CW, CH);
+
+    // Transformação da Câmera Broadcast TV Dinâmica (zoom + pan focado na jogada)
+    const z = this.camZoom;
+    const halfW = W / (2 * z);
+    const halfH = H / (2 * z);
+    const cx = clamp(this.camX, halfW, W - halfW);
+    const cy = clamp(this.camY, halfH, H - halfH);
+
+    g.save();
+    g.translate(CW * 0.5, CH * 0.5);
+    g.scale(z, z);
+    g.translate(-cx * HD_SCALE, -cy * HD_SCALE);
+
     g.drawImage(this.stadium.bg, 0, 0);
     const cheering = now < this.cheer.until;
     const crowd = this.stadium.crowd;
@@ -2040,6 +2136,20 @@ class PitchAnim {
       g.fillStyle = "rgba(255, 255, 255, 0.85)";
       g.fillRect(back, CY - POST + 1.2, 0.7, POST * 2 - 2.4);
     }
+
+    // Alvo de destino do passe/cruzamento no gramado (estilo Arcade / Pixel Cup Soccer)
+    if (this.ball.fl) {
+      const fl = this.ball.fl;
+      const pulse = 0.65 + 0.35 * Math.sin(now * 0.015);
+      g.save();
+      g.beginPath();
+      g.ellipse(fl.x1, fl.y1 + 0.3, 3.2 * pulse, 1.45 * pulse, 0, 0, Math.PI * 2);
+      g.strokeStyle = "rgba(56, 189, 248, 0.78)";
+      g.lineWidth = 0.42;
+      g.stroke();
+      g.restore();
+    }
+
     const all = this.dudes.filter((d) => !d.hidden).concat(this.ghosts);
     all.sort((a, b) => a.y - b.y);
     for (const d of all) {
@@ -2049,6 +2159,60 @@ class PitchAnim {
     this.drawBall(g);
     for (const ic of this.icons) this.drawIcon(g, ic);
 
+    g.restore();
+    g.restore();
+
+    // Mini-Radar Tático RPG no rodapé quando a Câmera TV está com zoom ativo
+    if (this.camMode === "tv") {
+      g.save();
+      g.scale(HD_SCALE, HD_SCALE);
+      this.drawMiniRadar(g);
+      g.restore();
+    }
+  }
+
+  drawMiniRadar(g: CanvasRenderingContext2D) {
+    const rw = 44;
+    const rh = 24;
+    const rx = CX - rw * 0.5;
+    const ry = H - rh - 2.2;
+
+    g.save();
+    g.fillStyle = "rgba(6, 13, 22, 0.82)";
+    g.fillRect(rx - 0.8, ry - 0.8, rw + 1.6, rh + 1.6);
+    g.strokeStyle = "rgba(250, 204, 21, 0.55)";
+    g.lineWidth = 0.4;
+    g.strokeRect(rx - 0.8, ry - 0.8, rw + 1.6, rh + 1.6);
+
+    g.fillStyle = "rgba(18, 72, 40, 0.85)";
+    g.fillRect(rx, ry, rw, rh);
+    g.strokeStyle = "rgba(240, 253, 244, 0.38)";
+    g.lineWidth = 0.25;
+    g.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+    g.beginPath();
+    g.moveTo(rx + rw * 0.5, ry + 1);
+    g.lineTo(rx + rw * 0.5, ry + rh - 1);
+    g.stroke();
+    g.beginPath();
+    g.arc(rx + rw * 0.5, ry + rh * 0.5, 3.2, 0, Math.PI * 2);
+    g.stroke();
+
+    for (const d of this.dudes) {
+      if (d.hidden || d.side === 2) continue;
+      const mx = rx + 1 + ((d.x - PX0) / PL) * (rw - 2);
+      const my = ry + 1 + ((d.y - PY0) / PW) * (rh - 2);
+      g.beginPath();
+      g.arc(clamp(mx, rx + 1, rx + rw - 1), clamp(my, ry + 1, ry + rh - 1), d === this.ball.holder ? 1.15 : 0.82, 0, Math.PI * 2);
+      g.fillStyle = d === this.ball.holder ? "#facc15" : d.side === 0 ? this.colors.home.shirt : this.colors.away.shirt;
+      g.fill();
+    }
+
+    const bx = rx + 1 + ((this.ball.x - PX0) / PL) * (rw - 2);
+    const by = ry + 1 + ((this.ball.y - PY0) / PW) * (rh - 2);
+    g.beginPath();
+    g.arc(clamp(bx, rx + 1, rx + rw - 1), clamp(by, ry + 1, ry + rh - 1), 0.95, 0, Math.PI * 2);
+    g.fillStyle = "#ffffff";
+    g.fill();
     g.restore();
   }
 
@@ -2083,18 +2247,32 @@ class PitchAnim {
     const bx = b.x;
     const by = b.y - b.h;
 
+    // Rastro luminoso curvo da bola em passes e chutes
+    if (this.ballTrail.length > 1) {
+      g.save();
+      for (let i = 0; i < this.ballTrail.length; i++) {
+        const pt = this.ballTrail[i];
+        const ratio = (i + 1) / this.ballTrail.length;
+        g.beginPath();
+        g.arc(pt.x, pt.y - pt.h, 0.45 + ratio * 0.65, 0, Math.PI * 2);
+        g.fillStyle = this.now < this.flashUntil ? `rgba(250, 204, 21, ${(ratio * 0.48).toFixed(3)})` : `rgba(255, 255, 255, ${(ratio * 0.34).toFixed(3)})`;
+        g.fill();
+      }
+      g.restore();
+    }
+
     // Sombra elíptica da bola no gramado
     g.save();
     g.beginPath();
     const shadowScale = Math.max(0.55, 1 - b.h * 0.04);
-    g.ellipse(bx, b.y + 0.75, 1.45 * shadowScale, 0.65 * shadowScale, 0, 0, Math.PI * 2);
-    g.fillStyle = "rgba(4, 12, 8, 0.48)";
+    g.ellipse(bx, b.y + 0.75, 1.55 * shadowScale, 0.7 * shadowScale, 0, 0, Math.PI * 2);
+    g.fillStyle = "rgba(4, 12, 8, 0.52)";
     g.fill();
 
     // Esfera da bola com contorno e gomos rotativos
-    const r = 1.42;
+    const r = 1.48;
     g.beginPath();
-    g.arc(bx, by, r + 0.32, 0, Math.PI * 2);
+    g.arc(bx, by, r + 0.34, 0, Math.PI * 2);
     g.fillStyle = OUTLINE;
     g.fill();
 
@@ -2104,51 +2282,56 @@ class PitchAnim {
     g.fill();
 
     // Brilho superior esquerdo + gomos escuros girando com b.spin
-    const ang = (b.spin * 0.015) % (Math.PI * 2);
-    g.fillStyle = "#1e293b";
+    const ang = (b.spin * 0.016) % (Math.PI * 2);
+    g.fillStyle = "#0f172a";
     for (let k = 0; k < 3; k++) {
       const a = ang + (k * Math.PI * 2) / 3;
-      const px = bx + Math.cos(a) * 0.62;
-      const py = by + Math.sin(a) * 0.62;
+      const px = bx + Math.cos(a) * 0.64;
+      const py = by + Math.sin(a) * 0.64;
       g.beginPath();
-      g.arc(px, py, 0.36, 0, Math.PI * 2);
+      g.arc(px, py, 0.38, 0, Math.PI * 2);
       g.fill();
     }
     g.restore();
 
-    // Seta dourada e plaquinha com o nome do jogador que conduz a bola
+    // Seta dourada RPG e plaquinha com Número + Nome do jogador que conduz a bola
     const d = b.holder;
     if (d && d.side !== 2 && this.mode === "play" && d.grp !== 0) {
       const mx = d.x;
-      const my = d.y - 11.4;
+      const my = d.y - 12.6;
       g.save();
       g.beginPath();
-      g.moveTo(mx, my + 1.4);
-      g.lineTo(mx - 1.5, my - 0.5);
-      g.lineTo(mx + 1.5, my - 0.5);
+      g.moveTo(mx, my + 1.45);
+      g.lineTo(mx - 1.55, my - 0.5);
+      g.lineTo(mx + 1.55, my - 0.5);
       g.closePath();
       g.fillStyle = "#facc15";
       g.strokeStyle = OUTLINE;
-      g.lineWidth = 0.4;
+      g.lineWidth = 0.42;
       g.stroke();
       g.fill();
 
-      const label = hudName(this.name(d));
+      const rawName = hudName(this.name(d));
+      const numPrefix = d.look?.num ? `#${d.look.num} ` : "";
+      const label = rawName ? `${numPrefix}${rawName}` : "";
       if (label) {
-        g.font = "bold 2.5px Inter, system-ui, sans-serif";
+        g.font = "900 2.5px Inter, system-ui, sans-serif";
         g.textAlign = "center";
         g.textBaseline = "bottom";
         const tw = g.measureText(label).width;
-        const pw = tw + 2.6;
-        const ph = 3.2;
+        const pw = tw + 3.0;
+        const ph = 3.4;
         const px0 = clamp(mx - pw * 0.5, 4, W - pw - 4);
-        const py0 = my - 4.1;
-        g.fillStyle = "rgba(8, 15, 26, 0.84)";
+        const py0 = my - 4.3;
+        g.fillStyle = "rgba(7, 13, 24, 0.9)";
         g.fillRect(px0, py0, pw, ph);
+        g.strokeStyle = "rgba(250, 204, 21, 0.65)";
+        g.lineWidth = 0.28;
+        g.strokeRect(px0, py0, pw, ph);
         g.fillStyle = d.shirt;
-        g.fillRect(px0, py0, 0.8, ph);
-        g.fillStyle = "#f8fafc";
-        g.fillText(label, px0 + pw * 0.5 + 0.25, py0 + ph - 0.45);
+        g.fillRect(px0, py0, 0.95, ph);
+        g.fillStyle = "#fef08a";
+        g.fillText(label, px0 + pw * 0.5 + 0.3, py0 + ph - 0.45);
       }
       g.restore();
     }
@@ -2338,6 +2521,7 @@ export function MatchView(props: MatchViewProps) {
   const resizeRef = useRef<() => void>(() => undefined);
   const r3dRef = useRef<MatchRenderer | null>(null);
   const [gl, setGl] = useState(false);
+  const [camMode, setCamMode] = useState<"tv" | "wide">("tv");
   const [special, setSpecial] = useState<{ name: string; colors: [string, string]; who: string; save: boolean } | null>(null);
 
   useEffect(() => {
@@ -2594,6 +2778,45 @@ export function MatchView(props: MatchViewProps) {
             <span className="mv-special-who">{special.who}</span>
             <b className="mv-special-name">{special.name}!</b>
           </div>
+        )}
+        {!intro && !gl && (
+          <button
+            type="button"
+            className="mv-cam-toggle-btn"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              const next = camMode === "tv" ? "wide" : "tv";
+              setCamMode(next);
+              if (animRef.current) {
+                animRef.current.camMode = next;
+                kick.current();
+              }
+            }}
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 10,
+              zIndex: 14,
+              background: "rgba(8, 14, 26, 0.85)",
+              border: "1px solid rgba(250, 204, 21, 0.45)",
+              color: "#fef08a",
+              padding: "5px 11px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+            }}
+            title="Alternar entre Câmera TV Dinâmica (Zoom Arcade) e Câmera Tática Panorâmica"
+          >
+            <Icon name="compass" size={12} />
+            <span>{camMode === "tv" ? "Câmera TV (Zoom)" : "Panorâmica"}</span>
+          </button>
         )}
         {intro && (
           <button

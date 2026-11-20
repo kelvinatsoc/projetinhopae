@@ -14,6 +14,7 @@ import type { Fixture, Player, World } from "../../engine/types";
 import { push, setTab, update, useWorld } from "../../store";
 import { continueGame } from "../actions";
 import { Avatar, CompLogo, Crest, DeltaTag, GIcon, Ic, Icon, PosBadge, stadiumSrc, visibleColor } from "../components";
+import { Hd2dComplex } from "../hq/Hd2dComplex";
 import { matchPhase, PhaseBanner } from "../MatchPhase";
 import { PeneiraHomeCard } from "./Academy";
 import { BoardHomeCard, BoardScreen } from "./Board";
@@ -135,6 +136,9 @@ export function HomeScreen() {
         </div>
       ) : (
         <div className="page home k-portal-page">
+          <div style={{ marginBottom: 12 }}>
+            <Hd2dComplex club={user} defaultSite="training" />
+          </div>
           <div className="k-portal-grid">
             {/* COLUNA 1: PRÓXIMO JOGO + JANELA DE TRANSFERÊNCIAS */}
             <div className="k-portal-col">
@@ -184,7 +188,7 @@ export function HomeScreen() {
                   <button className="k-qbtn" onClick={() => push({ name: "training" })}><Ic n="dumbbell" size={14} /> Treinos</button>
                   <button className="k-qbtn" onClick={() => push({ name: "dressing" })}><Ic n="handshake" size={14} /> Vestiário</button>
                   <button className="k-qbtn" onClick={() => push({ name: "youth" })}><Ic n="seed" size={14} /> Base</button>
-                  <button className="k-qbtn" onClick={() => push({ name: "facilities" })}><Ic n="stadium" size={14} /> Sede 3D</button>
+                  <button className="k-qbtn" onClick={() => push({ name: "stadiumLook" })}><Ic n="stadium" size={14} /> Estádio HD-2D</button>
                 </div>
               </section>
 

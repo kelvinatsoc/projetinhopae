@@ -11,6 +11,7 @@ import type { Player, Pos, TeamFocus, TraitId } from "../../engine/types";
 import { push, toast, update, useWorld } from "../../store";
 import { autosave } from "../actions";
 import { Avatar, Bar, Ovr, PosBadge, Sheet, Ic, Icon, Stars } from "../components";
+import { Hd2dWorldCanvas } from "../hq/Hd2dWorldCanvas";
 
 const FOCUS_ICON: Record<TeamFocus, string> = { eq: "target", fis: "dumbbell", atk: "bolt", def: "shield", tat: "board", bola: "ball", rec: "calm" };
 const FOCUS_ORDER: TeamFocus[] = ["eq", "fis", "atk", "def", "tat", "bola", "rec"];
@@ -43,6 +44,45 @@ export function TrainingTab() {
 
   return (
     <>
+      <div
+        className="card"
+        style={{
+          padding: 0,
+          overflow: "hidden",
+          marginBottom: 12,
+          border: "1px solid rgba(56, 189, 248, 0.35)",
+          position: "relative",
+        }}
+      >
+        <Hd2dWorldCanvas
+          club={club}
+          world={w}
+          site="ct"
+          timeOfDay="day"
+          height={185}
+          onPlayerClick={(pid) => {
+            if (w.players[pid]) push({ name: "player", id: pid });
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: 12,
+            background: "rgba(8, 13, 24, 0.88)",
+            border: "1px solid rgba(56, 189, 248, 0.4)",
+            padding: "4px 10px",
+            borderRadius: 8,
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: "#e0f2fe",
+            pointerEvents: "none",
+          }}
+        >
+          ⚡ CT Profissional HD-2D Ao Vivo · Foco atual: {FOCUS_INFO[t.focus].label} (toque num atleta em campo!)
+        </div>
+      </div>
+
       <div className="k-training-grid">
       <div className="k-training-col">
         <div className="card">
