@@ -2086,9 +2086,70 @@ class PitchAnim {
     }
   }
 
-  /** Terminou de vez (todos no vestiário): o laço pode parar. */
+  /**Terminou de vez (todos no vestiário): o laço pode parar. */
   idle(): boolean {
     return this.ended && this.now - this.endAt > 9000;
+  }
+
+  /** Comandos diretos de gameplay Arcade (Chutar, Enfiada Vertical, Abafar) acionados pelo jogador em tempo real. */
+  userArcadeAction(kind: "shoot" | "pass" | "press") {
+    if (this.ended || this.mode !== "play") return;
+    const uSide: 0 | 1 = (this.sim.userSide ?? 0) as 0 | 1;
+    const myTeam = this.team(uSide).filter((d) => d.grp !== 0 && !d.hidden);
+    if (!myTeam.length) return;
+
+    if (kind === "press") {
+      for (const d of myTeam) {
+        d.speed = 1.65;
+        this.pfx.burst(d.x, d.y - 3, ["#facc15", "#fb923c"], 5, 0.6);
+      }
+      const nearestDef = this.nearest(uSide, this.ball.x, this.ball.y, true);
+      if (nearestDef) {
+        nearestDef.ox = this.ball.x;
+        nearestDef.oy = this.ball.y;
+        nearestDef.oUntil = this.now + 1100;
+      }
+      this.say(`Ordem do Técnico: ${this.sim.sides[uSide].club.name} sobe a marcação e abafa a saída!`, uSide, 1);
+      return;
+    }
+
+    const holder =
+      this.ball.holder && this.ball.holder.side === uSide
+        ? this.ball.holder
+        : this.nearest(uSide, this.ball.x, this.ball.y, true) ?? myTeam[0];
+
+    if (kind === "pass") {
+      const attackDir = fwd(uSide);
+      const target =
+        myTeam
+          .filter((d) => d !== holder)
+          .sort((a, b) => (b.x - a.x) * attackDir - (a.x - b.x) * attackDir)[0] ?? holder;
+      this.setHolder(holder);
+      this.pfx.burst(holder.x, holder.y - 4, ["#38bdf8", "#ffffff"], 10, 0.8);
+      this.pass(target, true);
+      this.say(`${this.name(holder)} recebe o comando e lança ${this.name(target)} em profundidade!`, uSide, 1);
+      return;
+    }
+
+    if (kind === "shoot") {
+      const gx = goalX(uSide);
+      const keeper = this.gk((1 - uSide) as 0 | 1);
+      this.setHolder(holder);
+      setPose(holder, "kick", this.now, 360);
+      this.pfx.burst(holder.x, holder.y - 4, ["#facc15", "#ef4444", "#ffffff"], 14, 1.1);
+      this.nextFx = { power: true, glow: ["#facc15", "#ef4444"] };
+      this.flashUntil = this.now + 700;
+      ballKick(1.0);
+      const ty = CY + rnd(-3.5, 3.5);
+      this.fly(gx - fwd(uSide) * 1.8, ty, 480 / Math.max(0.5, this.spd()), 2.4, keeper ?? null, () => {
+        if (keeper) {
+          savePunch();
+          this.pfx.burst(gx, ty, ["#ffffff", "#fef08a"], 10, 0.8);
+          this.setHolder(keeper);
+        }
+      });
+      this.say(`${this.name(holder)} obedece ao comando e solta uma bomba para o gol!`, uSide, 1);
+    }
   }
 
   // ------------------------------------------------ desenho
@@ -2780,43 +2841,136 @@ export function MatchView(props: MatchViewProps) {
           </div>
         )}
         {!intro && !gl && (
-          <button
-            type="button"
-            className="mv-cam-toggle-btn"
-            onClick={(ev) => {
-              ev.stopPropagation();
-              const next = camMode === "tv" ? "wide" : "tv";
-              setCamMode(next);
-              if (animRef.current) {
-                animRef.current.camMode = next;
-                kick.current();
-              }
-            }}
-            style={{
-              position: "absolute",
-              top: 10,
-              left: 10,
-              zIndex: 14,
-              background: "rgba(8, 14, 26, 0.85)",
-              border: "1px solid rgba(250, 204, 21, 0.45)",
-              color: "#fef08a",
-              padding: "5px 11px",
-              borderRadius: 999,
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: "0.04em",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              backdropFilter: "blur(6px)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
-            }}
-            title="Alternar entre Câmera TV Dinâmica (Zoom Arcade) e Câmera Tática Panorâmica"
-          >
-            <Icon name="compass" size={12} />
-            <span>{camMode === "tv" ? "Câmera TV (Zoom)" : "Panorâmica"}</span>
-          </button>
+          <>
+            <button
+              type="button"
+              className="mv-cam-toggle-btn"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                const next = camMode === "tv" ? "wide" : "tv";
+                setCamMode(next);
+                if (animRef.current) {
+                  animRef.current.camMode = next;
+                  kick.current();
+                }
+              }}
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 10,
+                zIndex: 14,
+                background: "rgba(8, 14, 26, 0.88)",
+                border: "1px solid rgba(250, 204, 21, 0.45)",
+                color: "#fef08a",
+                padding: "5px 11px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                backdropFilter: "blur(6px)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+              }}
+              title="Alternar entre Câmera TV Dinâmica (Zoom Arcade) e Câmera Tática Panorâmica"
+            >
+              <Icon name="compass" size={12} />
+              <span>{camMode === "tv" ? "Câmera TV (Zoom)" : "Panorâmica"}</span>
+            </button>
+
+            <div
+              className="mv-arcade-actions"
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                zIndex: 14,
+                display: "inline-flex",
+                gap: 6,
+              }}
+            >
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  animRef.current?.userArcadeAction("pass");
+                  kick.current();
+                }}
+                style={{
+                  background: "rgba(12, 24, 44, 0.88)",
+                  border: "1px solid rgba(56, 189, 248, 0.55)",
+                  color: "#7dd3fc",
+                  padding: "5px 10px",
+                  borderRadius: 999,
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+                }}
+                title="Ordenar passe vertical imediato para o ataque"
+              >
+                <Icon name="target" size={11} />
+                <span>Enfiada!</span>
+              </button>
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  animRef.current?.userArcadeAction("shoot");
+                  kick.current();
+                }}
+                style={{
+                  background: "rgba(40, 20, 10, 0.9)",
+                  border: "1px solid rgba(250, 204, 21, 0.65)",
+                  color: "#fde047",
+                  padding: "5px 10px",
+                  borderRadius: 999,
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+                }}
+                title="Ordenar finalização imediata ao gol"
+              >
+                <Icon name="bolt" size={11} />
+                <span>Chutar!</span>
+              </button>
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  animRef.current?.userArcadeAction("press");
+                  kick.current();
+                }}
+                style={{
+                  background: "rgba(44, 14, 18, 0.88)",
+                  border: "1px solid rgba(248, 113, 113, 0.55)",
+                  color: "#fca5a5",
+                  padding: "5px 10px",
+                  borderRadius: 999,
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+                }}
+                title="Ordenar pressão intensa imediata na bola"
+              >
+                <Icon name="flame" size={11} />
+                <span>Abafar!</span>
+              </button>
+            </div>
+          </>
         )}
         {intro && (
           <button

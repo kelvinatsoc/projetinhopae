@@ -194,10 +194,10 @@ export function Hd2dWorldCanvas({
 
     const pitchZone =
       site === "ct"
-        ? { x0: 26, x1: 146, y0: 36, y1: 66 }
+        ? { x0: 60, x1: 152, y0: 44, y1: 65 }
         : site === "academy"
-          ? { x0: 44, x1: 122, y0: 42, y1: 68 }
-          : { x0: 54, x1: 136, y0: 38, y1: 60 };
+          ? { x0: 48, x1: 116, y0: 47, y1: 66 }
+          : { x0: 58, x1: 132, y0: 43, y1: 60 };
 
     const count = Math.max(6, rosterPlayers.length || 8);
     const actors: WorldActor[] = Array.from({ length: count }, (_, idx) => {

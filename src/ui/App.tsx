@@ -7,7 +7,7 @@ import { nextFixture } from "../engine/competitions";
 import { formatDate } from "../engine/calendar";
 import { formatMoney } from "../engine/finance";
 import { inboxUnread } from "../engine/inbox";
-import { back, dismissToast, push, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
+import { back, dismissToast, push, resetNav, setTab, toast, useNav, useVersion, getWorld, type Route, type Tab } from "../store";
 import { popToast } from "../engine/achievements";
 import { continueGame } from "./actions";
 import { Crest, Icon, textOn, visibleColor } from "./components";
@@ -25,7 +25,6 @@ import { DressingScreen } from "./screens/Dressing";
 import { StaffScreen } from "./screens/Staff";
 import { TrainingScreen } from "./screens/Training";
 
-// Carregamento sob demanda (React.lazy) das telas secundárias e do motor visual de partida (otimização Redmi 10A)
 const SponsorsScreen = lazy(() => import("./Sponsors").then((m) => ({ default: m.SponsorsScreen })));
 const PowersScreen = lazy(() => import("./screens/Powers").then((m) => ({ default: m.PowersScreen })));
 const FacilitiesScreen = lazy(() => import("./Facilities").then((m) => ({ default: m.FacilitiesScreen })));
@@ -54,80 +53,79 @@ const PlayerScreen = lazy(() => import("./screens/Player").then((m) => ({ defaul
 const AdminScreen = lazy(() => import("./screens/Admin").then((m) => ({ default: m.AdminScreen })));
 const PressConferenceScreen = lazy(() => import("./PressConference").then((m) => ({ default: m.PressConferenceScreen })));
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "home", label: "Início", icon: "home" },
-  { id: "inbox", label: "Caixa", icon: "mail" },
-  { id: "squad", label: "Elenco", icon: "squad" },
-  { id: "tactics", label: "Tática", icon: "tactics" },
-  { id: "more", label: "Mais", icon: "more" },
-];
-
-const RAIL_ITEMS: { id: string; label: string; short: string; icon: string; primary?: boolean; action: () => void; isActive: (tab: Tab, top?: Route) => boolean }[] = [
-  { id: "home", label: "Início (Portal)", short: "Início", icon: "home", primary: true, action: () => setTab("home"), isActive: (t, top) => !top && t === "home" },
-  { id: "inbox", label: "Caixa de Entrada", short: "Caixa", icon: "mail", primary: true, action: () => setTab("inbox"), isActive: (t, top) => (!top && t === "inbox") || top?.name === "inbox" },
-  { id: "squad", label: "Elenco", short: "Elenco", icon: "squad", primary: true, action: () => setTab("squad"), isActive: (t, top) => !top && t === "squad" },
-  { id: "tactics", label: "Tática", short: "Tática", icon: "tactics", primary: true, action: () => setTab("tactics"), isActive: (t, top) => (!top && t === "tactics") || top?.name === "tactics" || top?.name === "setpieces" },
-  { id: "more", label: "Central do Manager (Mais)", short: "Mais", icon: "more", primary: true, action: () => setTab("more"), isActive: (t, top) => !top && t === "more" },
-  { id: "training", label: "Treinos", short: "Treino", icon: "cone", action: () => push({ name: "training" }), isActive: (_, top) => top?.name === "training" },
-  { id: "comps", label: "Competições & Calendário", short: "Ligas", icon: "trophy", action: () => setTab("comps"), isActive: (t, top) => (!top && t === "comps") || top?.name === "fixture" },
-  { id: "market", label: "Mercado & Olheiros", short: "Mercado", icon: "swap", action: () => setTab("market"), isActive: (t, top) => !top && t === "market" },
-  { id: "scouting", label: "Base & Peneira", short: "Base", icon: "sprout", action: () => push({ name: "youth" }), isActive: (_, top) => top?.name === "youth" || top?.name === "peneira" },
-  { id: "club", label: "Clube & Sede 3D", short: "Clube", icon: "club", action: () => setTab("club"), isActive: (t, top) => (!top && t === "club") || top?.name === "facilities" || top?.name === "board" || top?.name === "staff" },
-  { id: "finances", label: "Finanças & Patrocínios", short: "Caixa R$", icon: "bank", action: () => push({ name: "finances" }), isActive: (_, top) => top?.name === "finances" || top?.name === "sponsors" },
-];
-
-function tabTitle(tab: Tab, clubName: string): string {
-  switch (tab) {
-    case "home": return `Portal • ${clubName}`;
-    case "inbox": return "Caixa de Entrada";
-    case "squad": return "Elenco Principal";
-    case "tactics": return "Tática";
-    case "comps": return "Competições & Calendário";
-    case "market": return "Mercado & Olheiros";
-    case "club": return `Clube • ${clubName}`;
-    case "more": return "Central do Manager";
-    default: return clubName;
-  }
+interface ConsoleHubItem {
+  id: string;
+  label: string;
+  icon: string;
+  action: () => void;
+  isActive: (tab: Tab, top?: Route) => boolean;
 }
 
-function routeTitle(r: Route): string {
-  switch (r.name) {
-    case "player": return "Jogador";
-    case "club": return "Clube";
-    case "tactics": return "Tática";
-    case "prematch": return "Pré-jogo";
-    case "news": return "Notícias";
-    case "legends": return "Álbum de Lendas";
-    case "settings": return "Configurações";
-    case "credits": return "Créditos";
-    case "finances": return "Finanças";
-    case "youth": return "Categorias de base";
-    case "history": return "Histórico";
-    case "fixture": return "Ficha do jogo";
-    case "admin": return "Administrador";
-    case "training": return "Treino";
-    case "peneira": return "Dia da peneira";
-    case "staff": return "Comissão técnica";
-    case "board": return "Diretoria";
-    case "dressing": return "Vestiário";
-    case "inbox": return "Caixa de entrada";
-    case "press": return "Coletiva";
-    case "trophies": return "Sala de troféus";
-    case "achievements": return "Conquistas";
-    case "career": return "Carreira";
-    case "compare": return "Comparar jogadores";
-    case "sponsors": return "Patrocínios";
-    case "kits": return "Uniformes";
-    case "powers": return "Loja de Poderes";
-    case "facilities": return "Estrutura";
-    case "stadiumLook": return "Meu estádio";
-    case "setpieces": return "Bola parada";
-    case "nts": return "Seleções";
-    case "nt": return "Seleção";
-    case "ntmatch": return "Jogo da seleção";
-    default: return "";
-  }
-}
+const CONSOLE_HUBS: ConsoleHubItem[] = [
+  {
+    id: "home",
+    label: "QG",
+    icon: "home",
+    action: () => { resetNav(); setTab("home"); },
+    isActive: (t, top) => !top && t === "home",
+  },
+  {
+    id: "tactics",
+    label: "Tática",
+    icon: "tactics",
+    action: () => { resetNav(); setTab("tactics"); },
+    isActive: (t, top) => (!top && t === "tactics") || top?.name === "tactics" || top?.name === "setpieces",
+  },
+  {
+    id: "squad",
+    label: "Elenco",
+    icon: "squad",
+    action: () => { resetNav(); setTab("squad"); },
+    isActive: (t, top) => !top && t === "squad",
+  },
+  {
+    id: "training",
+    label: "Treino",
+    icon: "dumbbell",
+    action: () => { resetNav(); push({ name: "training" }); },
+    isActive: (_, top) => top?.name === "training",
+  },
+  {
+    id: "youth",
+    label: "Base",
+    icon: "sprout",
+    action: () => { resetNav(); push({ name: "youth" }); },
+    isActive: (_, top) => top?.name === "youth" || top?.name === "peneira",
+  },
+  {
+    id: "market",
+    label: "Mercado",
+    icon: "swap",
+    action: () => { resetNav(); setTab("market"); },
+    isActive: (t, top) => !top && t === "market",
+  },
+  {
+    id: "comps",
+    label: "Ligas",
+    icon: "trophy",
+    action: () => { resetNav(); setTab("comps"); },
+    isActive: (t, top) => (!top && t === "comps") || top?.name === "fixture",
+  },
+  {
+    id: "club",
+    label: "Clube",
+    icon: "club",
+    action: () => { resetNav(); setTab("club"); },
+    isActive: (t, top) => (!top && t === "club") || top?.name === "stadiumLook" || top?.name === "facilities",
+  },
+  {
+    id: "inbox",
+    label: "Caixa",
+    icon: "mail",
+    action: () => { resetNav(); setTab("inbox"); },
+    isActive: (t, top) => (!top && t === "inbox") || top?.name === "inbox",
+  },
+];
 
 let navAt = 0;
 let lastRouteKey = "";
@@ -161,12 +159,10 @@ export function App() {
     }
   }, []);
 
-  // festa do título: uma vez por taça conquistada pelo clube do usuário
   const [, bumpSeen] = useState(0);
   const seen = titlesSeen();
   const wonComp = w ? Object.values(w.comps).find((c) => c.champion === w.userClubId && !seen.has(`${w.userClubId}:${c.season}:${c.id}`)) : undefined;
 
-  // o app inteiro veste as cores do clube comandado
   const colors = w ? w.clubs[w.userClubId]?.colors : undefined;
   const colorKey = colors?.join(",") ?? "";
   useEffect(() => {
@@ -180,7 +176,6 @@ export function App() {
     root.setProperty("--club-ink", textOn(c1) === "#fff" ? "#fff" : "#0b0f1a");
   }, [colorKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // conquistas e desafios: avisos pendentes viram toasts, um de cada vez
   const pending = w?.ach?.toasts.length ?? 0;
   const toastBusy = !!nav.toast;
   useEffect(() => {
@@ -203,7 +198,6 @@ export function App() {
 
   const top = nav.stack[nav.stack.length - 1];
   const fullScreen = top && (top.name === "match" || top.name === "seasonEnd" || top.name === "fired");
-  // pré-jogo: sem a navegação flutuante para não disputar o toque com "Jogar"
   const hideNav = top?.name === "prematch";
   const club = w.clubs[w.userClubId];
   syncCustomKits(w);
@@ -263,117 +257,100 @@ export function App() {
 
   const nf = nextFixture(w, w.userClubId);
   const matchToday = !!nf && nf.day === w.day;
-  const opp = nf ? w.clubs[nf.home === w.userClubId ? nf.away : nf.home] : null;
-  const nfComp = nf ? w.comps[nf.comp] : null;
-  const nextSub = nf && opp
-    ? `Próximo jogo: ${opp.name} (${nf.home === w.userClubId ? "C" : "F"}) - ${nfComp?.name ?? "Temporada"}`
-    : `${formatDate(w.season, w.day)} ${w.season}`;
 
   const routeKey = top ? `${nav.stack.length}:${top.name}:${"id" in top ? top.id : ""}` : `tab:${nav.tab}`;
   if (routeKey !== lastRouteKey) { lastRouteKey = routeKey; navAt = performance.now(); }
 
   return (
-    <div className={`app k-shell${fullScreen ? " no-chrome" : ""}${hideNav ? " no-nav" : ""}`}>
-      {!fullScreen && (
-        <aside className="k-rail" aria-label="Menu lateral Football Manager">
-          <div className="k-rail-arrows">
-            <button className="k-rail-arrow" onClick={() => (top ? back() : setTab("home"))} aria-label="Voltar" title="Voltar">
-              <Icon name="chevLeft" size={14} />
-            </button>
-            <button className="k-rail-arrow" onClick={() => setTab("more")} aria-label="Módulos" title="Todos os módulos">
-              <Icon name="chevRight" size={14} />
-            </button>
-          </div>
-          <div className="k-rail-list">
-            {RAIL_ITEMS.map((item, idx) => {
-              const active = item.isActive(nav.tab, top);
-              const showSep = idx === 5;
-              return (
-                <div key={item.id} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  {showSep && <div className="k-rail-sep" />}
+    <div className={`app k-shell rpg-console-shell${fullScreen ? " no-chrome" : ""}${hideNav ? " no-nav" : ""}`}>
+      <div className="k-main-col" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+        {!fullScreen && (
+          <header className="rpg-top-hud">
+            <div className="rpg-hud-brand">
+              {top ? (
+                <button className="rpg-back-btn" onClick={back} aria-label="Voltar" title="Voltar">
+                  <Icon name="back" size={16} />
+                </button>
+              ) : null}
+              <span
+                className="rpg-club-pill"
+                onClick={() => { resetNav(); setTab("club"); }}
+                title="Abrir Complexo do Clube"
+              >
+                <Crest club={club} size={28} />
+                <span className="rpg-club-meta">
+                  <b>{club.name}</b>
+                  <small>{formatDate(w.season, w.day)} · <em style={{ color: "#4ade80", fontStyle: "normal" }}>{formatMoney(club.balance)}</em></small>
+                </span>
+              </span>
+            </div>
+
+            {/* Dock Horizontal Console RPG: Substitui a antiga barra lateral de 11 itens */}
+            <nav className="rpg-console-dock" aria-label="Menu Principal RPG">
+              {CONSOLE_HUBS.map((item) => {
+                const active = item.isActive(nav.tab, top);
+                return (
                   <button
-                    className={`k-rail-btn${active ? " active" : ""}${item.primary ? " primary" : ""}`}
+                    key={item.id}
+                    className={`rpg-dock-tab${active ? " active" : ""}`}
                     onClick={item.action}
                     title={item.label}
-                    aria-label={item.label}
                   >
-                    <Icon name={item.icon} size={16} />
-                    <span className="k-rail-lb">{item.short}</span>
-                    {item.id === "inbox" && unread > 0 && <i className="k-rail-badge">{Math.min(unread, 99)}</i>}
+                    <Icon name={item.icon} size={14} />
+                    <span>{item.label}</span>
+                    {item.id === "inbox" && unread > 0 && <i className="rpg-dock-badge">{Math.min(unread, 99)}</i>}
                   </button>
-                </div>
-              );
-            })}
-          </div>
-        </aside>
-      )}
-      <div className="k-main-col">
-        {!fullScreen && (
-          <header className="topbar k-topbar">
-            {top ? (
-              <button className="icon-btn back-btn" onClick={back} aria-label="Voltar"><Icon name="back" size={20} /></button>
-            ) : (
-              <span className="topbar-crest" onClick={() => setTab("club")} style={{ cursor: "pointer" }}><Crest club={club} size={32} /></span>
-            )}
-            <span className="k-hd-ud" aria-hidden="true"><Icon name="chevUpDown" size={13} /></span>
-            <div className="title k-hd-title">
-              <b>{top ? routeTitle(top) || club.name : tabTitle(nav.tab, club.name)}</b>
-              <small>{nextSub}</small>
+                );
+              })}
+              <button
+                className={`rpg-dock-tab${!top && nav.tab === "more" ? " active" : ""}`}
+                onClick={() => { resetNav(); setTab("more"); }}
+                title="Mais opções (Comissão, Troféus, Poderes, Ajustes)"
+              >
+                <Icon name="more" size={14} />
+              </button>
+            </nav>
+
+            <div className="rpg-hud-actions">
+              {w.admin?.on && (
+                <button className="rpg-icon-pill" onClick={() => push({ name: "admin" })} title="Painel Admin">
+                  <Icon name="wrench" size={15} />
+                </button>
+              )}
+              <button
+                className={`k-continue-btn rpg-continue-cta${matchToday ? " matchday" : ""}`}
+                onClick={continueGame}
+              >
+                <span>{matchToday ? "Jogar Partida" : "Avançar"}</span>
+                <Icon name="play" size={13} fill />
+              </button>
             </div>
-            <button className="money-chip k-date-pill" onClick={() => push({ name: "finances" })} aria-label={`Saldo ${formatMoney(club.balance)}. Abrir finanças`}>
-              <span>{formatDate(w.season, w.day)}</span>
-              <span className="k-sep">•</span>
-              <b>{formatMoney(club.balance)}</b>
-            </button>
-            {w.admin?.on && (
-              <button className="icon-btn" onClick={() => push({ name: "admin" })} aria-label="Painel do administrador"><Icon name="wrench" size={18} /></button>
-            )}
-            <button
-              className={`k-continue-btn${matchToday ? " matchday" : ""}`}
-              onClick={continueGame}
-              aria-label={matchToday ? "Dia de Jogo: Ir para a partida" : "Continuar"}
-            >
-              <span>{matchToday ? "Dia de Jogo" : "Continuar"}</span>
-              <Icon name="play" size={13} fill />
-            </button>
           </header>
         )}
-        <div className={`screen k-content${top ? "" : " from-tab"}`} key={routeKey}>
+
+        <div className={`screen k-content rpg-viewport${top ? "" : " from-tab"}`} key={routeKey}>
           <Suspense fallback={<div className="page" />}>
             {content}
           </Suspense>
         </div>
-        {!fullScreen && !hideNav && (
-          <nav className="bottomnav k-bottomnav k-bottomnav-sr" aria-label="Navegação principal">
-            {TABS.map((t) => {
-              const isAct = (!top && nav.tab === t.id) || (t.id === "inbox" && top?.name === "inbox") || (t.id === "tactics" && top?.name === "tactics");
-              return (
-                <button
-                  key={t.id}
-                  className={isAct ? "active" : ""}
-                  aria-current={isAct ? "page" : undefined}
-                  onClick={() => setTab(t.id)}
-                >
-                  <span className="nav-ic"><Icon name={t.icon} size={18} /></span>
-                  <span className="nav-lb">{t.label}</span>
-                  {t.id === "inbox" && unread > 0 && <i className="nav-badge num">{Math.min(unread, 99)}</i>}
-                  {t.id === "more" && (w.career?.offers.length ?? 0) > 0 && <i className="nav-badge" />}
-                </button>
-              );
-            })}
-          </nav>
-        )}
       </div>
+
       {wonComp && w && !(top?.name === "match") && (
-        <TitleCelebration id={wonComp.id} club={club} season={wonComp.season}
-          onClose={() => { markTitleSeen(`${w.userClubId}:${wonComp.season}:${wonComp.id}`); bumpSeen((x) => x + 1); }} />
+        <TitleCelebration
+          id={wonComp.id}
+          club={club}
+          season={wonComp.season}
+          onClose={() => {
+            markTitleSeen(`${w.userClubId}:${wonComp.season}:${wonComp.id}`);
+            bumpSeen((x) => x + 1);
+          }}
+        />
       )}
       {nav.toast && <Toast key={nav.toast} msg={nav.toast} />}
     </div>
   );
 }
 
-/** Aviso compacto no topo: some sozinho, ao tocar ou ao deslizar para o lado. */
 function Toast({ msg }: { msg: string }) {
   const start = useRef<number | null>(null);
   const el = useRef<HTMLDivElement>(null);

@@ -514,3 +514,30 @@ Atendendo ao pedido de reconstrução completa focada em **RPG de Futebol HD-2D 
 
 ### 4. Sistema Visual RPG de Futebol HD-2D (`src/ui/theme.css`)
 - Aplicada nova paleta crepuscular (`#070c18`, `#0f182b`, `#16233d`) com molduras douradas RPG (`rgba(250, 204, 21, 0.22)`), abas ativas iluminadas em ouro/esmeralda e botão principal `Continuar` em ouro âmbar.
+
+
+
+---
+
+## 18. Nova Arquitetura Console RPG HD-2D, Gramados 100% Limpos (Sem Bonecos Estáticos no Fundo), Sprites Atléticos e Comandos Interativos de Partida (Antigravity, 19/11/2026)
+
+### 1. Correção da "Sombra de Jogadores Embaixo" nos Cenários HD-2D e nos Sprites
+- **Reedição das 7 Artes HD-2D (`public/media/hd2d/`)**:
+  - `training-ct.jpg`, `academy-cotia.jpg`, `stadium-night.jpg`, `stadium-sunset.jpg`, `stadium-day.jpg`, `stadium-arena.jpg` e `stadium-caldeirao.jpg` tiveram todos os pequenos jogadores/pessoas estáticos removidos do gramado, deixando o campo 100% limpo para os nossos atletas animados em 60 FPS no `Hd2dWorldCanvas.tsx`.
+  - Ajustada a zona de movimentação (`pitchZone`) em `Hd2dWorldCanvas.tsx` para manter 100% dos atletas estritamente dentro das linhas do gramado.
+- **Repaginação dos Sprites 16-Bit (`drawPitchDude` em `src/ui/matchSprites.ts`)**:
+  - Sombra sob os pés suavizada (`rgba(4, 20, 10, 0.24)`, raio reduzido) e pernas redesenhadas com separação horizontal clara (`x - 1.05` e `x + 0.2`), pescoço aparente, braços separados nas laterais do tronco e contorno fino, eliminando o aspecto de bloco escuro sob os jogadores.
+
+### 2. Nova Arquitetura Console RPG sem Comer Tela (`src/ui/App.tsx`, `src/ui/screens/Home.tsx`, `src/ui/theme.css`)
+- **`src/ui/App.tsx`**:
+  - Substituída a antiga barra lateral esquerda de 11 botões (`k-rail`) por uma **Barra Superior Console RPG (`rpg-top-hud`, `46px`)** contendo o pill do clube + data/saldo, o dock horizontal de 9 hubs (`QG`, `Tática`, `Elenco`, `Treino`, `Base`, `Mercado`, `Ligas`, `Clube`, `Caixa`) e o botão `Avançar / Jogar Partida`.
+- **`src/ui/screens/Home.tsx`**:
+  - Reconstruído do zero como um **Console Split 2 Colunas (`58% / 42%`) de altura fixa (`calc(100dvh - 46px)`, `overflow: hidden`)**:
+    - **Coluna Esquerda**: Palco do Mundo Vivo HD-2D a 60 FPS com seletores de núcleo (`CT`, `Base Cotia`, `Estádio`), seletor de horário (`Dia`, `Tarde`, `Noite`) e barra inferior de ações contextuais em linha única.
+    - **Coluna Direita**: Card de **Próximo Confronto** no topo + **Painel Integrado com Abas (`Classificação`, `Clube & Meta`, `Decisões`, `DM`)** embaixo, exibindo a tabela de classificação completa ao redor do clube sem nenhum corte ou rolagem de página.
+
+### 3. Comandos Interativos de Gameplay na Partida ao Vivo (`src/ui/MatchView.tsx`)
+- Adicionado o método `userArcadeAction(kind: "shoot" | "pass" | "press")` em `PitchAnim` e 3 botões de ação em tempo real no canto superior direito do campo durante a partida:
+  - **`🎯 Enfiada!`**: Ordena passe vertical imediato em profundidade para o atacante mais avançado.
+  - **`⚡ Chutar!`**: Ordena finalização imediata de potência ao gol adversário com efeito especial.
+  - **`🔥 Abafar!`**: Dispara sprint coletivo de pressão da equipe sobre a bola.

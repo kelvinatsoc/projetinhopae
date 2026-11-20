@@ -5410,3 +5410,682 @@ html.lite img { content-visibility: auto; }
   border-color: rgba(250, 204, 21, 0.65) !important;
   color: #fef08a !important;
 }
+
+
+/* ============================================================================
+   NOVA ARQUITETURA CONSOLE RPG HD-2D (Sem Barra Lateral Antiga, Zero Overflow)
+   ============================================================================ */
+.app.k-shell.rpg-console-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 0%, #172748 0%, #070b15 72%);
+}
+
+.rpg-top-hud {
+  height: 46px;
+  min-height: 46px;
+  max-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, #121e36 0%, #09101f 100%);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.34);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  z-index: 40;
+}
+
+.rpg-hud-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.rpg-back-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  background: rgba(15, 24, 43, 0.9);
+  color: #fef08a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rpg-club-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px 3px 5px;
+  border-radius: 10px;
+  background: rgba(15, 25, 45, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+.rpg-club-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.12;
+}
+.rpg-club-meta b {
+  font-size: 12px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+}
+.rpg-club-meta small {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.rpg-console-dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(7, 12, 24, 0.78);
+  border: 1px solid rgba(250, 204, 21, 0.22);
+  padding: 3px 5px;
+  border-radius: 11px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rpg-console-dock::-webkit-scrollbar {
+  display: none;
+}
+
+.rpg-dock-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 29px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.rpg-dock-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.rpg-dock-tab.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.28) 0%, rgba(16, 185, 129, 0.2) 100%);
+  border-color: rgba(250, 204, 21, 0.72);
+  color: #fef08a;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.22);
+}
+
+.rpg-dock-badge {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 900;
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rpg-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rpg-icon-pill {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 24, 43, 0.85);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rpg-continue-cta {
+  height: 32px !important;
+  padding: 0 13px !important;
+  border-radius: 9px !important;
+  font-size: 11.5px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.rpg-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ============================================================================
+   QG DO CLUBE & MUNDO VIVO HD-2D (Home Console Split 58% / 42% — Zero Overflow)
+   ============================================================================ */
+.rpg-home-console {
+  display: grid;
+  grid-template-columns: 1.38fr 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  height: calc(100dvh - 46px);
+  max-height: calc(100dvh - 46px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.rpg-world-stage-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(16, 26, 46, 0.96) 0%, rgba(9, 15, 28, 0.98) 100%);
+  border: 1px solid rgba(250, 204, 21, 0.34);
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.16), 0 10px 26px rgba(0, 0, 0, 0.6);
+  padding: 8px 10px;
+  gap: 7px;
+  box-sizing: border-box;
+}
+
+.rpg-world-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rpg-world-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rpg-wtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(9, 15, 28, 0.75);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rpg-wtab em {
+  font-style: normal;
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+.rpg-wtab.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.26) 0%, rgba(16, 185, 129, 0.2) 100%);
+  border-color: rgba(250, 204, 21, 0.75);
+  color: #fef08a;
+}
+.rpg-wtab.active em {
+  background: rgba(34, 197, 94, 0.28);
+  color: #86efac;
+}
+
+.rpg-time-pills {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(7, 12, 22, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.rpg-tpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rpg-tpill.active {
+  background: #eab308;
+  color: #090d16;
+  font-weight: 900;
+}
+
+.rpg-world-canvas-box {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.rpg-world-caption {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: calc(100% - 20px);
+  background: rgba(7, 12, 22, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8fafc;
+  pointer-events: none;
+}
+
+.rpg-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  flex-shrink: 0;
+}
+
+.rpg-world-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.rpg-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 25, 45, 0.9);
+  color: #e2e8f0;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rpg-act-btn:hover {
+  border-color: rgba(250, 204, 21, 0.55);
+  color: #fff;
+}
+.rpg-act-btn.gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #fde047;
+  color: #090d16;
+  font-weight: 900;
+}
+
+/* Coluna Direita: Deck de Comando RPG */
+.rpg-command-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.rpg-deck-card {
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(16, 26, 46, 0.96) 0%, rgba(10, 17, 32, 0.98) 100%);
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.12), 0 8px 22px rgba(0, 0, 0, 0.55);
+  padding: 9px 11px;
+  box-sizing: border-box;
+}
+
+.rpg-next-card {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.rpg-card-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: #fef08a;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(250, 204, 21, 0.16);
+}
+
+.rpg-when-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+.rpg-when-tag.today {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+  border: 1px solid rgba(74, 222, 128, 0.5);
+}
+
+.rpg-duel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.rpg-duel-club {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.rpg-duel-club.right {
+  justify-content: flex-end;
+}
+
+.rpg-duel-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rpg-duel-meta.right {
+  align-items: flex-end;
+  text-align: right;
+}
+.rpg-duel-meta b {
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+.rpg-duel-meta span {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.rpg-duel-vs {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #fde047;
+  font-size: 10px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rpg-duel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rpg-duel-stadium {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: #cbd5e1;
+  min-width: 0;
+}
+
+.rpg-duel-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Card 2: Multi-Deck (Classificação | Clube & Meta | Decisões | DM) */
+.rpg-multi-deck {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.rpg-deck-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background: rgba(7, 12, 22, 0.78);
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.rpg-dtab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rpg-dtab.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.28), rgba(16, 185, 129, 0.22));
+  color: #fef08a;
+  box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.55);
+}
+
+.rpg-deck-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.rpg-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.rpg-link-btn {
+  background: none;
+  border: none;
+  color: #fde047;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.rpg-mini-tbl th,
+.rpg-mini-tbl td {
+  padding: 4px 5px !important;
+  font-size: 11px !important;
+}
+
+.rpg-fin-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rpg-fin-pill {
+  background: rgba(7, 12, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: pointer;
+}
+.rpg-fin-pill span {
+  font-size: 9.5px;
+  color: #94a3b8;
+}
+.rpg-fin-pill b {
+  font-size: 11.5px;
+  color: #f8fafc;
+}
+
+.rpg-meters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.rpg-meter-box {
+  background: rgba(7, 12, 22, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.rpg-meter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  margin-bottom: 4px;
+}
+
+.rpg-meter-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.rpg-meter-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.rpg-inbox-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rpg-ib-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(7, 12, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+.rpg-ib-row.unread {
+  border-color: rgba(250, 204, 21, 0.45);
+}
+.rpg-ib-row > i {
+  width: 3px;
+  height: 24px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.rpg-ib-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rpg-ib-text b {
+  font-size: 11.5px;
+  color: #f8fafc;
+}
+.rpg-ib-text span {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.rpg-alert-ok {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+}
+.rpg-alert-ok b {
+  display: block;
+  font-size: 12px;
+  color: #ecfdf5;
+}
+.rpg-alert-ok span {
+  font-size: 10.5px;
+}
